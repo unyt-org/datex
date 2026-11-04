@@ -29,6 +29,8 @@ impl TryClone for CoreValue {
             CoreValue::Range(range_value) => range_value.try_clone(),
             CoreValue::Box(box_value) => box_value.try_clone(),
             CoreValue::Instant(instant_value) => instant_value.try_clone(),
+            CoreValue::Sender(sender_value) => sender_value.try_clone(),
+            CoreValue::Receiver(receiver_value) => receiver_value.try_clone(),
         }
     }
 }

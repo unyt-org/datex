@@ -572,6 +572,8 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::Text(t) => self.text_to_source_code(t),
             DatexExpressionData::Endpoint(e) => e.to_string(),
             DatexExpressionData::Null => "null".to_string(),
+            DatexExpressionData::Sender => "Sender()".to_string(),
+            DatexExpressionData::Receiver => "Receiver()".to_string(),
             DatexExpressionData::Identifier(l) => l.to_string(),
             DatexExpressionData::Map(map) => self.map_to_source_code(map),
             DatexExpressionData::List(list) => self.list_to_source_code(list),

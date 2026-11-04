@@ -27,6 +27,8 @@ use crate::{
         },
     },
 };
+use crate::types::type_definition::collection::type_definition::receiver::ReceiverTypeDefinition;
+use crate::types::type_definition::collection::type_definition::sender::SenderTypeDefinition;
 
 /// Folds a type using the provided folder.
 pub fn fold_type<F>(folder: &mut F, ty: &Type) -> Result<F::Output, F::Error>
@@ -151,6 +153,14 @@ where
             CollectionTypeDefinition::List(list) => {
                 let item = fold_type(folder, list.0.as_ref())?;
                 folder.fold_list_collection(list, item)
+            }
+            CollectionTypeDefinition::Sender(sender) => {
+                let item = fold_type(folder, sender.0.as_ref())?;
+                folder.fold_sender(sender, item)
+            }
+            CollectionTypeDefinition::Receiver(receiver) => {
+                let item = fold_type(folder, receiver.0.as_ref())?;
+                folder.fold_receiver(receiver, item)
             }
             CollectionTypeDefinition::ListSlice(
                 list_slice_collection_type_definition,
@@ -331,5 +341,19 @@ pub trait TypeFolder {
         source: &MapCollectionTypeDefinition,
         key: Self::Output,
         value: Self::Output,
+    ) -> Result<Self::Output, Self::Error>;
+
+    /// Called when a sender type definition is encountered. The folded item type is provided as an argument.
+    fn fold_sender(
+        &mut self,
+        source: &SenderTypeDefinition,
+        item: Self::Output,
+    ) -> Result<Self::Output, Self::Error>;
+
+    /// Called when a receiver type definition is encountered. The folded item type is provided as an argument.
+    fn fold_receiver(
+        &mut self,
+        source: &ReceiverTypeDefinition,
+        item: Self::Output,
     ) -> Result<Self::Output, Self::Error>;
 }

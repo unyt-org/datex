@@ -23,6 +23,8 @@ impl Hash for CoreValue {
             CoreValue::Range(r) => r.hash(state),
             CoreValue::Box(b) => b.hash(state),
             CoreValue::Instant(i) => i.hash(state),
+            CoreValue::Sender(s) => s.hash(state),
+            CoreValue::Receiver(r) => r.hash(state),
         }
     }
 }

@@ -31,6 +31,8 @@ mod to_datex_expression_data;
 
 use core::ops::Deref;
 use crate::values::core_value_with_classification::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification;
+use crate::values::core_values::receiver::ValueContainerReceiver;
+use crate::values::core_values::sender::ValueContainerSender;
 
 /// Similar to [CoreValue], but it is a potentially borrowed reference to a [CoreValue] variant instead of owning it.
 #[derive(Debug, Default)]
@@ -53,6 +55,8 @@ pub enum BorrowedCoreValue<'a> {
     Range(Goat<'a, Range>),
     Box(Goat<'a, Box<ValueContainer>>),
     Instant(Goat<'a, Instant>),
+    Sender(Goat<'a, ValueContainerSender>),
+    Receiver(Goat<'a, ValueContainerReceiver>),
 }
 
 impl<'a> BorrowedCoreValue<'a> {
@@ -104,6 +108,12 @@ impl<'a> BorrowedCoreValue<'a> {
             }
             BorrowedCoreValue::Instant(instant) => {
                 CoreValue::Instant(*instant.deref())
+            }
+            BorrowedCoreValue::Sender(sender) => {
+                CoreValue::Sender(sender.deref().clone())
+            }
+            BorrowedCoreValue::Receiver(receiver) => {
+                todo!("cannot clone receiver")
             }
         }
     }
@@ -159,6 +169,12 @@ impl<'a> From<&'a CoreValue> for BorrowedCoreValue<'a> {
             CoreValue::Instant(instant) => {
                 BorrowedCoreValue::Instant(Goat::Borrowed(instant))
             }
+            CoreValue::Sender(sender) => {
+                BorrowedCoreValue::Sender(Goat::Borrowed(sender))
+            }
+            CoreValue::Receiver(receiver) => {
+                BorrowedCoreValue::Receiver(Goat::Borrowed(receiver))
+            }
         }
     }
 }
@@ -192,6 +208,8 @@ pub enum BorrowedCoreValueMut<'a> {
     Range(GoatMut<'a, Range>),
     Box(GoatMut<'a, Box<ValueContainer>>),
     Instant(GoatMut<'a, Instant>),
+    Sender(GoatMut<'a, ValueContainerSender>),
+    Receiver(GoatMut<'a, ValueContainerReceiver>),
 }
 
 impl<'a> BorrowedCoreValueMut<'a> {
@@ -245,6 +263,12 @@ impl<'a> BorrowedCoreValueMut<'a> {
             }
             BorrowedCoreValueMut::Instant(instant) => {
                 Ok(CoreValue::Instant(*instant.deref()))
+            }
+            BorrowedCoreValueMut::Sender(sender) => {
+                Ok(CoreValue::Sender(sender.deref().clone()))
+            }
+            BorrowedCoreValueMut::Receiver(receiver) => {
+                todo!("cannot clone receiver")
             }
         }
     }
@@ -305,6 +329,12 @@ impl<'a> From<&'a mut CoreValue> for BorrowedCoreValueMut<'a> {
             }
             CoreValue::Instant(instant) => {
                 BorrowedCoreValueMut::Instant(GoatMut::Borrowed(instant))
+            }
+            CoreValue::Sender(sender) => {
+                BorrowedCoreValueMut::Sender(GoatMut::Borrowed(sender))
+            }
+            CoreValue::Receiver(receiver) => {
+                BorrowedCoreValueMut::Receiver(GoatMut::Borrowed(receiver))
             }
         }
     }

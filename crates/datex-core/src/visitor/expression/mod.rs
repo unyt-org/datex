@@ -239,6 +239,12 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::MoveSharedValue(_) => {
                 todo!("Move shared value visit?");
             }
+            DatexExpressionData::Sender => {
+                todo!("Sender visit not implemented yet");
+            }
+            DatexExpressionData::Receiver => {
+                todo!("Receiver visit not implemented yet");
+            }
         };
 
         let action = match visit_result {

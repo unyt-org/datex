@@ -204,6 +204,12 @@ impl ToInstructions for CollectionTypeDefinition {
                 CollectionTypeDefinition::Range(range) => {
                     yield_all!(range.to_instructions(visitor, cache));
                 }
+                CollectionTypeDefinition::Sender(sender) => {
+                    yield_all!(sender.to_instructions(visitor, cache));
+                }
+                CollectionTypeDefinition::Receiver(receiver) => {
+                    yield_all!(receiver.to_instructions(visitor, cache));
+                }
             }
         })
     }

@@ -46,6 +46,12 @@ impl<'a> ToDatexExpressionData for BorrowedCoreValue<'a> {
             BorrowedCoreValue::Instant(instant) => {
                 instant.to_datex_expression_data()
             }
+            BorrowedCoreValue::Sender(sender) => {
+                sender.to_datex_expression_data()
+            }
+            BorrowedCoreValue::Receiver(receiver) => {
+                receiver.to_datex_expression_data()
+            }
         }
     }
 }

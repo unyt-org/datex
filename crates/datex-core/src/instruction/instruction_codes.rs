@@ -49,6 +49,9 @@ pub enum InstructionCode {
     SET_ENTRY_INDEX,   // set property with integer index
     SET_ENTRY_TEXT,    // set property with text key
 
+    SENDER,
+    RECEIVER,
+
     MATCHES, // matches
 
     STRUCTURAL_EQUAL,     // ==

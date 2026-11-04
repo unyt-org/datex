@@ -24,6 +24,8 @@ use serde::{
     de::{self, Visitor},
     ser::{SerializeMap, SerializeSeq},
 };
+use crate::types::type_definition::collection::type_definition::receiver::ReceiverTypeDefinition;
+use crate::types::type_definition::collection::type_definition::sender::SenderTypeDefinition;
 
 impl SerializeWithSerdeContext for CollectionTypeDefinition {
     fn serialize_with_ctx<S: Serializer>(
@@ -45,6 +47,12 @@ impl SerializeWithSerdeContext for CollectionTypeDefinition {
             }
             CollectionTypeDefinition::Range(range) => {
                 obj.serialize_value(&ValueWithSerdeContext::new(range, ctx))?
+            }
+            CollectionTypeDefinition::Sender(ty) => {
+                obj.serialize_value(&ValueWithSerdeContext::new(ty, ctx))?
+            }
+            CollectionTypeDefinition::Receiver(ty) => {
+                obj.serialize_value(&ValueWithSerdeContext::new(ty, ctx))?
             }
         }
         obj.end()
@@ -104,10 +112,16 @@ impl<'de, 'a, 'ctx> Visitor<'de>
             "Range" => Ok(CollectionTypeDefinition::Range(
                 map.next_value_seed(self.cast::<RangeTypeDefinition>())?,
             )),
+            "Sender" => Ok(CollectionTypeDefinition::Sender(
+                map.next_value_seed(self.cast::<SenderTypeDefinition>())?,
+            )),
+            "Receiver" => Ok(CollectionTypeDefinition::Receiver(   
+                map.next_value_seed(self.cast::<ReceiverTypeDefinition>())?,
+            )),
 
             _ => Err(de::Error::unknown_variant(
                 &key,
-                &["List", "ListSlice", "Map", "Range"],
+                &["List", "ListSlice", "Map", "Range", "Sender", "Receiver"],
             )),
         }
     }

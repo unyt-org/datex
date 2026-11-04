@@ -35,6 +35,8 @@ use crate::{
     },
 };
 use core::fmt::{Debug, Display, Formatter};
+use crate::values::core_values::receiver::{Receiver, ValueContainerReceiver};
+use crate::values::core_values::sender::{Sender, ValueContainerSender};
 
 pub mod borrowed_core_value;
 pub mod convert_core_value;
@@ -65,6 +67,8 @@ pub enum CoreValue {
     Callable(Callable),
     Range(Range),
     Instant(Instant),
+    Sender(ValueContainerSender),
+    Receiver(ValueContainerReceiver),
     /// Used for nested values, e.g. #Tagged (shared 42)
     Box(Box<ValueContainer>),
 }
@@ -120,6 +124,12 @@ impl From<&CoreValue> for CoreLibTypeId {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never)
             }
             CoreValue::Box(_) => CoreLibTypeId::Base(CoreLibBaseTypeId::Box),
+            CoreValue::Sender(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Sender)
+            }
+            CoreValue::Receiver(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Receiver)
+            }
         }
     }
 }
@@ -339,6 +349,8 @@ impl Display for CoreValue {
             }
             CoreValue::Uninitialized => write!(f, "[[ uninitialized ]]"),
             CoreValue::Box(inner) => write!(f, "({})", inner),
+            CoreValue::Sender(sender) => write!(f, "[[ sender ]]"),
+            CoreValue::Receiver(receiver) => write!(f, "[[ receiver ]]"),
         }
     }
 }
