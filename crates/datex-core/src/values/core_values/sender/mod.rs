@@ -9,6 +9,11 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use crate::core_compiler::core_compilation_context::CompileInput;
+use crate::core_compiler::update_compiler::compile_updates;
+use crate::runtime::Runtime;
+use crate::shared_values::SharedContainer;
+use crate::traits::convert_value_container::ConvertValueContainer;
 
 mod classification;
 mod convert_parts;
@@ -30,7 +35,7 @@ mod value_access;
 #[derive(Debug, Clone)]
 pub enum Sender<T> {
     LocalReceiver { sender: mpsc::UnboundedSender<T> },
-    RemoteReceiver { receiver: WeakSharedContainer },
+    RemoteReceiver { receiver: WeakSharedContainer, runtime: Runtime },
 }
 
 impl<T> Sender<T> {
@@ -45,9 +50,11 @@ impl<T> Sender<T> {
     /// The caller must ensure that the receiver is a valid SharedContainer that contains a Receiver<T>.
     pub unsafe fn new_with_remote_receiver(
         receiver: &ReferencedSharedContainer,
+        runtime: Runtime,
     ) -> Self {
         Sender::RemoteReceiver {
             receiver: receiver.downgrade(),
+            runtime,
         }
     }
 
@@ -55,34 +62,50 @@ impl<T> Sender<T> {
     pub async fn send(&mut self, value: T) -> Result<(), ()> {
         match self {
             Sender::LocalReceiver { sender } => sender.send(value).await,
-            Sender::RemoteReceiver { receiver: _ } => todo!(),
+            Sender::RemoteReceiver { receiver, runtime } => {
+                if let Some(receiver) = receiver.upgrade() {
+                    compile_updates(
+                        &SharedContainer::Referenced(receiver),
+                        &[],
+                        CompileInput::new(
+                            runtime.pointer_availability_lookup(),
+                            runtime.shared_references_cache(),
+                        )
+                    )
+                }
+                else {
+                    Err(())
+                }
+
+            }
         }
     }
 }
 
-impl<T: DatexNativeBase + 'static> TryFrom<&ReferencedSharedContainer>
-    for Sender<T>
-{
-    type Error = ();
-    fn try_from(
-        value: &ReferencedSharedContainer,
-    ) -> Result<Self, Self::Error> {
-        // TODO: also check if immutable, but currently not supported by SharedRef
-
-        // check if the contained value is a receiver
-        let is_receiver = {
-            let val = value.value_container();
-            val.try_as::<Receiver<T>>().is_some()
-        };
-
-        if is_receiver {
-            Ok(Sender::RemoteReceiver {
-                receiver: value.downgrade(),
-            })
-        } else {
-            Err(())
-        }
-    }
-}
+// FIXME
+// impl<T: DatexNativeBase + 'static> TryFrom<&ReferencedSharedContainer>
+//     for Sender<T>
+// {
+//     type Error = ();
+//     fn try_from(
+//         value: &ReferencedSharedContainer,
+//     ) -> Result<Self, Self::Error> {
+//         // TODO: also check if immutable, but currently not supported by SharedRef
+//
+//         // check if the contained value is a receiver
+//         let is_receiver = {
+//             let val = value.value_container();
+//             val.try_as::<Receiver<T>>().is_some()
+//         };
+//
+//         if is_receiver {
+//             Ok(Sender::RemoteReceiver {
+//                 receiver: value.downgrade(),
+//             })
+//         } else {
+//             Err(())
+//         }
+//     }
+// }
 
 pub type ValueContainerSender = Sender<ValueContainer>;
