@@ -11,7 +11,7 @@ use datex_core::{
     decompiler::{DecompileOptions, dxb_to_source_code},
     runtime::{
         Runtime,
-        cache::shared_references_cache::{self, SharedReferencesCache},
+        cache::shared_references_cache::SharedReferencesCache,
         execution::{
             ExecutionInput, ExecutionOptions, execute_dxb_sync,
             execution_input::ExecutionCallerMetadata,
