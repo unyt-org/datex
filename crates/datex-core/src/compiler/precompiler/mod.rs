@@ -2,7 +2,8 @@
 //! The precompiler traverses the AST, resolves variable references and shared values.
 
 use crate::{
-    ast::expressions::InterfaceMethodCall, collections::HashSet,
+    ast::expressions::{ComparisonOperation, InterfaceMethodCall},
+    collections::HashSet,
     type_inference::infer_expression_type_detailed_errors,
     values::core_value::CoreValue,
 };
@@ -1157,7 +1158,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
 
     fn visit_comparison_operation(
         &mut self,
-        comparison_operation: &mut crate::ast::expressions::ComparisonOperation,
+        comparison_operation: &mut ComparisonOperation,
         _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         self.visit_datex_expression(&mut comparison_operation.left)?;
@@ -1201,19 +1202,19 @@ mod tests {
         ast::{
             expressions::{
                 BinaryOperation, CallableDeclaration, CallableSignature,
-                CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
-                DeriveSharedRef, EntityDeclarationExpression,
-                InterfaceMethodCall, Map, PropertyAccess, PropertyAssignment,
-                RemoteExecution, Statements, TypeDeclarationExpression, Unbox,
-                ValueAccessType, VariableAccess, VariableDeclaration,
-                VariableKind, VariantAccess,
+                ComparisonOperation, CreateShared, DatexExpression,
+                DatexExpressionData, DeriveRef, DeriveSharedRef,
+                EntityDeclarationExpression, InterfaceMethodCall, Map,
+                PropertyAccess, PropertyAssignment, RemoteExecution,
+                Statements, TypeDeclarationExpression, Unbox, ValueAccessType,
+                VariableAccess, VariableDeclaration, VariableKind,
+                VariantAccess,
             },
             resolved_variable::ResolvedVariable,
             spanned::Spanned,
             type_expressions::{StructuralMap, TypeExpressionData},
         },
         compiler::{
-            ComparisonOperation,
             error::{
                 CompilerError,
                 SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
