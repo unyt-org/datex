@@ -3,13 +3,13 @@ use crate::{
     shared_values::errors::AccessError,
     traits::value_access::ValueAccess,
     values::value_container::{
+        ValueContainer,
         borrowed_value_container::{
             BorrowedValueContainer, BorrowedValueContainerMut,
         },
     },
 };
 use core::ops::{Deref, DerefMut};
-use crate::values::value_container::ValueContainer;
 
 impl<T: ValueAccess> ValueAccess for Box<T> {
     fn try_get_property(

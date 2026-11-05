@@ -1,10 +1,7 @@
 use crate::{
-    core_compiler::value_visitor::ValueVisitor,
-    instruction::{BytecodeItem},
-    prelude::*,
+    core_compiler::value_visitor::ValueVisitor, instruction::Instruction,
+    prelude::*, runtime::cache::shared_references_cache::SharedReferencesCache,
 };
-use crate::instruction::Instruction;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 pub trait ToInstructions {
     fn to_instructions<'a>(

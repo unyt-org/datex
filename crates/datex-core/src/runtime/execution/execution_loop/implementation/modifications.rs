@@ -12,7 +12,7 @@ use crate::{
         update_data::{SetEntryUpdateData, UpdateOperation},
         update_handler::UpdateHandler,
     },
-    values::value_container::{ValueContainer},
+    values::value_container::ValueContainer,
 };
 
 /// Sets a property on the target [ValueContainer] using the provided key and value.

@@ -10,10 +10,10 @@ use crate::{
     },
     global::stack_index::StackIndex,
     instruction::{
-        Instruction, instruction_data::SharedRef,
-        regular_instruction::RegularInstruction,
+        instruction_data::SharedRef, regular_instruction::RegularInstruction,
     },
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerMutability,
     },
@@ -23,7 +23,6 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 /// Compiles an update operation on a shared container into DXB
 /// e.g. [UpdateData::SetEntry] to $x.a = b;
@@ -41,7 +40,7 @@ impl ToInstructions for (&SharedContainer, &[&UpdateData]) {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         let (container, updates) = self;
         Box::new(gen move {
@@ -105,8 +104,6 @@ gen fn append_update_operation<'a>(
             todo!()
         }
     }
-
-    return;
 }
 
 /// Appends a set entry operation on a shared container
@@ -125,8 +122,6 @@ gen fn append_set_entry<'a>(
     yield_all!(set_entry_update_data.value.to_instructions(visitor, cache));
     // target
     yield RegularInstruction::borrow_stack_value(StackIndex(0)).into();
-
-    return;
 }
 
 /// Appends a replace operation on a shared container
@@ -139,7 +134,6 @@ gen fn append_replace<'a>(
     yield_all!(replace_update_data.value.to_instructions(visitor, cache));
     // target
     yield RegularInstruction::borrow_stack_value(StackIndex(0)).into();
-    return;
 }
 
 /// Appends an append entry operation on a shared container
@@ -149,11 +143,14 @@ gen fn append_append_entry<'a>(
     append_entry_update_data: &AppendEntryUpdateData,
 ) -> crate::instruction::Instruction {
     yield RegularInstruction::append_entry().into();
-    yield_all!(append_entry_update_data.value.to_instructions(visitor, cache));
+    yield_all!(
+        append_entry_update_data
+            .value
+            .to_instructions(visitor, cache)
+    );
 
     // target
     yield RegularInstruction::borrow_stack_value(StackIndex(0)).into();
-    return;
 }
 
 /// Appends a list splice operation on a shared container
@@ -175,25 +172,22 @@ gen fn append_list_splice<'a>(
 
     // target
     yield RegularInstruction::borrow_stack_value(StackIndex(0)).into();
-
-    return;
 }
 
 /// Appends a clear operation on a shared container
 gen fn append_clear(
-    visitor: &mut dyn ValueVisitor,
+    _visitor: &mut dyn ValueVisitor,
 ) -> crate::instruction::Instruction {
     yield RegularInstruction::clear().into();
 
     // target
     yield RegularInstruction::borrow_stack_value(StackIndex(0)).into();
-    return;
 }
 
 /// Appends a delete entry operation on a shared container
 gen fn append_delete_entry(
-    visitor: &mut dyn ValueVisitor,
-    cache: &mut SharedReferencesCache,
+    _visitor: &mut dyn ValueVisitor,
+    _cache: &mut SharedReferencesCache,
     _delete_entry_update_data: &DeleteEntryUpdateData,
 ) -> crate::instruction::Instruction {
     todo!()
@@ -214,8 +208,6 @@ pub gen fn append_set_property_value_key<'a>(
         yield RegularInstruction::set_entry_dynamic().into();
         yield_all!(value_key.to_instructions(visitor, cache));
     }
-
-    return;
 }
 
 #[cfg(test)]
@@ -234,6 +226,7 @@ mod tests {
         },
         prelude::*,
         runtime::{
+            cache::shared_references_cache::SharedReferencesCache,
             pointer_address_provider::SelfOwnedPointerAddressProvider,
             pointer_availability_lookup::PointerAvailabilityLookup,
         },
@@ -245,7 +238,6 @@ mod tests {
         },
         values::{core_values::map::Map, value_container::ValueContainer},
     };
-    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
     #[test]
     fn test_compile_update_set_entry() {

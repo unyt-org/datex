@@ -1,8 +1,6 @@
-use erased_serde::__private::serde::ser::SerializeTuple;
-use num_traits::ToPrimitive;
 use crate::{
     dif::{
-        deserialize_serde_context::{DeserializeSerdeContext, ErasedSeed},
+        deserialize_serde_context::DeserializeSerdeContext,
         deserialize_with_serde_context::{
             DeserializeWithSerdeContext, DeserializeWithSerdeContextDyn,
         },
@@ -11,24 +9,26 @@ use crate::{
             SerializeWithSerdeContext, SerializeWithSerdeContextDyn,
         },
     },
-    prelude::*,
+    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
+    values::core_values::receiver::Receiver,
 };
-use serde::{
-    de::{SeqAccess, Visitor},
-};
-use crate::values::core_values::receiver::Receiver;
-use crate::libs::core::core_lib_id::CoreLibIdIndex;
-use crate::libs::core::type_id::CoreLibBaseTypeId;
+use erased_serde::__private::serde::ser::SerializeTuple;
+use num_traits::ToPrimitive;
+use serde::de::{SeqAccess, Visitor};
 
-impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for Receiver<T> {
+impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext
+    for Receiver<T>
+{
     fn serialize_with_ctx<S: serde::Serializer>(
         &self,
-        ctx: &SerdeContext<'_>,
+        _ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         // [CoreLibBaseTypeId::Receiver, null]
         let mut tuple = serializer.serialize_tuple(2)?;
-        tuple.serialize_element(&CoreLibIdIndex::from(CoreLibBaseTypeId::Receiver).to_u16())?;
+        tuple.serialize_element(
+            &CoreLibIdIndex::from(CoreLibBaseTypeId::Receiver).to_u16(),
+        )?;
         tuple.serialize_element(&())?;
         tuple.end()
     }
@@ -60,7 +60,7 @@ impl<'de, T: DeserializeWithSerdeContextDyn> Visitor<'de>
 
     fn visit_seq<A: SeqAccess<'de>>(
         self,
-        mut seq: A,
+        _seq: A,
     ) -> Result<Receiver<T>, A::Error> {
         todo!()
     }

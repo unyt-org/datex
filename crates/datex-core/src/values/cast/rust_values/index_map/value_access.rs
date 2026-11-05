@@ -6,6 +6,7 @@ use crate::{
         value_access::ValueAccess,
     },
     values::value_container::{
+        ValueContainer,
         borrowed_value_container::{
             BorrowedValueContainer, BorrowedValueContainerMut,
         },
@@ -13,7 +14,6 @@ use crate::{
 };
 use core::hash::Hash;
 use indexmap::IndexMap;
-use crate::values::value_container::ValueContainer;
 
 impl<K, V> ValueAccess for IndexMap<K, V, RandomState>
 where

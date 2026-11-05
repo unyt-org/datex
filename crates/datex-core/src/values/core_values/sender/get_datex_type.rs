@@ -8,12 +8,12 @@ use crate::{
             TypeDefinition,
             collection::{
                 CollectionTypeDefinition,
+                type_definition::sender::SenderTypeDefinition,
             },
         },
     },
+    values::core_values::sender::Sender,
 };
-use crate::values::core_values::sender::Sender;
-use crate::types::type_definition::collection::type_definition::sender::SenderTypeDefinition;
 
 impl<T> GetDatexType for Sender<T>
 where

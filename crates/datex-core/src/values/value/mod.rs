@@ -14,7 +14,7 @@ use crate::{
             callable::{Callable, CallableBody},
             native::DatexNative,
         },
-        value_container::{ValueContainer},
+        value_container::ValueContainer,
     },
 };
 mod apply;
@@ -41,7 +41,7 @@ pub mod value_classification;
 use crate::{
     shared_values::errors::AccessError,
     traits::{
-        classification::Classification,
+        classification::Classification, convert_parts::FromParts,
         convert_value_container::ConvertValueContainer,
         datex_native_only_structural::DatexNativeOnlyStructural,
         value_access::ValueAccess,
@@ -49,7 +49,9 @@ use crate::{
     utils::impl_display_for_datex_value::impl_display_for_datex_value,
     value_updates::update_handler::InternalMutabilityUpdateHandler,
     values::{
-        core_values::{endpoint::Endpoint, text::Text, native::NativeCoreValue},
+        core_values::{
+            endpoint::Endpoint, native::NativeCoreValue, text::Text,
+        },
         value::value_classification::{
             ValueClassification,
             unresolved_value_classification::UnresolvedValueClassification,
@@ -63,7 +65,6 @@ use core::{
     fmt::{Debug, Formatter},
     result::Result,
 };
-use crate::traits::convert_parts::FromParts;
 
 mod try_clone;
 
@@ -499,7 +500,10 @@ mod tests {
         let maybe_value: Option<i8> = None;
         let null_value = Value::from(maybe_value);
         // can only get None via cast
-        assert_eq!(null_value.try_convert_into_value::<Option<i8>>().unwrap(), None);
+        assert_eq!(
+            null_value.try_convert_into_value::<Option<i8>>().unwrap(),
+            None
+        );
     }
 
     #[test]

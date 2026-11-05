@@ -1,10 +1,10 @@
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote};
+use quote::quote;
 use syn::ItemFn;
 
 pub fn generate_fn_glue_code(
     _args: Option<TokenStream>,
-    input: TokenStream,
+    _input: TokenStream,
     item: ItemFn,
 ) -> TokenStream {
     quote! {

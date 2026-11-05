@@ -347,13 +347,13 @@ mod datex_native;
 mod datex_native_structural;
 pub mod equality;
 mod get_core_lib_type_id;
+pub mod get_datex_type;
 pub mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 #[cfg(feature = "ast")]
 mod to_type_expression_data;
 mod value_access;
-pub mod get_datex_type;
 
 impl Display for Type {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

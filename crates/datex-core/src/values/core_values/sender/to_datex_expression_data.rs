@@ -1,8 +1,8 @@
 use crate::{
-    ast::{expressions::DatexExpressionData},
+    ast::expressions::DatexExpressionData,
     traits::to_datex_expression_data::ToDatexExpressionData,
+    values::core_values::sender::Sender,
 };
-use crate::values::core_values::sender::Sender;
 
 impl<T> ToDatexExpressionData for Sender<T>
 where

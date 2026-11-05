@@ -8,9 +8,7 @@ use crate::{
     prelude::*,
     random::RandomState,
     values::{
-        core_value::CoreValue,
-        value::Value,
-        value_container::{ValueContainer},
+        core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
 pub mod equality;
@@ -46,10 +44,7 @@ use crate::{
     value_updates::update_handler::{
         InternalMutabilityUpdateHandler, UpdateCallbackData,
     },
-    values::{
-        core_value_with_classification::CoreValueWithClassification,
-        value_container::borrowed_value_container::BorrowedValueContainer,
-    },
+    values::core_value_with_classification::CoreValueWithClassification,
 };
 use indexmap::{IndexMap, map::MutableKeys};
 
@@ -64,8 +59,12 @@ pub enum MapEntries {
 impl MapEntries {
     fn has_only_text_keys(&self) -> bool {
         match self {
-            MapEntries::Dynamic(map) => map.keys().all(|k| k.try_as_str().is_some()),
-            MapEntries::Structural(vec) => vec.iter().all(|(k, _)| k.try_as_str().is_some()),
+            MapEntries::Dynamic(map) => {
+                map.keys().all(|k| k.try_as_str().is_some())
+            }
+            MapEntries::Structural(vec) => {
+                vec.iter().all(|(k, _)| k.try_as_str().is_some())
+            }
         }
     }
 }
@@ -102,7 +101,6 @@ impl PartialEq for MapEntries {
         }
     }
 }
-
 
 impl From<MapEntries> for Map {
     fn from(entries: MapEntries) -> Self {
@@ -170,7 +168,10 @@ impl Default for Map {
 }
 
 impl Map {
-    pub fn try_new(entries: impl Into<MapEntries>, allow_only_text_keys: bool) -> Result<Self, UnexpectedPropertyError> {
+    pub fn try_new(
+        entries: impl Into<MapEntries>,
+        allow_only_text_keys: bool,
+    ) -> Result<Self, UnexpectedPropertyError> {
         let entries = entries.into();
         if allow_only_text_keys && !entries.has_only_text_keys() {
             return Err(UnexpectedPropertyError {
@@ -185,7 +186,9 @@ impl Map {
         })
     }
 
-    pub fn new_structural(entries: Vec<(ValueContainer, ValueContainer)>) -> Self {
+    pub fn new_structural(
+        entries: Vec<(ValueContainer, ValueContainer)>,
+    ) -> Self {
         MapEntries::Structural(entries).into()
     }
 
@@ -201,10 +204,7 @@ impl Map {
     }
 
     pub fn is_structural(&self) -> bool {
-        core::matches!(
-            &self.entries,
-            MapEntries::Structural(_)
-        )
+        core::matches!(&self.entries, MapEntries::Structural(_))
     }
 
     pub fn size(&self) -> usize {
@@ -225,9 +225,7 @@ impl Map {
         key: &ValueContainer,
     ) -> Result<&ValueContainer, KeyNotFoundError> {
         match &self.entries {
-            MapEntries::Dynamic(map) => {
-                map.get(key)
-            }
+            MapEntries::Dynamic(map) => map.get(key),
             MapEntries::Structural(vec) => {
                 vec.iter().find(|(k, _)| k == key).map(|(_, v)| v)
             }
@@ -240,9 +238,7 @@ impl Map {
         key: &ValueContainer,
     ) -> Result<&mut ValueContainer, KeyNotFoundError> {
         match &mut self.entries {
-            MapEntries::Dynamic(map) => {
-                map.get_mut(key)
-            }
+            MapEntries::Dynamic(map) => map.get_mut(key),
             MapEntries::Structural(vec) => {
                 vec.iter_mut().find(|(k, _)| k == key).map(|(_, v)| v)
             }
@@ -253,9 +249,7 @@ impl Map {
     /// Checks if the map contains the given key.
     pub fn has(&self, key: &ValueContainer) -> bool {
         match &self.entries {
-            MapEntries::Dynamic(map) => {
-                map.contains_key(key)
-            }
+            MapEntries::Dynamic(map) => map.contains_key(key),
             MapEntries::Structural(vec) => vec.iter().any(|(k, _)| k == key),
         }
     }
@@ -473,7 +467,9 @@ where
     V: Into<ValueContainer>,
 {
     fn from(map: HashMap<K, V>) -> Self {
-        Map::new_dynamic(map.into_iter().map(|(k, v)| (k.into(), v.into())).collect())
+        Map::new_dynamic(
+            map.into_iter().map(|(k, v)| (k.into(), v.into())).collect(),
+        )
     }
 }
 
@@ -545,7 +541,6 @@ impl From<Vec<(&'static str, ValueContainer)>> for Map {
     }
 }
 
-
 impl<K, V> FromIterator<(K, V)> for Map
 where
     K: Into<ValueContainer>,
@@ -579,9 +574,7 @@ where
 mod tests {
     use crate::{
         prelude::*,
-        runtime::{
-            pointer_address_provider::SelfOwnedPointerAddressProvider,
-        },
+        runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
             SelfOwnedPointerAddress, SelfOwnedSharedContainer, SharedContainer,
             SharedContainerMutability,
@@ -601,8 +594,18 @@ mod tests {
         map.set_unchecked("key1", 42);
         map.set_unchecked("key2", "value2".to_string());
         assert_eq!(map.size(), 2);
-        assert_eq!(map.try_get(&ValueContainer::from("key1")).unwrap().to_string(), "42");
-        assert_eq!(map.try_get(&ValueContainer::from("key2")).unwrap().to_string(), "\"value2\"");
+        assert_eq!(
+            map.try_get(&ValueContainer::from("key1"))
+                .unwrap()
+                .to_string(),
+            "42"
+        );
+        assert_eq!(
+            map.try_get(&ValueContainer::from("key2"))
+                .unwrap()
+                .to_string(),
+            "\"value2\""
+        );
     }
 
     #[test]
@@ -611,7 +614,12 @@ mod tests {
         map.set_unchecked("key1", 42);
         map.set_unchecked("key1", "new_value".to_string());
         assert_eq!(map.size(), 1);
-        assert_eq!(map.try_get(&ValueContainer::from("key1")).unwrap().to_string(), "\"new_value\"");
+        assert_eq!(
+            map.try_get(&ValueContainer::from("key1"))
+                .unwrap()
+                .to_string(),
+            "\"new_value\""
+        );
     }
 
     #[test]

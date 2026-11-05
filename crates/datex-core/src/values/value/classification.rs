@@ -1,17 +1,17 @@
 use crate::{
+    prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    shared_values::PointerAddress,
     traits::classification::Classification,
-    values::value::{
-        Value,
-    },
+    types::entity_type::EntityType,
+    values::value::{Value, value_classification::ValueTag},
 };
-use crate::shared_values::PointerAddress;
-use crate::types::entity_type::EntityType;
-use crate::values::value::value_classification::ValueTag;
-use crate::prelude::*;
 
 impl Classification for Value {
-    fn entity_type(&self, cache: &mut SharedReferencesCache) -> Option<EntityType> {
+    fn entity_type(
+        &self,
+        cache: &mut SharedReferencesCache,
+    ) -> Option<EntityType> {
         match self {
             Value::Core(core_value) => core_value.entity_type(cache),
             Value::Native(custom_value) => custom_value.entity_type(cache),

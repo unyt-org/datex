@@ -8,6 +8,7 @@ use crate::{
     },
     libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibTypeId},
     prelude::*,
+    types::entities::entity_type_definition::dyn_deserialize::DynSeed,
     values::{
         core_value::CoreValue,
         core_value_with_classification::CoreValueWithClassification,
@@ -24,7 +25,6 @@ use serde::{
     de::{Error as DeError, MapAccess, Visitor},
     ser::{SerializeMap, SerializeTuple},
 };
-use crate::types::entities::entity_type_definition::dyn_deserialize::DynSeed;
 
 impl<'ctx> SerdeContext<'ctx> {
     /// This method is used to serialize a value that can be represented directly depending on the flag set (e.g. a boolean or a text)
@@ -314,26 +314,37 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
             }
             // get the classification first if it exists
             else if key == "c" {
-                classification = map.next_value_seed(self.cast::<ValueClassification>())?;
+                classification =
+                    map.next_value_seed(self.cast::<ValueClassification>())?;
                 // resolve native value based on entity classification
-                if let Some(entity_type) = &classification.entity_type &&
-                    let Some(deserialize_fn) = entity_type.entity_definition().deserialize_from_dif {
-                        // next key must be "v" for the value, otherwise error
-                        let key = map.next_key::<String>()?.ok_or_else(|| DeError::custom("Expected key 'v' not found in map"))?;
-                        if key != "v" {
-                            return Err(DeError::custom(format!(
-                                "Expected key 'v' not found in map, found key '{key}' instead"
-                            )));
-                        }
-                        // deserialize via the entity type deserialize function
-                        let value = map.next_value_seed(DynSeed { f: deserialize_fn, ctx: self.ctx })?;
-                        return Ok(value);
+                if let Some(entity_type) = &classification.entity_type
+                    && let Some(deserialize_fn) =
+                        entity_type.entity_definition().deserialize_from_dif
+                {
+                    // next key must be "v" for the value, otherwise error
+                    let key = map.next_key::<String>()?.ok_or_else(|| {
+                        DeError::custom("Expected key 'v' not found in map")
+                    })?;
+                    if key != "v" {
+                        return Err(DeError::custom(format!(
+                            "Expected key 'v' not found in map, found key '{key}' instead"
+                        )));
+                    }
+                    // deserialize via the entity type deserialize function
+                    let value = map.next_value_seed(DynSeed {
+                        f: deserialize_fn,
+                        ctx: self.ctx,
+                    })?;
+                    return Ok(value);
                 }
             }
             // Normal, non-native core value:
             else if key == "v" {
-                let mut value = map.next_value_seed(self.cast::<CoreValueWithClassification>())?;
-                value.classification = value.classification.merge(classification);
+                let mut value = map.next_value_seed(
+                    self.cast::<CoreValueWithClassification>(),
+                )?;
+                value.classification =
+                    value.classification.merge(classification);
                 return Ok(Value::Core(value));
             } else {
                 return Err(DeError::custom(format!(
@@ -353,7 +364,10 @@ mod tests {
             core_lib_id::CoreLibIdIndex,
             type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
         },
-        runtime::cache::shared_values_cache::SharedValuesCache,
+        runtime::cache::{
+            shared_references_cache::SharedReferencesCache,
+            shared_values_cache::SharedValuesCache,
+        },
         values::{
             core_value::CoreValue,
             core_values::{
@@ -368,15 +382,16 @@ mod tests {
     };
     use core::{cell::RefCell, str::FromStr};
     use test_case::test_case;
-    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
     #[test]
     fn endpoint_serialization() {
         let endpoint = Endpoint::from_str("@jonas").unwrap();
         let value = Value::new(CoreValue::Endpoint(endpoint.clone()));
         let shared_values_cache = RefCell::new(SharedValuesCache::default());
-        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
-        let mut context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
         let serialized = context.serialize_to_json(&value);
         assert_eq!(
             serialized,
@@ -393,18 +408,18 @@ mod tests {
     #[test]
     fn serialize_map() {
         let shared_values_cache = RefCell::new(SharedValuesCache::default());
-        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
-        let mut context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         // { endpoint: "@jonas" } -> [<map-idx>, ["endpoint", [<endpoint-idx>, "@jonas"] ]]
-        let value = Value::from(CoreValue::Map(
-            Map::new_structural(vec![(
-                "endpoint".into(),
-                ValueContainer::Local(Value::from(
-                    Endpoint::from_str("@jonas").unwrap(),
-                )),
-            )]),
-        ));
+        let value = Value::from(CoreValue::Map(Map::new_structural(vec![(
+            "endpoint".into(),
+            ValueContainer::Local(Value::from(
+                Endpoint::from_str("@jonas").unwrap(),
+            )),
+        )])));
         let serialized = context.serialize_to_json(&value);
         assert_eq!(
             serialized,
@@ -423,8 +438,10 @@ mod tests {
     #[test]
     fn default_representation() {
         let shared_values_cache = RefCell::new(SharedValuesCache::default());
-        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
-        let mut context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         // text
         let value = Value::from(CoreValue::Text("Hello, world!".into()));
@@ -447,8 +464,10 @@ mod tests {
     #[test]
     fn non_default_representation() {
         let shared_values_cache = RefCell::new(SharedValuesCache::default());
-        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
-        let mut context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         // f32
         let value = Value::from(CoreValue::TypedDecimal(TypedDecimal::F32(
@@ -561,8 +580,10 @@ mod tests {
     )]
     fn roundtrip_no_custom_type(value: CoreValue) {
         let shared_values_cache = RefCell::new(SharedValuesCache::default());
-        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
-        let mut context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         let value = Value::from(value);
         let serialized = context.serialize_to_json(&value);

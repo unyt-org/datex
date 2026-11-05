@@ -3,20 +3,24 @@ use crate::{
         to_instructions::{ToInstructions, yield_all, yield_all_collected},
         value_visitor::ValueVisitor,
     },
-    instruction::{Instruction, regular_instruction::RegularInstruction},
+    instruction::regular_instruction::RegularInstruction,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     values::core_values::map::Map,
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for Map {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
-            yield RegularInstruction::map(self.size() as u32, self.allow_only_text_keys).into();
+            yield RegularInstruction::map(
+                self.size() as u32,
+                self.allow_only_text_keys,
+            )
+            .into();
 
             for (key, value) in self.iter() {
                 match key.try_as_str() {
@@ -37,7 +41,9 @@ impl ToInstructions for Map {
                     // other -> insert key as dynamic
                     None => {
                         yield RegularInstruction::key_value_dynamic().into();
-                        yield_all_collected!(key.to_instructions(visitor, cache));
+                        yield_all_collected!(
+                            key.to_instructions(visitor, cache)
+                        );
                     }
                 }
 

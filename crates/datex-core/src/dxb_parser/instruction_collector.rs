@@ -3,7 +3,6 @@ use crate::{
     instruction::{
         Instruction, NextExpectedInstructions,
         regular_instruction::RegularInstruction,
-        type_instruction::TypeInstruction,
     },
     prelude::*,
 };
@@ -447,7 +446,9 @@ impl<T> InstructionCollector<T> {
                 ) && matches!(
                     instruction,
                     Instruction::Regular(RegularInstruction::Statements(_))
-                        | Instruction::Regular(RegularInstruction::ShortStatements(_))
+                        | Instruction::Regular(
+                            RegularInstruction::ShortStatements(_)
+                        )
                 ) {
                     self.collect_last(
                         instruction,
@@ -457,18 +458,12 @@ impl<T> InstructionCollector<T> {
                 }
                 // normal collect
                 else {
-                    self.collect_full(
-                        instruction,
-                        regular_count,
-                    );
+                    self.collect_full(instruction, regular_count);
                 }
                 None
             }
             NextExpectedInstructions::Type(type_count) => {
-                self.collect_full(
-                    instruction,
-                    type_count,
-                );
+                self.collect_full(instruction, type_count);
                 None
             }
             NextExpectedInstructions::RegularAndType(
@@ -476,10 +471,7 @@ impl<T> InstructionCollector<T> {
                 type_count,
             ) => {
                 let total_count = regular_count + type_count;
-                self.collect_full(
-                    instruction,
-                    total_count,
-                );
+                self.collect_full(instruction, total_count);
                 None
             }
             NextExpectedInstructions::UnboundedStart => {

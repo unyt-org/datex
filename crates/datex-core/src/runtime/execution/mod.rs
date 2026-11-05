@@ -16,29 +16,13 @@ use crate::{
     shared_values::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
         RemotePointerAddress, SelfOwnedPointerAddress, SharedContainer,
-        collapsed_container_value::CollapsedContainerValue,
     },
-    traits::{
-        apply::{Apply, ApplyArgument},
-        classification::Classification,
-    },
-    types::{
-        entities::entity_impls::EntityImplMethod, entity_type::EntityType,
-    },
+    traits::apply::Apply,
     values::{
-        core_value_with_classification::CoreValueWithClassification,
-        core_values::endpoint::Endpoint,
-        value::{Value, value_classification::ValueClassification},
-        value_container::ValueContainer,
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
-use core::{
-    cell::Ref,
-    ops::{Deref, DerefMut},
-    result::Result,
-    unreachable,
-};
-use log::info;
+use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
@@ -145,7 +129,7 @@ pub fn execute_dxb_sync(
                     args,
                     &runtime,
                 )?;
-                
+
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValueAndBorrowedArgs(res),
                 )
@@ -287,12 +271,10 @@ pub async fn execute_dxb(
                 method_name,
                 args,
             ) => {
-                let res = callee.try_call_method_async(
-                    &method_name,
-                    args,
-                    &runtime,
-                ).await?;
-                
+                let res = callee
+                    .try_call_method_async(&method_name, args, &runtime)
+                    .await?;
+
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValueAndBorrowedArgs(res),
                 )

@@ -13,6 +13,8 @@ use datex_core::{
     },
     traits::{
         apply::{Apply, ApplyArgument},
+        classification::Classification,
+        convert_value_container::ConvertValueContainer,
         get_datex_type::GetDatexType,
         try_clone::TryClone,
         value_access::ValueAccess,
@@ -41,8 +43,6 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
-use datex_core::traits::classification::Classification;
-use datex_core::traits::convert_value_container::ConvertValueContainer;
 use datex_macros_internal::{Datex, datex};
 
 #[derive(Datex, Debug, Clone, PartialEq)]
@@ -116,7 +116,9 @@ fn call_instance_method_from_runtime() {
     let example_vc = Value::native(example);
 
     let example_type = Example::datex_type(cache.borrow_mut().deref_mut());
-    let set_a = example_type.try_get_property(&ValueContainer::from("set_a")).unwrap();
+    let set_a = example_type
+        .try_get_property(&ValueContainer::from("set_a"))
+        .unwrap();
     let set_a_callable = set_a.try_as::<Callable>().unwrap();
 
     let (res, mut borrows) = set_a_callable
@@ -149,8 +151,9 @@ async fn call_async_instance_method_from_runtime() {
 
     let example_type =
         Example::datex_type(runtime.shared_references_cache_mut().deref_mut());
-    let async_test =
-        example_type.try_get_property(&ValueContainer::from("async_test")).unwrap();
+    let async_test = example_type
+        .try_get_property(&ValueContainer::from("async_test"))
+        .unwrap();
     let async_test_callable = async_test.try_as::<Callable>().unwrap();
 
     let (res, mut borrows) = async_test_callable
@@ -316,10 +319,15 @@ fn methods_calls_on_value_container() {
     let example_instance_vc = ValueContainer::from(example_instance);
 
     // get type
-    let example_type = example_instance_vc.entity_type(cache.deref_mut()).unwrap();
+    let example_type =
+        example_instance_vc.entity_type(cache.deref_mut()).unwrap();
 
     // set_a
-    let set_a = example_type.try_get_property(&ValueContainer::from("set_a")).unwrap().try_as::<Callable>().unwrap();
+    let set_a = example_type
+        .try_get_property(&ValueContainer::from("set_a"))
+        .unwrap()
+        .try_as::<Callable>()
+        .unwrap();
     let (res, mut borrows) = set_a
         .try_apply_sync_checked(
             &runtime,
@@ -333,5 +341,8 @@ fn methods_calls_on_value_container() {
     let result_u8 = res.try_as::<u8>().unwrap();
     assert_eq!(result_u8, &10u8);
     let retrieved_example_instance = borrows.remove(0);
-    assert_eq!(retrieved_example_instance.try_as::<Example>().unwrap(), &Example { a: 10, b: 2 });
+    assert_eq!(
+        retrieved_example_instance.try_as::<Example>().unwrap(),
+        &Example { a: 10, b: 2 }
+    );
 }

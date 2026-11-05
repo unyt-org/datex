@@ -34,6 +34,12 @@ impl Label {
     }
 }
 
+impl Default for Label {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum BytecodeItem {
     Instruction(Instruction),

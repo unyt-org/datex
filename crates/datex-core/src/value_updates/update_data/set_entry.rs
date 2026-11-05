@@ -9,7 +9,7 @@ use crate::{
         serde_context::SerdeContext,
         value_with_serde_context::ValueWithSerdeContext,
     },
-    values::value_container::{ValueContainer},
+    values::value_container::ValueContainer,
 };
 
 #[derive(Clone, Debug, PartialEq, Hash)]

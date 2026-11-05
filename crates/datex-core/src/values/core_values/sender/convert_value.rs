@@ -2,14 +2,13 @@ use crate::{
     traits::convert_value::ConvertValue,
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
-        core_values::native::DatexNativeBase,
+        core_values::{native::DatexNativeBase, sender::Sender},
         value::{
             Value,
             borrowed_value::{BorrowedValue, BorrowedValueMut},
         },
     },
 };
-use crate::values::core_values::sender::Sender;
 
 impl<T: DatexNativeBase + 'static> ConvertValue for Sender<T> {
     fn to_value(self) -> Value {

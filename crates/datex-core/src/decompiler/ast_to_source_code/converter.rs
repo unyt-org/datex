@@ -167,8 +167,7 @@ impl AstToSourceCodeConverter {
     /// Convert a key (string) to source code, adding quotes if necessary
     fn key_to_string(&self, key: &Text) -> String {
         // if text does not just contain a-z, A-Z, 0-9, _, and starts with a-z, A-Z,  _, add quotes
-        if !self.options.json_compat
-            && is_alphanumeric_identifier(key.as_str())
+        if !self.options.json_compat && is_alphanumeric_identifier(key.as_str())
         {
             key.as_string()
         } else {

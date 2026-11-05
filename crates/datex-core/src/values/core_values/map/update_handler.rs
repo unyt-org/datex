@@ -1,9 +1,6 @@
 use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    values::{
-        core_values::map::Map,
-        value_container::{ValueContainer},
-    },
+    values::{core_values::map::Map, value_container::ValueContainer},
 };
 
 use crate::value_updates::{
@@ -15,7 +12,6 @@ use crate::value_updates::{
     },
 };
 use core::{cell::RefCell, result::Result};
-use crate::values::value_container::borrowed_value_container::BorrowedValueContainer;
 
 impl InternalMutabilityUpdateHandler for Map {
     fn set_update_callback_data(
@@ -25,11 +21,9 @@ impl InternalMutabilityUpdateHandler for Map {
         // Update the update callback data for all child values
         for (key, child) in self.iter_local_values_mut() {
             child.set_update_callback_data(
-                observe_data.as_ref().map(|data| {
-                    data.with_child_path(
-                        key.clone(),
-                    )
-                }), // TODO: what happens if key can't be cloned here? (should not be allowed)
+                observe_data
+                    .as_ref()
+                    .map(|data| data.with_child_path(key.clone())), // TODO: what happens if key can't be cloned here? (should not be allowed)
             );
         }
         // Update the update callback data for the list itself

@@ -2,9 +2,10 @@ use crate::{
     channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
     collections::HashMap,
     core_compiler::{
-        instruction_input::InstructionInput, core_compilation_context::DXBWithSharedValues,
-        core_compile,
+        core_compilation_context::DXBWithSharedValues, core_compile,
+        instruction_input::InstructionInput,
     },
+    datex_registry::{all_datex_types, get_all_modules},
     dif::dif_interface::DIFInterface,
     disassembler::{
         options::DisassemblerOptions, print_disassembled_with_options,
@@ -49,6 +50,7 @@ use crate::{
         SharedContainer, base_shared_value_container::observers::TransceiverId,
     },
     time::Instant,
+    types::r#type::Type,
     utils::task_manager::TaskManager,
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
@@ -57,13 +59,11 @@ use crate::{
 use alloc::rc::Rc;
 use core::{
     cell::{Ref, RefCell, RefMut},
+    ops::DerefMut,
     pin::Pin,
 };
-use core::ops::DerefMut;
 use indexmap::IndexMap;
 use log::{debug, error, info};
-use crate::datex_registry::{all_datex_types, get_all_modules};
-use crate::types::r#type::Type;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -173,11 +173,14 @@ impl RuntimeInternal {
         // register all types in cache
         let types = all_datex_types(cache);
         for ty in types {
-            if let Type::Entity(ty) = ty && let SharedContainer::Owned(container) = ty.shared_container() {
-                cache.register_owned_shared_container(&container.derive_with_max_mutability())
+            if let Type::Entity(ty) = ty
+                && let SharedContainer::Owned(container) = ty.shared_container()
+            {
+                cache.register_owned_shared_container(
+                    &container.derive_with_max_mutability(),
+                )
             }
         }
-
     }
 
     pub fn version(&self) -> &str {
@@ -221,9 +224,12 @@ impl RuntimeInternal {
         .ok()
     }
 
-    pub fn register_endpoint_property(&self, name: &str, value: ValueContainer) {
-        self
-            .endpoint_properties_mut()
+    pub fn register_endpoint_property(
+        &self,
+        name: &str,
+        value: ValueContainer,
+    ) {
+        self.endpoint_properties_mut()
             .insert(name.to_string(), value);
     }
 

@@ -2,11 +2,11 @@ use crate::{
     core_compiler::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::{Instruction, regular_instruction::RegularInstruction},
+    instruction::regular_instruction::RegularInstruction,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     values::core_values::native::DatexNativeBase,
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl<K> ToInstructions for Vec<K>
 where

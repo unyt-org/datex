@@ -127,12 +127,14 @@ mod tests {
     #[test]
     fn try_string_from_core_value() {
         let core_value =
-            CoreValue::Text(Text::String("Hello, World!".to_string())).to_value();
+            CoreValue::Text(Text::String("Hello, World!".to_string()))
+                .to_value();
         let result = core_value.try_as::<String>();
         assert_eq!(result.unwrap(), "Hello, World!");
 
         let core_value =
-            CoreValue::Text(Text::String("Hello, World!".to_string())).to_value();
+            CoreValue::Text(Text::String("Hello, World!".to_string()))
+                .to_value();
         let result = core_value.try_into_value::<String>();
         assert_eq!(result.unwrap(), "Hello, World!");
     }
@@ -140,14 +142,16 @@ mod tests {
     #[test]
     fn try_borrow_string_from_core_value() {
         let core_value =
-            CoreValue::Text(Text::String("Hello, World!".to_string())).to_value();
+            CoreValue::Text(Text::String("Hello, World!".to_string()))
+                .to_value();
         let result = core_value.try_as::<String>();
         assert_eq!(result.unwrap(), "Hello, World!");
     }
 
     #[test]
     fn try_borrow_mut_string_from_core_value() {
-        let mut core_value = Text::String("Hello, World!".to_string()).to_value();
+        let mut core_value =
+            Text::String("Hello, World!".to_string()).to_value();
         let result = core_value.try_as_mut::<String>();
 
         let value = result.unwrap();

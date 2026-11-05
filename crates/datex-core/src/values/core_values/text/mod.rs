@@ -1,8 +1,5 @@
 //! This module contains the implementation of the [Text] struct, which represents a string value in the type system.
-use crate::{
-    prelude::*,
-    shared_values::errors::IndexOutOfBoundsError,
-};
+use crate::{prelude::*, shared_values::errors::IndexOutOfBoundsError};
 use core::{fmt::Display, result::Result};
 pub mod equality;
 mod to_instructions;
@@ -14,6 +11,7 @@ pub enum Text {
     /// Represents a statically allocated string slice.
     StaticStr(&'static str),
 }
+pub mod binrw;
 mod classification;
 mod convert_parts;
 pub mod datex_hash;
@@ -21,14 +19,13 @@ mod datex_native;
 mod datex_native_structural;
 mod get_core_lib_type_id;
 mod get_datex_type;
+pub mod hash;
 pub mod ops;
 pub mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod try_clone;
 mod value_access;
-pub mod binrw;
-pub mod hash;
 
 impl Display for Text {
     // TODO #319: escape string content
@@ -92,8 +89,14 @@ impl Text {
 
     pub fn char_at(&self, index: u32) -> Result<char, IndexOutOfBoundsError> {
         match self {
-            Text::String(s) => s.chars().nth(index as usize).ok_or(IndexOutOfBoundsError { index }),
-            Text::StaticStr(s) => s.chars().nth(index as usize).ok_or(IndexOutOfBoundsError { index }),
+            Text::String(s) => s
+                .chars()
+                .nth(index as usize)
+                .ok_or(IndexOutOfBoundsError { index }),
+            Text::StaticStr(s) => s
+                .chars()
+                .nth(index as usize)
+                .ok_or(IndexOutOfBoundsError { index }),
         }
     }
 
@@ -205,42 +208,42 @@ impl Text {
     /// Inserts a string slice at the specified index in the Text.
     /// Returns an error if the Text is a StaticStr variant or if the index is out of bounds.
     pub fn insert(&mut self, index: usize, s: &str) -> Result<(), ()> {
-        self.try_as_mut_string().map(|inner| {
+        self.try_as_mut_string().and_then(|inner| {
             if index > inner.len() {
-                return Err(())
+                return Err(());
             }
             inner.insert_str(index, s);
             Ok(())
-        }).flatten()
+        })
     }
 
     // TODO #320: Add proper error handling, also for insert and other analog to MapAccessError
     pub fn remove(&mut self, index: usize) -> Result<char, ()> {
-        self.try_as_mut_string().map(|inner| {
+        self.try_as_mut_string().and_then(|inner| {
             if index >= inner.len() {
-                return Err(())
+                return Err(());
             }
             Ok(inner.remove(index))
-        }).flatten()
+        })
     }
     pub fn replace(&mut self, from: &str, to: &str) -> Result<(), ()> {
-        self.try_as_mut_string().map(|inner| {
+        self.try_as_mut_string().and_then(|inner| {
             *inner = inner.replace(from, to);
             Ok(())
-        }).flatten()
+        })
     }
     pub fn replace_range(
         &mut self,
         range: core::ops::Range<usize>,
         replace_with: &str,
     ) -> Result<(), ()> {
-        self.try_as_mut_string().map(|inner| {
+        self.try_as_mut_string().and_then(|inner| {
             if range.start > range.end || range.end > inner.len() {
-                return Err(())
+                return Err(());
             }
             inner.replace_range(range, replace_with);
             Ok(())
-        }).flatten()
+        })
     }
     pub fn set_char_at(
         &mut self,
@@ -263,7 +266,6 @@ pub enum SetCharAtError {
     IndexOutOfBoundsError(IndexOutOfBoundsError),
     NotMutableError,
 }
-
 
 /// The froms are used for this magic. This will automatically convert
 /// the Rust types to Text when using the += operator.

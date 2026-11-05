@@ -114,8 +114,11 @@ impl ExecutionContext {
             self.runtime().clone(),
         );
         match res {
-            Ok(CompilationResult {dxb_with_shared_values, scope, ..}) => {
-
+            Ok(CompilationResult {
+                dxb_with_shared_values,
+                scope,
+                ..
+            }) => {
                 self.set_compile_scope(scope);
                 Ok(dxb_with_shared_values)
             }

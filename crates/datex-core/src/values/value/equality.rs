@@ -1,10 +1,7 @@
 use core::hash::{Hash, Hasher};
 
 use crate::{
-    traits::{
-        structural_eq::StructuralEq,
-        value_eq::ValueEq,
-    },
+    traits::{structural_eq::StructuralEq, value_eq::ValueEq},
     values::value::Value,
 };
 

@@ -4,13 +4,12 @@ use crate::types::type_definition::{
     collection::type_definition::{
         list::ListCollectionTypeDefinition,
         list_slice::ListSliceCollectionTypeDefinition,
-        map::MapCollectionTypeDefinition,
+        map::MapCollectionTypeDefinition, receiver::ReceiverTypeDefinition,
+        sender::SenderTypeDefinition,
     },
     range::RangeTypeDefinition,
 };
 use core::fmt::Display;
-use crate::types::type_definition::collection::type_definition::receiver::ReceiverTypeDefinition;
-use crate::types::type_definition::collection::type_definition::sender::SenderTypeDefinition;
 
 pub mod serde_dif;
 // TODO #377: Rename to Generic type definition?

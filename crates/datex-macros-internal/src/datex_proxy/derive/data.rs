@@ -167,9 +167,15 @@ impl AsConcreteField for IndexedField {
     }
 }
 
-pub trait AnyField: AsConcreteField + FieldIdent + FieldType + CommonFieldAttributes {}
+pub trait AnyField:
+    AsConcreteField + FieldIdent + FieldType + CommonFieldAttributes
+{
+}
 
-impl<T> AnyField for T where T: AsConcreteField + FieldIdent + FieldType + CommonFieldAttributes {}
+impl<T> AnyField for T where
+    T: AsConcreteField + FieldIdent + FieldType + CommonFieldAttributes
+{
+}
 
 #[derive(Debug, PartialEq)]
 /// Represents a field in a struct or enum variant, along with its type and attributes.
@@ -269,9 +275,7 @@ impl Fields {
                 }
             }
             Fields::Transparent(field) => yield field as &dyn AnyField,
-            Fields::Unit => {
-                return;
-            }
+            Fields::Unit => {}
         }
     }
 

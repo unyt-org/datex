@@ -29,14 +29,14 @@ use crate::{
             list::List,
             map::Map,
             range::Range,
+            receiver::ValueContainerReceiver,
+            sender::ValueContainerSender,
             text::Text,
         },
         value_container::ValueContainer,
     },
 };
 use core::fmt::{Debug, Display, Formatter};
-use crate::values::core_values::receiver::{Receiver, ValueContainerReceiver};
-use crate::values::core_values::sender::{Sender, ValueContainerSender};
 
 pub mod borrowed_core_value;
 pub mod convert_core_value;
@@ -349,8 +349,8 @@ impl Display for CoreValue {
             }
             CoreValue::Uninitialized => write!(f, "[[ uninitialized ]]"),
             CoreValue::Box(inner) => write!(f, "({})", inner),
-            CoreValue::Sender(sender) => write!(f, "[[ sender ]]"),
-            CoreValue::Receiver(receiver) => write!(f, "[[ receiver ]]"),
+            CoreValue::Sender(_sender) => write!(f, "[[ sender ]]"),
+            CoreValue::Receiver(_receiver) => write!(f, "[[ receiver ]]"),
         }
     }
 }

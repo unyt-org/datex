@@ -6,12 +6,13 @@ use crate::{
     value_updates::UpdateReturn,
 };
 
-use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::dif::{
+    dif_vec::DIFVec, value_with_serde_context::ValueWithSerdeContext,
+};
 use serde::{
     Serializer,
     ser::{SerializeSeq, SerializeStruct},
 };
-use crate::dif::dif_vec::DIFVec;
 
 impl SerializeWithSerdeContext for UpdateReturn {
     fn serialize_with_ctx<S: Serializer>(
@@ -32,7 +33,8 @@ impl SerializeWithSerdeContext for UpdateReturn {
             UpdateReturn::MultipleValues(values) => {
                 seq.serialize_element("multiple_values")?;
                 seq.serialize_element(&ValueWithSerdeContext::new(
-                    &DIFVec(values), ctx,
+                    &DIFVec(values),
+                    ctx,
                 ))?;
             }
         }

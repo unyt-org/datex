@@ -1,13 +1,6 @@
 use crate::{
     traits::{get_datex_type::GetDatexType, value_access::ValueAccess},
-    values::{
-        core_values::native::DatexNativeBase,
-    },
+    values::core_values::{native::DatexNativeBase, receiver::Receiver},
 };
-use crate::values::core_values::receiver::Receiver;
 
-impl<T> ValueAccess for Receiver<T>
-where
-    T: DatexNativeBase + GetDatexType,
-{
-}
+impl<T> ValueAccess for Receiver<T> where T: DatexNativeBase + GetDatexType {}

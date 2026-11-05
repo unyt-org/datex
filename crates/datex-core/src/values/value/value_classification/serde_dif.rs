@@ -9,15 +9,16 @@ use crate::{
     prelude::*,
     shared_values::{PointerAddress, SharedContainer},
     types::entity_type::EntityType,
-    values::value::value_classification::{ValueClassification, ValueTag},
+    values::value::value_classification::{
+        ValueClassification, ValueTag,
+        unresolved_value_classification::UnresolvedValueClassification,
+    },
 };
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
     de::{SeqAccess, Visitor},
-    ser::SerializeSeq,
+    ser::{SerializeSeq, SerializeTuple},
 };
-use serde::ser::SerializeTuple;
-use crate::values::value::value_classification::unresolved_value_classification::UnresolvedValueClassification;
 
 /// Serialization for [ValueClassification].
 impl SerializeWithSerdeContext for ValueClassification {
@@ -56,10 +57,7 @@ impl SerializeWithSerdeContext for ValueClassification {
 }
 
 impl Serialize for UnresolvedValueClassification {
-    fn serialize<S>(
-        &self,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -85,7 +83,6 @@ impl Serialize for UnresolvedValueClassification {
         seq.end()
     }
 }
-
 
 impl<'de> DeserializeWithSerdeContext<'de> for ValueClassification {
     fn deserialize_with_ctx<D>(
@@ -140,11 +137,8 @@ impl Serialize for ValueTag {
     where
         S: Serializer,
     {
-        let mut tuple = serializer.serialize_tuple(if self.is_empty {
-            2
-        } else {
-            1
-        })?;
+        let mut tuple =
+            serializer.serialize_tuple(if self.is_empty { 2 } else { 1 })?;
         tuple.serialize_element(&self.name)?;
         if self.is_empty {
             tuple.serialize_element(&true)?;

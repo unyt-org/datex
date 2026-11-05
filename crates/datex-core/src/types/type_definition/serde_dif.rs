@@ -303,12 +303,17 @@ mod tests {
     use core::cell::RefCell;
 
     fn to_json(value: &TypeDefinition) -> String {
-        SerdeContext::new(&RefCell::new(SharedValuesCache::default()), &RefCell::new(SharedReferencesCache::default()))
-            .serialize_to_json(value)
+        SerdeContext::new(
+            &RefCell::new(SharedValuesCache::default()),
+            &RefCell::new(SharedReferencesCache::default()),
+        )
+        .serialize_to_json(value)
     }
-    use crate::runtime::cache::shared_values_cache::SharedValuesCache;
+    use crate::runtime::cache::{
+        shared_references_cache::SharedReferencesCache,
+        shared_values_cache::SharedValuesCache,
+    };
     use test_case::test_case;
-    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
     #[test_case(CoreLibTypeId::Base(CoreLibBaseTypeId::Text) ; "Text")]
     #[test_case(CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)) ; "integer/u8")]
@@ -321,10 +326,12 @@ mod tests {
         assert_eq!(serialized, format!(r#"{}"#, CoreLibIdIndex::from(id)));
 
         // Deserialize the JSON back to a TypeDefinition
-        let deserialized: TypeDefinition =
-            SerdeContext::new(&RefCell::new(SharedValuesCache::default()), &RefCell::new(SharedReferencesCache::default()))
-                .try_deserialize_from_json(&serialized)
-                .unwrap();
+        let deserialized: TypeDefinition = SerdeContext::new(
+            &RefCell::new(SharedValuesCache::default()),
+            &RefCell::new(SharedReferencesCache::default()),
+        )
+        .try_deserialize_from_json(&serialized)
+        .unwrap();
         assert_eq!(type_def, deserialized);
     }
 }

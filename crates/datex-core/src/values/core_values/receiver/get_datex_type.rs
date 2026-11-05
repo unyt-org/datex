@@ -8,12 +8,12 @@ use crate::{
             TypeDefinition,
             collection::{
                 CollectionTypeDefinition,
+                type_definition::receiver::ReceiverTypeDefinition,
             },
         },
     },
+    values::core_values::receiver::Receiver,
 };
-use crate::types::type_definition::collection::type_definition::receiver::ReceiverTypeDefinition;
-use crate::values::core_values::receiver::Receiver;
 
 impl<T> GetDatexType for Receiver<T>
 where

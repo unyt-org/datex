@@ -2,7 +2,9 @@ use std::path::{Path, PathBuf};
 
 use crate::get_absolute_file_path;
 use datex_core::{
-    compiler::{CompileOptions, compile_template},
+    compiler::{
+        CompileOptions, compilation_result::CompilationResult, compile_template,
+    },
     runtime::{Runtime, RuntimeConfig},
     traits::convert_value_container::ConvertValueContainer,
     values::value_container::ValueContainer,
@@ -13,7 +15,6 @@ use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
-use datex_core::compiler::compilation_result::CompilationResult;
 
 #[derive(Debug)]
 pub struct ParsedAttributes {

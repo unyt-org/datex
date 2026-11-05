@@ -1,5 +1,7 @@
-use crate::compiler::scope::CompilationScope;
-use crate::core_compiler::core_compilation_context::DXBWithSharedValues;
+use crate::{
+    compiler::scope::CompilationScope,
+    core_compiler::core_compilation_context::DXBWithSharedValues,
+};
 
 /// result of a compilation, including the compiled DXB and the scope of the compile context
 #[derive(Debug)]

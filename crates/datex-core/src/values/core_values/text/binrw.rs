@@ -1,10 +1,11 @@
-use binrw::io::Write;
-use binrw::io::Seek;
-use binrw::io::Read;
-use binrw::{BinRead, BinResult, BinWrite, Endian};
-use crate::instruction::instruction_data::TextData;
-use crate::values::core_values::text::Text;
-use crate::prelude::*;
+use crate::{
+    instruction::instruction_data::TextData, prelude::*,
+    values::core_values::text::Text,
+};
+use binrw::{
+    BinRead, BinResult, BinWrite, Endian,
+    io::{Read, Seek, Write},
+};
 
 impl BinRead for Text {
     type Args<'a> = <TextData as BinRead>::Args<'a>;

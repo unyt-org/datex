@@ -4,7 +4,6 @@ use crate::{
         value_visitor::ValueVisitor,
     },
     instruction::{
-        Instruction,
         instruction_data::{
             CallableSignatureData, ImplMarkersData, IntersectionData, ListData,
             ListSliceCollectionData, MapData, ShortTextData, TaggedTypeData,
@@ -13,6 +12,7 @@ use crate::{
         type_instruction::TypeInstruction,
     },
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     types::{
         type_definition::{
             TypeDefinition,
@@ -23,6 +23,8 @@ use crate::{
                     list::ListCollectionTypeDefinition,
                     list_slice::ListSliceCollectionTypeDefinition,
                     map::MapCollectionTypeDefinition,
+                    receiver::ReceiverTypeDefinition,
+                    sender::SenderTypeDefinition,
                 },
             },
             impl_type::ImplMarkers,
@@ -37,15 +39,12 @@ use crate::{
     },
 };
 use core::ops::Deref;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::types::type_definition::collection::type_definition::receiver::ReceiverTypeDefinition;
-use crate::types::type_definition::collection::type_definition::sender::SenderTypeDefinition;
 
 impl ToInstructions for TypeDefinition {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             match self {
@@ -59,17 +58,24 @@ impl ToInstructions for TypeDefinition {
                     .into();
                 }
                 TypeDefinition::List(list_type_definition) => {
-                    yield_all!(list_type_definition.to_instructions(visitor, cache));
+                    yield_all!(
+                        list_type_definition.to_instructions(visitor, cache)
+                    );
                 }
                 TypeDefinition::Map(map_type_definition) => {
-                    yield_all!(map_type_definition.to_instructions(visitor, cache));
+                    yield_all!(
+                        map_type_definition.to_instructions(visitor, cache)
+                    );
                 }
                 TypeDefinition::Range(range_type_definition) => {
-                    yield_all!(range_type_definition.to_instructions(visitor, cache));
+                    yield_all!(
+                        range_type_definition.to_instructions(visitor, cache)
+                    );
                 }
                 TypeDefinition::Collection(collection_type_definition) => {
                     yield_all!(
-                        collection_type_definition.to_instructions(visitor, cache)
+                        collection_type_definition
+                            .to_instructions(visitor, cache)
                     );
                 }
                 TypeDefinition::Shared(shared_container_containing_type) => {
@@ -84,19 +90,25 @@ impl ToInstructions for TypeDefinition {
                 }
                 TypeDefinition::Callable(callable_type_definition) => {
                     yield_all!(
-                        callable_type_definition.to_instructions(visitor, cache)
+                        callable_type_definition
+                            .to_instructions(visitor, cache)
                     );
                 }
                 TypeDefinition::Intersection(intersection_type_definition) => {
                     yield_all!(
-                        intersection_type_definition.to_instructions(visitor, cache)
+                        intersection_type_definition
+                            .to_instructions(visitor, cache)
                     );
                 }
                 TypeDefinition::Union(union_type_definition) => {
-                    yield_all!(union_type_definition.to_instructions(visitor, cache));
+                    yield_all!(
+                        union_type_definition.to_instructions(visitor, cache)
+                    );
                 }
                 TypeDefinition::TaggedType(tagged_type_definition) => {
-                    yield_all!(tagged_type_definition.to_instructions(visitor, cache));
+                    yield_all!(
+                        tagged_type_definition.to_instructions(visitor, cache)
+                    );
                 }
                 TypeDefinition::CoreType(core_lib_type_id) => {
                     yield TypeInstruction::CoreType(*core_lib_type_id).into();
@@ -110,7 +122,7 @@ impl ToInstructions for TypeDefinitionWithMetadata {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen {
             yield TypeInstruction::DefinitionWithMetadata(self.metadata).into();
@@ -122,7 +134,7 @@ impl ToInstructions for ImplMarkers {
     fn to_instructions<'a>(
         &'a self,
         _visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache,
+        _cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen {
             yield TypeInstruction::ImplMarkers(ImplMarkersData {
@@ -156,7 +168,7 @@ impl ToInstructions for MapTypeDefinition {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::Map(MapData {
@@ -176,7 +188,7 @@ impl ToInstructions for RangeTypeDefinition {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::Range.into();
@@ -190,7 +202,7 @@ impl ToInstructions for SenderTypeDefinition {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::Sender.into();
@@ -203,7 +215,7 @@ impl ToInstructions for ReceiverTypeDefinition {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::Receiver.into();
@@ -212,13 +224,11 @@ impl ToInstructions for ReceiverTypeDefinition {
     }
 }
 
-
-
 impl ToInstructions for CollectionTypeDefinition {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             match self {
@@ -249,7 +259,7 @@ impl ToInstructions for ListCollectionTypeDefinition {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen {
             yield TypeInstruction::ListCollection.into();
@@ -261,7 +271,7 @@ impl ToInstructions for MapCollectionTypeDefinition {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::MapCollection.into();
@@ -289,7 +299,7 @@ impl ToInstructions for ListSliceCollectionTypeDefinition {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::ListSliceCollection(
@@ -314,7 +324,7 @@ impl ToInstructions for IntersectionTypeDefinition {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::Intersection(IntersectionData {
@@ -336,7 +346,7 @@ impl ToInstructions for CallableTypeDefinition {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::Callable(CallableSignatureData {
@@ -403,7 +413,7 @@ impl ToInstructions for UnionTypeDefinition {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::Union(UnionData {
@@ -425,7 +435,7 @@ impl ToInstructions for TaggedTypeDefinition {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::TaggedType(TaggedTypeData::new(
@@ -434,8 +444,10 @@ impl ToInstructions for TaggedTypeDefinition {
             ))
             .into();
             if let Some(ty) = &self.ty {
-                for instruction in
-                    ty.deref().to_instructions(visitor, cache).collect::<Vec<_>>()
+                for instruction in ty
+                    .deref()
+                    .to_instructions(visitor, cache)
+                    .collect::<Vec<_>>()
                 {
                     yield instruction;
                 }

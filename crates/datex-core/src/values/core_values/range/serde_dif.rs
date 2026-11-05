@@ -1,5 +1,3 @@
-use core::fmt;
-use num_traits::ToPrimitive;
 use crate::{
     dif::{
         deserialize_serde_context::DeserializeSerdeContext,
@@ -8,17 +6,17 @@ use crate::{
         serialize_with_serde_context::SerializeWithSerdeContext,
         value_with_serde_context::ValueWithSerdeContext,
     },
+    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
     prelude::*,
     values::{core_values::range::Range, value_container::ValueContainer},
 };
+use core::fmt;
+use num_traits::ToPrimitive;
 use serde::{
     Serializer,
     de::{Error, IgnoredAny, MapAccess, Visitor},
     ser::{SerializeSeq, SerializeStruct, SerializeTuple},
 };
-use crate::dif::dif_vec::DIFVec;
-use crate::libs::core::core_lib_id::CoreLibIdIndex;
-use crate::libs::core::type_id::CoreLibBaseTypeId;
 
 struct InnerRange<'a>(&'a Range);
 
@@ -36,8 +34,10 @@ impl SerializeWithSerdeContext for InnerRange<'_> {
             &*self.0.start,
             ctx,
         ))?;
-        state
-            .serialize_element(&ValueWithSerdeContext::new(&*self.0.end, ctx))?;
+        state.serialize_element(&ValueWithSerdeContext::new(
+            &*self.0.end,
+            ctx,
+        ))?;
         state.end()
     }
 }
@@ -52,8 +52,13 @@ impl SerializeWithSerdeContext for Range {
         S: Serializer,
     {
         let mut tuple = serializer.serialize_tuple(2)?;
-        tuple.serialize_element(&CoreLibIdIndex::from(CoreLibBaseTypeId::Range).to_u16())?;
-        tuple.serialize_element(&ValueWithSerdeContext::new(&InnerRange(self), ctx))?;
+        tuple.serialize_element(
+            &CoreLibIdIndex::from(CoreLibBaseTypeId::Range).to_u16(),
+        )?;
+        tuple.serialize_element(&ValueWithSerdeContext::new(
+            &InnerRange(self),
+            ctx,
+        ))?;
         tuple.end()
     }
 }

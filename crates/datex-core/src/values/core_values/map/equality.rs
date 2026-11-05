@@ -28,7 +28,7 @@ impl StructuralEq for Map {
         for ((key, value), (other_key, other_value)) in
             self.iter().zip(other.iter())
         {
-            if !key.structural_eq(&other_key)
+            if !key.structural_eq(other_key)
                 || !value.structural_eq(other_value)
             {
                 return false;

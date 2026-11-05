@@ -1,14 +1,13 @@
 use crate::{
     core_compiler::{
-        to_instructions::ToInstructions, value_visitor::ValueVisitor,
+        to_instructions::{ToInstructions, yield_all_collected},
+        value_visitor::ValueVisitor,
     },
     instruction::{Instruction, regular_instruction::RegularInstruction},
     prelude::*,
-    values::core_values::native::DatexNativeBase,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    values::core_values::{native::DatexNativeBase, sender::Sender},
 };
-use crate::core_compiler::to_instructions::{yield_all, yield_all_collected};
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::values::core_values::sender::Sender;
 
 impl<K> ToInstructions for Sender<K>
 where
@@ -28,7 +27,12 @@ where
                 }
                 Sender::RemoteReceiver { receiver } => {
                     // TODO: handle what happens when the receiver was dropped here - an unlinked sender must still be able to exist
-                    yield_all_collected!(receiver.upgrade().unwrap().to_instructions(visitor, cache));
+                    yield_all_collected!(
+                        receiver
+                            .upgrade()
+                            .unwrap()
+                            .to_instructions(visitor, cache)
+                    );
                 }
             }
         })

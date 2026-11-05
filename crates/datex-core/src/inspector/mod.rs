@@ -10,10 +10,10 @@ use datex_macros_internal::{Datex, datex};
 #[datex(name = "inspector")]
 mod datex_inspector {
     use super::*;
-    use crate::shared_wrappers::shared::{to_shared::ToShared};
-    use crate::shared_wrappers::shared::shared_ref::SharedRef;
-    use crate::values::core_values::channel::create_channel;
-    use crate::values::core_values::receiver::Receiver;
+    use crate::{
+        shared_wrappers::shared::{shared_ref::SharedRef, to_shared::ToShared},
+        values::core_values::{channel::create_channel, receiver::Receiver},
+    };
 
     #[derive(Datex, Debug, Clone, PartialEq, Eq, Hash)]
     #[datex(no_deserialize, builtin = 0x000001)]
@@ -30,8 +30,11 @@ mod datex_inspector {
             self.name.clone()
         }
 
-        pub fn logs(&self, #[runtime] runtime: &Runtime) -> SharedRef<Receiver<String>> {
-            let (sender, receiver) = create_channel(runtime);
+        pub fn logs(
+            &self,
+            #[runtime] runtime: &Runtime,
+        ) -> SharedRef<Receiver<String>> {
+            let (_sender, receiver) = create_channel(runtime);
             receiver
         }
 
@@ -47,7 +50,10 @@ mod datex_inspector {
     /// Creates a new [Inspector] instance.
     /// TODO: this should return a unique temporary reference &mut Inspector that can be used by the caller.
     #[datex]
-    pub fn create(name: String, #[runtime] runtime: &Runtime) -> SharedRef<Inspector> {
+    pub fn create(
+        name: String,
+        #[runtime] runtime: &Runtime,
+    ) -> SharedRef<Inspector> {
         Inspector { name }.shared_ref(runtime)
     }
 
@@ -70,30 +76,43 @@ pub fn register_inspector_namespace(runtime: &Runtime) {
 
 #[cfg(test)]
 mod tests {
-    use core::ops::{DerefMut};
     use crate::{
-        traits::apply::Apply, types::type_definition::callable::CallableKind,
-        values::core_values::callable::native_sync_callable,
+        inspector::datex_inspector::Inspector,
+        traits::{
+            apply::{Apply, ApplyArgument},
+            convert_value_container::ConvertValueContainer,
+            value_access::ValueAccess,
+        },
+        types::type_definition::callable::CallableKind,
+        values::core_values::callable::{Callable, native_sync_callable},
     };
-    use crate::inspector::datex_inspector::Inspector;
-    use crate::traits::apply::ApplyArgument;
-    use crate::traits::convert_value_container::ConvertValueContainer;
-    use crate::traits::value_access::ValueAccess;
-    use crate::values::core_values::callable::Callable;
+    use core::ops::DerefMut;
 
     #[test]
     fn ty() {
         let runtime = Runtime::stub();
-        let inspector_type = Inspector::datex_type(runtime.shared_references_cache_mut().deref_mut());
+        let inspector_type = Inspector::datex_type(
+            runtime.shared_references_cache_mut().deref_mut(),
+        );
 
         // create a new inspector instance via inspector.create()
-        let inspector = datex_inspector::create("Test Inspector".to_string(), &runtime);
+        let inspector =
+            datex_inspector::create("Test Inspector".to_string(), &runtime);
         let inspector_container = inspector.to_value_container();
         let inspector_container_clone = inspector_container.clone();
 
         // call inspector->name()
-        let name_fn = inspector_type.try_get_property(&ValueContainer::from("name")).unwrap().try_as::<Callable>().unwrap();
-        let (result, mut borrows) = name_fn.try_apply_sync_checked(&runtime, vec![ApplyArgument::referenced(inspector_container)]).unwrap();
+        let name_fn = inspector_type
+            .try_get_property(&ValueContainer::from("name"))
+            .unwrap()
+            .try_as::<Callable>()
+            .unwrap();
+        let (result, mut borrows) = name_fn
+            .try_apply_sync_checked(
+                &runtime,
+                vec![ApplyArgument::referenced(inspector_container)],
+            )
+            .unwrap();
 
         // return value should be "Test Inspector"
         assert_eq!(result.unwrap().try_as_str().unwrap(), "Test Inspector");

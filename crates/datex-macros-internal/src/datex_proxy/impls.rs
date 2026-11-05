@@ -11,7 +11,7 @@ use syn::ItemImpl;
 
 pub fn generate_impl_glue_code(
     _args: Option<TokenStream>,
-    input: TokenStream,
+    _input: TokenStream,
     mut item: ItemImpl,
 ) -> TokenStream {
     let datex_core_crate_name = get_datex_core_crate_name();

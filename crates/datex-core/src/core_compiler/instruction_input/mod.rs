@@ -1,8 +1,10 @@
-use crate::instruction::Instruction;
-use crate::instruction::regular_instruction::RegularInstruction;
-use crate::instruction::type_instruction::TypeInstruction;
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
+use crate::{
+    instruction::{
+        Instruction, regular_instruction::RegularInstruction,
+        type_instruction::TypeInstruction,
+    },
+    values::{value::Value, value_container::ValueContainer},
+};
 
 pub enum InstructionInput {
     Instruction(Instruction),

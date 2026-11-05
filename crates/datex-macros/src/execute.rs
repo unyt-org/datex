@@ -110,7 +110,8 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         )
         .to_compile_error();
     }
-    let DXBWithSharedValues { dxb, shared_values } = dxb.unwrap().dxb_with_shared_values;
+    let DXBWithSharedValues { dxb, shared_values } =
+        dxb.unwrap().dxb_with_shared_values;
 
     if dxb.is_empty() {
         return syn::Error::new(

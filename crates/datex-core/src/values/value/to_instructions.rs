@@ -3,17 +3,16 @@ use crate::{
         to_instructions::{ToInstructions, yield_all},
         value_visitor::ValueVisitor,
     },
-    instruction::Instruction,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     values::value::Value,
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for Value {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             // append inner instructions

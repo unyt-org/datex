@@ -5,10 +5,10 @@ use crate::{
     core_compiler::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::{Instruction, regular_instruction::RegularInstruction},
+    instruction::regular_instruction::RegularInstruction,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 pub trait ToRegularInstruction {
     fn to_regular_instruction(&self) -> RegularInstruction;
@@ -20,7 +20,7 @@ where
     fn to_instructions(
         &self,
         _visitor: &mut dyn ValueVisitor,
-        cache: &mut SharedReferencesCache
+        _cache: &mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction>> {
         Box::new(core::iter::once(self.to_regular_instruction().into()))
     }

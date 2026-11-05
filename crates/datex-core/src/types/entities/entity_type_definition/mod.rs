@@ -7,12 +7,12 @@ use crate::{
     prelude::*, types::type_definition::TypeDefinition,
     values::core_values::callable::Callable,
 };
-mod to_instructions;
 pub mod dyn_deserialize;
 pub mod serde_dif;
+mod to_instructions;
 
-use core::fmt::Display;
 use crate::types::entities::entity_type_definition::dyn_deserialize::DeFn;
+use core::fmt::Display;
 
 /// Represents a definition of an "entity" type,
 /// which describes a nominal type identified by a unique pointer id.
@@ -59,7 +59,7 @@ impl EntityTypeDefinition {
             deserialize_from_dif: None,
         }
     }
-    
+
     pub fn new_with_impls_and_deserialize(
         definition: TypeDefinition,
         name: String,
@@ -78,7 +78,7 @@ impl EntityTypeDefinition {
     pub fn impls(&self) -> &[EntityImpl] {
         &self.impls
     }
-    
+
     pub fn deserialize_from_dif(&self) -> Option<&DeFn> {
         self.deserialize_from_dif.as_ref()
     }

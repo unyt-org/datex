@@ -6,7 +6,6 @@ pub use impl_registry::*;
 pub use module_registry::*;
 pub use type_registry::*;
 
-
 #[cfg(target_arch = "wasm32")]
 pub macro registry_collect(
     $ty:ty,
@@ -16,10 +15,9 @@ pub macro registry_collect(
     use $crate::prelude::*;
 
     $crate::inventory::collect!($ty);
-    
+
     /// Returns an iterator over all registered items.
-    pub fn $function()
-    -> impl Iterator<Item = &'static $ty> {
+    pub fn $function() -> impl Iterator<Item = &'static $ty> {
         $crate::inventory::iter::<$ty>.into_iter()
     }
 }
@@ -36,8 +34,7 @@ pub macro registry_collect(
     pub static $registry_ident: [$ty];
 
     /// Returns an iterator over all registered items.
-    pub fn $function()
-    -> impl Iterator<Item = &'static $ty> {
+    pub fn $function() -> impl Iterator<Item = &'static $ty> {
         $registry_ident.into_iter()
     }
 }

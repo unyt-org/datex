@@ -29,10 +29,13 @@ pub mod hash;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 
+use crate::values::{
+    core_value_with_classification::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification,
+    core_values::{
+        receiver::ValueContainerReceiver, sender::ValueContainerSender,
+    },
+};
 use core::ops::Deref;
-use crate::values::core_value_with_classification::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification;
-use crate::values::core_values::receiver::ValueContainerReceiver;
-use crate::values::core_values::sender::ValueContainerSender;
 
 /// Similar to [CoreValue], but it is a potentially borrowed reference to a [CoreValue] variant instead of owning it.
 #[derive(Debug, Default)]
@@ -112,7 +115,7 @@ impl<'a> BorrowedCoreValue<'a> {
             BorrowedCoreValue::Sender(sender) => {
                 CoreValue::Sender(sender.deref().clone())
             }
-            BorrowedCoreValue::Receiver(receiver) => {
+            BorrowedCoreValue::Receiver(_receiver) => {
                 todo!("cannot clone receiver")
             }
         }
@@ -143,7 +146,7 @@ impl<'a> From<&'a CoreValue> for BorrowedCoreValue<'a> {
                 BorrowedCoreValue::TypedDecimal(Goat::Borrowed(typed_decimal))
             }
             CoreValue::Text(text) => {
-                BorrowedCoreValue::Text(Goat::Borrowed(&text.as_str()))
+                BorrowedCoreValue::Text(Goat::Borrowed(text.as_str()))
             }
             CoreValue::Endpoint(endpoint) => {
                 BorrowedCoreValue::Endpoint(Goat::Borrowed(endpoint))
@@ -267,7 +270,7 @@ impl<'a> BorrowedCoreValueMut<'a> {
             BorrowedCoreValueMut::Sender(sender) => {
                 Ok(CoreValue::Sender(sender.deref().clone()))
             }
-            BorrowedCoreValueMut::Receiver(receiver) => {
+            BorrowedCoreValueMut::Receiver(_receiver) => {
                 todo!("cannot clone receiver")
             }
         }
@@ -301,9 +304,9 @@ impl<'a> From<&'a mut CoreValue> for BorrowedCoreValueMut<'a> {
                     typed_decimal,
                 ))
             }
-            CoreValue::Text(text) => {
-                BorrowedCoreValueMut::Text(GoatMut::Borrowed(text.try_as_mut_str().expect("fixme")))
-            }
+            CoreValue::Text(text) => BorrowedCoreValueMut::Text(
+                GoatMut::Borrowed(text.try_as_mut_str().expect("fixme")),
+            ),
             CoreValue::Endpoint(endpoint) => {
                 BorrowedCoreValueMut::Endpoint(GoatMut::Borrowed(endpoint))
             }

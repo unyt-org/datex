@@ -43,12 +43,12 @@ use crate::{
     instruction::{
         NestedInstructionResolutionStrategy,
         instruction_data::{
-            CallableSignatureData, ShortTextData,
-            UnboundedStatementsData,
+            CallableSignatureData, ClassifiedValueData, UnboundedStatementsData,
         },
         regular_instruction::RegularInstruction,
         type_instruction::TypeInstruction,
     },
+    libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
     shared_values::{
         PointerAddress, ReferenceMutability, SharedContainerMutability,
@@ -56,8 +56,6 @@ use crate::{
 };
 use alloc::format;
 use core::cell::RefCell;
-use crate::instruction::instruction_data::ClassifiedValueData;
-use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -152,7 +150,7 @@ pub fn ast_from_bytecode(
                     )
                     .map(|instruction| match instruction {
                         Instruction::Regular(regular) => regular,
-                        _ => unreachable!()
+                        _ => unreachable!(),
                     });
 
                 let expr = regular_instruction.map(|regular_instruction|
@@ -354,8 +352,8 @@ pub fn ast_from_bytecode(
                             tag_value_is_empty: true,
                             tag,
                             is_entity: false,
-                            impl_count,
-                            impls,
+                            impl_count: _,
+                            impls: _,
                         }) => {
                             DatexExpressionData::Tag(TagExpression {
                                 tag: tag
@@ -454,7 +452,7 @@ pub fn ast_from_bytecode(
                     )
                     .map(|instruction| match instruction {
                         Instruction::Type(ty) => ty,
-                        _ => unreachable!()
+                        _ => unreachable!(),
                     });
 
                 let type_expression: Option<TypeExpression> = type_instruction
@@ -740,7 +738,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::EntityTypeDefinition(data) => {
+                            RegularInstruction::EntityTypeDefinition(_data) => {
                                 todo!()
                             }
 
@@ -765,7 +763,7 @@ pub fn ast_from_bytecode(
 
                             RegularInstruction::ClassifiedValue(ClassifiedValueData {
                                 tag,
-                                impls,
+                                impls: _,
                                 is_entity,
                                 ..
                             }) => {
@@ -782,7 +780,7 @@ pub fn ast_from_bytecode(
                                 };
 
                                 if is_entity {
-                                    let shared_container = collected_results.pop_value();
+                                    let _shared_container = collected_results.pop_value();
 
                                     DatexExpressionData::EntityValue(EntityValueExpression {
                                         entity_name: "TODO".to_string(), // TODO: resolve name
@@ -1118,7 +1116,7 @@ pub fn ast_from_bytecode(
                             }
                         },
 
-                        Instruction::Type(type_instruction) => {
+                        Instruction::Type(_type_instruction) => {
                             DatexExpressionData::TypeExpression(TypeExpression::new(TypeExpressionData::GetCoreLibType(CoreLibBaseTypeId::Never.into()), Default::default()))
                                 .with_default_span().into()
                         }

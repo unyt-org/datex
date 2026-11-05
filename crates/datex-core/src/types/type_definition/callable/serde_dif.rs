@@ -2,7 +2,7 @@ use crate::{
     dif::{
         deserialize_serde_context::DeserializeSerdeContext,
         deserialize_with_serde_context::DeserializeWithSerdeContext,
-        serde_context::SerdeContext,
+        dif_vec::DIFVec, serde_context::SerdeContext,
         serialize_with_serde_context::SerializeWithSerdeContext,
         value_with_serde_context::ValueWithSerdeContext,
     },
@@ -18,7 +18,6 @@ use serde::{
     de::{MapAccess, Visitor},
     ser::{SerializeMap, SerializeSeq, SerializeTuple},
 };
-use crate::dif::dif_vec::DIFVec;
 
 impl SerializeWithSerdeContext for CallableTypeDefinition {
     fn serialize_with_ctx<S: Serializer>(

@@ -1,6 +1,5 @@
 use std::{env, path::PathBuf, str::FromStr};
 
-use crate::datex_proxy::data::StructureAttributes;
 use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, format_ident, quote};
@@ -32,12 +31,18 @@ pub fn get_datex_core_crate_name() -> Path {
         Err(_) =>
         // TODO: decide which namespace to use, for now, fall back to datex-embedded
         {
-            let base_crate = if let Ok(FoundCrate::Name(name)) = crate_name("datex") {
+            let base_crate = if let Ok(FoundCrate::Name(name)) =
+                crate_name("datex")
+            {
                 name
-            } else if let Ok(FoundCrate::Name(name)) = crate_name("datex-embedded") {
+            } else if let Ok(FoundCrate::Name(name)) =
+                crate_name("datex-embedded")
+            {
                 name
             } else {
-                panic!("Neither datex-core, datex, nor datex-embedded could be found in the current context. Please ensure that at least one of these crates is included as a dependency.");
+                panic!(
+                    "Neither datex-core, datex, nor datex-embedded could be found in the current context. Please ensure that at least one of these crates is included as a dependency."
+                );
             };
             return Path {
                 leading_colon: None,
@@ -57,7 +62,8 @@ pub fn get_datex_core_crate_name() -> Path {
 }
 
 pub fn derive_datex_prelude(force_datex_core_namespace: bool) -> TokenStream {
-    let datex_core_crate_name = get_datex_core_crate_name_with_options(force_datex_core_namespace);
+    let datex_core_crate_name =
+        get_datex_core_crate_name_with_options(force_datex_core_namespace);
     let is_crate_internal =
         datex_core_crate_name.to_token_stream().to_string() == "crate";
 

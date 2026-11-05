@@ -12,15 +12,15 @@ use crate::{
         InjectedValueDeclaration, InjectedValueType, SharedInjectedValueType,
     },
     instruction::{
-        Instruction, instruction_data::InstructionBlockData,
+        instruction_data::InstructionBlockData,
         regular_instruction::RegularInstruction,
     },
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::SharedContainer,
     values::value_container::ValueContainer,
 };
 use binrw::{BinWrite, io::Write};
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 struct InjectedValues {
     pub values: Vec<ValueContainer>,
@@ -54,9 +54,12 @@ pub fn compile_injected_values(
             dxb: preambles_dxb,
             shared_values,
         } = CoreCompilationContext::new(compile_input)
-            .compile_to_dxb_with_shared_values(&InjectedValues {
-                values: injected_values,
-            }, cache);
+            .compile_to_dxb_with_shared_values(
+                &InjectedValues {
+                    values: injected_values,
+                },
+                cache,
+            );
 
         // prepend statements block
         let mut cursor = ByteCursor::new(Vec::new());
@@ -81,7 +84,7 @@ impl ToInstructions for InjectedValues {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             if self.values.is_empty() {
@@ -175,6 +178,7 @@ mod tests {
         },
         prelude::*,
         runtime::{
+            cache::shared_references_cache::SharedReferencesCache,
             pointer_address_provider::SelfOwnedPointerAddressProvider,
             pointer_availability_lookup::PointerAvailabilityLookup,
         },
@@ -186,7 +190,6 @@ mod tests {
             core_values::endpoint::Endpoint, value_container::ValueContainer,
         },
     };
-    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
     fn compile_injected_values_test_with_receivers(
         instruction_block_data: InstructionBlockData,

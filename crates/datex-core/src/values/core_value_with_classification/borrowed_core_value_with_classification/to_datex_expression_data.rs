@@ -31,7 +31,11 @@ fn classification_expression(
         todo!()
     }
 
-    if let Some(ValueTag { name: tag, is_empty }) = &classification.tag {
+    if let Some(ValueTag {
+        name: tag,
+        is_empty,
+    }) = &classification.tag
+    {
         expression = DatexExpressionData::Tag(TagExpression {
             tag: tag.clone(),
             expression: if !is_empty {

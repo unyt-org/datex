@@ -1,7 +1,5 @@
 use crate::{
-    core_compiler::into_regular_instruction::{
-        ToRegularInstruction,
-    },
+    core_compiler::into_regular_instruction::ToRegularInstruction,
     instruction::regular_instruction::RegularInstruction,
 };
 impl ToRegularInstruction for u8 {

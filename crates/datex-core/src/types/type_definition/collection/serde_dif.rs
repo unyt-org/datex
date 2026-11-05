@@ -14,6 +14,7 @@ use crate::{
                 list::ListCollectionTypeDefinition,
                 list_slice::ListSliceCollectionTypeDefinition,
                 map::MapCollectionTypeDefinition,
+                receiver::ReceiverTypeDefinition, sender::SenderTypeDefinition,
             },
         },
         range::RangeTypeDefinition,
@@ -24,8 +25,6 @@ use serde::{
     de::{self, Visitor},
     ser::{SerializeMap, SerializeSeq},
 };
-use crate::types::type_definition::collection::type_definition::receiver::ReceiverTypeDefinition;
-use crate::types::type_definition::collection::type_definition::sender::SenderTypeDefinition;
 
 impl SerializeWithSerdeContext for CollectionTypeDefinition {
     fn serialize_with_ctx<S: Serializer>(
@@ -115,7 +114,7 @@ impl<'de, 'a, 'ctx> Visitor<'de>
             "Sender" => Ok(CollectionTypeDefinition::Sender(
                 map.next_value_seed(self.cast::<SenderTypeDefinition>())?,
             )),
-            "Receiver" => Ok(CollectionTypeDefinition::Receiver(   
+            "Receiver" => Ok(CollectionTypeDefinition::Receiver(
                 map.next_value_seed(self.cast::<ReceiverTypeDefinition>())?,
             )),
 

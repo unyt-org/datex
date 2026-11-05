@@ -4,22 +4,8 @@ use crate::{
         type_compiler::append_type_instruction,
         value_visitor::ValueVisitor,
     },
-    instruction::{
-        instruction_codes::InstructionCode,
-        regular_instruction::RegularInstruction,
-    },
-    utils::buffers::{append_i16, append_i32},
-    values::{
-        core_value::CoreValue,
-        core_value_with_classification::CoreValueWithClassification,
-        core_values::{
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            instant::Instant,
-            integer::{Integer, typed_integer::TypedInteger},
-        },
-        value::Value,
-        value_container::ValueContainer,
-    },
+    instruction::regular_instruction::RegularInstruction,
+    values::{value::Value, value_container::ValueContainer},
 };
 use binrw::{
     BinWrite,
@@ -32,19 +18,11 @@ use crate::{
         to_instructions::{ToInstructions, yield_all, yield_all_collected},
     },
     instruction::Instruction,
-    libs::core::{
-        core_lib_id::{CoreLibId, CoreLibIdIndex},
-        type_id::CoreLibTypeId,
-        value_id::CoreLibValueId,
-    },
+    libs::core::{core_lib_id::CoreLibId, value_id::CoreLibValueId},
     prelude::*,
     runtime::{
         cache::shared_references_cache::SharedReferencesCache,
         execution::ExecutionError,
-    },
-    shared_values::{
-        PointerAddress, ReferenceMutability, SharedContainer,
-        SharedContainerOwnership, traits::SharedContainerCommon,
     },
 };
 
@@ -144,7 +122,6 @@ gen fn append_apply<'a>(
         yield_all_collected!(arg.to_instructions(visitor, cache)); // FIXME: don't collect
     }
     yield callee.into();
-    return;
 }
 
 /// Helper function to directly compile an instruction into a byte vector
@@ -192,9 +169,9 @@ mod tests {
             instruction_data::{
                 CallableData, CallableDataBody, CallableDataBodyDebugFlat,
                 CallableDataBodyDebugTree, CallableDataDebugFlat,
-                CallableDataDebugTree, CallableSignatureData, Int32Data,
-                MoveWithValue, SharedRefWithValue, ShortListData,
-                ShortTextData,
+                CallableDataDebugTree, CallableSignatureData,
+                ClassifiedValueData, Int32Data, MoveWithValue,
+                SharedRefWithValue, ShortListData, ShortTextData,
             },
             regular_instruction::RegularInstruction,
             type_instruction::TypeInstruction,
@@ -235,7 +212,6 @@ mod tests {
     };
     use core::assert_matches;
     use log::info;
-    use crate::instruction::instruction_data::ClassifiedValueData;
 
     fn compile_value_assert_instructions(
         value: Value,

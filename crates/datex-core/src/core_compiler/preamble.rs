@@ -1,4 +1,4 @@
-use core::{ops::Deref};
+use core::ops::Deref;
 
 use crate::{
     collections::HashMap,
@@ -10,11 +10,11 @@ use crate::{
     },
     global::stack_index::StackIndex,
     instruction::{
-        BytecodeItem, Instruction,
         instruction_data::{MoveWithValue, SharedRef, SharedRefWithValue},
         regular_instruction::RegularInstruction,
     },
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
         SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
@@ -23,7 +23,6 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use binrw::{BinWrite, io::Write};
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 #[derive(Debug)]
 struct PreambleContext {
@@ -298,8 +297,6 @@ gen fn append_uninitialized_shared_container(
             }
         }
     };
-
-    return;
 }
 
 gen fn append_self_referencing_shared_container_to_stack(
@@ -318,7 +315,6 @@ gen fn append_self_referencing_shared_container_to_stack(
             .to_instructions(context, cache)
     );
     yield RegularInstruction::borrow_stack_value(uninitialized_index).into();
-    return;
 }
 
 gen fn append_shared_container_to_stack(
@@ -332,7 +328,9 @@ gen fn append_shared_container_to_stack(
 
     // append push to stack
     yield RegularInstruction::push_to_stack().into();
-    for instruction in append_shared_container(context, cache, container, is_known) {
+    for instruction in
+        append_shared_container(context, cache, container, is_known)
+    {
         yield instruction;
     }
 }
@@ -414,8 +412,6 @@ gen fn append_move_with_value(
     } else {
         yield RegularInstruction::Uninitialized.into();
     }
-
-    return;
 }
 
 gen fn append_referenced_shared_container(
@@ -441,8 +437,6 @@ gen fn append_referenced_shared_container(
             .into();
         }
     }
-
-    return;
 }
 
 gen fn append_referenced_shared_container_with_value(
@@ -486,8 +480,6 @@ gen fn append_referenced_shared_container_with_value(
             .into();
         }
     }
-
-    return;
 }
 
 #[cfg(test)]
@@ -518,7 +510,10 @@ mod tests {
             regular_instruction::RegularInstruction,
         },
         prelude::*,
-        runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+        runtime::{
+            cache::shared_references_cache::SharedReferencesCache,
+            pointer_address_provider::SelfOwnedPointerAddressProvider,
+        },
         shared_values::{
             OwnedSharedContainer, ReferenceMutability,
             ReferencedSharedContainer, SelfOwnedPointerAddress,
@@ -530,7 +525,6 @@ mod tests {
             value_container::ValueContainer,
         },
     };
-    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
     fn assert_preamble_instructions(
         tracked_values: Vec<(SharedContainer, TrackedValueMetadata)>,
@@ -552,8 +546,11 @@ mod tests {
             root_count,
             tracked_values,
         };
-        let (bytes, _) =
-            append_injected_values_preamble(collection, cursor.into_inner(), cache);
+        let (bytes, _) = append_injected_values_preamble(
+            collection,
+            cursor.into_inner(),
+            cache,
+        );
 
         assert_instructions_equal!(&bytes, instructions);
     }

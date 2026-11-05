@@ -36,7 +36,9 @@ impl<'a> Formatter<'a> {
                 self.typed_decimal_to_source_code(td, &expr.span)
             }
             DatexExpressionData::Boolean(b) => a.as_string(b),
-            DatexExpressionData::Text(t) => self.text_to_source_code(t.as_str()),
+            DatexExpressionData::Text(t) => {
+                self.text_to_source_code(t.as_str())
+            }
             DatexExpressionData::Endpoint(e) => a.text(e.to_string()),
             DatexExpressionData::Null => a.text("null"),
             DatexExpressionData::Identifier(_l) => unreachable!(

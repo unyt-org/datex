@@ -13,10 +13,7 @@ use crate::{
             SetEntryUpdateData, Update, UpdateData, UpdateOperation,
         },
     },
-    values::{
-        value::Value,
-        value_container::{ValueContainer},
-    },
+    values::{value::Value, value_container::ValueContainer},
 };
 use core::{
     cell::RefCell,
@@ -226,7 +223,10 @@ pub struct UpdateCallbackData {
 impl UpdateCallbackData {
     /// Creates a new UpdateCallbackData with the same callback,
     /// appending the provided child_key to the path.
-    pub fn with_child_path(&self, child_key: impl Into<ValueContainer>) -> Self {
+    pub fn with_child_path(
+        &self,
+        child_key: impl Into<ValueContainer>,
+    ) -> Self {
         let mut new_path = self.path.clone();
         new_path.push(child_key.into());
         UpdateCallbackData {

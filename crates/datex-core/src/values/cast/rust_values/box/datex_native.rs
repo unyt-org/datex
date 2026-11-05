@@ -8,7 +8,7 @@ use crate::{
     values::{
         core_values::native::{DatexNative, DatexNativeOps},
         value::Value,
-        value_container::{ValueContainer},
+        value_container::ValueContainer,
     },
 };
 use core::any::Any;

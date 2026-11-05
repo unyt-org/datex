@@ -35,7 +35,9 @@ impl<T: ConvertValueContainer + FromParts> FromParts for Vec<T> {
     {
         let mut vec = Vec::new();
         for item in parts {
-            vec.push(T::try_convert_from_value_container(item).map_err(|_| ())?);
+            vec.push(
+                T::try_convert_from_value_container(item).map_err(|_| ())?,
+            );
         }
         Ok(vec)
     }

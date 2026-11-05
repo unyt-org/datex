@@ -1,11 +1,13 @@
 use crate::{
-    datex_proxy::native_callable::generate_native_callable_from_fn,
+    datex_proxy::{
+        helpers::get_pointer_address_for_fn,
+        native_callable::generate_native_callable_from_fn,
+    },
     utils::{derive_datex_prelude, get_datex_core_crate_name},
 };
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
-use syn::{parse::Parse, FnArg, Item, ItemMod, LitStr};
-use crate::datex_proxy::helpers::get_pointer_address_for_fn;
+use syn::{Item, ItemMod, LitStr, parse::Parse};
 
 struct ModuleAttributes {
     name: Option<String>,
@@ -64,8 +66,10 @@ pub fn generate_mod_glue_code(
     let mod_name = mod_ident.to_string();
 
     // map items to their token streams
-    let datex_items: Vec<TokenStream> =
-        items.iter_mut().filter_map(|item| map_to_datex_item(item, &mod_name)).collect();
+    let datex_items: Vec<TokenStream> = items
+        .iter_mut()
+        .filter_map(|item| map_to_datex_item(item, &mod_name))
+        .collect();
     let prelude = derive_datex_prelude(false);
     quote! {
         #(#attrs)*
@@ -73,7 +77,7 @@ pub fn generate_mod_glue_code(
             #prelude
 
             #(#items)*
-            
+
             #datex_core_crate_name::datex_registry::registry_register!(
                 #datex_core_crate_name::datex_registry::DatexModuleRegistration,
                 DATEX_MODULE_REGISTRATIONS,
@@ -88,10 +92,7 @@ pub fn generate_mod_glue_code(
     }
 }
 
-fn map_to_datex_item(
-    item: &mut Item,
-    mod_name: &str,
-) -> Option<TokenStream> {
+fn map_to_datex_item(item: &mut Item, mod_name: &str) -> Option<TokenStream> {
     match item {
         // only register pub functions
         Item::Fn(item_fn)

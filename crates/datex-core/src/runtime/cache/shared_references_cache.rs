@@ -1,14 +1,24 @@
 use crate::{
     collections::{HashMap, HashSet},
+    datex_registry::get_impls_for,
+    dif::deserialize_with_serde_context::DeserializeWithSerdeContext,
+    prelude::*,
     shared_values::{
-        PointerAddress, ReferencedSharedContainer, SelfOwnedPointerAddress,
-        SharedContainer, SharedContainerMutability,
+        PointerAddress, ReferenceMutability, ReferencedSharedContainer,
+        SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
+        base_shared_value_container::BaseSharedValueContainer,
         traits::SharedContainerCommon,
         weak_shared_container::WeakSharedContainer,
     },
+    traits::convert_value::ConvertValue,
     types::{
-        entities::entity_type_definition::EntityTypeDefinition,
-        entity_type::EntityType, r#type::Type,
+        entities::entity_type_definition::{
+            EntityTypeDefinition,
+            dyn_deserialize::{DeFn, de_as},
+        },
+        entity_type::EntityType,
+        r#type::Type,
+        type_definition::TypeDefinition,
     },
     values::{
         core_value::CoreValue,
@@ -17,14 +27,6 @@ use crate::{
     },
 };
 use core::{any::TypeId, fmt::Display, ops::Deref};
-use crate::datex_registry::get_impls_for;
-use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
-use crate::traits::convert_value::ConvertValue;
-use crate::types::entities::entity_type_definition::dyn_deserialize::{de_as, DeFn};
-use crate::types::type_definition::TypeDefinition;
-use crate::prelude::*;
-use crate::shared_values::base_shared_value_container::BaseSharedValueContainer;
-use crate::shared_values::ReferenceMutability;
 
 pub enum SharedTypeReservation {
     Existing(EntityType),
@@ -237,14 +239,10 @@ impl SharedReferencesCache {
         generate: impl FnOnce(&mut Self) -> (String, TypeDefinition),
     ) -> EntityType
     where
-        T: for<'de> DeserializeWithSerdeContext<'de> + ConvertValue + 'static
+        T: for<'de> DeserializeWithSerdeContext<'de> + ConvertValue + 'static,
     {
-        match unsafe {
-            self.reserve_shared_type(address.clone())
-        } {
-            SharedTypeReservation::Existing(ty) => {
-                ty
-            }
+        match unsafe { self.reserve_shared_type(address.clone()) } {
+            SharedTypeReservation::Existing(ty) => ty,
             // if not found, create new def and register in cache
             SharedTypeReservation::New(ty) => {
                 self.with_entity_boundary(|cache| {
@@ -252,17 +250,15 @@ impl SharedReferencesCache {
 
                     let impls = get_impls_for::<T>(cache);
 
-                    let definition = EntityTypeDefinition::new_with_impls_and_deserialize(
-                        type_definition,
-                        name,
-                        impls,
-                        Some(de_as::<T> as DeFn),
-                    );
+                    let definition =
+                        EntityTypeDefinition::new_with_impls_and_deserialize(
+                            type_definition,
+                            name,
+                            impls,
+                            Some(de_as::<T> as DeFn),
+                        );
 
-                    cache.finish_shared_type(
-                        address.clone(),
-                        definition,
-                    );
+                    cache.finish_shared_type(address.clone(), definition);
 
                     ty
                 })
@@ -278,9 +274,7 @@ impl SharedReferencesCache {
         &mut self,
         address: PointerAddress,
     ) -> SharedTypeReservation {
-        if let Some(existing) = self
-            .get_owned_reference(&address)
-        {
+        if let Some(existing) = self.get_owned_reference(&address) {
             return SharedTypeReservation::Existing(unsafe {
                 EntityType::new_unchecked(SharedContainer::Referenced(
                     existing.clone(),
@@ -288,15 +282,13 @@ impl SharedReferencesCache {
             });
         }
         let shared_container = match address {
-            PointerAddress::SelfOwned(self_owned_address) => {
-                unsafe {
-                    SharedContainer::new_owned_with_inferred_allowed_type_unsafe(
-                        CoreValue::Uninitialized,
-                        SharedContainerMutability::Immutable,
-                        self_owned_address,
-                    )
-                }
-            }
+            PointerAddress::SelfOwned(self_owned_address) => unsafe {
+                SharedContainer::new_owned_with_inferred_allowed_type_unsafe(
+                    CoreValue::Uninitialized,
+                    SharedContainerMutability::Immutable,
+                    self_owned_address,
+                )
+            },
             // used for builtin type references only
             PointerAddress::Remote(remote_address) => {
                 // assert that this is actually a builtin address

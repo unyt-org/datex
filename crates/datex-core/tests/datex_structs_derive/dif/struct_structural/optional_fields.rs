@@ -1,7 +1,8 @@
-use datex_core::libs::core::core_lib_id::CoreLibIdIndex;
-use datex_core::libs::core::type_id::CoreLibBaseTypeId;
-use datex_macros_internal::Datex;
 use crate::datex_structs_derive::dif::deserialize_from_dif_default_ctx;
+use datex_core::libs::core::{
+    core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId,
+};
+use datex_macros_internal::Datex;
 
 #[derive(Datex, Debug, Clone, PartialEq)]
 #[datex(structural)]
@@ -9,8 +10,6 @@ struct ExampleWithOptionalValue {
     a: String,
     b: Option<String>,
 }
-
-
 
 #[test]
 fn struct_with_optional_values_from_dif_null() {

@@ -5,6 +5,7 @@ use crate::{
         core_values::{
             decimal::typed_decimal::TypedDecimal,
             integer::typed_integer::TypedInteger, list::List, map::Map,
+            text::Text,
         },
         value::{Value, borrowed_value::BorrowedValue},
         value_container::{
@@ -17,7 +18,6 @@ use serde::{
     de::Visitor,
     ser::{SerializeMap, SerializeSeq},
 };
-use crate::values::core_values::text::Text;
 
 impl Serialize for ValueContainer {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

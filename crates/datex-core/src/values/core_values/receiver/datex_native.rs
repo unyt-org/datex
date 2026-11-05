@@ -1,15 +1,13 @@
 use crate::{
     traits::local_child_path_resolver::LocalChildPathResolver,
-    values::{
-        core_values::native::{DatexNative, DatexNativeOps},
+    values::core_values::{
+        native::{DatexNative, DatexNativeBase, DatexNativeOps},
+        receiver::Receiver,
     },
 };
-use core::{any::Any};
-use crate::values::core_values::receiver::Receiver;
-use crate::values::core_values::native::DatexNativeBase;
+use core::any::Any;
 
-impl<T: DatexNativeBase + 'static> DatexNative for Receiver<T>
-{
+impl<T: DatexNativeBase + 'static> DatexNative for Receiver<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -17,8 +15,6 @@ impl<T: DatexNativeBase + 'static> DatexNative for Receiver<T>
         self
     }
 }
-impl<T: DatexNativeBase + 'static> DatexNativeOps for Receiver<T>
-{}
+impl<T: DatexNativeBase + 'static> DatexNativeOps for Receiver<T> {}
 
-impl<T: DatexNativeBase + 'static> LocalChildPathResolver for Receiver<T>
-{}
+impl<T: DatexNativeBase + 'static> LocalChildPathResolver for Receiver<T> {}

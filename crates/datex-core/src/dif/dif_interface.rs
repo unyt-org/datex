@@ -6,6 +6,7 @@ use crate::{
         cache::shared_values_cache::{
             SharedValuesCache, ValueNotFoundInCacheError,
         },
+        execution::ExecutionError,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     shared_values::{
@@ -33,7 +34,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
-use crate::runtime::execution::ExecutionError;
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
@@ -110,7 +110,7 @@ impl DIFInterface {
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         callee.try_apply_async_checked(runtime, args).await
     }
-    
+
     /// Calls async method on a value
     pub fn call_method_sync(
         &self,
@@ -118,13 +118,10 @@ impl DIFInterface {
         callee: ValueContainer,
         method: String,
         args: Vec<ApplyArgument>,
-    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError>
+    {
         let callee_arg = ApplyArgument::from(callee);
-        callee_arg.try_call_method_sync(
-            &method,
-            args,
-            &runtime,
-        )
+        callee_arg.try_call_method_sync(&method, args, runtime)
     }
 
     /// Calls an async method on a value
@@ -134,13 +131,12 @@ impl DIFInterface {
         callee: ValueContainer,
         method: String,
         args: Vec<ApplyArgument>,
-    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError>
+    {
         let callee_arg = ApplyArgument::from(callee);
-        callee_arg.try_call_method_async(
-            &method,
-            args,
-            &runtime,
-        ).await
+        callee_arg
+            .try_call_method_async(&method, args, runtime)
+            .await
     }
 
     /// Creates a new owned local pointer and stores it in memory.

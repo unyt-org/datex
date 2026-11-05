@@ -15,6 +15,8 @@ use crate::{
                     list::ListCollectionTypeDefinition,
                     list_slice::ListSliceCollectionTypeDefinition,
                     map::MapCollectionTypeDefinition,
+                    receiver::ReceiverTypeDefinition,
+                    sender::SenderTypeDefinition,
                 },
             },
             impl_type::ImplMarkers,
@@ -27,8 +29,6 @@ use crate::{
         },
     },
 };
-use crate::types::type_definition::collection::type_definition::receiver::ReceiverTypeDefinition;
-use crate::types::type_definition::collection::type_definition::sender::SenderTypeDefinition;
 
 /// Folds a type using the provided folder.
 pub fn fold_type<F>(folder: &mut F, ty: &Type) -> Result<F::Output, F::Error>

@@ -1,10 +1,10 @@
 use crate::datex_proxy::{
     data::{EnumVariant, Fields, Structure, StructureData},
     generator::helpers::{SelfAccess, map_enum_variants},
+    helpers::get_pointer_address_for_struct,
 };
 use proc_macro2::TokenStream;
 use quote::quote;
-use crate::datex_proxy::helpers::get_pointer_address_for_struct;
 
 /// Generates the [Classification] implementations
 pub fn generate_classification(structure_data: &StructureData) -> TokenStream {
@@ -43,15 +43,16 @@ fn generate_classification_methods(
         }
         Structure::Struct(_) => None,
     };
-    
+
     // If the type is an entity, generate the entity_type and entity_type_address methods
-    let pointer_address_init = if structure_data.attributes.type_kind.is_entity() {
-        let pointer_address_init = get_pointer_address_for_struct(structure_data);
-        quote! { Some(#pointer_address_init)}
-    }
-    else {
-        quote! { None }
-    };
+    let pointer_address_init =
+        if structure_data.attributes.type_kind.is_entity() {
+            let pointer_address_init =
+                get_pointer_address_for_struct(structure_data);
+            quote! { Some(#pointer_address_init)}
+        } else {
+            quote! { None }
+        };
 
     let entity_type_init = if structure_data.attributes.type_kind.is_entity() {
         quote! {
