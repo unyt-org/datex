@@ -29,6 +29,8 @@ use crate::{
         },
     },
 };
+use crate::shared_values::{SharedContainerMutability, SharedContainerOwnership};
+use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
 
 /// Folds a type using the provided folder.
 pub fn fold_type<F>(folder: &mut F, ty: &Type) -> Result<F::Output, F::Error>
@@ -36,12 +38,12 @@ where
     F: TypeFolder,
 {
     match ty {
-        Type::Definition(alias) => {
-            let Some(name) = alias.reference_name() else {
-                return fold_definition(folder, &alias.definition);
+        Type::Definition(type_definition) => {
+            let Some(name) = type_definition.reference_name() else {
+                return fold_definition(folder, type_definition);
             };
             if folder.begin_named_alias(name)? {
-                let definition = fold_definition(folder, &alias.definition)?;
+                let definition = fold_definition(folder, type_definition)?;
                 folder.end_named_alias(name, definition)?;
             }
             folder.fold_named_alias_reference(name)
@@ -54,12 +56,12 @@ where
 /// Folds a type definition using the provided folder.
 pub fn fold_definition<F>(
     folder: &mut F,
-    definition: &TypeDefinition,
+    definition: &TypeDefinitionWithMetadata,
 ) -> Result<F::Output, F::Error>
 where
     F: TypeFolder,
 {
-    match definition {
+    let inner = match &definition.definition {
         TypeDefinition::Literal(literal) => folder.fold_literal(literal),
         TypeDefinition::List(list) => {
             let elements = list
@@ -206,7 +208,9 @@ where
                 .transpose()?;
             folder.fold_tagged_type(tagged, payload)
         }
-    }
+    }?;
+
+    folder.fold_type_definition_with_metadata(&definition.metadata, inner)
 }
 
 /// A trait for folding DATEX types. This is a generalization of the visitor pattern that allows the folder to produce an output value and return a result, which can be used for error handling.
@@ -224,6 +228,14 @@ pub trait TypeFolder {
         name: &str,
         definition: Self::Output,
     ) -> Result<(), Self::Error>;
+
+    fn fold_type_definition_with_metadata(
+        &mut self,
+        metadata: &TypeMetadata,
+        inner: Self::Output,
+    ) -> Result<Self::Output, Self::Error> {
+        Ok(inner)
+    }
 
     /// Called when a reference to a named alias is encountered. This will be called regardless of whether begin_named_alias returns true or false.
     fn fold_named_alias_reference(

@@ -465,6 +465,10 @@ impl Endpoint {
         if self.is_local() {
             return true;
         }
+        // TODO: remove, just for debugging
+        if endpoint.is_local() {
+            unreachable!("Endpoint should not be local, if it is not the current endpoint");
+        }
         self == endpoint
     }
 
