@@ -223,7 +223,8 @@ pub fn iterate_instructions(
 
 pub gen fn iterate_instructions_with_seek(
     dxb_body_ref: Rc<RefCell<Vec<u8>>>,
-    _nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
+    #[allow(unused_variables)]
+    nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
     seek_request: Option<Rc<RefCell<Option<i32>>>>,
 ) -> Result<InstructionWithSpan, DXBParserError> {
     let mut next_instructions_stack = NextInstructionsStack::default();

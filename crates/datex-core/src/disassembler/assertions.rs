@@ -45,7 +45,7 @@ pub macro assert_instructions_equal {
 pub macro assert_instruction_lists_eq {
     ($output:expr, ($($expected:expr),* $(,)?)) => {{
         use $crate::disassembler::assertions::assert_instruction_lists_eq;
-
+        use $crate::core_compiler::value_visitor::compile_instruction_iterator_to_dxb;
         let output_instructions = $output;
         let output_dxb = compile_instruction_iterator_to_dxb(
             output_instructions.iter().cloned(),
@@ -55,6 +55,7 @@ pub macro assert_instruction_lists_eq {
     }},
     ($output:expr, $vec:expr $(,)?) => {{
         use $crate::disassembler::assertions::assert_instruction_lists_eq;
+        use $crate::core_compiler::value_visitor::compile_instruction_iterator_to_dxb;
 
         let output_instructions = $output;
         let output_dxb = compile_instruction_iterator_to_dxb(
