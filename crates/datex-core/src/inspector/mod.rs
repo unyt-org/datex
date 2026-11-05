@@ -14,6 +14,7 @@ mod datex_inspector {
         shared_wrappers::shared::{shared_ref::SharedRef, to_shared::ToShared},
         values::core_values::{channel::create_channel, receiver::Receiver},
     };
+    use crate::task::sleep;
 
     #[derive(Datex, Debug, Clone, PartialEq, Eq, Hash)]
     #[datex(no_deserialize, builtin = 0x000001)]
@@ -34,7 +35,19 @@ mod datex_inspector {
             &self,
             #[runtime] runtime: &Runtime,
         ) -> SharedRef<Receiver<String>> {
-            let (_sender, receiver) = create_channel(runtime);
+            let (mut sender, receiver) = create_channel(runtime);
+
+            runtime.task_manager().register_task(async move {
+                // send mock logs
+                for i in 0..1000 {
+                    let log_message = format!("Log message {}", i);
+                    if sender.send(log_message).await.is_err() {
+                        break;
+                    }
+                    sleep(core::time::Duration::from_millis(2000)).await;
+                }
+            });
+
             receiver
         }
 
