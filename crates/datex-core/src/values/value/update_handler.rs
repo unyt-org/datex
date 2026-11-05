@@ -291,7 +291,7 @@ mod tests {
         let inner_value = prop.try_as::<Map>().unwrap();
         let inner_value =
             inner_value.try_get(&ValueContainer::from("inner")).unwrap();
-        assert_eq!(inner_value.try_as::<i32>().unwrap().deref(), &42);
+        assert_eq!(inner_value.try_as::<i32>().unwrap(), &42);
     }
 
     #[test]
