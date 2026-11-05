@@ -164,7 +164,8 @@ pub async fn execute_dxb(
     input: ExecutionInput,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     let runtime = input.runtime.clone();
-    let _caller_metadata = input.caller_metadata.clone();
+    let caller_metadata = input.caller_metadata.clone();
+    let execution_options = input.options.clone();
     let (interrupt_provider, execution_loop) = input.execution_loop();
 
     for output in execution_loop {
@@ -261,22 +262,40 @@ pub async fn execute_dxb(
                 );
             }
             ExternalExecutionInterrupt::RemoteExecution {
-                input,
+                input: dxb_with_shared_values,
                 receivers,
             } => {
                 // assert that receivers is a single endpoint
                 assert_eq!(receivers.len(), 1);
 
-                let mut remote_execution_context = RemoteExecutionContext::new(
-                    receivers,
-                    ExecutionMode::Static,
-                    runtime.clone(),
-                );
-                let res = runtime
-                    .execute_remote(&mut remote_execution_context, input)
-                    .await?;
-                interrupt_provider
-                    .provide_result(InterruptResult::ResolvedValue(res));
+                // local remote execution (triggered when running @@local :: 1)
+                if receivers[0].is_local_or_equals_endpoint(runtime.endpoint())
+                {
+                    let local_input = ExecutionInput::new(
+                        dxb_with_shared_values,
+                        caller_metadata.clone(),
+                        execution_options.clone(),
+                        runtime.clone(),
+                    );
+                    let result = execute_dxb_sync(local_input)?;
+                    interrupt_provider
+                        .provide_result(InterruptResult::ResolvedValue(result));
+                } else {
+                    let mut remote_execution_context =
+                        RemoteExecutionContext::new(
+                            receivers,
+                            ExecutionMode::Static,
+                            runtime.clone(),
+                        );
+                    let res = runtime
+                        .execute_remote(
+                            &mut remote_execution_context,
+                            dxb_with_shared_values,
+                        )
+                        .await?;
+                    interrupt_provider
+                        .provide_result(InterruptResult::ResolvedValue(res));
+                }
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
                 let res =
