@@ -2,17 +2,17 @@ use crate::{
     core_compiler::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::{Instruction, regular_instruction::RegularInstruction},
+    instruction::regular_instruction::RegularInstruction,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     values::core_values::decimal::Decimal,
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for Decimal {
     fn to_instructions<'a>(
         &'a self,
         _ctx: &'a mut dyn ValueVisitor,
-        _cache: &'a mut SharedReferencesCache
+        _cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             match &self {

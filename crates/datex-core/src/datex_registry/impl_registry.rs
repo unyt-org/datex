@@ -1,9 +1,9 @@
-use core::any::TypeId;
 use crate::{
-    prelude::*, runtime::cache::shared_references_cache::SharedReferencesCache,
+    datex_registry::registry_collect, prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     types::entities::entity_impls::EntityImpl,
 };
-use crate::datex_registry::registry_collect;
+use core::any::TypeId;
 
 #[derive(Debug)]
 pub struct DatexImplRegistration {

@@ -8,10 +8,7 @@ use crate::{
         update_data::UpdateOperation,
         update_handler::InternalMutabilityUpdateHandler,
     },
-    values::{
-        core_values::list::List,
-        value_container::{ValueContainer},
-    },
+    values::{core_values::list::List, value_container::ValueContainer},
 };
 use core::ops::Range;
 
@@ -32,8 +29,7 @@ impl List {
         }
 
         // replace
-        let res =
-            core::mem::replace(&mut self.items[index as usize], value);
+        let res = core::mem::replace(&mut self.items[index as usize], value);
 
         // trigger update callback if needed
         self.maybe_trigger_update_callback(source_id, || {
@@ -53,10 +49,7 @@ impl List {
         index: u32,
         source_id: Option<TransceiverId>,
     ) -> Result<ValueContainer, IndexOutOfBoundsError> {
-        let res = self
-            .items
-            .remove(index as usize)
-            .without_local_observers();
+        let res = self.items.remove(index as usize).without_local_observers();
 
         // trigger update callback if needed
         self.maybe_trigger_update_callback(source_id, || {
@@ -97,7 +90,7 @@ impl List {
 
         self.maybe_trigger_update_callback(source_id, || {
             UpdateOperation::delete_entry(ValueContainer::local(
-                self.items.len() as i64
+                self.items.len() as i64,
             ))
         });
 

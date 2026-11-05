@@ -24,9 +24,7 @@ mod tests {
 
     use crate::{
         core_compiler::{
-            core_compilation_context::{
-                ByteCursor, default_compile_input,
-            },
+            core_compilation_context::{ByteCursor, default_compile_input},
             shared_value_tracking::SharedValueTracking,
             to_instructions::ToInstructions,
             value_compiler::compile_value,
@@ -38,6 +36,7 @@ mod tests {
         },
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
+        runtime::cache::shared_references_cache::SharedReferencesCache,
         types::{
             r#type::Type,
             type_definition::TypeDefinition,
@@ -48,7 +47,6 @@ mod tests {
         },
         values::{core_value::CoreValue, value::Value},
     };
-    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
     fn assert_type_instructions(
         ty: Type,
@@ -62,8 +60,11 @@ mod tests {
                 .chain(expected_instruction.into_iter().map(Instruction::Type))
                 .collect::<Vec<_>>();
 
-        let compiled =
-            compile_value(Value::new(CoreValue::Type(ty)), compile_input, cache);
+        let compiled = compile_value(
+            Value::new(CoreValue::Type(ty)),
+            compile_input,
+            cache,
+        );
         assert_eq!(compiled.shared_values.len(), 0);
         assert_instructions_equal!(&compiled.dxb, vec)
     }

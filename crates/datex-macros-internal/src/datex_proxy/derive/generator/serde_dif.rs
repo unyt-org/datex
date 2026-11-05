@@ -4,12 +4,11 @@ use crate::datex_proxy::{
         IndexedField, NamedField, Structure, StructureData,
     },
     generator::helpers::{
-        SelfAccess, generate_struct_or_enum_variants_fields_mapping,
+        SelfAccess, generate_struct_or_enum_variants_fields_mapping, is_option,
     },
 };
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use crate::datex_proxy::generator::helpers::is_option;
 
 /// Creates the implementation of the [SerializeWithSerdeContext] and [DeserializeWithSerdeContext] trait for the given structure data.
 /// Returns a TokenStream of the implementation.
@@ -524,22 +523,19 @@ fn generate_dif_deserialize_for_struct(
     outer_collector_ident: &Ident,
     inner_wrapper_ident: &Ident,
 ) -> (TokenStream, TokenStream) {
-
     let outer_deserialize_impl = quote! {
         deserializer.deserialize_any(#outer_collector_ident::new(ctx))
     };
 
     let outer_visitor_methods = match fields {
-        Fields::Named(named) =>
-            generate_outer_visit_seq(
-                inner_wrapper_ident,
-                &Ident::new("Map", Span::call_site()),
-            ),
-        Fields::Unnamed(unnamed) =>
-            generate_outer_visit_seq(
-                inner_wrapper_ident,
-                &Ident::new("List", Span::call_site()),
-            ),
+        Fields::Named(_named) => generate_outer_visit_seq(
+            inner_wrapper_ident,
+            &Ident::new("Map", Span::call_site()),
+        ),
+        Fields::Unnamed(_unnamed) => generate_outer_visit_seq(
+            inner_wrapper_ident,
+            &Ident::new("List", Span::call_site()),
+        ),
         Fields::Transparent(inner) => {
             // does not need the custom visitor, just pass through to the inner type's deserialization
             return (
@@ -547,7 +543,7 @@ fn generate_dif_deserialize_for_struct(
                 quote! {},
             );
         }
-        Fields::Unit => generate_inner_visitor_methods_for_unit(ident)
+        Fields::Unit => generate_inner_visitor_methods_for_unit(ident),
     };
 
     let inner_visitor_impl = generate_dif_deserialize_for_fields(
@@ -600,13 +596,17 @@ fn generate_dif_deserialize_for_fields(
     inner_wrapper_ident: &Ident,
 ) -> Option<TokenStream> {
     let inner_visitor_methods = match fields {
-        Fields::Named(named) => generate_inner_visitor_methods_for_named_fields(named),
-        Fields::Unnamed(unnamed) => generate_inner_visitor_methods_for_unnamed_fields(unnamed),
-        Fields::Transparent(inner) => {
+        Fields::Named(named) => {
+            generate_inner_visitor_methods_for_named_fields(named)
+        }
+        Fields::Unnamed(unnamed) => {
+            generate_inner_visitor_methods_for_unnamed_fields(unnamed)
+        }
+        Fields::Transparent(_inner) => {
             // does not need the custom visitor, just pass through to the inner type's deserialization
             return None;
-        },
-        Fields::Unit => return None
+        }
+        Fields::Unit => return None,
     };
 
     let (properties, property_defaults, property_collapses) =
@@ -614,7 +614,6 @@ fn generate_dif_deserialize_for_fields(
 
     let collapse_init =
         fields.wrap_in_initializer(property_collapses.into_iter());
-
 
     let collapse_impl = if let Some(variant_ident) = variant_ident {
         quote! {
@@ -689,7 +688,6 @@ fn generate_dif_deserialize_for_fields(
 
     })
 }
-
 
 fn generate_inner_visitor_methods_for_named_fields(
     fields: &[NamedField],
@@ -880,4 +878,3 @@ fn generate_property_mappings(
         })
         .collect()
 }
-

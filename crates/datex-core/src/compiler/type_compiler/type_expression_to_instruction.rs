@@ -6,18 +6,13 @@ use crate::{
         metadata::CompileContextMetadata,
         precompiler::precompiled_ast::AstMetadata,
     },
-    core_compiler::{
-        to_instructions::{ToInstructions, yield_all, yield_all_ok},
-        value_visitor::ValueVisitor,
-    },
-    instruction::{
-        BytecodeItem, Instruction, type_instruction::TypeInstruction,
-    },
+    core_compiler::to_instructions::yield_all,
+    instruction::{BytecodeItem, type_instruction::TypeInstruction},
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     types::literal_type_definition::LiteralTypeDefinition,
 };
 use core::ops::Deref;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl AstNodeToInstructions for TypeExpression {
     fn ast_node_to_instructions<'a>(
@@ -25,7 +20,7 @@ impl AstNodeToInstructions for TypeExpression {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        ctx_metadata: CompileContextMetadata,
+        _ctx_metadata: CompileContextMetadata,
     ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a>
     {
         Box::new(gen move {

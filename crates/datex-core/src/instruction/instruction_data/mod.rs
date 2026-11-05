@@ -286,7 +286,7 @@ impl ClassifiedValueData {
             impls: Vec::new(),
         }
     }
-    
+
     pub fn new_entity() -> Self {
         Self {
             has_tag: false,
@@ -298,7 +298,6 @@ impl ClassifiedValueData {
         }
     }
 }
-
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]

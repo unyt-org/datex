@@ -4,7 +4,11 @@ mod impls;
 mod to_datex_expression_data;
 mod to_instructions;
 
-use core::{assert_matches, cell::RefCell};
+use core::{
+    assert_matches,
+    cell::RefCell,
+    ops::{Deref, DerefMut},
+};
 use datex_core::{
     prelude::*,
     traits::get_datex_type::GetDatexType,
@@ -15,7 +19,6 @@ use datex_core::{
 };
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
-use core::ops::{Deref, DerefMut};
 
 #[derive(Datex, Debug)]
 #[datex(structural)]
@@ -144,8 +147,12 @@ fn struct_to_value_container() {
     }
     .into();
 
-    let map: Map = Map::try_convert_from_value_container(value_container).unwrap();
-    assert_eq!(map.try_get(&ValueContainer::from("a")).unwrap(), &ValueContainer::from(42u8));
+    let map: Map =
+        Map::try_convert_from_value_container(value_container).unwrap();
+    assert_eq!(
+        map.try_get(&ValueContainer::from("a")).unwrap(),
+        &ValueContainer::from(42u8)
+    );
     assert_eq!(
         map.try_get(&ValueContainer::from("b")).unwrap(),
         &ValueContainer::from("Test".to_string())
@@ -236,9 +243,10 @@ fn default() {
     let map: Map =
         Map::from(vec![("a".to_string(), ValueContainer::from(42u8))]);
     let value_container = ValueContainer::from(map);
-    let deserialized =
-        SerdeDatexWithDefault::try_convert_from_value_container(value_container)
-            .unwrap();
+    let deserialized = SerdeDatexWithDefault::try_convert_from_value_container(
+        value_container,
+    )
+    .unwrap();
     assert_eq!(deserialized.a, 42);
     assert_eq!(deserialized.b, "".to_string());
 }
@@ -315,9 +323,13 @@ fn struct_to_value() {
     }
     .into();
 
-    let map = Map::try_convert_from_value_container(ValueContainer::from(value))
-        .unwrap();
-    assert_eq!(map.try_get(&ValueContainer::from("a")).unwrap(), &ValueContainer::from(42u8));
+    let map =
+        Map::try_convert_from_value_container(ValueContainer::from(value))
+            .unwrap();
+    assert_eq!(
+        map.try_get(&ValueContainer::from("a")).unwrap(),
+        &ValueContainer::from(42u8)
+    );
     assert_eq!(
         map.try_get(&ValueContainer::from("b")).unwrap(),
         &ValueContainer::from("Test".to_string())
@@ -338,9 +350,13 @@ fn new_type_struct_to_value() {
     })
     .into();
 
-    let map = Map::try_convert_from_value_container(ValueContainer::from(value))
-        .unwrap();
-    assert_eq!(map.try_get(&ValueContainer::from("a")).unwrap(), &ValueContainer::from(42u8));
+    let map =
+        Map::try_convert_from_value_container(ValueContainer::from(value))
+            .unwrap();
+    assert_eq!(
+        map.try_get(&ValueContainer::from("a")).unwrap(),
+        &ValueContainer::from(42u8)
+    );
     assert_eq!(
         map.try_get(&ValueContainer::from("b")).unwrap(),
         &ValueContainer::from("Test".to_string())
@@ -413,10 +429,13 @@ fn value_to_empty_enum_variant() {
         }),
     );
 
-    let example = ExampleEnum::try_convert_from_value(variant_a.clone()).unwrap();
+    let example =
+        ExampleEnum::try_convert_from_value(variant_a.clone()).unwrap();
     assert_matches!(example, ExampleEnum::VariantA);
 
-    let example = ExampleEnum::try_convert_from_value_container(variant_a.into()).unwrap();
+    let example =
+        ExampleEnum::try_convert_from_value_container(variant_a.into())
+            .unwrap();
     assert_matches!(example, ExampleEnum::VariantA);
 }
 
@@ -506,8 +525,12 @@ fn struct_with_serde_to_value_container() {
     // Note: uses try_into because of datex(serde)
     let value_container: ValueContainer = serde_example.try_into().unwrap();
 
-    let map: Map = Map::try_convert_from_value_container(value_container).unwrap();
-    assert_eq!(map.try_get(&ValueContainer::from("a")).unwrap(), &ValueContainer::from(42u8));
+    let map: Map =
+        Map::try_convert_from_value_container(value_container).unwrap();
+    assert_eq!(
+        map.try_get(&ValueContainer::from("a")).unwrap(),
+        &ValueContainer::from(42u8)
+    );
     let serde_map: Map = map
         .try_get(&ValueContainer::from("serde"))
         .unwrap()
@@ -545,8 +568,12 @@ fn struct_with_serde_infallible_to_value_container() {
     // Note: uses into instead of try_into because of datex(serde_infallible)
     let value_container: ValueContainer = serde_example.into();
 
-    let map: Map = Map::try_convert_from_value_container(value_container).unwrap();
-    assert_eq!(map.try_get(&ValueContainer::from("a")).unwrap(), &ValueContainer::from(42u8));
+    let map: Map =
+        Map::try_convert_from_value_container(value_container).unwrap();
+    assert_eq!(
+        map.try_get(&ValueContainer::from("a")).unwrap(),
+        &ValueContainer::from(42u8)
+    );
     let serde_map: Map = map
         .try_get(&ValueContainer::from("serde"))
         .unwrap()
@@ -581,9 +608,13 @@ fn struct_with_value_container() {
     };
 
     let value: Value = example_local.into();
-    let map = Map::try_convert_from_value_container(ValueContainer::from(value))
-        .unwrap();
-    assert_eq!(map.try_get(&ValueContainer::from("a")).unwrap(), &ValueContainer::from(42u8));
+    let map =
+        Map::try_convert_from_value_container(ValueContainer::from(value))
+            .unwrap();
+    assert_eq!(
+        map.try_get(&ValueContainer::from("a")).unwrap(),
+        &ValueContainer::from(42u8)
+    );
     assert_eq!(
         map.try_get(&ValueContainer::from("val")).unwrap(),
         &ValueContainer::from("Test".to_string())
@@ -606,8 +637,14 @@ fn struct_with_value_container() {
     let value_container_2: ValueContainer = example_shared.into();
 
     let map_2 = Map::try_convert_from_value_container(value_container).unwrap();
-    assert_eq!(map_2.try_get(&ValueContainer::from("a")).unwrap(), &ValueContainer::from(42u8));
-    assert_eq!(map_2.try_get(&ValueContainer::from("val")).unwrap(), &shared_container);
+    assert_eq!(
+        map_2.try_get(&ValueContainer::from("a")).unwrap(),
+        &ValueContainer::from(42u8)
+    );
+    assert_eq!(
+        map_2.try_get(&ValueContainer::from("val")).unwrap(),
+        &shared_container
+    );
 
     let deserialized_example_shared =
         ExampleWithValueContainer::try_convert_from_value_container(

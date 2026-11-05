@@ -1,7 +1,13 @@
 pub mod value_visitor;
 
 use crate::{
-    compiler::scope::CompilationScope,
+    compiler::{
+        ast_node_to_instructions::AstNodeToInstructions,
+        compilation_result::CompilationResult,
+        error::CompilerError,
+        precompiler::precompiled_ast::{AstMetadata, RichAst},
+        scope::CompilationScope,
+    },
     core_compiler::{
         core_compilation_context::{
             CompileInput, CoreCompilationContext, DXBWithSharedValues,
@@ -9,15 +15,12 @@ use crate::{
         to_instructions::ToInstructions,
     },
     prelude::*,
-    runtime::execution::context::ExecutionMode,
+    runtime::{
+        cache::shared_references_cache::SharedReferencesCache,
+        execution::context::ExecutionMode,
+    },
     values::value_container::ValueContainer,
 };
-use crate::compiler::ast_node_to_instructions::AstNodeToInstructions;
-use crate::compiler::error::CompilerError;
-use crate::compiler::precompiler::precompiled_ast::{AstMetadata, RichAst};
-use crate::compiler::compilation_result::CompilationResult;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::runtime::Runtime;
 
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext<'a> {
@@ -52,11 +55,12 @@ impl<'a> CompilationContext<'a> {
     /// Compiles a [ToInstructions] value with shared value tracking and appends a preamble with the injected shared values.
     /// Returns the final byte buffer and the list of shared values that were moved or referenced during compilation
     pub fn compile_to_dxb_with_shared_values(
-        self, 
+        self,
         input: &impl ToInstructions,
         cache: &mut SharedReferencesCache,
     ) -> DXBWithSharedValues {
-        self.core_context.compile_to_dxb_with_shared_values(input, cache)
+        self.core_context
+            .compile_to_dxb_with_shared_values(input, cache)
     }
 
     /// Compiles an AST node that implements [AstNodeToInstructions] with shared value tracking and appends a preamble with the injected shared values.
@@ -66,13 +70,11 @@ impl<'a> CompilationContext<'a> {
         metadata: &mut AstMetadata,
         cache: &mut SharedReferencesCache,
     ) -> Result<CompilationResult, CompilerError> {
-        let dxb = ast_node.try_compile_to_dxb(
-            &mut self,
-            cache,
-            metadata,
-        )?;
+        let dxb = ast_node.try_compile_to_dxb(&mut self, cache, metadata)?;
         Ok(CompilationResult {
-            dxb_with_shared_values: self.core_context.append_preamble_to_dxb(dxb, cache),
+            dxb_with_shared_values: self
+                .core_context
+                .append_preamble_to_dxb(dxb, cache),
             scope: self.scope,
             has_non_static_value: self.has_non_static_value,
         })
@@ -94,7 +96,6 @@ impl<'a> CompilationContext<'a> {
     pub fn core_context(&mut self) -> &mut CoreCompilationContext<'a> {
         &mut self.core_context
     }
-
 
     pub fn mark_has_non_static_value(&mut self) {
         self.has_non_static_value = true;

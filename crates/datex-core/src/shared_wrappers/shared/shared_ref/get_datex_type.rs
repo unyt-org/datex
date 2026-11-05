@@ -1,7 +1,11 @@
 use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    shared_values::{SharedContainerMutability, SharedContainerOwnership},
+    shared_values::{
+        ReferenceMutability, SharedContainerMutability,
+        SharedContainerOwnership,
+    },
+    shared_wrappers::shared::shared_ref::SharedRef,
     traits::get_datex_type::GetDatexType,
     types::{
         r#type::Type,
@@ -12,8 +16,6 @@ use crate::{
     },
     values::core_values::native::DatexNative,
 };
-use crate::shared_values::ReferenceMutability;
-use crate::shared_wrappers::shared::shared_ref::SharedRef;
 
 impl<T> GetDatexType for SharedRef<T>
 where
@@ -24,7 +26,9 @@ where
             TypeDefinition::Box(Box::new(T::datex_type(context))),
             TypeMetadata::Shared {
                 mutability: SharedContainerMutability::Mutable,
-                ownership: SharedContainerOwnership::Referenced(ReferenceMutability::Mutable), // TODO: distinguish between mutable and immutable references
+                ownership: SharedContainerOwnership::Referenced(
+                    ReferenceMutability::Mutable,
+                ), // TODO: distinguish between mutable and immutable references
             },
         ))
     }

@@ -1,11 +1,11 @@
-mod get_datex_type;
 mod convert_value_container;
+mod get_datex_type;
 
 use crate::{
     prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
-        SharedContainerMutability,
+        OwnedSharedContainer, SharedContainerMutability,
         traits::SharedContainerCommon,
     },
     values::{
@@ -17,7 +17,6 @@ use core::{
     cell::{Ref, RefMut},
     ops::Deref,
 };
-use crate::shared_values::OwnedSharedContainer;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Shared<T: DatexNative + ?Sized> {
@@ -88,7 +87,11 @@ impl<T: DatexNative + 'static> TryFrom<OwnedSharedContainer> for Shared<T> {
     fn try_from(container: OwnedSharedContainer) -> Result<Self, Self::Error> {
         // TODO: also check if the type only allows values that are of type T.
         // check if the container contains a local value of type T
-        if T::try_borrow_from_value_container(container.value_container().deref()).is_err() {
+        if T::try_borrow_from_value_container(
+            container.value_container().deref(),
+        )
+        .is_err()
+        {
             return Err(container);
         }
 
@@ -103,15 +106,13 @@ impl<T: DatexNative + 'static> TryFrom<OwnedSharedContainer> for Shared<T> {
 mod test {
     use crate::{
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
-        shared_values::{SharedContainerMutability},
+        shared_values::SharedContainerMutability,
     };
 
     use crate::{
-        prelude::*,
-        values::{value::Value},
+        prelude::*, shared_values::OwnedSharedContainer,
+        shared_wrappers::shared::shared_owned::Shared, values::value::Value,
     };
-    use crate::shared_values::OwnedSharedContainer;
-    use crate::shared_wrappers::shared::shared_owned::Shared;
 
     #[test]
     fn string_shared() {

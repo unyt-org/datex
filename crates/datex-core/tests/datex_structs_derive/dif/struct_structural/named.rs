@@ -1,12 +1,22 @@
-use datex_core::libs::core::core_lib_id::CoreLibIdIndex;
-use datex_core::libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId};
-use datex_core::values::core_values::boolean::Boolean;
-use datex_core::values::core_values::endpoint::Endpoint;
-use datex_core::values::core_values::integer::typed_integer::{IntegerTypeVariant, TypedInteger};
-use datex_core::values::value::Value;
-use datex_core::values::value_container::ValueContainer;
+use crate::datex_structs_derive::dif::{
+    deserialize_from_dif_default_ctx, serialize_to_json_value_default_ctx,
+};
+use datex_core::{
+    libs::core::{
+        core_lib_id::CoreLibIdIndex,
+        type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
+    },
+    values::{
+        core_values::{
+            boolean::Boolean,
+            endpoint::Endpoint,
+            integer::typed_integer::{IntegerTypeVariant, TypedInteger},
+        },
+        value::Value,
+        value_container::ValueContainer,
+    },
+};
 use datex_macros_internal::Datex;
-use crate::datex_structs_derive::dif::{deserialize_from_dif_default_ctx, serialize_to_json_value_default_ctx};
 
 #[derive(Datex, Debug, Clone, PartialEq)]
 #[datex(structural)]
@@ -38,7 +48,6 @@ fn named_struct_to_dif() {
     );
 }
 
-
 #[test]
 fn named_struct_from_dif() {
     let json_value = serde_json::json!([
@@ -49,7 +58,8 @@ fn named_struct_from_dif() {
             "c": [CoreLibIdIndex::from(CoreLibBaseTypeId::Endpoint), "@jonas"]
         }
     ]);
-    let deserialized: NamedExampleStruct = deserialize_from_dif_default_ctx(&json_value);
+    let deserialized: NamedExampleStruct =
+        deserialize_from_dif_default_ctx(&json_value);
 
     assert_eq!(deserialized.a, 42);
     assert_eq!(deserialized.b, "Hello, Datex!");
@@ -67,14 +77,13 @@ fn named_struct_from_dif_with_additional_fields() {
             "d": "additional field"
         }
     ]);
-    let deserialized: NamedExampleStruct = deserialize_from_dif_default_ctx(&json_value);
+    let deserialized: NamedExampleStruct =
+        deserialize_from_dif_default_ctx(&json_value);
 
     assert_eq!(deserialized.a, 42);
     assert_eq!(deserialized.b, "Hello, Datex!");
     assert_eq!(deserialized.c, Endpoint::new("@jonas"));
 }
-
-
 
 #[test]
 fn named_struct_roundtrip() {
@@ -83,8 +92,6 @@ fn named_struct_roundtrip() {
         field: String,
         value: Value,
     }
-
-
 
     #[derive(Datex, Debug, Clone, PartialEq)]
     struct ExampleComplexNested {
@@ -96,7 +103,6 @@ fn named_struct_roundtrip() {
         cv: Boolean,
         inner: Inner,
     }
-
 
     let original = ExampleComplexNested {
         name: "hello".to_string(),

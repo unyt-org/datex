@@ -3,7 +3,7 @@ mod serde_dif;
 use crate::{
     prelude::*,
     shared_values::base_shared_value_container::observers::TransceiverId,
-    values::value_container::{ValueContainer},
+    values::value_container::ValueContainer,
 };
 use strum::AsRefStr;
 mod append_entry;
@@ -139,7 +139,9 @@ impl Update {
     pub fn into_operation(self) -> UpdateOperation {
         self.data.into_operation()
     }
-    pub fn into_parts(self) -> (TransceiverId, UpdateOperation, Vec<ValueContainer>) {
+    pub fn into_parts(
+        self,
+    ) -> (TransceiverId, UpdateOperation, Vec<ValueContainer>) {
         let (operation, path) = self.data.into_parts();
         (self.source_id, operation, path)
     }

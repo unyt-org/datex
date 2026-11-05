@@ -255,7 +255,10 @@ mod tests {
     use crate::{
         libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
         runtime::{
-            cache::shared_values_cache::SharedValuesCache,
+            cache::{
+                shared_references_cache::SharedReferencesCache,
+                shared_values_cache::SharedValuesCache,
+            },
             pointer_address_provider::SelfOwnedPointerAddressProvider,
         },
         shared_values::{
@@ -265,14 +268,15 @@ mod tests {
         values::{core_value::CoreValue, core_values::list::List},
     };
     use core::cell::RefCell;
-    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
     #[test]
     fn pointer_address() {
         let mut provider = SelfOwnedPointerAddressProvider::default();
         let shared_values_cache = RefCell::new(SharedValuesCache::default());
-        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
-        let mut context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         let value = ValueContainer::Shared(SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
@@ -298,8 +302,10 @@ mod tests {
     fn owned() {
         let mut provider = SelfOwnedPointerAddressProvider::default();
         let shared_values_cache = RefCell::new(SharedValuesCache::default());
-        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
-        let mut context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         let value = ValueContainer::Shared(SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
@@ -321,16 +327,19 @@ mod tests {
         let addr = PointerAddress::SelfOwned(
             SelfOwnedPointerAddress::try_from(address_string).unwrap(),
         );
-        let container =
-            shared_values_cache.borrow_mut().try_take_owned_shared_container(&addr);
+        let container = shared_values_cache
+            .borrow_mut()
+            .try_take_owned_shared_container(&addr);
         assert!(container.is_ok());
     }
 
     #[test]
     fn referenced() {
         let shared_values_cache = RefCell::new(SharedValuesCache::default());
-        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
-        let mut context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         let owned_container =
             OwnedSharedContainer::new_with_inferred_allowed_type(
@@ -341,11 +350,11 @@ mod tests {
         let referenced_container = SharedContainer::Referenced(
             owned_container.derive_immutable_reference(),
         );
-        shared_values_cache
-            .borrow_mut()
-            .store_shared_container(SharedContainer::Referenced(
+        shared_values_cache.borrow_mut().store_shared_container(
+            SharedContainer::Referenced(
                 owned_container.derive_immutable_reference(),
-            ));
+            ),
+        );
         let pointer_address = referenced_container.pointer_address();
         let value = ValueContainer::Shared(referenced_container);
         let json = context.serialize_to_json(&value);
@@ -365,8 +374,10 @@ mod tests {
     #[test]
     fn deserialize_nested_pointer_address() {
         let shared_values_cache = RefCell::new(SharedValuesCache::default());
-        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
-        let context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         let owned_container =
             OwnedSharedContainer::new_with_inferred_allowed_type(

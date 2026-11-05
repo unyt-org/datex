@@ -6,15 +6,19 @@ use datex_core::{
         serde_context::SerdeContext,
         serialize_with_serde_context::SerializeWithSerdeContext,
     },
-    runtime::cache::shared_values_cache::SharedValuesCache,
+    runtime::{
+        Runtime,
+        cache::{
+            shared_references_cache::SharedReferencesCache,
+            shared_values_cache::SharedValuesCache,
+        },
+    },
 };
 use serde::de::IntoDeserializer;
-use datex_core::runtime::cache::shared_references_cache::SharedReferencesCache;
-use datex_core::runtime::Runtime;
 
+pub mod entities;
 mod enum_structural;
 mod struct_structural;
-pub mod entities;
 
 /// TODO: general helper function in datex_core
 pub fn serialize_to_json_value(
@@ -30,8 +34,10 @@ pub fn serialize_to_json_value_default_ctx(
     value: impl SerializeWithSerdeContext,
 ) -> serde_json::Value {
     let shared_values_cache = RefCell::new(SharedValuesCache::default());
-    let shared_references_cache = RefCell::new(SharedReferencesCache::default());
-    let context = SerdeContext::new(&shared_values_cache, & shared_references_cache);
+    let shared_references_cache =
+        RefCell::new(SharedReferencesCache::default());
+    let context =
+        SerdeContext::new(&shared_values_cache, &shared_references_cache);
     serialize_to_json_value(&context, value)
 }
 
@@ -50,7 +56,9 @@ pub fn deserialize_from_dif_default_ctx<
     json_value: &'de serde_json::Value,
 ) -> T {
     let shared_values_cache = RefCell::new(SharedValuesCache::default());
-    let shared_references_cache = RefCell::new(SharedReferencesCache::default());
-    let context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
+    let shared_references_cache =
+        RefCell::new(SharedReferencesCache::default());
+    let context =
+        SerdeContext::new(&shared_values_cache, &shared_references_cache);
     deserialize_from_dif(&context, json_value)
 }

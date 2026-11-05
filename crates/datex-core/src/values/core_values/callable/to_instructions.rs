@@ -3,7 +3,6 @@ use crate::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
     instruction::{
-        Instruction,
         instruction_data::{
             CallableData, CallableDataBody, CallableSignatureData,
             ShortTextData,
@@ -11,16 +10,16 @@ use crate::{
         regular_instruction::RegularInstruction,
     },
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     values::core_values::callable::{Callable, CallableBody},
 };
 use core::ops::Deref;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for Callable {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             let (body, injected_values) = match &self.body {
@@ -82,7 +81,8 @@ impl ToInstructions for Callable {
             }
             // add rest parameter type
             if let Some((_, param)) = &self.signature.rest_parameter {
-                for instruction in param.deref().to_instructions(visitor, cache) {
+                for instruction in param.deref().to_instructions(visitor, cache)
+                {
                     yield instruction;
                 }
             }
@@ -100,7 +100,8 @@ impl ToInstructions for Callable {
             }
 
             for value in injected_values {
-                let instructions: Vec<_> = value.to_instructions(visitor, cache).collect();
+                let instructions: Vec<_> =
+                    value.to_instructions(visitor, cache).collect();
 
                 for instruction in instructions {
                     yield instruction;

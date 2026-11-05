@@ -1,14 +1,26 @@
-use serde::de::{SeqAccess, Visitor};
-use serde::ser::SerializeSeq;
-use crate::dif::deserialize_serde_context::{DeserializeSerdeContext, ErasedSeed};
-use crate::dif::deserialize_with_serde_context::{DeserializeWithSerdeContext, DeserializeWithSerdeContextDyn};
-use crate::dif::serde_context::SerdeContext;
-use crate::dif::serialize_with_serde_context::{SerializeWithSerdeContext, SerializeWithSerdeContextDyn};
-use crate::prelude::*;
+use crate::{
+    dif::{
+        deserialize_serde_context::{DeserializeSerdeContext, ErasedSeed},
+        deserialize_with_serde_context::{
+            DeserializeWithSerdeContext, DeserializeWithSerdeContextDyn,
+        },
+        serde_context::SerdeContext,
+        serialize_with_serde_context::{
+            SerializeWithSerdeContext, SerializeWithSerdeContextDyn,
+        },
+    },
+    prelude::*,
+};
+use serde::{
+    de::{SeqAccess, Visitor},
+    ser::SerializeSeq,
+};
 
 pub struct DIFVec<'a, T>(pub &'a [T]);
 
-impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for DIFVec<'_, T> {
+impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext
+    for DIFVec<'_, T>
+{
     fn serialize_with_ctx<S: serde::Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
@@ -25,7 +37,7 @@ impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for DIFVec<'_, T
 pub struct OwnedDIFVec<T>(pub Vec<T>);
 
 impl<'de, T: DeserializeWithSerdeContextDyn> DeserializeWithSerdeContext<'de>
-for OwnedDIFVec<T>
+    for OwnedDIFVec<T>
 {
     fn deserialize_with_ctx<D>(
         ctx: &SerdeContext<'_>,
@@ -34,13 +46,14 @@ for OwnedDIFVec<T>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer
-            .deserialize_seq(DeserializeSerdeContext::<OwnedDIFVec<T>>::new(ctx))
+        deserializer.deserialize_seq(
+            DeserializeSerdeContext::<OwnedDIFVec<T>>::new(ctx),
+        )
     }
 }
 
 impl<'de, T: DeserializeWithSerdeContextDyn> Visitor<'de>
-for DeserializeSerdeContext<'_, '_, OwnedDIFVec<T>>
+    for DeserializeSerdeContext<'_, '_, OwnedDIFVec<T>>
 {
     type Value = OwnedDIFVec<T>;
 

@@ -89,10 +89,7 @@ fn compile_and_execute_list() {
 fn compile_and_execute_map() {
     let input = ValueContainer::from(Map::new_structural(vec![
         ("key1".into(), ValueContainer::from(Integer::from(1))),
-        (
-            "key2".into(),
-            ValueContainer::from("value".to_string()),
-        ),
+        ("key2".into(), ValueContainer::from("value".to_string())),
         ("key3".into(), ValueContainer::from(true)),
     ]));
     let result = compile_and_execute(input.clone());

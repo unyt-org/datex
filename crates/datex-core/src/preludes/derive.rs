@@ -7,6 +7,7 @@ macro_rules! derive_prelude {
                 to_instructions::ToInstructions, value_visitor::ValueVisitor,
             },
             datex_registry::get_impls_for,
+            datex_registry::*,
             dif::{
                 deserialize_serde_context::DeserializeSerdeContext,
                 deserialize_with_serde_context::DeserializeWithSerdeContext,
@@ -30,6 +31,13 @@ macro_rules! derive_prelude {
             serde,
             serde_compat::{
                 serde_to_value_container, try_serde_from_value_container,
+            },
+            shared_values::{
+                OwnedSharedContainer, PointerAddress, RemotePointerAddress,
+                SelfOwnedPointerAddress, SelfOwnedSharedContainer,
+                SharedContainerMutability,
+                base_shared_value_container::BaseSharedValueContainer,
+                errors::{AccessError, KeyNotFoundError},
             },
             traits::{
                 classification::Classification,
@@ -92,13 +100,6 @@ macro_rules! derive_prelude {
                     BorrowedValueContainer, BorrowedValueContainerMut,
                 },
             },
-            shared_values::{
-                PointerAddress, SelfOwnedPointerAddress, RemotePointerAddress,
-                errors::{AccessError, KeyNotFoundError},
-                SelfOwnedSharedContainer, base_shared_value_container::BaseSharedValueContainer,
-                SharedContainerMutability, OwnedSharedContainer,
-            },
-            datex_registry::*,
         };
     };
 }
@@ -110,8 +111,9 @@ macro_rules! derive_prelude_ast {
         use $crate::{
             ast,
             ast::{
-                expressions::DatexExpressionData, expressions::Statements,
-                expressions::EntityValueExpression, expressions::TagExpression, spanned::Spanned,
+                expressions::DatexExpressionData,
+                expressions::EntityValueExpression, expressions::Statements,
+                expressions::TagExpression, spanned::Spanned,
             },
             traits::to_datex_expression_data::ToDatexExpressionData,
         };

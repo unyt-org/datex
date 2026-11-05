@@ -2,13 +2,12 @@ use crate::{
     core_compiler::{
         core_compilation_context::ByteCursor, to_instructions::ToInstructions,
     },
-    instruction::{BytecodeItem, Instruction},
+    instruction::Instruction,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::SharedContainer,
 };
 use binrw::BinWrite;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::utils::goat_mut::GoatMut;
 
 pub trait ValueVisitor {
     fn visit_shared_container<'a>(

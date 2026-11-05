@@ -12,7 +12,6 @@ use crate::{
     prelude::*,
 };
 use core::slice::Iter;
-use crate::core_compiler::value_visitor::compile_instruction_iterator_to_dxb;
 
 pub macro assert_instructions_equal {
     ($dxb:expr, ($($expr:expr),* $(,)?)) => {{
@@ -70,7 +69,7 @@ pub fn assert_instruction_lists_eq(
     output_instructions: Vec<Instruction>,
     expected_instructions: Vec<Instruction>,
     output_dxb: &[u8],
-) {    
+) {
     if output_instructions != expected_instructions {
         let (expected_tree, expected_err) = get_instruction_tree_from_list(
             expected_instructions

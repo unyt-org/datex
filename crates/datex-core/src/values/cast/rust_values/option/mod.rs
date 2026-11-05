@@ -16,7 +16,7 @@ mod value_access;
 mod tests {
     use crate::{
         runtime::cache::shared_references_cache::SharedReferencesCache,
-        traits::get_datex_type::GetDatexType,
+        traits::{get_datex_type::GetDatexType, try_clone::TryClone},
         types::type_definition::TypeDefinition,
         values::{
             core_values::{
@@ -25,7 +25,6 @@ mod tests {
             value::Value,
         },
     };
-    use crate::traits::try_clone::TryClone;
 
     #[test]
     fn to_value() {
@@ -47,14 +46,16 @@ mod tests {
     fn from_value() {
         // Convert native Integer to Some(Integer) using try_convert_into_value
         let normal_value = Value::native(Integer::new(1));
-        let normal_some_option =
-            normal_value.try_convert_into_value::<Option<Integer>>().unwrap();
+        let normal_some_option = normal_value
+            .try_convert_into_value::<Option<Integer>>()
+            .unwrap();
         assert_eq!(normal_some_option, Some(Integer::new(1)));
 
         // Convert null to None using try_convert_into_value
         let null_value = Value::null();
-        let null_none_option =
-            null_value.try_convert_into_value::<Option<Integer>>().unwrap();
+        let null_none_option = null_value
+            .try_convert_into_value::<Option<Integer>>()
+            .unwrap();
         assert_eq!(null_none_option, None);
 
         // Convert Some(Integer) to Some(Integer) using try_into_value
@@ -98,7 +99,9 @@ mod tests {
         );
 
         assert_eq!(
-            value.try_convert_into_value::<Endpoint>().expect("Expected Endpoint"),
+            value
+                .try_convert_into_value::<Endpoint>()
+                .expect("Expected Endpoint"),
             endpoint
         );
     }

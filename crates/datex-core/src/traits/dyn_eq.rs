@@ -1,6 +1,5 @@
-use core::any::Any;
-use core::fmt::Debug;
 use crate::values::core_values::native::DatexNative;
+use core::{any::Any, fmt::Debug};
 
 /// A trait for dynamic equality comparison of types that implement `Any`.
 pub trait DynEq: Any {

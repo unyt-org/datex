@@ -1,6 +1,7 @@
 //! This module contains the implementation of all core value types in the DATEX type system, such as [boolean::Boolean], [integer::Integer], and [text::Text].
 pub mod boolean;
 pub mod callable;
+pub mod channel;
 pub mod decimal;
 pub mod endpoint;
 pub mod error;
@@ -10,7 +11,6 @@ pub mod list;
 pub mod map;
 pub mod native;
 pub mod range;
-pub mod text;
-pub mod sender;
 pub mod receiver;
-pub mod channel;
+pub mod sender;
+pub mod text;

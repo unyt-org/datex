@@ -1,9 +1,12 @@
-use serde::{de, Deserializer};
-use serde::de::DeserializeSeed;
-use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
-use crate::dif::serde_context::SerdeContext;
-use crate::traits::convert_value::ConvertValue;
-use crate::values::value::Value;
+use crate::{
+    dif::{
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+    },
+    traits::convert_value::ConvertValue,
+    values::value::Value,
+};
+use serde::{Deserializer, de, de::DeserializeSeed};
 
 // Serde erased deserialize function that deserializes into a Value
 pub type DeFn = for<'a> fn(
@@ -30,7 +33,10 @@ pub struct DynSeed<'c, 'x> {
 impl<'de> DeserializeSeed<'de> for DynSeed<'_, '_> {
     type Value = Value;
 
-    fn deserialize<D: Deserializer<'de>>(self, d: D) -> Result<Value, D::Error> {
+    fn deserialize<D: Deserializer<'de>>(
+        self,
+        d: D,
+    ) -> Result<Value, D::Error> {
         let mut erased = <dyn erased_serde::Deserializer>::erase(d);
         (self.f)(self.ctx, &mut erased).map_err(de::Error::custom)
     }

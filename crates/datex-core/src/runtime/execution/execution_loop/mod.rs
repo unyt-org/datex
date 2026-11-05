@@ -105,7 +105,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, ops::DerefMut};
-use log::info;
 
 mod collected_execution_result;
 use crate::{
@@ -117,22 +116,26 @@ use crate::{
     types::{
         entities::entity_type_definition::EntityTypeDefinition,
         entity_type::EntityType,
-        type_definition::callable::CallableTypeDefinition,
+        type_definition::{
+            callable::CallableTypeDefinition,
+            collection::type_definition::{
+                receiver::ReceiverTypeDefinition, sender::SenderTypeDefinition,
+            },
+        },
     },
     value_updates::update_data::{
         DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData,
     },
     values::{
-        core_values::callable::DatexBytecodeCallable,
+        core_values::{
+            callable::DatexBytecodeCallable, receiver::ValueContainerReceiver,
+            sender::Sender,
+        },
         value::value_classification::{ValueClassification, ValueTag},
         value_container::borrowed_value_container::BorrowedValueContainer,
     },
 };
 use collected_execution_result::CollectedExecutionResult;
-use crate::types::type_definition::collection::type_definition::receiver::ReceiverTypeDefinition;
-use crate::types::type_definition::collection::type_definition::sender::SenderTypeDefinition;
-use crate::values::core_values::receiver::{Receiver, ValueContainerReceiver};
-use crate::values::core_values::sender::Sender;
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations
@@ -717,7 +720,7 @@ pub gen fn inner_execution_loop(
                                         ValueContainer::from(Map::try_new(
                                             entries,
                                             allow_only_text_keys,
-                                        ).map_err(|e| ExecutionError::InvalidTypeCast)?),
+                                        ).map_err(|_e| ExecutionError::InvalidTypeCast)?),
                                     )
                                         .into()
                                 }

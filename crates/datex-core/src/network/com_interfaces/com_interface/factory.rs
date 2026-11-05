@@ -12,7 +12,7 @@ use crate::{
     },
     prelude::*,
     std_sync::Mutex,
-    traits::convert_value::ConvertValue,
+    traits::{convert_parts::FromParts, convert_value::ConvertValue},
     utils::async_callback::AsyncCallback,
     values::{core_values::endpoint::Endpoint, value::Value},
 };
@@ -20,7 +20,6 @@ use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
 use futures::channel::oneshot::Sender;
 use futures_core::future::LocalBoxFuture;
 use futures_util::TryStreamExt;
-use crate::traits::convert_parts::FromParts;
 
 pub type NewSocketsIterator = Pin<
     Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,

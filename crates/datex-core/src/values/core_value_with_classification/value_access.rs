@@ -15,6 +15,7 @@ use crate::{
             value_classification::ValueClassification,
         },
         value_container::{
+            ValueContainer,
             borrowed_value_container::{
                 BorrowedValueContainer, BorrowedValueContainerMut,
             },
@@ -22,7 +23,6 @@ use crate::{
     },
 };
 use core::cell::Ref;
-use crate::values::value_container::ValueContainer;
 
 impl ValueAccess for CoreValueWithClassification {
     fn try_get_property(

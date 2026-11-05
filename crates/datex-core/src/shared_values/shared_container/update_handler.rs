@@ -56,10 +56,7 @@ mod tests {
             },
         },
         value_updates::update_data::{UpdateData, UpdateOperation},
-        values::{
-            core_values::list::List,
-            value_container::{ValueContainer},
-        },
+        values::{core_values::list::List, value_container::ValueContainer},
     };
     use alloc::rc::Rc;
     use core::cell::RefCell;

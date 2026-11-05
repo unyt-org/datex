@@ -1,13 +1,10 @@
 pub mod convert_value_sized;
 
-use crate::{
-    dif::deserialize_serde_context::impl_serde_with_context,
-    traits::{datex_hash::impl_datex_hash, value_access::ValueAccess},
-};
+use crate::traits::{datex_hash::impl_datex_hash, value_access::ValueAccess};
 mod convert_value;
+pub mod serde_dif;
 mod to_instructions;
 mod try_clone;
-pub mod serde_dif;
 
 #[cfg(feature = "ast")]
 mod to_datex_expression_data {

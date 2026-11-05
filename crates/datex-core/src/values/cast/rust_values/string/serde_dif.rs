@@ -4,11 +4,11 @@ use crate::{
         serde_context::SerdeContext,
         serialize_with_serde_context::SerializeWithSerdeContext,
     },
-    libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
+    libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
     values::core_value::CoreValue,
 };
-use serde::{Deserialize, Serializer, de::Error};
+use serde::{Serializer, de::Error};
 
 impl SerializeWithSerdeContext for String {
     fn serialize_with_ctx<S: Serializer>(

@@ -1,9 +1,6 @@
 use crate::{
     value_updates::errors::UpdateError,
-    values::{
-        value::Value,
-        value_container::{ValueContainer},
-    },
+    values::{value::Value, value_container::ValueContainer},
 };
 
 /// Trait that can be implemented on core values that allows the resolution

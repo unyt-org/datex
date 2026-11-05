@@ -56,12 +56,12 @@ impl Serialize for LiteralTypeDefinition {
         }
     }
 }
+use crate::values::core_values::text::Text;
 use core::fmt;
 use serde::{
     Deserialize,
     de::{self, Deserializer, Visitor},
 };
-use crate::values::core_values::text::Text;
 
 impl<'de> Deserialize<'de> for LiteralTypeDefinition {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

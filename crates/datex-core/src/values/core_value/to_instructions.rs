@@ -3,18 +3,18 @@ use crate::{
         to_instructions::{ToInstructions, yield_all},
         value_visitor::ValueVisitor,
     },
-    instruction::{Instruction, regular_instruction::RegularInstruction},
+    instruction::regular_instruction::RegularInstruction,
     libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex},
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     values::core_value::CoreValue,
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for CoreValue {
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             match self {
@@ -61,7 +61,9 @@ impl ToInstructions for CoreValue {
                     }
                 }
                 CoreValue::EntityTypeDefinition(entity_type_definition) => {
-                    yield_all!(entity_type_definition.to_instructions(visitor, cache));
+                    yield_all!(
+                        entity_type_definition.to_instructions(visitor, cache)
+                    );
                 }
                 CoreValue::Callable(callable) => {
                     yield_all!(callable.to_instructions(visitor, cache));

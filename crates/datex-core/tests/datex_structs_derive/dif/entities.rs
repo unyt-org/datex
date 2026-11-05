@@ -53,9 +53,7 @@ fn named_entity_struct_to_dif() {
     let serialized = serialize_to_json_value_default_ctx(example_vc);
 
     let ptr_address = match NamedExampleEntityStruct::datex_type(cache) {
-        Type::Entity(entity_type) => {
-            entity_type.pointer_address().to_string()
-        }
+        Type::Entity(entity_type) => entity_type.pointer_address().to_string(),
         _ => panic!("Expected NamedExampleEntityStruct to be an entity type"),
     };
 
@@ -100,7 +98,10 @@ fn named_entity_struct_from_dif() {
     let mut values_cache = SharedValuesCache::default();
     values_cache.store_shared_container(resolved_type_container);
     let values_cache = RefCell::new(values_cache);
-    let ctx = SerdeContext::new(&values_cache, runtime.shared_references_cache_refcell());
+    let ctx = SerdeContext::new(
+        &values_cache,
+        runtime.shared_references_cache_refcell(),
+    );
 
     let json_value = serde_json::json!({
         "_": "c",

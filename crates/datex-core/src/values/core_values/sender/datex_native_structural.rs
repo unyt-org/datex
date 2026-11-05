@@ -1,13 +1,11 @@
 use crate::{
-    prelude::*,
     traits::{
         datex_native_only_structural::DatexNativeOnlyStructural,
         datex_native_structural::DatexNativeStructural,
         get_datex_type::GetDatexType,
     },
-    values::core_values::native::DatexNativeBase,
+    values::core_values::{native::DatexNativeBase, sender::Sender},
 };
-use crate::values::core_values::sender::Sender;
 
 /// `Sender<T>` always implements [DatexNativeStructural].
 impl<T: DatexNativeBase + GetDatexType + 'static> DatexNativeStructural

@@ -1,16 +1,19 @@
 mod clone_unsafe;
 mod common;
+pub mod convert_parts;
 mod convert_value_container;
 pub mod get_datex_type;
 pub mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
-pub mod convert_parts;
 
 use crate::{
     prelude::*,
-    runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+    runtime::{
+        cache::shared_references_cache::SharedReferencesCache,
+        pointer_address_provider::SelfOwnedPointerAddressProvider,
+    },
     shared_values::{
         ReferencedSharedContainer, RemotePointerAddress,
         SelfOwnedPointerAddress, SelfOwnedSharedContainer,
@@ -25,7 +28,9 @@ use crate::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
     utils::impl_display_for_datex_value::impl_display_for_datex_value,
-    values::value_container::ValueContainer,
+    values::{
+        core_values::native::DatexNative, value_container::ValueContainer,
+    },
 };
 use alloc::rc::Rc;
 use core::{
@@ -34,9 +39,6 @@ use core::{
     hash::{Hash, Hasher},
     mem,
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::shared_values::SharedContainer;
-use crate::values::core_values::native::DatexNative;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
@@ -96,14 +98,13 @@ impl OwnedSharedContainer {
         }
     }
 
-
     /// Creates a new [OwnedSharedContainer] containing an initial [DatexNative] value.
     /// The allowed type is the type of the [DatexNative].
     pub fn new_native<T: DatexNative>(
         value: T,
         mutability: SharedContainerMutability,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        cache: &mut SharedReferencesCache
+        cache: &mut SharedReferencesCache,
     ) -> Self {
         let ty = value.allowed_type(cache);
 
@@ -117,13 +118,13 @@ impl OwnedSharedContainer {
                     value_container,
                     ty,
                     mutability,
-                ).unwrap(), // the unwrap is safe since the type of the native value is guaranteed to match the value
+                )
+                .unwrap(), // the unwrap is safe since the type of the native value is guaranteed to match the value
                 address_provider.get_new_self_owned_address(),
                 is_uninitialized,
             )
         }
     }
-
 
     /// Creates a new [OwnedSharedContainer] with an initial [ValueContainer],
     /// a [SharedContainerMutability], and an [SelfOwnedPointerAddress].

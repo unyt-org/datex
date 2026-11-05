@@ -7,27 +7,27 @@ use crate::{
     },
 };
 use core::{
-    any::Any,
+    any::{Any, TypeId},
     fmt::{Debug, Formatter},
     ops::{Deref, DerefMut},
 };
-use core::any::TypeId;
 
 mod datex_native_ops;
 pub use datex_native_ops::*;
+pub mod classification;
 mod datex_native_trait;
 pub mod display;
+pub mod equality;
 mod get_datex_type;
 pub mod goat_helpers;
 mod ops;
 pub mod serde_dif;
-pub mod equality;
-pub mod classification;
 
 use crate::{
     libs::core::type_id::CoreLibTypeId,
     traits::{
-        classification::Classification, convert_value::ConvertValue,
+        classification::Classification, convert_parts::FromParts,
+        convert_value::ConvertValue,
         convert_value_container::ConvertValueContainer, try_clone::TryClone,
     },
     utils::goat::Goat,
@@ -40,9 +40,10 @@ use crate::{
 };
 pub use datex_native_trait::*;
 pub use ops::*;
-use crate::traits::convert_parts::FromParts;
 
-impl<T: DatexNative + ConvertValue + Classification> ConvertValueContainer for T {
+impl<T: DatexNative + ConvertValue + Classification> ConvertValueContainer
+    for T
+{
     fn to_value_container(self) -> ValueContainer {
         ValueContainer::Local(T::to_value(self))
     }
@@ -67,12 +68,16 @@ impl<T: DatexNative + ConvertValue + Classification> ConvertValueContainer for T
         Self: Sized,
     {
         match value_container {
-            ValueContainer::Local(value) => Self::try_from_value(value).map_err(ValueContainer::Local),
+            ValueContainer::Local(value) => {
+                Self::try_from_value(value).map_err(ValueContainer::Local)
+            }
             _ => Err(value_container),
         }
     }
 
-    fn try_convert_from_value_container(value_container: ValueContainer) -> Result<Self, ()>
+    fn try_convert_from_value_container(
+        value_container: ValueContainer,
+    ) -> Result<Self, ()>
     where
         Self: FromParts + Sized,
     {
@@ -176,7 +181,7 @@ impl NativeCoreValue {
     /// Returns `Some(&mut T)` if the downcast is successful, or `None` if it fails.
     pub fn try_as_mut<T: 'static>(&mut self) -> Option<&mut T> {
         let any_mut = self.value.as_any_mut();
-        let type_id = (&*any_mut).type_id();
+        let type_id = (*any_mut).type_id();
 
         if type_id == TypeId::of::<T>() {
             return any_mut.downcast_mut::<T>();
@@ -187,7 +192,9 @@ impl NativeCoreValue {
         }
 
         if type_id == TypeId::of::<Option<T>>() {
-            return any_mut.downcast_mut::<Option<T>>().and_then(|val| val.as_mut());
+            return any_mut
+                .downcast_mut::<Option<T>>()
+                .and_then(|val| val.as_mut());
         }
 
         None

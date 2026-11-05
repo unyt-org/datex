@@ -14,8 +14,7 @@ use crate::{
         update_handler::{UpdateCallbackDataAccess, UpdateHandlerImpl},
     },
     values::{
-        core_values::native::DatexNativeBase,
-        value_container::{ValueContainer},
+        core_values::native::DatexNativeBase, value_container::ValueContainer,
     },
 };
 impl<T: DatexNativeBase + 'static> UpdateCallbackDataAccess for Vec<T> {}
@@ -25,9 +24,9 @@ impl<T: DatexNativeBase + 'static> UpdateHandlerImpl for Vec<T> {
         data: SetEntryUpdateData,
         _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<Option<ValueContainer>, UpdateError> {
-        let key = *data.key.try_as::<u32>().ok_or_else(
-            || UpdateError::access_error(AccessError::InvalidIndexKey),
-        )? as usize;
+        let key = *data.key.try_as::<u32>().ok_or_else(|| {
+            UpdateError::access_error(AccessError::InvalidIndexKey)
+        })? as usize;
         self.get_mut(key)
             .map(|previous| {
                 let new = data.value.try_into_value::<T>().map_err(|_| ())?;
@@ -49,9 +48,9 @@ impl<T: DatexNativeBase + 'static> UpdateHandlerImpl for Vec<T> {
         data: DeleteEntryUpdateData,
         _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<ValueContainer, UpdateError> {
-        let key = *data.key.try_as::<u32>().ok_or_else(
-            || UpdateError::access_error(AccessError::InvalidIndexKey),
-        )? as usize;
+        let key = *data.key.try_as::<u32>().ok_or_else(|| {
+            UpdateError::access_error(AccessError::InvalidIndexKey)
+        })? as usize;
         let removed = self.try_remove(key).ok_or_else(|| {
             UpdateError::access_error(AccessError::IndexOutOfBounds(
                 IndexOutOfBoundsError { index: key as u32 },

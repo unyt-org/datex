@@ -4,13 +4,13 @@ use crate::{
     values::{
         core_values::list::List,
         value_container::{
+            ValueContainer,
             borrowed_value_container::{
                 BorrowedValueContainer, BorrowedValueContainerMut,
             },
         },
     },
 };
-use crate::values::value_container::ValueContainer;
 
 impl ValueAccess for List {
     fn try_get_property(
@@ -28,7 +28,7 @@ impl ValueAccess for List {
         &mut self,
         key: &ValueContainer,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
-        if let Some(index) = key.try_as::<u32>(){
+        if let Some(index) = key.try_as::<u32>() {
             Ok(self.try_get_mut(*index as i64)?.into()) // FIXME: int conversion
         } else {
             Err(AccessError::InvalidIndexKey)

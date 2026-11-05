@@ -1,5 +1,5 @@
 use crate::{
-    libs::core::type_id::CoreLibTypeId,
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     traits::get_core_lib_type_id::GetCoreLibTypeId,
     types::{
         traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
@@ -7,7 +7,6 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
-use crate::libs::core::type_id::CoreLibBaseTypeId;
 
 /// Type superset of core lib types, e.g. integer >= integer/u8
 impl TypeSuperset<CoreLibTypeId> for CoreLibTypeId {

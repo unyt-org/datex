@@ -1,13 +1,20 @@
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::shared_values::PointerAddress;
-use crate::traits::classification::Classification;
-use crate::types::entity_type::EntityType;
-use crate::values::core_values::native::NativeCoreValue;
-use crate::values::value::value_classification::{ValueTag};
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    shared_values::PointerAddress,
+    traits::classification::Classification,
+    types::entity_type::EntityType,
+    values::{
+        core_values::native::NativeCoreValue,
+        value::value_classification::ValueTag,
+    },
+};
 
 impl Classification for NativeCoreValue {
-    fn entity_type(&self, cache: &mut SharedReferencesCache) -> Option<EntityType> {
+    fn entity_type(
+        &self,
+        cache: &mut SharedReferencesCache,
+    ) -> Option<EntityType> {
         self.value.entity_type(cache)
     }
 

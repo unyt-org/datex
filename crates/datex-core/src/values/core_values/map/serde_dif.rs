@@ -6,6 +6,7 @@ use crate::{
         serialize_with_serde_context::SerializeWithSerdeContext,
         value_with_serde_context::ValueWithSerdeContext,
     },
+    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
     prelude::*,
     values::{
         core_values::map::{Map, MapEntries},
@@ -20,8 +21,6 @@ use serde::{
     de::{MapAccess, SeqAccess, Visitor},
     ser::{SerializeMap, SerializeSeq, SerializeTuple},
 };
-use crate::libs::core::core_lib_id::CoreLibIdIndex;
-use crate::libs::core::type_id::CoreLibBaseTypeId;
 
 pub struct InnerMap<'a>(&'a Map);
 
@@ -49,9 +48,7 @@ impl SerializeWithSerdeContext for InnerMap<'_> {
                 }
             }
             map.end()
-        }
-
-        else {
+        } else {
             let mut seq = serializer.serialize_seq(Some(self.0.size()))?;
 
             for (key, value) in self.0.iter() {
@@ -96,8 +93,13 @@ impl SerializeWithSerdeContext for Map {
         S: Serializer,
     {
         let mut tuple = serializer.serialize_tuple(2)?;
-        tuple.serialize_element(&CoreLibIdIndex::from(CoreLibBaseTypeId::Map).to_u16())?;
-        tuple.serialize_element(&ValueWithSerdeContext::new(&InnerMap(self), ctx))?;
+        tuple.serialize_element(
+            &CoreLibIdIndex::from(CoreLibBaseTypeId::Map).to_u16(),
+        )?;
+        tuple.serialize_element(&ValueWithSerdeContext::new(
+            &InnerMap(self),
+            ctx,
+        ))?;
         tuple.end()
     }
 }
@@ -138,7 +140,8 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Map> {
         Ok(Map::try_new(
             MapEntries::Dynamic(IndexMap::from_iter(entries)),
             true,
-        ).unwrap())
+        )
+        .unwrap())
     }
 
     fn visit_seq<A>(self, mut seq: A) -> Result<Map, A::Error>

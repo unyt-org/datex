@@ -98,15 +98,25 @@ impl SerializeWithSerdeContext for CoreValue {
 
             // Complex core values, that can contain nested values
             CoreValue::List(l) => l.serialize_with_ctx(ctx, serializer),
-            CoreValue::Range(range) => range.serialize_with_ctx(ctx, serializer),
+            CoreValue::Range(range) => {
+                range.serialize_with_ctx(ctx, serializer)
+            }
 
             CoreValue::Map(map) => map.serialize_with_ctx(ctx, serializer),
             CoreValue::Type(ty) => ty.serialize_with_ctx(ctx, serializer),
-            CoreValue::EntityTypeDefinition(entity_type_definition) => entity_type_definition.serialize_with_ctx(ctx, serializer),
-            CoreValue::Callable(callable) => callable.serialize_with_ctx(ctx, serializer),
+            CoreValue::EntityTypeDefinition(entity_type_definition) => {
+                entity_type_definition.serialize_with_ctx(ctx, serializer)
+            }
+            CoreValue::Callable(callable) => {
+                callable.serialize_with_ctx(ctx, serializer)
+            }
             CoreValue::Box(inner) => inner.serialize_with_ctx(ctx, serializer),
-            CoreValue::Sender(sender) => sender.serialize_with_ctx(ctx, serializer),
-            CoreValue::Receiver(receiver) => receiver.serialize_with_ctx(ctx, serializer),
+            CoreValue::Sender(sender) => {
+                sender.serialize_with_ctx(ctx, serializer)
+            }
+            CoreValue::Receiver(receiver) => {
+                receiver.serialize_with_ctx(ctx, serializer)
+            }
             CoreValue::Uninitialized => panic!("Uninitialized value"),
         }
     }
@@ -795,19 +805,23 @@ mod tests {
     use super::*;
     use core::cell::RefCell;
 
-    use crate::runtime::cache::shared_values_cache::SharedValuesCache;
+    use crate::runtime::cache::{
+        shared_references_cache::SharedReferencesCache,
+        shared_values_cache::SharedValuesCache,
+    };
     use serde::de::DeserializeSeed;
     use serde_json::json;
     use test_case::test_case;
-    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
     fn deserialize_value(
         core_lib_id: CoreLibTypeId,
         value: serde_json::Value,
     ) -> Result<CoreValue, serde_json::Error> {
         let shared_values_cache = RefCell::new(SharedValuesCache::default());
-        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
-        let context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
         let mut deserialize_ctx = DeserializeSerdeContext::new(&context);
 
         CoreValueVisitor {

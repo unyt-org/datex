@@ -4,8 +4,8 @@ use crate::datex_proxy::data::{
     StructureData, TypeKind,
 };
 use proc_macro2::Span;
-use std::{env, path::PathBuf, str::FromStr};
 use quote::ToTokens;
+use std::{env, path::PathBuf, str::FromStr};
 use syn::{
     Attribute, Data, DataEnum, DataStruct, DeriveInput, Meta, Token,
     punctuated::Punctuated,
@@ -213,9 +213,13 @@ fn parse_structure_attributes(attrs: &[Attribute]) -> StructureAttributes {
                     if name_value.path.is_ident("builtin") =>
                 {
                     if builtin_address.is_some() {
-                        panic!("datex(builtin = ...) must only be specified once");
+                        panic!(
+                            "datex(builtin = ...) must only be specified once"
+                        );
                     }
-                    let address = parse_hex_literal_to_u32(&name_value.value.to_token_stream().to_string());
+                    let address = parse_hex_literal_to_u32(
+                        &name_value.value.to_token_stream().to_string(),
+                    );
                     builtin_address = Some(address);
                 }
                 meta => {
@@ -357,9 +361,8 @@ fn parse_string_attribute(
 // parses e.g. 0x000001 into a u32
 fn parse_hex_literal_to_u32(literal: &str) -> u32 {
     let literal = literal.trim_start_matches("0x");
-    u32::from_str_radix(literal, 16).unwrap_or_else(|_| {
-        panic!("Invalid hexadecimal literal: {}", literal)
-    })
+    u32::from_str_radix(literal, 16)
+        .unwrap_or_else(|_| panic!("Invalid hexadecimal literal: {}", literal))
 }
 
 fn parse_doc_comments(attrs: &[Attribute]) -> Option<String> {

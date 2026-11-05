@@ -4,8 +4,12 @@ use crate::{
         deserialize_with_serde_context::DeserializeWithSerdeContext,
         serde_context::SerdeContext,
         serialize_with_serde_context::SerializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
     },
-    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibTypeId},
+    libs::core::{
+        core_lib_id::CoreLibIdIndex,
+        type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    },
     prelude::*,
     shared_values::SharedContainer,
     types::{
@@ -24,11 +28,8 @@ use serde::{
     Serializer,
     de::{IntoDeserializer, Visitor},
 };
-use crate::dif::value_with_serde_context::ValueWithSerdeContext;
-use crate::libs::core::type_id::CoreLibBaseTypeId;
 
 struct InnerType<'a>(&'a Type);
-
 
 impl SerializeWithSerdeContext for InnerType<'_> {
     fn serialize_with_ctx<S>(
@@ -44,12 +45,12 @@ impl SerializeWithSerdeContext for InnerType<'_> {
                 .definition
             {
                 TypeDefinition::CoreType(_core)
-                if type_definition.metadata == TypeMetadata::default() =>
-                    {
-                        type_definition
-                            .definition
-                            .serialize_with_ctx(ctx, serializer)
-                    }
+                    if type_definition.metadata == TypeMetadata::default() =>
+                {
+                    type_definition
+                        .definition
+                        .serialize_with_ctx(ctx, serializer)
+                }
                 _ => type_definition.serialize_with_ctx(ctx, serializer),
             },
             Type::Entity(shared_container_containing_nominal_type) => {
@@ -61,7 +62,6 @@ impl SerializeWithSerdeContext for InnerType<'_> {
     }
 }
 
-
 impl SerializeWithSerdeContext for Type {
     fn serialize_with_ctx<S>(
         &self,
@@ -72,8 +72,13 @@ impl SerializeWithSerdeContext for Type {
         S: Serializer,
     {
         let mut tuple = serializer.serialize_tuple(2)?;
-        tuple.serialize_element(&CoreLibIdIndex::from(CoreLibBaseTypeId::Type).to_u16())?;;
-        tuple.serialize_element(&ValueWithSerdeContext::new(&InnerType(self), ctx))?;
+        tuple.serialize_element(
+            &CoreLibIdIndex::from(CoreLibBaseTypeId::Type).to_u16(),
+        )?;
+        tuple.serialize_element(&ValueWithSerdeContext::new(
+            &InnerType(self),
+            ctx,
+        ))?;
         tuple.end()
     }
 }

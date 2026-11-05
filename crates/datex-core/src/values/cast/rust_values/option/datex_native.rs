@@ -3,7 +3,7 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::AccessError,
     traits::{
-        convert_value::ConvertValue,
+        convert_value::ConvertValue, get_datex_type::GetDatexType,
         local_child_path_resolver::LocalChildPathResolver,
     },
     value_updates::{
@@ -17,9 +17,10 @@ use crate::{
     },
 };
 use core::{any::Any, cell::RefCell};
-use crate::traits::get_datex_type::GetDatexType;
 
-impl<T: DatexNative + GetDatexType + ConvertValue + 'static> DatexNative for Option<T> {
+impl<T: DatexNative + GetDatexType + ConvertValue + 'static> DatexNative
+    for Option<T>
+{
     fn as_any(&self) -> &dyn Any {
         self
     }

@@ -2,15 +2,17 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::{
-    datex_proxy::data::{
-        EnumVariant, Field, FieldMapping, Fields, NamedField, Structure,
-        StructureData, TypeKind,
+    datex_proxy::{
+        data::{
+            EnumVariant, Field, FieldMapping, Fields, NamedField, Structure,
+            StructureData, TypeKind,
+        },
+        helpers::get_pointer_address_for_struct,
     },
     utils::{
         get_datex_core_crate_name_with_options, get_project_relative_file_path,
     },
 };
-use crate::datex_proxy::helpers::get_pointer_address_for_struct;
 
 pub fn generate_core_lib_type_id(
     structure_data: &StructureData,
@@ -73,8 +75,9 @@ pub fn generate_datex_type(structure_data: &StructureData) -> TokenStream {
 }
 
 fn generate_type_registration(structure_data: &StructureData) -> TokenStream {
-    let datex_core_crate_name =
-        get_datex_core_crate_name_with_options(structure_data.attributes.force_datex_core_namespace);
+    let datex_core_crate_name = get_datex_core_crate_name_with_options(
+        structure_data.attributes.force_datex_core_namespace,
+    );
 
     let StructureData {
         ident,
@@ -231,7 +234,7 @@ fn generate_type(structure_data: &StructureData) -> TokenStream {
         }
     } else {
         let ptr_address_init = get_pointer_address_for_struct(structure_data);
-        
+
         let name = structure_data
             .attributes
             .datex_name

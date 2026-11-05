@@ -2,35 +2,41 @@ use datex_core::{
     core_compiler::{
         core_compilation_context::{CompileInput, CoreCompilationContext},
         to_instructions::ToInstructions,
+        value_compiler::compile_value,
     },
-    disassembler::assertions::{
-        assert_instruction_lists_eq, assert_instructions_equal, instructions,
+    disassembler::{
+        assertions::{
+            assert_instruction_lists_eq, assert_instructions_equal,
+            instructions,
+        },
+        disassemble_body, disassemble_instruction_tree_to_string,
+        options::DisassemblerOptions,
     },
+    global::stack_index::StackIndex,
     instruction::{
-        BytecodeItem, Instruction,
+        BytecodeItem, Instruction, NestedInstructionResolutionStrategy,
+        instruction_data::{ClassifiedValueData, MapData, MoveWithValue},
         regular_instruction::RegularInstruction,
+        type_instruction::TypeInstruction,
     },
+    libs::core::type_id::CoreLibVariantTypeId,
     runtime::{
         cache::shared_references_cache::SharedReferencesCache,
         pointer_availability_lookup::PointerAvailabilityLookup,
     },
-    values::value::Value,
-    traits::get_datex_type::GetDatexType
+    shared_values::{
+        PointerAddress, SelfOwnedPointerAddress, SharedContainerMutability,
+    },
+    traits::get_datex_type::GetDatexType,
+    types::{
+        literal_type_definition::LiteralTypeDefinition, r#type::Type,
+        type_definition_with_metadata::TypeMetadata,
+    },
+    values::{
+        core_values::{integer::typed_integer::IntegerTypeVariant, text::Text},
+        value::Value,
+    },
 };
-use datex_core::core_compiler::value_compiler::compile_value;
-use datex_core::disassembler::{disassemble_body, disassemble_instruction_tree_to_string};
-use datex_core::disassembler::options::DisassemblerOptions;
-use datex_core::global::stack_index::StackIndex;
-use datex_core::instruction::instruction_data::{ClassifiedValueData, MapData, MoveWithValue};
-use datex_core::instruction::NestedInstructionResolutionStrategy;
-use datex_core::instruction::type_instruction::TypeInstruction;
-use datex_core::libs::core::type_id::CoreLibVariantTypeId;
-use datex_core::shared_values::{PointerAddress, SelfOwnedPointerAddress, SharedContainerMutability};
-use datex_core::types::literal_type_definition::LiteralTypeDefinition;
-use datex_core::types::r#type::Type;
-use datex_core::types::type_definition_with_metadata::TypeMetadata;
-use datex_core::values::core_values::integer::typed_integer::IntegerTypeVariant;
-use datex_core::values::core_values::text::Text;
 use datex_macros_internal::Datex;
 #[derive(Datex, Debug)]
 #[datex(structural)]
@@ -53,19 +59,25 @@ fn to_instructions<T: ToInstructions>(structure: &T) -> Vec<Instruction> {
 
 /// Converts a structure that implements `ToInstructions` into a vector of `Instruction`s.
 /// Includes the preamble.
-fn to_instructions_with_preamble<T: ToInstructions>(structure: &T) -> Vec<Instruction> {
+fn to_instructions_with_preamble<T: ToInstructions>(
+    structure: &T,
+) -> Vec<Instruction> {
     let cache = &mut SharedReferencesCache::default();
     let pointer_lookup = PointerAvailabilityLookup::default();
-    let dxb = CoreCompilationContext::new(CompileInput::new(&pointer_lookup, &[]))
-        .compile_to_dxb_with_shared_values(structure, cache)
-        .dxb;
+    let dxb =
+        CoreCompilationContext::new(CompileInput::new(&pointer_lookup, &[]))
+            .compile_to_dxb_with_shared_values(structure, cache)
+            .dxb;
 
-    disassemble_body(&dxb, NestedInstructionResolutionStrategy::ResolveNestedScopesTree)
-        .0
-        .flatten()
-        .into_iter()
-        .map(|item| item.instruction)
-        .collect::<Vec<_>>()
+    disassemble_body(
+        &dxb,
+        NestedInstructionResolutionStrategy::ResolveNestedScopesTree,
+    )
+    .0
+    .flatten()
+    .into_iter()
+    .map(|item| item.instruction)
+    .collect::<Vec<_>>()
 }
 
 #[test]
@@ -127,8 +139,11 @@ fn example_enum_variant_1_to_instructions() {
     let variant1 = ExampleEnum::Variant1(42);
     assert_instruction_lists_eq!(
         to_instructions(&variant1),
-        (RegularInstruction::ClassifiedValue(ClassifiedValueData::new_tagged("Variant1".to_string(), false))
-            .with_children(instructions!(RegularInstruction::uint8(42),)))
+        (RegularInstruction::ClassifiedValue(ClassifiedValueData::new_tagged(
+            "Variant1".to_string(),
+            false
+        ))
+        .with_children(instructions!(RegularInstruction::uint8(42),)))
     );
 }
 
@@ -140,17 +155,20 @@ fn example_enum_variant_2_to_instructions() {
     };
     assert_instruction_lists_eq!(
         to_instructions(&variant2),
-        (RegularInstruction::ClassifiedValue(ClassifiedValueData::new_tagged("Variant2".to_string(), false))
-            .with_children(instructions!(
-                RegularInstruction::map(2, true).with_children(instructions!(
-                    // x
-                    RegularInstruction::key_value_short_text("x".to_string()),
-                    RegularInstruction::uint8(42),
-                    // y
-                    RegularInstruction::key_value_short_text("y".to_string()),
-                    RegularInstruction::text("Test".to_string()),
-                ))
-            )))
+        (RegularInstruction::ClassifiedValue(ClassifiedValueData::new_tagged(
+            "Variant2".to_string(),
+            false
+        ))
+        .with_children(instructions!(
+            RegularInstruction::map(2, true).with_children(instructions!(
+                // x
+                RegularInstruction::key_value_short_text("x".to_string()),
+                RegularInstruction::uint8(42),
+                // y
+                RegularInstruction::key_value_short_text("y".to_string()),
+                RegularInstruction::text("Test".to_string()),
+            ))
+        )))
     );
 }
 
@@ -159,13 +177,16 @@ fn example_enum_variant_3_to_instructions() {
     let variant3 = ExampleEnum::Variant3(42, "Test".to_string());
     assert_instruction_lists_eq!(
         to_instructions(&variant3),
-        (RegularInstruction::ClassifiedValue(ClassifiedValueData::new_tagged("Variant3".to_string(), false))
-            .with_children(instructions!(
-                RegularInstruction::list_with_children(instructions!(
-                    RegularInstruction::uint8(42),
-                    RegularInstruction::text("Test".to_string()),
-                ))
-            )))
+        (RegularInstruction::ClassifiedValue(ClassifiedValueData::new_tagged(
+            "Variant3".to_string(),
+            false
+        ))
+        .with_children(instructions!(
+            RegularInstruction::list_with_children(instructions!(
+                RegularInstruction::uint8(42),
+                RegularInstruction::text("Test".to_string()),
+            ))
+        )))
     );
 }
 
@@ -174,11 +195,11 @@ fn example_enum_variant_4_to_instructions() {
     let variant4 = ExampleEnum::Variant4;
     assert_instruction_lists_eq!(
         to_instructions(&variant4),
-        vec![RegularInstruction::ClassifiedValue(ClassifiedValueData::new_tagged("Variant4".to_string(), true))]
+        vec![RegularInstruction::ClassifiedValue(
+            ClassifiedValueData::new_tagged("Variant4".to_string(), true)
+        )]
     );
 }
-
-
 
 #[derive(Datex, Debug)]
 struct EntityStruct {
@@ -187,17 +208,16 @@ struct EntityStruct {
 
 #[test]
 fn entity_struct_to_instructions() {
-    let structure = EntityStruct {
-        a: 42u8,
-    };
+    let structure = EntityStruct { a: 42u8 };
 
-    let struct_type_address = match EntityStruct::datex_type(&mut SharedReferencesCache::default()){
-        Type::Entity(ty) => match ty.shared_container().pointer_address() {
-            PointerAddress::SelfOwned(address) => address,
-            _ => unreachable!()
-        }
-        _ => unreachable!()
-    };
+    let struct_type_address =
+        match EntityStruct::datex_type(&mut SharedReferencesCache::default()) {
+            Type::Entity(ty) => match ty.shared_container().pointer_address() {
+                PointerAddress::SelfOwned(address) => address,
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        };
 
     assert_instruction_lists_eq!(
         to_instructions_with_preamble(&structure),

@@ -1,12 +1,12 @@
 use crate::{
     core_compiler::{
-        to_instructions::ToInstructions, value_visitor::ValueVisitor,
+        to_instructions::{ToInstructions, yield_all, yield_all_collected},
+        value_visitor::ValueVisitor,
     },
+    instruction::regular_instruction::RegularInstruction,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
 };
-use crate::core_compiler::to_instructions::{yield_all, yield_all_collected};
-use crate::instruction::regular_instruction::RegularInstruction;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl<K, V, S> ToInstructions for indexmap::IndexMap<K, V, S>
 where
@@ -16,7 +16,7 @@ where
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield RegularInstruction::map(self.len() as u32, false).into();

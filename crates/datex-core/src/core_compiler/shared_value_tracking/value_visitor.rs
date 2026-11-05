@@ -2,22 +2,21 @@ use crate::{
     core_compiler::{
         shared_value_tracking::SharedValueTracking, value_visitor::ValueVisitor,
     },
-    instruction::{Instruction, regular_instruction::RegularInstruction},
+    instruction::regular_instruction::RegularInstruction,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerOwnership,
         traits::SharedContainerCommon,
     },
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::utils::goat_mut::GoatMut;
 
 impl<'ctx> ValueVisitor for SharedValueTracking<'ctx> {
     /// Registers a visited shared value in the shared value tracking
     fn visit_shared_container<'a>(
         &'a mut self,
         shared_container: &'a SharedContainer,
-        cache: &'a mut SharedReferencesCache,
+        _cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         let ownership = shared_container.ownership();
         let index = self.register_shared_value(shared_container);

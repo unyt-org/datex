@@ -1,23 +1,28 @@
-use core::cell::Ref;
-use core::ops::{Deref, DerefMut};
+use crate::{
+    core_compiler::instruction_input::InstructionInput,
+    instruction::regular_instruction::RegularInstruction,
+    prelude::*,
+    runtime::{Runtime, execution::ExecutionError},
+    shared_values::collapsed_container_value::CollapsedContainerValue,
+    traits::{
+        apply::{Apply, ApplyArgument},
+        classification::Classification,
+    },
+    types::{
+        entities::entity_impls::EntityImplMethod, entity_type::EntityType,
+    },
+    values::{
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
+    },
+};
+use core::{
+    cell::Ref,
+    ops::{Deref, DerefMut},
+};
 use log::info;
-use crate::core_compiler::instruction_input::InstructionInput;
-use crate::instruction::regular_instruction::RegularInstruction;
-use crate::runtime::execution::execution_loop::interrupts::InterruptResult;
-use crate::runtime::execution::ExecutionError;
-use crate::runtime::Runtime;
-use crate::shared_values::collapsed_container_value::CollapsedContainerValue;
-use crate::traits::apply::{Apply, ApplyArgument};
-use crate::traits::classification::Classification;
-use crate::types::entities::entity_impls::EntityImplMethod;
-use crate::types::entity_type::EntityType;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::value_container::ValueContainer;
-use crate::prelude::*;
 
 // TODO: move somewhere else, this is an impl of ApplyArgument
 impl ApplyArgument {
-
     /// Tries to call a method on the value container. If the method is not found, returns an error.
     /// This currently resolves the method by name (FIXME)
     pub fn try_call_method_sync(
@@ -25,9 +30,10 @@ impl ApplyArgument {
         method_name: &str,
         mut args: Vec<ApplyArgument>,
         runtime: &Runtime,
-    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError>
+    {
         let val = self.value.collapsed_value();
-        let entity_type = Self::try_get_entity_type(val, &runtime)?;
+        let entity_type = Self::try_get_entity_type(val, runtime)?;
         let method = Self::try_get_method_data(&entity_type, method_name)?;
 
         let owner_endpoint = self.value.owner();
@@ -51,18 +57,15 @@ impl ApplyArgument {
         method_name: &str,
         mut args: Vec<ApplyArgument>,
         runtime: &Runtime,
-    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError>
+    {
         let val = self.value.collapsed_value();
-        let entity_type = Self::try_get_entity_type(val, &runtime)?;
+        let entity_type = Self::try_get_entity_type(val, runtime)?;
         let method = Self::try_get_method_data(&entity_type, method_name);
 
         match method {
             Ok(method) => {
-                self.try_call_method_async_direct(
-                    method.deref(),
-                    args,
-                    &runtime,
-                )
+                self.try_call_method_async_direct(method.deref(), args, runtime)
                     .await
             }
             // FIXME: only temp test, method should always be declared in the type
@@ -76,12 +79,12 @@ impl ApplyArgument {
                     owner,
                     method_name.to_string(),
                     args,
-                    &runtime
-                ).await
+                    runtime,
+                )
+                .await
             }
         }
     }
-
 
     /// Tries to call a method on the value container asynchronously. If the method is not found, returns an error.
     /// This currently resolves the method by name (FIXME)
@@ -90,7 +93,8 @@ impl ApplyArgument {
         method: &'a EntityImplMethod,
         mut args: Vec<ApplyArgument>,
         runtime: &'a Runtime,
-    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError>
+    {
         let owner_endpoint = self.value.owner();
 
         // call locally
@@ -114,8 +118,9 @@ impl ApplyArgument {
                 owner_endpoint,
                 method.name().unwrap().clone(),
                 args,
-                runtime
-            ).await
+                runtime,
+            )
+            .await
         }
     }
 
@@ -124,13 +129,14 @@ impl ApplyArgument {
         name: String,
         args: Vec<ApplyArgument>,
         runtime: &Runtime,
-    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError>
+    {
         let mut instructions = vec![
             RegularInstruction::call_method(
                 name, // FIXME: don't use method name here
                 args.len() as u8 - 1,
             )
-                .into(),
+            .into(),
         ];
         instructions.extend(
             args.into_iter()
@@ -145,7 +151,6 @@ impl ApplyArgument {
         // For now, local borrows are not supported cross endpoint
         Ok((res, vec![]))
     }
-
 
     /// Tries to get the entity type of the [CollapsedContainerValue]. If the value is not an entity, returns an error.
     fn try_get_entity_type(
@@ -170,6 +175,6 @@ impl ApplyArgument {
         Ref::filter_map(entity_type.entity_definition(), |def| {
             def.try_get_method(method_name)
         })
-            .map_err(|_| ExecutionError::MethodNotFound(method_name.to_string()))
+        .map_err(|_| ExecutionError::MethodNotFound(method_name.to_string()))
     }
 }

@@ -1,10 +1,8 @@
 use crate::{
-    prelude::*,
     traits::{
         convert_value_container::ConvertValueContainer, iter_parts::IterParts,
     },
+    values::core_values::receiver::Receiver,
 };
-use crate::values::core_values::receiver::Receiver;
 
-impl<T: ConvertValueContainer> IterParts for Receiver<T> {
-}
+impl<T: ConvertValueContainer> IterParts for Receiver<T> {}

@@ -2,17 +2,16 @@ use crate::{
     core_compiler::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::Instruction,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     types::type_definition_with_metadata::TypeMetadata,
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for TypeMetadata {
     fn to_instructions<'a>(
         &'a self,
-        visitor: &'a mut dyn ValueVisitor,
-        cache: &mut SharedReferencesCache
+        _visitor: &'a mut dyn ValueVisitor,
+        _cache: &mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         todo!()
     }

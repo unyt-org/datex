@@ -147,7 +147,7 @@ pub enum DatexExpressionData {
 
     Sender,
     Receiver,
-    
+
     /// One or more statements, e.g (1; 2; 3)
     Statements(Statements),
     /// reference access to shared value, e.g. '$ABC / 'mut $ABC

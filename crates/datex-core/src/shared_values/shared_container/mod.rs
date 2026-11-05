@@ -18,6 +18,7 @@ pub mod identity;
 pub(crate) mod to_instructions;
 use crate::{
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{
         ReferenceMutability,
         base_shared_value_container::observers::{
@@ -35,7 +36,7 @@ use crate::{
     value_updates::update_handler::{
         InternalMutabilityUpdateHandler, UpdateCallbackData,
     },
-    values::core_value::CoreValue,
+    values::{core_value::CoreValue, core_values::native::DatexNative},
 };
 use alloc::rc::Rc;
 use core::{
@@ -44,8 +45,6 @@ use core::{
     mem,
     ops::Deref,
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::values::core_values::native::DatexNative;
 
 pub mod apply;
 pub mod serde_dif;
@@ -102,16 +101,14 @@ impl SharedContainer {
         value: T,
         mutability: SharedContainerMutability,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        cache: &mut SharedReferencesCache
+        cache: &mut SharedReferencesCache,
     ) -> Self {
-        SharedContainer::Owned(
-            OwnedSharedContainer::new_native(
-                value,
-                mutability,
-                address_provider,
-                cache,
-            ),
-        )
+        SharedContainer::Owned(OwnedSharedContainer::new_native(
+            value,
+            mutability,
+            address_provider,
+            cache,
+        ))
     }
 
     /// Creates a new owned [SharedContainer] with an initial [ValueContainer],

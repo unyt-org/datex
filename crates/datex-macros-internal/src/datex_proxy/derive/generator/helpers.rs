@@ -1,4 +1,4 @@
-use crate::datex_proxy::data::{EnumVariant, Fields, Structure, StructureData};
+use crate::datex_proxy::data::{EnumVariant, Fields, Structure};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{GenericArgument, Path, PathArguments, Type};

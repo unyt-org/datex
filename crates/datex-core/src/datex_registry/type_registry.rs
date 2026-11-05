@@ -1,10 +1,10 @@
 //! This module acts as the central type registry, to collect structs and enums annotated with `#[derive(datex)]` to make them available for external projects.
 use crate::{
-    prelude::*, runtime::cache::shared_references_cache::SharedReferencesCache,
+    datex_registry::registry_collect, prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::get_datex_type::GetDatexType, types::r#type::Type,
 };
 use core::fmt::Debug;
-use crate::datex_registry::registry_collect;
 
 #[derive(Debug, Clone, Copy)]
 pub struct DatexTypeMetadata {
@@ -73,13 +73,11 @@ impl DatexTypeRegistration {
     }
 }
 
-
 registry_collect!(
     DatexTypeRegistration,
     DATEX_TYPE_REGISTRATIONS,
     all_datex_type_registrations
 );
-
 
 /// Returns a vector of all Datex types resolved using the provided memory.
 pub fn all_datex_types(memory: &mut SharedReferencesCache) -> Vec<Type> {

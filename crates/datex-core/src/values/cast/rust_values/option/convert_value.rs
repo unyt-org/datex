@@ -3,11 +3,10 @@ use crate::{
     values::{
         core_value::CoreValue,
         core_value_with_classification::CoreValueWithClassification,
-        core_values::native::{DatexNative, DatexNativeBase},
+        core_values::native::{DatexNative, DatexNativeBase, NativeCoreValue},
         value::Value,
     },
 };
-use crate::values::core_values::native::NativeCoreValue;
 
 impl<T> ConvertValue for Option<T>
 where
@@ -27,8 +26,14 @@ where
                 ..
             }) => Ok(None),
             // native "None" value
-            Value::Native(NativeCoreValue {value})
-            if value.as_any().is::<Option<T>>() && value.as_any().downcast_ref::<Option<T>>().unwrap().is_none() => {
+            Value::Native(NativeCoreValue { value })
+                if value.as_any().is::<Option<T>>()
+                    && value
+                        .as_any()
+                        .downcast_ref::<Option<T>>()
+                        .unwrap()
+                        .is_none() =>
+            {
                 Ok(None)
             }
             // other T values, convert to Some(T)

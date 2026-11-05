@@ -1,10 +1,8 @@
 use crate::{
     compiler::{
-        context::CompilationContext,
-        error::CompilerError,
+        context::CompilationContext, error::CompilerError,
         metadata::CompileContextMetadata,
-        precompiler::precompiled_ast::{AstMetadata, RichAst},
-        scope::CompilationScope,
+        precompiler::precompiled_ast::AstMetadata,
     },
     core_compiler::core_compilation_context::ByteCursor,
     instruction::{
@@ -12,9 +10,9 @@ use crate::{
         regular_instruction::RegularInstruction,
     },
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
 };
 use binrw::BinWrite;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 pub trait AstNodeToInstructions {
     fn ast_node_to_instructions<'a>(

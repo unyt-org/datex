@@ -18,13 +18,14 @@ use crate::{
         to_instructions::{ToInstructions, yield_all_collected},
         value_visitor::compile_instruction_iterator_to_dxb,
     },
-    instruction::BytecodeItem,
     prelude::*,
-    runtime::pointer_availability_lookup::PointerAvailabilityLookup,
+    runtime::{
+        cache::shared_references_cache::SharedReferencesCache,
+        pointer_availability_lookup::PointerAvailabilityLookup,
+    },
     values::core_values::endpoint::Endpoint,
 };
 pub use traits::*;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 /// Compiles a [DXBWithSharedValues] from the provided [PointerAvailabilityLookup], [Endpoint]s, and [InstructionInput]s.
 pub fn core_compile(
@@ -38,22 +39,21 @@ pub fn core_compile(
         endpoints,
     );
 
-    let dxb_gen =
-        gen {
-            for input in instructions_input {
-                match input {
-                    InstructionInput::Instruction(instruction) => {
-                        yield instruction;
-                    }
-                    InstructionInput::ValueContainer(value_container) => {
-                        yield_all_collected!(value_container.to_instructions(
-                            ctx.shared_value_tracking.get_mut(),
-                            cache
-                        ))
-                    }
+    let dxb_gen = gen {
+        for input in instructions_input {
+            match input {
+                InstructionInput::Instruction(instruction) => {
+                    yield instruction;
+                }
+                InstructionInput::ValueContainer(value_container) => {
+                    yield_all_collected!(value_container.to_instructions(
+                        ctx.shared_value_tracking.get_mut(),
+                        cache
+                    ))
                 }
             }
-        };
+        }
+    };
 
     let dxb = compile_instruction_iterator_to_dxb(dxb_gen);
 

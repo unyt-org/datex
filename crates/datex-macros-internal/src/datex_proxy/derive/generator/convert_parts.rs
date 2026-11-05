@@ -3,6 +3,7 @@ use crate::{
         data::{FieldIdent, FieldMapping, Fields, StructureData},
         generator::helpers::{
             SelfAccess, generate_struct_or_enum_variants_fields_mapping,
+            is_option,
         },
     },
     generator::helpers::generate_from_parts_impl,
@@ -10,7 +11,6 @@ use crate::{
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 use syn::Type;
-use crate::datex_proxy::generator::helpers::is_option;
 
 /// Generates the [FromParts] and [IntoParts] implementations
 pub fn generate_convert_parts(structure_data: &StructureData) -> TokenStream {

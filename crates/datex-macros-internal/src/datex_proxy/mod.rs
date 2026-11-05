@@ -1,17 +1,17 @@
 mod derive;
+mod fns;
+pub mod helpers;
 mod impls;
 mod module;
 mod native_callable;
-mod fns;
-pub mod helpers;
 
 pub use derive::*;
 pub use impls::*;
 pub use module::*;
 
+use crate::datex_proxy::fns::generate_fn_glue_code;
 use proc_macro2::TokenStream;
 use syn::Item;
-use crate::datex_proxy::fns::generate_fn_glue_code;
 
 pub fn generate_item_glue_code(
     args: Option<TokenStream>,

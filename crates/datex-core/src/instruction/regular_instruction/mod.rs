@@ -50,7 +50,6 @@ use binrw::{
 };
 use core::fmt::{Display, Write as FmtWrite};
 use datex_macros_internal::Instruction;
-use log::info;
 
 impl RegularInstruction {
     pub fn int8(value: i8) -> Self {
@@ -1263,7 +1262,7 @@ impl RegularInstruction {
                 write!(
                     string,
                     "[name: {}]",
-                    &data.name.0,
+                    data.name.0,
                 )
             }
             RegularInstruction::RequestRemoteSharedRefMut(address) => {
@@ -1427,12 +1426,9 @@ impl RegularInstruction {
     }
 }
 
-use crate::{
-    instruction::instruction_data::{
-        CallMethodData, CallableData, CallableDeclarationData,
-        EntityTypeDefinitionData,
-    },
-    types::entities::entity_impls::EntityImpl,
+use crate::instruction::instruction_data::{
+    CallMethodData, CallableData, CallableDeclarationData,
+    EntityTypeDefinitionData,
 };
 /// Serializes RegularInstruction to tuple (instruction code as string, optional metadata as string)
 #[cfg(feature = "disassembler")]

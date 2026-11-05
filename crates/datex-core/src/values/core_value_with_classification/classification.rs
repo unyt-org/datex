@@ -1,25 +1,30 @@
 use crate::{
+    prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    shared_values::PointerAddress,
     traits::classification::Classification,
+    types::entity_type::EntityType,
     values::{
         core_value_with_classification::CoreValueWithClassification,
         value::value_classification::{
-            ValueClassification,
+            ValueClassification, ValueTag,
             unresolved_value_classification::UnresolvedValueClassification,
         },
     },
 };
-use crate::shared_values::PointerAddress;
-use crate::types::entity_type::EntityType;
-use crate::values::value::value_classification::ValueTag;
-use crate::prelude::*;
 
 impl Classification for CoreValueWithClassification {
-    fn entity_type(&self, _cache: &mut SharedReferencesCache) -> Option<EntityType> {
+    fn entity_type(
+        &self,
+        _cache: &mut SharedReferencesCache,
+    ) -> Option<EntityType> {
         self.classification.entity_type.clone()
     }
     fn entity_type_address(&self) -> Option<PointerAddress> {
-        self.classification.entity_type.as_ref().map(|entity_type| entity_type.pointer_address())
+        self.classification
+            .entity_type
+            .as_ref()
+            .map(|entity_type| entity_type.pointer_address())
     }
 
     fn tag(&self) -> Option<ValueTag> {

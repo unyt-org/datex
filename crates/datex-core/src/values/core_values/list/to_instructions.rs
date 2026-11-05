@@ -2,11 +2,10 @@ use crate::{
     core_compiler::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::Instruction,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     values::core_values::list::List,
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for List {
     fn to_instructions<'a>(

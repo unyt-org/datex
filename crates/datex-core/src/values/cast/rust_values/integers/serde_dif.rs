@@ -1,12 +1,19 @@
-use serde::de::Error;
-use serde::{Deserialize, Serializer};
-use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
-use crate::dif::serde_context::SerdeContext;
-use crate::dif::serialize_with_serde_context::SerializeWithSerdeContext;
-use crate::libs::core::type_id::CoreLibVariantTypeId;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::integer::typed_integer::{IntegerTypeVariant, TypedInteger};
-use crate::prelude::*;
+use crate::{
+    dif::{
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+    },
+    libs::core::type_id::CoreLibVariantTypeId,
+    prelude::*,
+    values::{
+        core_value::CoreValue,
+        core_values::integer::typed_integer::{
+            IntegerTypeVariant, TypedInteger,
+        },
+    },
+};
+use serde::{Serializer, de::Error};
 
 macro impl_serde_with_serde_context_for_int($ty:ty, $convert_ty:ty, $variant:ident) {
     impl SerializeWithSerdeContext for $ty {
@@ -17,7 +24,8 @@ macro impl_serde_with_serde_context_for_int($ty:ty, $convert_ty:ty, $variant:ide
         ) -> Result<S::Ok, S::Error> {
             ctx.serialize_core_value(
                 &(*self as $convert_ty),
-                CoreLibVariantTypeId::Integer(IntegerTypeVariant::$variant).into(),
+                CoreLibVariantTypeId::Integer(IntegerTypeVariant::$variant)
+                    .into(),
                 serializer,
                 false,
             )
@@ -30,7 +38,9 @@ macro impl_serde_with_serde_context_for_int($ty:ty, $convert_ty:ty, $variant:ide
             deserializer: D,
         ) -> Result<Self, D::Error> {
             match ctx.deserialize_core_value(deserializer)? {
-                CoreValue::TypedInteger(TypedInteger::$variant(val)) => Ok(val as $ty),
+                CoreValue::TypedInteger(TypedInteger::$variant(val)) => {
+                    Ok(val as $ty)
+                }
                 _ => Err(D::Error::custom(format!(
                     "Expected CoreValue::TypedInteger({})",
                     stringify!($variant)
@@ -51,15 +61,13 @@ impl_serde_with_serde_context_for_int!(i32, i32, I32);
 impl_serde_with_serde_context_for_int!(i64, i64, I64);
 impl_serde_with_serde_context_for_int!(i128, i128, I128);
 
-
 cfg_select! {
     target_pointer_width = "32" => {
         impl_serde_with_serde_context_for_int!(usize, u32, U32);
         impl_serde_with_serde_context_for_int!(isize, i32, I32);
-    },
+    }
     target_pointer_width = "64" => {
         impl_serde_with_serde_context_for_int!(usize, u64, U64);
         impl_serde_with_serde_context_for_int!(isize, i64, I64);
-    },
+    }
 }
-

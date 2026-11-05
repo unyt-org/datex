@@ -1,6 +1,6 @@
+use crate::datex_proxy::data::StructureData;
 use proc_macro2::TokenStream;
 use quote::quote;
-use crate::datex_proxy::data::StructureData;
 
 /// Generates a TokenStream that creates a PointerAddress for the given structure data.
 pub fn get_pointer_address_for_struct(
@@ -11,9 +11,7 @@ pub fn get_pointer_address_for_struct(
         quote! {
             PointerAddress::Remote(RemotePointerAddress::builtin_u32(#builtin_address))
         }
-    }
-
-    else {
+    } else {
         // FIXME: calculate pointer address statically in macro at compile time
         let unique_name = format!(
             "{}::{}",

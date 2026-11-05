@@ -1,4 +1,5 @@
 use crate::{
+    shared_values::SharedContainer,
     shared_wrappers::shared::shared_owned::Shared,
     traits::convert_value_container::ConvertValueContainer,
     values::{
@@ -11,7 +12,6 @@ use crate::{
         },
     },
 };
-use crate::shared_values::SharedContainer;
 
 impl<T> ConvertValueContainer for Shared<T>
 where
@@ -21,13 +21,17 @@ where
         ValueContainer::Shared(SharedContainer::Owned(self.into_container()))
     }
 
-    fn as_borrowed_value_container(&self) -> BorrowedValueContainer {
-        BorrowedValueContainer::Shared(SharedContainer::Referenced(self.container().derive_with_max_mutability()))
+    fn as_borrowed_value_container(&self) -> BorrowedValueContainer<'_> {
+        BorrowedValueContainer::Shared(SharedContainer::Referenced(
+            self.container().derive_with_max_mutability(),
+        ))
     }
     fn as_borrowed_value_container_mut(
         &mut self,
-    ) -> BorrowedValueContainerMut {
-        BorrowedValueContainerMut::Shared(SharedContainer::Referenced(self.container().derive_with_max_mutability()))
+    ) -> BorrowedValueContainerMut<'_> {
+        BorrowedValueContainerMut::Shared(SharedContainer::Referenced(
+            self.container().derive_with_max_mutability(),
+        ))
     }
 
     fn try_from_value_container(
@@ -38,8 +42,9 @@ where
     {
         match value_container {
             ValueContainer::Shared(SharedContainer::Owned(container)) => {
-                Shared::try_from(container)
-                    .map_err(|container| ValueContainer::Shared(SharedContainer::Owned(container)))
+                Shared::try_from(container).map_err(|container| {
+                    ValueContainer::Shared(SharedContainer::Owned(container))
+                })
             }
             _ => Err(value_container),
         }

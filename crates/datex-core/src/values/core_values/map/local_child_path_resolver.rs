@@ -1,10 +1,7 @@
 use crate::{
     traits::local_child_path_resolver::LocalChildPathResolver,
     value_updates::errors::UpdateError,
-    values::{
-        core_values::map::Map,
-        value_container::{ValueContainer},
-    },
+    values::{core_values::map::Map, value_container::ValueContainer},
 };
 
 impl LocalChildPathResolver for Map {

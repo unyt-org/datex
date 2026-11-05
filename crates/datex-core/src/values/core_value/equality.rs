@@ -65,7 +65,9 @@ impl StructuralEq for CoreValue {
             }
 
             (CoreValue::Sender(s), CoreValue::Sender(t)) => s.structural_eq(t),
-            (CoreValue::Receiver(r), CoreValue::Receiver(t)) => r.structural_eq(t),
+            (CoreValue::Receiver(r), CoreValue::Receiver(t)) => {
+                r.structural_eq(t)
+            }
             _ => false,
         }
     }

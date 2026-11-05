@@ -1,3 +1,6 @@
+use crate::datex_structs_derive::dif::{
+    deserialize_from_dif_default_ctx, serialize_to_json_value_default_ctx,
+};
 use datex_core::{
     dif::{
         deserialize_with_serde_context::DeserializeWithSerdeContext,
@@ -5,7 +8,10 @@ use datex_core::{
         serialize_with_serde_context::SerializeWithSerdeContext,
         value_with_serde_context::ValueWithSerdeContext,
     },
-    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
+    libs::core::{
+        core_lib_id::CoreLibIdIndex,
+        type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
+    },
     prelude::*,
     runtime::cache::{
         shared_references_cache::SharedReferencesCache,
@@ -15,8 +21,10 @@ use datex_core::{
     values::{
         core_value::CoreValue,
         core_values::{
-            boolean::Boolean, endpoint::Endpoint,
-            integer::typed_integer::TypedInteger, native::DatexNative,
+            boolean::Boolean,
+            endpoint::Endpoint,
+            integer::typed_integer::{IntegerTypeVariant, TypedInteger},
+            native::DatexNative,
         },
         value::Value,
         value_container::ValueContainer,
@@ -24,11 +32,6 @@ use datex_core::{
 };
 use datex_macros_internal::Datex;
 use serde::de::IntoDeserializer;
-use datex_core::libs::core::type_id::CoreLibVariantTypeId;
-use datex_core::values::core_values::integer::typed_integer::IntegerTypeVariant;
-use crate::datex_structs_derive::dif::{
-    deserialize_from_dif_default_ctx, serialize_to_json_value_default_ctx,
-};
 
 #[derive(Datex, Debug, Clone, PartialEq)]
 #[datex(structural)]
@@ -130,7 +133,7 @@ fn enum_tuple_multiple_roundtrip() {
         "_": "t",
         "t": ["TupleMultiple"],
         "v": [
-            [CoreLibIdIndex::from(CoreLibBaseTypeId::Endpoint), "@jonas"], 
+            [CoreLibIdIndex::from(CoreLibBaseTypeId::Endpoint), "@jonas"],
             [CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)), 42]
         ]
     });

@@ -2,12 +2,8 @@
 use crate::{
     ast::{
         expressions::{
-            BinaryOperation, CallableDeclaration, ComparisonOperation,
-            Conditional, DatexExpression, DatexExpressionData,
-            PropertyAssignment, RemoteExecution, RootPropertyAccess,
-            Statements, UnaryOperation, UnboundedStatement, UnboxAssignment,
-            ValueAccessType, VariableAccess, VariableAssignment,
-            VariableDeclaration, VariableKind,
+            DatexExpression, DatexExpressionData, Statements,
+            UnboundedStatement, VariableKind,
         },
         resolved_variable::VariableId,
     },
@@ -19,60 +15,38 @@ use crate::{
             SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
             SimpleOrDetailedCompilerError, SpannedCompilerError,
         },
-        metadata::CompileContextMetadata,
         scope::CompilationScope,
     },
-    core_compiler::{
-        core_compilation_context::{CompileInput, DXBWithSharedValues},
-        to_instructions::ToInstructions,
+    core_compiler::core_compilation_context::{
+        CompileInput, DXBWithSharedValues,
     },
     global::{
         dxb_block::DXBBlock,
-        operators::modification::ModificationOperator,
         protocol_structures::{
-            block_header::BlockHeader,
-            encrypted_header::EncryptedHeader,
-            injected_values::{
-                InjectedValueType, LocalInjectedValueType,
-                SharedInjectedValueType,
-            },
+            block_header::BlockHeader, encrypted_header::EncryptedHeader,
             routing_header::RoutingHeader,
         },
-        root_properties::RootProperty,
         stack_index::StackIndex,
     },
-    instruction::{
-        Instruction,
-        instruction_codes::InstructionCode,
-        instruction_data::{
-            CallableDeclarationData, CallableSignatureData,
-            InstructionBlockData, JumpData, ShortTextData,
-            UnboundedStatementsData,
-        },
-        regular_instruction::RegularInstruction,
-    },
+    instruction::instruction_data::InstructionBlockData,
     parser::{Parser, ParserOptions, errors::SpannedParserError},
     prelude::*,
-    runtime::{Runtime, execution::context::ExecutionMode},
-    shared_values::{
-        ReferenceMutability, SharedContainer, SharedContainerMutability,
-        traits::SharedContainerCommon,
+    runtime::{
+        Runtime, cache::shared_references_cache::SharedReferencesCache,
+        execution::context::ExecutionMode,
     },
     time::Instant as TimingInstant,
-    utils::buffers::{append_u8, append_u32},
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
-use core::str::FromStr;
 use core::ops::DerefMut;
-use log::{debug, info};
+use log::debug;
 use precompiler::{
     options::PrecompilerOptions,
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 pub mod ast_node_to_instructions;
 pub mod compilation_result;
@@ -553,12 +527,9 @@ pub fn compile_child_realm_instructions(
             },
         scope: child_scope,
         ..
-    } = execution_block_ctx
-        .compile_ast_node_to_dxb_with_shared_values(
-            &*ast.data,
-            metadata,
-            cache,
-        )?;
+    } = execution_block_ctx.compile_ast_node_to_dxb_with_shared_values(
+        &*ast.data, metadata, cache,
+    )?;
 
     // reset to current scope
     let external_parent_scope = child_scope
@@ -609,7 +580,10 @@ pub mod tests {
         values::value_container::ValueContainer,
     };
 
-    use crate::instruction::instruction_data::{CallableDeclarationDataDebugTree, ClassifiedValueData, InstructionBlockDataDebugFlat};
+    use crate::instruction::instruction_data::{
+        CallableDeclarationDataDebugTree, ClassifiedValueData,
+        InstructionBlockDataDebugFlat,
+    };
 
     use crate::{
         compiler::{
@@ -648,8 +622,7 @@ pub mod tests {
         values::core_values::integer::{Integer, typed_integer::TypedInteger},
     };
     use alloc::format;
-    use core::assert_matches;
-    use core::ops::DerefMut;
+    use core::{assert_matches, ops::DerefMut};
     use log::*;
 
     fn compile_unwrap(script: &str) -> Vec<u8> {
@@ -1371,7 +1344,10 @@ pub mod tests {
                     impls: vec![],
                     is_entity: false,
                 }),
-                RegularInstruction::ShortMap(ShortMapData { element_count: 1, allow_only_text_keys: true }),
+                RegularInstruction::ShortMap(ShortMapData {
+                    element_count: 1,
+                    allow_only_text_keys: true
+                }),
                 RegularInstruction::KeyValueShortText(ShortTextData(
                     "a".to_string()
                 )),

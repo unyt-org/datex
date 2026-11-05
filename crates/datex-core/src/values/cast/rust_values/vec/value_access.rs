@@ -5,13 +5,13 @@ use crate::{
     values::{
         core_values::native::DatexNativeBase,
         value_container::{
+            ValueContainer,
             borrowed_value_container::{
                 BorrowedValueContainer, BorrowedValueContainerMut,
             },
         },
     },
 };
-use crate::values::value_container::ValueContainer;
 
 impl<T> ValueAccess for Vec<T>
 where
@@ -27,7 +27,7 @@ where
                     Ok(value.as_borrowed_value_container())
                 } else {
                     Err(AccessError::IndexOutOfBounds(IndexOutOfBoundsError {
-                        index: *index as u32,
+                        index: *index,
                     }))
                 }
             }

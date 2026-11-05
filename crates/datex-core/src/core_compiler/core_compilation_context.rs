@@ -1,21 +1,20 @@
-use core::cell::RefCell;
 use crate::{
     core_compiler::{
         preamble::append_injected_values_preamble,
         shared_value_tracking::SharedValueTracking,
+        to_instructions::ToInstructions,
+        value_visitor::compile_instructions_to_dxb,
     },
     prelude::*,
-    runtime::pointer_availability_lookup::PointerAvailabilityLookup,
-    shared_values::SharedContainer,
-    values::{
-        core_values::endpoint::Endpoint,
+    runtime::{
+        cache::shared_references_cache::SharedReferencesCache,
+        pointer_availability_lookup::PointerAvailabilityLookup,
     },
+    shared_values::SharedContainer,
+    values::core_values::endpoint::Endpoint,
 };
 use binrw::io::Cursor;
-use crate::core_compiler::to_instructions::ToInstructions;
-use crate::core_compiler::value_visitor::{compile_instructions_to_dxb, ValueVisitor};
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::runtime::Runtime;
+use core::cell::RefCell;
 
 pub type ByteCursor = Cursor<Vec<u8>>;
 
@@ -102,9 +101,7 @@ pub(crate) unsafe fn default_core_compilation_context<'a>()
 
 impl<'a> CoreCompilationContext<'a> {
     /// Create a new core compilation context with an initial byte input buffer
-    pub fn new(
-        input: CompileInput<'a>,
-    ) -> CoreCompilationContext<'a> {
+    pub fn new(input: CompileInput<'a>) -> CoreCompilationContext<'a> {
         CoreCompilationContext {
             shared_value_tracking: RefCell::new(SharedValueTracking::new(
                 input.pointer_lookup,
@@ -126,24 +123,31 @@ impl<'a> CoreCompilationContext<'a> {
     /// Compiles a [ToInstructions] value with shared value tracking and appends a preamble with the injected shared values.
     /// Returns the final byte buffer and the list of shared values that were moved or referenced during compilation
     pub fn compile_to_dxb_with_shared_values(
-        mut self, 
+        mut self,
         input: &impl ToInstructions,
-        cache: &mut SharedReferencesCache
+        cache: &mut SharedReferencesCache,
     ) -> DXBWithSharedValues {
-        let compiled_body = compile_instructions_to_dxb(self.shared_value_tracking.get_mut(), cache, input);
+        let compiled_body = compile_instructions_to_dxb(
+            self.shared_value_tracking.get_mut(),
+            cache,
+            input,
+        );
 
         self.append_preamble_to_dxb(compiled_body, cache)
     }
-    
-    /// Appends a preamble with the injected shared values to the provided, already compiled body and returns a [DXBWithSharedValues] 
+
+    /// Appends a preamble with the injected shared values to the provided, already compiled body and returns a [DXBWithSharedValues]
     /// containing the combined buffer and the list of shared values that were moved or referenced during compilation.
     /// Note: This function should only be called with a body that results from a compilation that used the same shared value tracking as this context, otherwise the shared values may not match the body.
     pub fn append_preamble_to_dxb(
         self,
         compiled_body: Vec<u8>,
-        cache: &mut SharedReferencesCache
+        cache: &mut SharedReferencesCache,
     ) -> DXBWithSharedValues {
-        let tracked_values = self.shared_value_tracking.into_inner().into_tracked_values();
+        let tracked_values = self
+            .shared_value_tracking
+            .into_inner()
+            .into_tracked_values();
         let (combined_buffer, top_level_values) =
             append_injected_values_preamble(
                 tracked_values,

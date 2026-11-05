@@ -1,6 +1,8 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{fold, fold::Fold, ExprClosure, FnArg, ImplItemFn, ItemFn, Signature, Type};
+use syn::{
+    ExprClosure, FnArg, ImplItemFn, ItemFn, Signature, Type, fold, fold::Fold,
+};
 
 pub fn generate_native_callable_from_impl_fn(
     function: &mut ImplItemFn,
@@ -30,7 +32,6 @@ pub fn generate_native_callable_from_closure(
     //     function.asyncness.is_some(),
     // )
 }
-
 
 enum RuntimeParamType {
     MutableRef,
@@ -83,66 +84,78 @@ pub fn generate_native_callable(
     let mut parameter_defs = Vec::new();
     let mut has_runtime_param = false;
 
-    let actual_inputs: Vec<FunctionArg> = sig.inputs.iter_mut().map(|arg| {
-        match arg {
-            syn::FnArg::Receiver(_ty) => {
-                let ty =
-                    self_ty.expect("Self type must be provided for methods");
-                parameter_defs.push(quote! {
-                    (
-                        Some("self".to_string()),
-                        <#ty as GetDatexType>::datex_type(cache)
-                    )
-                });
-            }
-            syn::FnArg::Typed(pat_type) => {
-                let name = match &*pat_type.pat {
-                    syn::Pat::Ident(ident) => ident.ident.to_string(),
-                    _ => {
-                        panic!("Unsupported parameter pattern")
-                    }
-                };
-                // check if #[runtime] parameter exists
-                let is_runtime_arg = pat_type.attrs.iter().any(|a| a.path().is_ident("runtime"));
-                // Strip #[runtime] so compiler never sees it
-                pat_type.attrs.retain(|a| !a.path().is_ident("runtime"));
-
-                if is_runtime_arg {
-                    if has_runtime_param {
-                        panic!("Only one #[runtime] parameter is allowed");
-                    }
-                    let runtime_param_type = if let Type::Reference(type_reference) = &*pat_type.ty {
-                        if type_reference.mutability.is_some() {
-                            RuntimeParamType::MutableRef
-                        } else {
-                            RuntimeParamType::ImmutableRef
-                        }
-                    } else {
-                        RuntimeParamType::Owned
-                    };
-                    has_runtime_param = true;
-                    return FunctionArg::Runtime(runtime_param_type);
-                }
-
-                else {
-                    // normalize type name (replace Self with the actual type name)
-                    let ty = replace_self_type(&pat_type.ty, self_ty);
+    let actual_inputs: Vec<FunctionArg> = sig
+        .inputs
+        .iter_mut()
+        .map(|arg| {
+            match arg {
+                syn::FnArg::Receiver(_ty) => {
+                    let ty = self_ty
+                        .expect("Self type must be provided for methods");
                     parameter_defs.push(quote! {
                         (
-                            Some(#name.to_string()),
+                            Some("self".to_string()),
                             <#ty as GetDatexType>::datex_type(cache)
                         )
                     });
                 }
-            }
-        }
+                syn::FnArg::Typed(pat_type) => {
+                    let name = match &*pat_type.pat {
+                        syn::Pat::Ident(ident) => ident.ident.to_string(),
+                        _ => {
+                            panic!("Unsupported parameter pattern")
+                        }
+                    };
+                    // check if #[runtime] parameter exists
+                    let is_runtime_arg = pat_type
+                        .attrs
+                        .iter()
+                        .any(|a| a.path().is_ident("runtime"));
+                    // Strip #[runtime] so compiler never sees it
+                    pat_type.attrs.retain(|a| !a.path().is_ident("runtime"));
 
-        FunctionArg::Arg(arg.clone())
-    }).collect();
+                    if is_runtime_arg {
+                        if has_runtime_param {
+                            panic!("Only one #[runtime] parameter is allowed");
+                        }
+                        let runtime_param_type =
+                            if let Type::Reference(type_reference) =
+                                &*pat_type.ty
+                            {
+                                if type_reference.mutability.is_some() {
+                                    RuntimeParamType::MutableRef
+                                } else {
+                                    RuntimeParamType::ImmutableRef
+                                }
+                            } else {
+                                RuntimeParamType::Owned
+                            };
+                        has_runtime_param = true;
+                        return FunctionArg::Runtime(runtime_param_type);
+                    } else {
+                        // normalize type name (replace Self with the actual type name)
+                        let ty = replace_self_type(&pat_type.ty, self_ty);
+                        parameter_defs.push(quote! {
+                            (
+                                Some(#name.to_string()),
+                                <#ty as GetDatexType>::datex_type(cache)
+                            )
+                        });
+                    }
+                }
+            }
+
+            FunctionArg::Arg(arg.clone())
+        })
+        .collect();
 
     let has_mutable_inputs = actual_inputs.iter().any(|param| match param {
         FunctionArg::Arg(syn::FnArg::Receiver(receiver)) => {
-            receiver.mutability.is_some() || matches!(receiver.kind, syn::ReceiverKind::Reference(_, _, Some(_)))
+            receiver.mutability.is_some()
+                || matches!(
+                    receiver.kind,
+                    syn::ReceiverKind::Reference(_, _, Some(_))
+                )
         }
         FunctionArg::Arg(syn::FnArg::Typed(pat_type)) => {
             if let Type::Reference(type_reference) = &*pat_type.ty {
@@ -193,7 +206,10 @@ pub fn generate_native_callable(
                 );
                 let is_borrowed = match arg {
                     syn::FnArg::Receiver(receiver) => {
-                        matches!(receiver.kind, syn::ReceiverKind::Reference(..))
+                        matches!(
+                            receiver.kind,
+                            syn::ReceiverKind::Reference(..)
+                        )
                     }
                     syn::FnArg::Typed(pat_type) => {
                         matches!(&*pat_type.ty, Type::Reference(..))
@@ -277,7 +293,7 @@ pub fn generate_native_callable(
             let mut val_iter = vals.into_iter();
 
             #(#call_argument_inits)*
-            
+
             let mut result_value = ConvertValueContainer::to_value_container(
                 #method_call_body,
             );

@@ -1,15 +1,22 @@
-mod get_datex_type;
 mod convert_value_container;
+mod get_datex_type;
 
-use core::cell::{Ref, RefMut};
-use core::ops::Deref;
-use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-use crate::shared_values::{OwnedSharedContainer, ReferencedSharedContainer, SharedContainerMutability};
-use crate::shared_values::traits::SharedContainerCommon;
-use crate::values::core_values::native::DatexNative;
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+    shared_values::{
+        OwnedSharedContainer, ReferencedSharedContainer,
+        SharedContainerMutability, traits::SharedContainerCommon,
+    },
+    values::{
+        core_values::native::DatexNative, value::Value,
+        value_container::ValueContainer,
+    },
+};
+use core::{
+    cell::{Ref, RefMut},
+    ops::Deref,
+};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct SharedRef<T: DatexNative + ?Sized> {
@@ -52,7 +59,8 @@ impl<T: DatexNative + 'static> SharedRef<T> {
                 value_container,
                 SharedContainerMutability::Mutable,
                 address_provider,
-            ).derive_with_max_mutability(),
+            )
+            .derive_with_max_mutability(),
             _phantom_t: core::marker::PhantomData,
         })
     }
@@ -69,18 +77,27 @@ impl<T: DatexNative + 'static> SharedRef<T> {
                 value_container,
                 SharedContainerMutability::Mutable,
                 address_provider,
-            ).derive_with_max_mutability(),
+            )
+            .derive_with_max_mutability(),
             _phantom_t: core::marker::PhantomData,
         }
     }
 }
 
-impl<T: DatexNative + 'static> TryFrom<ReferencedSharedContainer> for SharedRef<T> {
+impl<T: DatexNative + 'static> TryFrom<ReferencedSharedContainer>
+    for SharedRef<T>
+{
     type Error = ReferencedSharedContainer;
-    fn try_from(container: ReferencedSharedContainer) -> Result<Self, Self::Error> {
+    fn try_from(
+        container: ReferencedSharedContainer,
+    ) -> Result<Self, Self::Error> {
         // TODO: also check if the type only allows values that are of type T.
         // check if the container contains a local value of type T
-        if T::try_borrow_from_value_container(container.value_container().deref()).is_err() {
+        if T::try_borrow_from_value_container(
+            container.value_container().deref(),
+        )
+        .is_err()
+        {
             return Err(container);
         }
 
@@ -91,13 +108,16 @@ impl<T: DatexNative + 'static> TryFrom<ReferencedSharedContainer> for SharedRef<
     }
 }
 
-
 impl<T: DatexNative + 'static> TryFrom<OwnedSharedContainer> for SharedRef<T> {
     type Error = OwnedSharedContainer;
     fn try_from(container: OwnedSharedContainer) -> Result<Self, Self::Error> {
         // TODO: also check if the type only allows values that are of type T.
         // check if the container contains a local value of type T
-        if T::try_borrow_from_value_container(container.value_container().deref()).is_err() {
+        if T::try_borrow_from_value_container(
+            container.value_container().deref(),
+        )
+        .is_err()
+        {
             return Err(container);
         }
 
@@ -112,15 +132,13 @@ impl<T: DatexNative + 'static> TryFrom<OwnedSharedContainer> for SharedRef<T> {
 mod test {
     use crate::{
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
-        shared_values::{SharedContainerMutability},
+        shared_values::SharedContainerMutability,
     };
 
     use crate::{
-        prelude::*,
-        values::{value::Value},
+        prelude::*, shared_values::OwnedSharedContainer,
+        shared_wrappers::shared::shared_ref::SharedRef, values::value::Value,
     };
-    use crate::shared_values::OwnedSharedContainer;
-    use crate::shared_wrappers::shared::shared_ref::SharedRef;
 
     #[test]
     fn string_shared() {

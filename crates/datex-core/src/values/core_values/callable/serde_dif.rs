@@ -4,7 +4,9 @@ use crate::{
         deserialize_with_serde_context::DeserializeWithSerdeContext,
         serde_context::SerdeContext,
         serialize_with_serde_context::SerializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
     },
+    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
     prelude::*,
     values::core_values::callable::Callable,
 };
@@ -15,9 +17,6 @@ use serde::{
     de::{SeqAccess, Visitor},
     ser::SerializeTuple,
 };
-use crate::dif::value_with_serde_context::ValueWithSerdeContext;
-use crate::libs::core::core_lib_id::CoreLibIdIndex;
-use crate::libs::core::type_id::CoreLibBaseTypeId;
 
 struct InnerCallable<'a>(&'a Callable);
 
@@ -27,7 +26,7 @@ impl SerializeWithSerdeContext for InnerCallable<'_> {
         ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-         // put callable into cache
+        // put callable into cache
         let hash = ctx
             .shared_container_cache
             .borrow_mut()
@@ -54,8 +53,13 @@ impl SerializeWithSerdeContext for Callable {
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut tuple = serializer.serialize_tuple(2)?;
-        tuple.serialize_element(&CoreLibIdIndex::from(CoreLibBaseTypeId::Callable).to_u16())?;
-        tuple.serialize_element(&ValueWithSerdeContext::new(&InnerCallable(self), ctx))?;
+        tuple.serialize_element(
+            &CoreLibIdIndex::from(CoreLibBaseTypeId::Callable).to_u16(),
+        )?;
+        tuple.serialize_element(&ValueWithSerdeContext::new(
+            &InnerCallable(self),
+            ctx,
+        ))?;
         tuple.end()
     }
 }

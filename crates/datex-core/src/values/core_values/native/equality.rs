@@ -1,7 +1,8 @@
+use crate::{
+    traits::{structural_eq::StructuralEq, value_eq::ValueEq},
+    values::core_values::native::NativeCoreValue,
+};
 use core::any::Any;
-use crate::traits::structural_eq::StructuralEq;
-use crate::traits::value_eq::ValueEq;
-use crate::values::core_values::native::NativeCoreValue;
 
 impl ValueEq for NativeCoreValue {
     fn value_eq(&self, other: &Self) -> bool {

@@ -2,7 +2,7 @@ use core::fmt;
 
 use crate::{
     dif::{
-        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_serde_context::DeserializeSerdeContext, dif_vec::DIFVec,
         serde_context::SerdeContext,
         value_with_serde_context::ValueWithSerdeContext,
     },
@@ -13,7 +13,6 @@ use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
-use crate::dif::dif_vec::DIFVec;
 
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub struct ListSpliceUpdateData {
@@ -44,7 +43,10 @@ impl<'ctx> SerdeContext<'ctx> {
         seq.serialize_element(&value.start)?;
         seq.serialize_element(&value.delete_count)?;
 
-        seq.serialize_element(&ValueWithSerdeContext::new(&DIFVec(&value.items), self))?;
+        seq.serialize_element(&ValueWithSerdeContext::new(
+            &DIFVec(&value.items),
+            self,
+        ))?;
 
         Ok(())
     }

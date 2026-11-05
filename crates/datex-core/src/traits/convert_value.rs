@@ -1,6 +1,8 @@
-use crate::traits::convert_parts::{FromParts, HasPartsKind, IntoParts, PartsKind};
-use crate::values::value::Value;
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    traits::convert_parts::{FromParts, HasPartsKind, IntoParts, PartsKind},
+    values::value::Value,
+};
 
 pub trait ConvertValue {
     fn to_value(self) -> Value;
@@ -16,9 +18,7 @@ pub trait ConvertValue {
     /// Tries to convert a [Value] into the specified type [T].
     /// First, it attempts a direct conversion (downcast) of the [Value] into the type [T].
     /// If that fails, it tries to convert the [Value] into map or list parts and then into the type [T].
-    fn try_convert_from_value(
-        value: Value,
-    ) -> Result<Self, ()>
+    fn try_convert_from_value(value: Value) -> Result<Self, ()>
     where
         Self: FromParts + Sized,
     {
@@ -28,14 +28,12 @@ pub trait ConvertValue {
             Ok(value) => Ok(value),
             // otherwise, try to convert the value container into map or list parts and then into the type T
             Err(value) => {
-                let classification =
-                    value.unresolved_classification();
+                let classification = value.unresolved_classification();
                 let tag = classification.tag_str();
 
                 match value.parts_kind() {
                     PartsKind::Map => {
-                        let map_parts =
-                            Box::new(value).try_into_map_parts();
+                        let map_parts = Box::new(value).try_into_map_parts();
                         if let Ok(map) = map_parts {
                             Self::try_from_map_parts_with_tag(map, tag)
                         } else {
@@ -43,8 +41,7 @@ pub trait ConvertValue {
                         }
                     }
                     PartsKind::List => {
-                        let list_parts =
-                            Box::new(value).try_into_list_parts();
+                        let list_parts = Box::new(value).try_into_list_parts();
                         if let Ok(list) = list_parts {
                             Self::try_from_list_parts_with_tag(list, tag)
                         } else {

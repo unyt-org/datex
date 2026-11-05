@@ -1,18 +1,28 @@
-use crate::dif::{
-    deserialize_serde_context::{DeserializeSerdeContext, ErasedSeed},
-    deserialize_with_serde_context::{
-        DeserializeWithSerdeContext, DeserializeWithSerdeContextDyn,
+use crate::{
+    dif::{
+        deserialize_serde_context::{DeserializeSerdeContext, ErasedSeed},
+        deserialize_with_serde_context::{
+            DeserializeWithSerdeContext, DeserializeWithSerdeContextDyn,
+        },
+        serde_context::SerdeContext,
+        serialize_with_serde_context::{
+            SerializeWithSerdeContext, SerializeWithSerdeContextDyn,
+        },
     },
-    serde_context::SerdeContext,
-    serialize_with_serde_context::{
-        SerializeWithSerdeContext, SerializeWithSerdeContextDyn,
-    },
+    prelude::*,
 };
 use core::fmt::Formatter;
-use serde::{de::{DeserializeSeed, Error, Visitor}, Deserializer, Serialize, Serializer};
-use serde::de::{EnumAccess, IntoDeserializer, MapAccess, SeqAccess};
-use serde::de::value::{EnumAccessDeserializer, MapAccessDeserializer, SeqAccessDeserializer};
-use crate::prelude::*;
+use serde::{
+    Deserializer, Serialize, Serializer,
+    de::{
+        DeserializeSeed, EnumAccess, Error, IntoDeserializer, MapAccess,
+        SeqAccess, Visitor,
+        value::{
+            EnumAccessDeserializer, MapAccessDeserializer,
+            SeqAccessDeserializer,
+        },
+    },
+};
 
 impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for Option<T> {
     fn serialize_with_ctx<S: Serializer>(
@@ -53,7 +63,10 @@ where
     T: DeserializeWithSerdeContextDyn,
 {
     /// Deserialize the inner `T` from any deserializer and wrap it in `Some`.
-    fn some<'de, D: Deserializer<'de>>(self, d: D) -> Result<Option<T>, D::Error> {
+    fn some<'de, D: Deserializer<'de>>(
+        self,
+        d: D,
+    ) -> Result<Option<T>, D::Error> {
         ErasedSeed::<T>::new(self.ctx).deserialize(d).map(Some)
     }
 }
@@ -103,15 +116,24 @@ where
         visit_string: String,
     }
 
-    fn visit_seq<A: SeqAccess<'de>>(self, seq: A) -> Result<Self::Value, A::Error> {
+    fn visit_seq<A: SeqAccess<'de>>(
+        self,
+        seq: A,
+    ) -> Result<Self::Value, A::Error> {
         self.some(SeqAccessDeserializer::new(seq))
     }
 
-    fn visit_map<A: MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
+    fn visit_map<A: MapAccess<'de>>(
+        self,
+        map: A,
+    ) -> Result<Self::Value, A::Error> {
         self.some(MapAccessDeserializer::new(map))
     }
 
-    fn visit_enum<A: EnumAccess<'de>>(self, data: A) -> Result<Self::Value, A::Error> {
+    fn visit_enum<A: EnumAccess<'de>>(
+        self,
+        data: A,
+    ) -> Result<Self::Value, A::Error> {
         self.some(EnumAccessDeserializer::new(data))
     }
 }

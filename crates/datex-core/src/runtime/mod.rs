@@ -6,11 +6,7 @@ use crate::{
 };
 
 use crate::prelude::*;
-use core::{
-    fmt::Debug,
-    ops::{Deref, DerefMut},
-    result::Result,
-};
+use core::{fmt::Debug, ops::Deref, result::Result};
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
@@ -58,8 +54,7 @@ impl Runtime {
     }
 
     fn register_endpoint_property(&self, name: &str, value: ValueContainer) {
-        self.internal
-            .register_endpoint_property(name, value);
+        self.internal.register_endpoint_property(name, value);
     }
 
     pub fn stub() -> Runtime {

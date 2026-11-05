@@ -25,8 +25,6 @@ use crate::{
         pointer_availability_lookup::PointerAvailabilityLookup,
     },
     values::{
-        core_value::CoreValue,
-        core_value_with_classification::CoreValueWithClassification,
         core_values::endpoint::Endpoint, value::Value,
         value_container::ValueContainer,
     },
@@ -35,15 +33,17 @@ use crate::{
 use crate::{
     core_compiler::value_compiler::compile_value,
     prelude::*,
-    runtime::{Runtime, execution::execution_input::ExecutionCallerMetadata},
+    runtime::{
+        Runtime, cache::shared_references_cache::SharedReferencesCache,
+        execution::execution_input::ExecutionCallerMetadata,
+    },
     traits::convert_value_container::ConvertValueContainer,
+    values::core_values::list::List,
 };
 use datex_macros_internal::Datex;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::values::core_values::list::List;
 
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
 #[datex(structural)]
@@ -558,8 +558,8 @@ impl ComHub {
         let hops_datex =
             execute_dxb_sync(exec_input).expect("Failed to execute DATEX");
 
-        if let Some(hops_datex) = hops_datex &&
-            let Ok(list) = hops_datex.try_into_value::<List>()
+        if let Some(hops_datex) = hops_datex
+            && let Ok(list) = hops_datex.try_into_value::<List>()
         {
             let hops: Vec<NetworkTraceHop> = list
                 .into_iter()
@@ -624,7 +624,7 @@ impl ComHub {
             .collect::<Vec<ValueContainer>>();
 
         let pointer_lookup = PointerAvailabilityLookup::default();
-        let cache = &mut SharedReferencesCache::default();  // FIXME
+        let cache = &mut SharedReferencesCache::default(); // FIXME
         let dxb = compile_value(
             Value::from(hops_datex),
             CompileInput::new(&pointer_lookup, &[]),

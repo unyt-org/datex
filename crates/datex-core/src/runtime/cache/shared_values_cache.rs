@@ -10,15 +10,14 @@ use crate::{
         },
         traits::SharedContainerCommon,
     },
-    values::core_values::callable::Callable,
+    values::{
+        core_values::callable::Callable, value_container::ValueContainer,
+    },
 };
 use core::{
     fmt::Display,
     hash::{Hash, Hasher},
 };
-use log::info;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::values::value_container::ValueContainer;
 
 /// Cache layer that stores references or owned and referenced shared containers
 #[derive(Debug, Default)]
@@ -260,7 +259,6 @@ impl SharedValuesCache {
     }
 }
 
-
 #[cfg(feature = "decompiler")]
 impl Display for SharedValuesCache {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -273,7 +271,9 @@ impl Display for SharedValuesCache {
                 "  {}: {}",
                 address,
                 value_to_source_code(
-                    &ValueContainer::Shared(value.clone_with_move_indicator_if_owned()),
+                    &ValueContainer::Shared(
+                        value.clone_with_move_indicator_if_owned()
+                    ),
                     DecompileOptions::default()
                 )
             )?;

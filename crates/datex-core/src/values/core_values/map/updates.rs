@@ -10,9 +10,8 @@ use crate::{
     values::{
         core_values::map::{Map, MapAccessError, MapEntries},
         value::Value,
-        value_container::{ValueContainer},
+        value_container::ValueContainer,
     },
-    prelude::*,
 };
 use core::mem;
 
@@ -24,15 +23,14 @@ impl Map {
         source: Option<TransceiverId>,
     ) -> Result<ValueContainer, MapAccessError> {
         let res = match &mut self.entries {
-            MapEntries::Dynamic(map) =>
+            MapEntries::Dynamic(map) => {
                 map.shift_remove(key).ok_or_else(|| {
                     MapAccessError::KeyNotFound(KeyNotFoundError::new(
                         key.clone(),
                     ))
-                }),
-            MapEntries::Structural(_) => {
-                Err(MapAccessError::Immutable)
+                })
             }
+            MapEntries::Structural(_) => Err(MapAccessError::Immutable),
         }?
         .without_local_observers();
 
@@ -53,9 +51,9 @@ impl Map {
         source: Option<TransceiverId>,
     ) -> Result<ValueContainer, KeyNotFoundError> {
         let res = match &mut self.entries {
-            MapEntries::Dynamic(map) =>
-                map.shift_remove(key)
-                    .ok_or_else(|| KeyNotFoundError::new(key.clone())),
+            MapEntries::Dynamic(map) => map
+                .shift_remove(key)
+                .ok_or_else(|| KeyNotFoundError::new(key.clone())),
             MapEntries::Structural(vec) => {
                 for (k, v) in vec.iter_mut() {
                     if k == key {
@@ -88,9 +86,7 @@ impl Map {
                     previous,
                 ))))
             }
-            MapEntries::Structural(_) => {
-                Err(MapAccessError::Immutable)
-            }
+            MapEntries::Structural(_) => Err(MapAccessError::Immutable),
         }?
         .without_local_observers();
 
@@ -118,20 +114,19 @@ impl Map {
         let value_clone = value.clone();
 
         let res = match &mut self.entries {
-            MapEntries::Dynamic(map) => {
-                Ok(map.insert(key.clone(), value))
-            }
-            MapEntries::Structural(vec) =>
+            MapEntries::Dynamic(map) => Ok(map.insert(key.clone(), value)),
+            MapEntries::Structural(vec) => {
                 if let Some((_, v)) = vec.iter_mut().find(|(k, _)| k == &key) {
                     Ok(Some(core::mem::replace(v, value)))
                 } else {
                     Err(KeyNotFoundError::new(key.clone()))
                 }
+            }
         }?
         .map(|v| v.without_local_observers());
 
         self.maybe_trigger_update_callback(source, || {
-            UpdateOperation::set_entry(key.into(), value_clone)
+            UpdateOperation::set_entry(key, value_clone)
         });
 
         Ok(res)

@@ -166,7 +166,11 @@ impl TypeInstruction {
                 write!(string, "[boxed]")
             }
             TypeInstruction::Map(data) => {
-                write!(string, "[count: {}, allow_only_text_keys: {}]", data.element_count, data.allow_only_text_keys)
+                write!(
+                    string,
+                    "[count: {}, allow_only_text_keys: {}]",
+                    data.element_count, data.allow_only_text_keys
+                )
             }
             _ => {
                 // no custom disassembly

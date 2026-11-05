@@ -223,7 +223,7 @@ pub fn iterate_instructions(
 
 pub gen fn iterate_instructions_with_seek(
     dxb_body_ref: Rc<RefCell<Vec<u8>>>,
-    nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
+    _nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
     seek_request: Option<Rc<RefCell<Option<i32>>>>,
 ) -> Result<InstructionWithSpan, DXBParserError> {
     let mut next_instructions_stack = NextInstructionsStack::default();
@@ -280,10 +280,11 @@ pub gen fn iterate_instructions_with_seek(
                         .map_err(DXBParserError::BinRwError)?;
 
                     let instruction = cfg_select! {
-                        all(test, feature = "disassembler") => instruction
-                            .convert_to_nested(
+                        all(test, feature = "disassembler") => {
+                            instruction.convert_to_nested(
                                 nested_instruction_resolution_strategy,
-                            )?,
+                            )?
+                        }
                         _ => instruction,
                     };
 
@@ -323,7 +324,7 @@ pub gen fn iterate_instructions_with_seek(
             },
             Err(error) => return yield Err(error),
         };
-        
+
         yield Ok(instruction);
     }
 }

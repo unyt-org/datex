@@ -1,11 +1,9 @@
-use core::cell::RefCell;
 use crate::{
     compiler::context::CompilationContext,
-    core_compiler::value_visitor::ValueVisitor,
-    prelude::*, shared_values::SharedContainer,
+    core_compiler::value_visitor::ValueVisitor, prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    shared_values::SharedContainer,
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::utils::goat_mut::GoatMut;
 
 impl<'ctx> ValueVisitor for CompilationContext<'ctx> {
     fn visit_shared_container<'a>(

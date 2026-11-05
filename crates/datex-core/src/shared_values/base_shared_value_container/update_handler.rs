@@ -9,7 +9,7 @@ use crate::{
         UpdateReturn, errors::UpdateError, update_data::UpdateOperation,
         update_handler::UpdateResult,
     },
-    values::value_container::{ValueContainer},
+    values::value_container::ValueContainer,
 };
 
 impl BaseSharedValueContainer {

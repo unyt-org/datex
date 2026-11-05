@@ -16,8 +16,6 @@ use crate::{
 };
 use core::ops::DerefMut;
 use indexmap::IndexMap;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::runtime::Runtime;
 
 #[derive(Debug)]
 pub enum TrackedValueMetadata {

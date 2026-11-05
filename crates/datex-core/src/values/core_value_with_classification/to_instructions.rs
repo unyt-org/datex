@@ -1,16 +1,12 @@
 use crate::{
     core_compiler::{
-        shared_value_tracking::SharedValueTracking,
         to_instructions::{ToInstructions, yield_all},
         value_visitor::ValueVisitor,
     },
-    instruction::{Instruction, regular_instruction::RegularInstruction},
+    instruction::regular_instruction::RegularInstruction,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    values::{
-        core_value_with_classification::CoreValueWithClassification,
-        value::value_classification::ValueTag,
-    },
+    values::core_value_with_classification::CoreValueWithClassification,
 };
 
 impl ToInstructions for CoreValueWithClassification {

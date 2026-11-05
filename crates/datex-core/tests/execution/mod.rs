@@ -1,6 +1,9 @@
 use datex_core::{
     compile,
-    compiler::{CompileOptions, compile_template, scope::CompilationScope},
+    compiler::{
+        CompileOptions, compilation_result::CompilationResult,
+        compile_template, scope::CompilationScope,
+    },
     disassembler::{
         get_disassembled_with_options, options::DisassemblerOptions,
         print_disassembled_with_options,
@@ -20,7 +23,6 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
-use datex_core::compiler::compilation_result::CompilationResult;
 
 pub mod local_values;
 pub mod shared_values;
@@ -77,7 +79,10 @@ fn compile_and_execute_multiple(
     )
     .unwrap();
 
-    print_disassembled_with_options(&dxb_with_shared_values.dxb, DisassemblerOptions::default());
+    print_disassembled_with_options(
+        &dxb_with_shared_values.dxb,
+        DisassemblerOptions::default(),
+    );
 
     let result = execute_dxb_sync(ExecutionInput::new(
         dxb_with_shared_values,

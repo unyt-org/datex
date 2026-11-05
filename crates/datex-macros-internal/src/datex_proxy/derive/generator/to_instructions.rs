@@ -3,14 +3,13 @@ use quote::{ToTokens, quote};
 
 use crate::datex_proxy::{
     data::{
-        FieldIdent, FieldMapping, Fields, IndexedField, NamedField,
+        FieldIdent, FieldMapping, Fields, IndexedField, NamedField, Structure,
         StructureData,
     },
     generator::helpers::{
         SelfAccess, generate_struct_or_enum_variants_fields_mapping,
     },
 };
-use crate::datex_proxy::data::Structure;
 
 /// Generates the implementation of the [ToInstructions] trait for the given structure data.
 /// Returns a [TokenStream] containing the generated implementation.
@@ -32,7 +31,6 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
         SelfAccess::Borrowed,
         generate_value_tag_for_fields,
     );
-
 
     // add entity if entity type
     let body = if structure_data.attributes.type_kind.is_entity() {
@@ -58,16 +56,14 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
             }
             #body
         }
-    }
-    else if matches!(structure_data.structure, Structure::Enum(_)) {
+    } else if matches!(structure_data.structure, Structure::Enum(_)) {
         quote! {
             yield RegularInstruction::classified_value(
                 &ValueClassification::new_with_maybe_tag(#value_tag)
             ).into();
             #body
         }
-    }
-    else {
+    } else {
         body
     };
 
@@ -112,7 +108,7 @@ fn generate_value_tag_for_fields(
 /// Generates the instructions for the given fields, handling different field types.
 fn generate_to_instructions_for_fields(
     fields: &Fields,
-    tag: Option<&String>,
+    _tag: Option<&String>,
 ) -> TokenStream {
     match fields {
         Fields::Unit => {

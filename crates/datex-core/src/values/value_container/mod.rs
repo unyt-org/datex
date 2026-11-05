@@ -1,8 +1,6 @@
 //! This module contains the implementation of the [ValueContainer] enum, which represents a container for values in the DATEX type system.
 //! A [ValueContainer] can either be a local value, which directly contains a [Value], or a shared value, which contains a reference to a [SharedContainer].
-use crate::{
-    utils::sheep::Sheep,
-};
+use crate::utils::sheep::Sheep;
 mod equality;
 mod identity;
 use core::ops::Deref;
@@ -32,7 +30,10 @@ use crate::{
         },
         traits::SharedContainerCommon,
     },
-    traits::convert_value_container::ConvertValueContainer,
+    traits::{
+        convert_parts::FromParts, convert_value::ConvertValue,
+        convert_value_container::ConvertValueContainer,
+    },
     utils::{
         impl_display_for_datex_value::impl_display_for_datex_value,
         sheep_mut::SheepMut,
@@ -45,11 +46,6 @@ use core::{
     ops::FnOnce,
 };
 use serde::Serialize;
-use crate::instruction::regular_instruction::RegularInstruction;
-use crate::traits::convert_parts::FromParts;
-use crate::traits::convert_value::ConvertValue;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::text::Text;
 
 pub mod classification;
 pub mod convert_parts;
@@ -58,10 +54,10 @@ mod datex_hash;
 pub mod error;
 pub mod get_core_lib_type_id;
 pub mod get_datex_type;
+pub mod method_calls;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
-pub mod method_calls;
 
 #[derive(Debug, Eq, Clone)]
 pub enum ValueContainer {
@@ -165,10 +161,10 @@ impl ValueContainer {
     pub fn try_as_str(&self) -> Option<&str> {
         match self {
             ValueContainer::Local(value) => value.try_as_str(),
-            ValueContainer::Shared(shared) => None,
+            ValueContainer::Shared(_shared) => None,
         }
     }
-    
+
     /// Tries to get the current collapsed value as a specified type.
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
