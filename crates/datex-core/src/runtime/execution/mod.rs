@@ -41,8 +41,10 @@ pub fn execute_dxb_sync(
     input: ExecutionInput,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     let runtime = input.runtime.clone();
-    let (interrupt_provider, execution_loop) = input.execution_loop();
+    let execution_options = input.options.clone();
+    let caller_metadata = input.caller_metadata.clone();
 
+    let (interrupt_provider, execution_loop) = input.execution_loop();
     for output in execution_loop {
         match output? {
             ExternalExecutionInterrupt::SetEndpointProperty {
@@ -133,6 +135,23 @@ pub fn execute_dxb_sync(
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValueAndBorrowedArgs(res),
                 )
+            }
+            ExternalExecutionInterrupt::RemoteExecution {
+                input: dxb_with_shared_values,
+                receivers,
+            } if receivers.iter().all(|r: &Endpoint| {
+                r.is_local_or_equals_endpoint(runtime.endpoint())
+            }) =>
+            {
+                let local_input = ExecutionInput::new(
+                    dxb_with_shared_values,
+                    caller_metadata.clone(),
+                    execution_options.clone(),
+                    runtime.clone(),
+                );
+                let result = execute_dxb_sync(local_input)?;
+                interrupt_provider
+                    .provide_result(InterruptResult::ResolvedValue(result));
             }
             _ => return Err(ExecutionError::RequiresAsyncExecution),
         }
