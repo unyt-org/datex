@@ -11,6 +11,7 @@ use datex_core::{
     decompiler::{DecompileOptions, dxb_to_source_code},
     runtime::{
         Runtime,
+        cache::shared_references_cache::{self, SharedReferencesCache},
         execution::{
             ExecutionInput, ExecutionOptions, execute_dxb_sync,
             execution_input::ExecutionCallerMetadata,
@@ -161,8 +162,10 @@ pub fn runtime_value_to_json_baseline_json_syntax(value: &json_syntax::Value) {
 
 pub fn runtime_value_to_json_datex(value: &ValueContainer) {
     let pointer_lookup = PointerAvailabilityLookup::default();
+    let mut shared_references_cache = SharedReferencesCache::default();
     let input = CompileInput::new(&pointer_lookup, &[]);
-    let dxb = compile_value_container(value, input);
+    let dxb =
+        compile_value_container(value, input, &mut shared_references_cache);
     let string = dxb_to_source_code::dxb_to_source_code(
         &dxb.dxb,
         DecompileOptions::json_compat(),
@@ -173,8 +176,10 @@ pub fn runtime_value_to_json_datex(value: &ValueContainer) {
 
 pub fn runtime_value_to_dxb(value: &ValueContainer) {
     let pointer_lookup = PointerAvailabilityLookup::default();
+    let mut shared_references_cache = SharedReferencesCache::default();
     let input = CompileInput::new(&pointer_lookup, &[]);
-    let dxb = compile_value_container(value, input).dxb;
+    let dxb =
+        compile_value_container(value, input, &mut shared_references_cache).dxb;
     assert!(!dxb.is_empty(), "Expected DXB to be non-empty");
 }
 
