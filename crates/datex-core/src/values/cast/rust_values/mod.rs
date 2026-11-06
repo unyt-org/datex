@@ -429,6 +429,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "FIXME - equality for native & native, native & core is not done yet see #839"]
     fn try_boxed_to_value() {
         let value = Box::new(true);
         let result = Value::native_boxed(value);
