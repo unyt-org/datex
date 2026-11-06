@@ -15,10 +15,21 @@ use core::cell::RefCell;
 pub struct RemoteExecutionContext {
     #[cfg(feature = "compiler")]
     pub compile_scope: CompilationScope,
-    endpoints: Vec<Endpoint>,
-    pub context_id: RefCell<Option<OutgoingContextId>>,
+    pub target: RemoteExecutionTarget,
     pub execution_mode: ExecutionMode,
     pub runtime: Runtime,
+}
+
+#[derive(Debug, Clone)]
+pub struct RemoteExecutionTarget {
+    endpoints: Vec<Endpoint>,
+    pub context_id: Rc<RefCell<Option<OutgoingContextId>>>,
+}
+
+impl RemoteExecutionTarget {
+    pub fn endpoints(&self) -> &[Endpoint] {
+        &self.endpoints
+    }
 }
 
 impl RemoteExecutionContext {
@@ -31,8 +42,10 @@ impl RemoteExecutionContext {
         RemoteExecutionContext {
             #[cfg(feature = "compiler")]
             compile_scope: CompilationScope::new(execution_mode),
-            endpoints,
-            context_id: RefCell::new(None),
+            target: RemoteExecutionTarget {
+                endpoints,
+                context_id: Rc::new(RefCell::new(None)),
+            },
             execution_mode,
             runtime,
         }
@@ -40,14 +53,17 @@ impl RemoteExecutionContext {
 
     /// Adds an endpoint to the remote execution context if it doesn't already exist.
     pub fn add_endpoint(&mut self, endpoint: Endpoint) {
-        if self.endpoints.contains(&endpoint) {
+        if self.endpoints().contains(&endpoint) {
             return;
         }
-        self.endpoints.push(endpoint);
+        self.endpoints_mut().push(endpoint);
     }
 
     pub fn endpoints(&self) -> &[Endpoint] {
-        &self.endpoints
+        &self.target.endpoints
+    }
+    pub fn endpoints_mut(&mut self) -> &mut Vec<Endpoint> {
+        &mut self.target.endpoints
     }
 
     /// Sets the endpoints for the remote execution context.
@@ -57,7 +73,7 @@ impl RemoteExecutionContext {
         if endpoints.is_empty() {
             panic!("RemoteExecutionContext: endpoints cannot be empty");
         } else {
-            self.endpoints = endpoints;
+            self.target.endpoints = endpoints;
         }
     }
 }

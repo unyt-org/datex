@@ -36,7 +36,7 @@ use crate::{
             ExecutionError,
             context::{
                 ExecutionContext, ExecutionMode, RemoteExecutionContext,
-                ScriptExecutionError,
+                RemoteExecutionTarget, ScriptExecutionError,
             },
             execution_input::ExecutionCallerMetadata,
         },
@@ -97,7 +97,7 @@ pub struct RuntimeInternal {
 
     pointer_availability_lookup: RefCell<PointerAvailabilityLookup>,
 
-    synced_values: RefCell<SyncedValueData>,
+    synced_value_data: RefCell<SyncedValueData>,
 }
 
 macro_rules! get_execution_context {
@@ -149,7 +149,7 @@ impl RuntimeInternal {
             incoming_sections_receiver: RefCell::new(
                 incoming_sections_receiver,
             ),
-            synced_values: RefCell::new(SyncedValueData::default()),
+            synced_value_data: RefCell::new(SyncedValueData::default()),
             execution_contexts: RefCell::new(HashMap::new()),
             transceiver_counter: RefCell::new(0),
             pointer_availability_lookup: RefCell::new(
@@ -246,11 +246,11 @@ impl RuntimeInternal {
     ) -> RefMut<'_, PointerAvailabilityLookup> {
         self.pointer_availability_lookup.borrow_mut()
     }
-    pub fn synced_values(&self) -> Ref<'_, SyncedValueData> {
-        self.synced_values.borrow()
+    pub fn synced_value_data(&self) -> Ref<'_, SyncedValueData> {
+        self.synced_value_data.borrow()
     }
-    pub fn synced_values_mut(&self) -> RefMut<'_, SyncedValueData> {
-        self.synced_values.borrow_mut()
+    pub fn synced_value_data_mut(&self) -> RefMut<'_, SyncedValueData> {
+        self.synced_value_data.borrow_mut()
     }
 
     pub fn shared_references_cache_refcell(
@@ -461,7 +461,9 @@ impl RuntimeInternal {
                         return Err(ExecutionError::InvalidExecutionState);
                     }
                     RuntimeInternal::execute_remote_single_receiver(
-                        self, context, input,
+                        self,
+                        &context.target,
+                        input,
                     )
                     .await
                 }
@@ -524,26 +526,27 @@ impl RuntimeInternal {
     /// The caller must ensure, to pass an remote execution context with a single receiver.
     pub async fn execute_remote_single_receiver(
         self: Rc<RuntimeInternal>,
-        remote_execution_context: &RemoteExecutionContext,
+        remote_execution_target: &RemoteExecutionTarget,
         input: DXBWithSharedValues,
     ) -> RemoteExecutionResult {
-        if remote_execution_context.endpoints().len() != 1 {
+        if remote_execution_target.endpoints().len() != 1 {
             panic!(
                 "execute_remote_single_receiver called with remote_execution_context that has more than one endpoint"
             );
         }
-        self.execute_remote(remote_execution_context, input)
+        self.execute_remote(remote_execution_target, input)
             .await?
             .remove(0)
+            .0
     }
 
     /// Execute a remote block, waiting for all the peers to send their response.
     /// It might be, that a subset of the responses are errors
     pub async fn execute_remote(
         self: Rc<RuntimeInternal>,
-        remote_execution_context: &RemoteExecutionContext,
+        remote_execution_target: &RemoteExecutionTarget,
         input: DXBWithSharedValues,
-    ) -> Result<Vec<RemoteExecutionResult>, SubscriberError> {
+    ) -> Result<Vec<(RemoteExecutionResult, Endpoint)>, SubscriberError> {
         let routing_header: RoutingHeader = RoutingHeader::default()
             .with_sender(self.endpoint.clone())
             .to_owned();
@@ -551,7 +554,7 @@ impl RuntimeInternal {
         // get existing context_id for context, or create a new one
         let context_id = {
             let mut context_ref =
-                remote_execution_context.context_id.borrow_mut();
+                remote_execution_target.context_id.borrow_mut();
             context_ref.unwrap_or_else(|| {
                 let id = self.com_hub.block_handler.get_new_context_id();
                 // if the context_id is not set, we create a new one
@@ -572,11 +575,11 @@ impl RuntimeInternal {
             input.dxb,
         );
 
-        block.set_receivers(remote_execution_context.endpoints());
+        block.set_receivers(remote_execution_target.endpoints());
         // TODO: ensure in remote_execution_context that endpoints are never empty
         unsafe {
             self.clone().register_shared_containers_for_endpoints(
-                &(remote_execution_context
+                &(remote_execution_target
                     .endpoints()
                     .iter()
                     .collect::<Vec<_>>()),
@@ -590,30 +593,57 @@ impl RuntimeInternal {
             .await;
 
         let self_clone = self.clone();
-        // TODO parallelize
-        Ok(join_all(responses.into_iter().map(|response| {
-            let self_clone = self_clone.clone();
-            async move {
-                let incoming_section = response?.take_incoming_section();
 
-                // TODO: do we need to pass input.shared_values here to execution?
-                RuntimeInternal::execute_incoming_section(
-                    self_clone,
-                    incoming_section,
-                    None,
+        let futures_with_endpoint = responses
+            .into_iter()
+            .filter(|response| {
+                // pipe trought all response errors, and the ones with an specified endpoint
+                // to skip the [Response::Unspecified] cases to be executed
+                response.is_err()
+                    || matches!(response, Ok(re) if re.endpoint().is_some())
+            })
+            .map(|response| {
+                let self_clone = self_clone.clone();
+                let endpoint = response
+                    .as_ref()
+                    .map(|r| {
+                        r.endpoint()
+                            .cloned()
+                            .expect("Expected endpoint to be present")
+                    })
+                    .unwrap_or_else(|e| e.endpoint().clone());
+                (
+                    async move {
+                        let response = response?;
+                        let incoming_section = response.take_incoming_section();
+                        RuntimeInternal::execute_incoming_section(
+                            self_clone,
+                            incoming_section,
+                            None,
+                        )
+                        .await
+                        .0
+                    },
+                    endpoint,
                 )
-                .await
-                .0
-            }
-        }))
-        .await)
+            });
+
+        let (future, endpoint) = futures_with_endpoint
+            .into_iter()
+            .unzip::<_, _, Vec<_>, Vec<_>>();
+
+        Ok(join_all(future)
+            .await
+            .into_iter()
+            .zip(endpoint)
+            .collect::<Vec<_>>())
     }
 
     pub async fn execute_instructions_remote(
         self: Rc<RuntimeInternal>,
         endpoints: Vec<Endpoint>,
         instructions_input: Vec<InstructionInput>,
-    ) -> Result<Vec<RemoteExecutionResult>, SubscriberError> {
+    ) -> Result<Vec<(RemoteExecutionResult, Endpoint)>, SubscriberError> {
         let dxb = core_compile(
             &self.pointer_availability_lookup(),
             &endpoints,
@@ -626,7 +656,8 @@ impl RuntimeInternal {
             ExecutionMode::Static,
             Runtime::from(self.clone()),
         );
-        self.execute_remote(&remote_execution_context, dxb).await
+        self.execute_remote(&remote_execution_context.target, dxb)
+            .await
     }
 
     pub async fn execute_instructions_remote_single_receiver(
@@ -641,6 +672,7 @@ impl RuntimeInternal {
         )
         .await?
         .remove(0)
+        .0
     }
 
     pub(crate) async fn execute_incoming_section(
