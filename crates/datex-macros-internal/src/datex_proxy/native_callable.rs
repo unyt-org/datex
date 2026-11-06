@@ -4,6 +4,8 @@ use syn::{
     ExprClosure, FnArg, ImplItemFn, ItemFn, Signature, Type, fold, fold::Fold,
 };
 
+use crate::datex_proxy::helpers::parse_doc_comments;
+
 pub fn generate_native_callable_from_impl_fn(
     function: &mut ImplItemFn,
     self_type: &Type,
@@ -11,6 +13,7 @@ pub fn generate_native_callable_from_impl_fn(
     generate_native_callable(
         function.sig.asyncness.is_some(),
         &mut function.sig,
+        &function.attrs,
         Some(self_type),
     )
 }
@@ -19,6 +22,7 @@ pub fn generate_native_callable_from_fn(function: &mut ItemFn) -> TokenStream {
     generate_native_callable(
         function.sig.asyncness.is_some(),
         &mut function.sig,
+        &function.attrs,
         None,
     )
 }
@@ -48,6 +52,7 @@ enum FunctionArg {
 pub fn generate_native_callable(
     is_async: bool,
     sig: &mut Signature,
+    attrs: &[syn::Attribute],
     self_ty: Option<&Type>,
 ) -> TokenStream {
     let method_ident = &sig.ident;
@@ -333,8 +338,15 @@ pub fn generate_native_callable(
         }
     };
 
+    let docs = match parse_doc_comments(&attrs) {
+        Some(docs) => quote! {
+            Some(#docs.to_string())
+        },
+        None => quote! {
+            None
+        },
+    };
     quote! {{
-
         Callable {
             name: Some(#method_name.to_string()),
             signature: CallableTypeDefinition {
@@ -347,6 +359,7 @@ pub fn generate_native_callable(
             },
             body: #body,
             creator: Default::default(),
+            docs: #docs,
         }
     }}
 }

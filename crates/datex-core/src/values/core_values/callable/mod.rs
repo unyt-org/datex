@@ -194,6 +194,7 @@ pub struct Callable {
     pub signature: CallableTypeDefinition,
     pub body: CallableBody,
     pub creator: Endpoint,
+    pub docs: Option<String>,
 }
 
 impl_display_for_datex_value!(
@@ -234,6 +235,7 @@ where
             Ok((Some(result.to_value_container()), vec![]))
         })),
         creator: Default::default(),
+        docs: None,
     }
 }
 
@@ -272,5 +274,6 @@ where
             },
         )),
         creator: Default::default(),
+        docs: None,
     }
 }

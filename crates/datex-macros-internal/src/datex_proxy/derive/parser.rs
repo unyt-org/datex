@@ -1,7 +1,10 @@
-use crate::datex_proxy::data::{
-    EnumVariant, Field, FieldAttributes, FieldMapping, Fields, IndexedField,
-    NamedField, NamedFieldAttributes, Structure, StructureAttributes,
-    StructureData, TypeKind,
+use crate::datex_proxy::{
+    data::{
+        EnumVariant, Field, FieldAttributes, FieldMapping, Fields,
+        IndexedField, NamedField, NamedFieldAttributes, Structure,
+        StructureAttributes, StructureData, TypeKind,
+    },
+    helpers::parse_doc_comments,
 };
 use proc_macro2::Span;
 use quote::ToTokens;
@@ -363,30 +366,4 @@ fn parse_hex_literal_to_u32(literal: &str) -> u32 {
     let literal = literal.trim_start_matches("0x");
     u32::from_str_radix(literal, 16)
         .unwrap_or_else(|_| panic!("Invalid hexadecimal literal: {}", literal))
-}
-
-fn parse_doc_comments(attrs: &[Attribute]) -> Option<String> {
-    let docs = attrs
-        .iter()
-        .filter_map(|attr| {
-            if !attr.path().is_ident("doc") {
-                return None;
-            }
-            let Meta::NameValue(name_value) = &attr.meta else {
-                return None;
-            };
-            let syn::Expr::Lit(expr_lit) = &name_value.value else {
-                return None;
-            };
-            let syn::Lit::Str(lit_str) = &expr_lit.lit else {
-                return None;
-            };
-            Some(lit_str.value().trim_start().to_string())
-        })
-        .collect::<Vec<_>>();
-    if docs.is_empty() {
-        None
-    } else {
-        Some(docs.join("\n"))
-    }
 }

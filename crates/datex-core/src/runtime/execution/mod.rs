@@ -930,6 +930,7 @@ mod tests {
                     )),
                 }),
                 creator: Endpoint::LOCAL,
+                docs: None,
             }
         )
     }
@@ -958,6 +959,7 @@ mod tests {
                     body: compile_instruction(RegularInstruction::Null),
                 }),
                 creator: Endpoint::LOCAL,
+                docs: None,
             }
         );
     }
@@ -992,6 +994,7 @@ mod tests {
                     body: compile_instruction(RegularInstruction::Null),
                 }),
                 creator: Endpoint::LOCAL,
+                docs: None,
             }
         );
     }

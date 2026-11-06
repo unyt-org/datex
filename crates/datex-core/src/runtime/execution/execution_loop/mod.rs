@@ -851,6 +851,7 @@ pub gen fn inner_execution_loop(
                                             body: callable_declaration.body.body,
                                         }),
                                         creator: state.caller_metadata.endpoint.clone(),
+                                        docs: None,
                                     })
                                         .into()
                                 }
@@ -892,6 +893,7 @@ pub gen fn inner_execution_loop(
                                                 })
                                             },
                                         creator: state.caller_metadata.endpoint.clone(),
+                                        docs: None,
                                     })
                                         .into()
                                 }

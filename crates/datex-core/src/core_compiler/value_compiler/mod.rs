@@ -908,6 +908,7 @@ mod tests {
             },
             body: CallableBody::Hidden,
             creator: Endpoint::LOCAL,
+            docs: None,
         };
 
         let mut context = core_compilation_context();
@@ -973,6 +974,7 @@ mod tests {
             },
             body: CallableBody::Hidden,
             creator: Endpoint::LOCAL,
+            docs: None,
         };
 
         let mut context = core_compilation_context();

@@ -12,9 +12,9 @@ mod datex_inspector {
     use super::*;
     use crate::{
         shared_wrappers::shared::{shared_ref::SharedRef, to_shared::ToShared},
+        task::sleep,
         values::core_values::{channel::create_channel, receiver::Receiver},
     };
-    use crate::task::sleep;
 
     #[derive(Datex, Debug, Clone, PartialEq, Eq, Hash)]
     #[datex(no_deserialize, builtin = 0x000001)]
@@ -27,10 +27,12 @@ mod datex_inspector {
 
     #[datex]
     impl Inspector {
+        /// Returns the name of the inspector.
         pub fn name(&self) -> String {
             self.name.clone()
         }
 
+        /// Streams the logs associated with the inspector.
         pub fn logs(
             &self,
             #[runtime] runtime: &Runtime,
@@ -51,6 +53,8 @@ mod datex_inspector {
             receiver
         }
 
+        /// Attempts to reboot the endpoint associated with the inspector.
+        /// Currently, this function is not implemented and will panic if called.
         pub fn try_reboot_endpoint(&self) {
             panic!("try_reboot_endpoint is not implemented yet");
         }
