@@ -34,6 +34,7 @@ use crate::{
 use indexmap::IndexMap;
 use log::info;
 use strum::IntoEnumIterator;
+use crate::utils::logger::{log_info, log_info_with_tag};
 
 #[derive(Debug)]
 pub struct CoreLibraryValues {
@@ -149,9 +150,7 @@ impl CoreLibraryValues {
             .join(" ");
         output.push_str(&args_string);
 
-        #[cfg(feature = "std")]
-        println!("[PRINT] {}", output);
-        info!("[PRINT] {}", output);
+        log_info_with_tag!("PRINT", "{}", output);
 
         // return all borrowed args
         Ok((None, get_borrowed_apply_argument_values(args)))

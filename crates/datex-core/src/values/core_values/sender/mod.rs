@@ -63,9 +63,9 @@ impl<T: ConvertValueContainer> Sender<T> {
     }
 
     /// Sends a value through the sender. Returns an error if the receiver has been dropped.
-    pub async fn send(&mut self, value: T) -> Result<(), ()> {
+    pub fn send(&mut self, value: T) -> Result<(), ()> {
         match self {
-            Sender::LocalReceiver { sender } => sender.send(value).await,
+            Sender::LocalReceiver { sender } => sender.start_send(value),
             Sender::RemoteReceiver { receiver } => {
                 if let Some(receiver) = receiver.upgrade() {
                     receiver.observer_data().call_observers(&Update::new(

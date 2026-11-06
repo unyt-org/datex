@@ -4,8 +4,10 @@ pub mod test;
 use crate::{
     prelude::*, runtime::Runtime, traits::get_datex_type::GetDatexType,
     values::value_container::ValueContainer,
+    utils::logger::LogMessage,
 };
 use datex_macros_internal::{Datex, datex};
+use crate::utils::logger::register_log_sender;
 
 #[datex(name = "inspector")]
 mod datex_inspector {
@@ -32,24 +34,13 @@ mod datex_inspector {
             self.name.clone()
         }
 
-        /// Streams the logs associated with the inspector.
+        /// Returns a stream of all global log messages of the endpoint.
         pub fn logs(
             &self,
             #[runtime] runtime: &Runtime,
-        ) -> SharedRef<Receiver<String>> {
-            let (mut sender, receiver) = create_channel(runtime);
-
-            runtime.task_manager().register_task(async move {
-                // send mock logs
-                for i in 0..1000 {
-                    let log_message = format!("Log message {}", i);
-                    if sender.send(log_message).await.is_err() {
-                        break;
-                    }
-                    sleep(core::time::Duration::from_millis(2000)).await;
-                }
-            });
-
+        ) -> SharedRef<Receiver<LogMessage>> {
+            let (sender, receiver) = create_channel(runtime);
+            register_log_sender(sender);
             receiver
         }
 
