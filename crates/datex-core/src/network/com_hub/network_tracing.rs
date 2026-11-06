@@ -44,6 +44,7 @@ use datex_macros_internal::Datex;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
+use crate::utils::logger::log_info;
 
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
 #[datex(structural)]
@@ -337,7 +338,7 @@ impl ComHub {
                     sender,
                     IncomingSection::SingleBlock((block, ..)),
                 )) => {
-                    info!(
+                    log_info!(
                         "Received trace block response from {}",
                         sender.clone()
                     );
@@ -397,7 +398,7 @@ impl ComHub {
         original_socket: ComInterfaceSocketUUID,
     ) -> Option<()> {
         let sender = block.routing_header.sender.clone();
-        info!("Received trace block from {sender}");
+        log_info!("Received trace block from {sender}");
         let socket_data =
             self.socket_manager.get_socket_by_uuid(&original_socket)?;
 
@@ -447,7 +448,7 @@ impl ComHub {
 
         let mut block = block.clone();
         let sender = block.routing_header.sender.clone();
-        info!("Received trace back block from {sender}");
+        log_info!("Received trace back block from {sender}");
 
         let distance = block.routing_header.distance;
 
@@ -483,12 +484,12 @@ impl ComHub {
     ) -> Option<()> {
         let mut block = block.clone();
         let sender = block.routing_header.sender.clone();
-        info!("Redirecting trace block from {sender}");
+        log_info!("Redirecting trace block from {sender}");
         let socket_data =
             self.socket_manager.get_socket_by_uuid(&original_socket)?;
 
         let hops = self.get_trace_data_from_block(&block).unwrap_or_default();
-        info!("{}", NetworkTraceResult::from_hops(hops));
+        log_info!("{}", NetworkTraceResult::from_hops(hops));
 
         // add incoming socket hop
         let distance = block.routing_header.distance;
