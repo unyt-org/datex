@@ -291,6 +291,7 @@ impl Value {
             signature,
             body,
             creator,
+            docs: None,
         }))
     }
 

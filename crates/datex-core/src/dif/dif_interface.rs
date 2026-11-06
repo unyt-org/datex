@@ -81,6 +81,7 @@ impl DIFInterface {
             signature: signature.clone(),
             body: CallableBody::Native(callable),
             creator: Default::default(),
+            docs: None,
         };
         let shared_base = BaseSharedValueContainer::try_new(
             ValueContainer::from(callable),

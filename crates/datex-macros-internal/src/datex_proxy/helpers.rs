@@ -1,6 +1,7 @@
 use crate::datex_proxy::data::StructureData;
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::{Attribute, Expr, Lit, Meta};
 
 /// Generates a TokenStream that creates a PointerAddress for the given structure data.
 pub fn get_pointer_address_for_struct(
@@ -40,5 +41,31 @@ pub fn get_pointer_address_for_fn(
                 #unique_name
             )
         }
+    }
+}
+
+pub fn parse_doc_comments(attrs: &[Attribute]) -> Option<String> {
+    let docs = attrs
+        .iter()
+        .filter_map(|attr| {
+            if !attr.path().is_ident("doc") {
+                return None;
+            }
+            let Meta::NameValue(name_value) = &attr.meta else {
+                return None;
+            };
+            let Expr::Lit(expr_lit) = &name_value.value else {
+                return None;
+            };
+            let Lit::Str(lit_str) = &expr_lit.lit else {
+                return None;
+            };
+            Some(lit_str.value().trim_start().to_string())
+        })
+        .collect::<Vec<_>>();
+    if docs.is_empty() {
+        None
+    } else {
+        Some(docs.join("\n"))
     }
 }
