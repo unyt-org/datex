@@ -289,7 +289,7 @@ pub async fn execute_dxb(
                         );
                     let res = runtime
                         .execute_remote_single_receiver(
-                            &mut remote_execution_context,
+                            &remote_execution_context.target,
                             dxb_with_shared_values,
                         )
                         .await?;

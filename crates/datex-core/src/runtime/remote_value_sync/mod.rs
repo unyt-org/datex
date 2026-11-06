@@ -81,7 +81,7 @@ impl RuntimeInternal {
             })?;
 
             // store observer
-            let mut synced_values = self.synced_values_mut();
+            let mut synced_values = self.synced_value_data_mut();
             synced_values
                 .set_owner_observer(shared_container.clone(), observer_id);
         }
@@ -98,7 +98,7 @@ impl RuntimeInternal {
         endpoint: &Endpoint,
         access_rights: ReferenceMutability,
     ) -> Result<(), ObserverError> {
-        let mut synced_values = self.synced_values_mut();
+        let mut synced_values = self.synced_value_data_mut();
         let subscribers = if let Some(subscribers) =
             synced_values.get_subscribers_mut(shared_container)
         {
@@ -179,7 +179,7 @@ impl RuntimeInternal {
         );
 
         self_clone
-            .execute_remote(&context, update_dxb)
+            .execute_remote(&context.target, update_dxb)
             .await
             .expect("Failed to execute remote update block");
     }
@@ -190,7 +190,7 @@ impl RuntimeInternal {
         container: &SharedContainer,
         update: &Update,
     ) {
-        let subscriber = self.synced_values();
+        let subscriber = self.synced_value_data();
         let subscribers = subscriber.get_subscribers(container);
         if let Some(subscribers) = subscribers {
             // TODO: don't send full update to source endpoint, but send update info with hash of the value
@@ -248,25 +248,41 @@ impl RuntimeInternal {
 
         let self_clone = self.clone();
 
-        // FIXME: refcell hold across await point for context
-        let mut subscriptions = self.synced_values_mut();
+        let responses = {
+            let target = {
+                let mut subscriptions = self.synced_value_data_mut();
+                let context = subscriptions
+                    .remote_execution_context_mut(&container)
+                    .unwrap();
 
-        let context = subscriptions
-            .remote_execution_context_mut(&container)
-            .unwrap();
+                // Update the context's endpoints to the receiver endpoints for this update block.
+                // This ensures that the endpoint that triggered this update does not get the update sent again
+                // TODO: make sure that all endpoints that are skipped here get the number of skipped
+                // blocks in the next block header so that they dont wait for this block (set skip_after_block)
+                // SAFETY: send_update_block_to_subscribers is only called when receiver_endpoints is not empty
+                unsafe {
+                    context.set_endpoints(receiver_endpoints);
+                }
+                context.target.clone()
+            };
 
-        // Update the context's endpoints to the receiver endpoints for this update block.
-        // This ensures that the endpoint that triggered this update does not get the update sent again
-        // TODO: make sure that all endpoints that are skipped here get the number of skipped
-        // blocks in the next block header so that they dont wait for this block (set skip_after_block)
-        // SAFETY: send_update_block_to_subscribers is only called when receiver_endpoints is not empty
-        unsafe {
-            context.set_endpoints(receiver_endpoints);
+            self_clone
+                .execute_remote(&target, update_dxb)
+                .await
+                .expect("Failed to execute remote update block")
+        };
+
+        // Remove endpoint from shared contaienr subscriber list if we get an error from the update
+        // TODO: Decide for which errors that should happen (like out of range value update no, crypto error yes)
+        let mut subscriptions = self.synced_value_data_mut();
+        for (response, endpoint) in responses {
+            if response.is_err()
+                && let Some(subscriber) =
+                    subscriptions.get_subscribers_mut(&container)
+            {
+                // remove subscriber
+                subscriber.remove_subscriber(&endpoint);
+            }
         }
-
-        self_clone
-            .execute_remote(context, update_dxb)
-            .await
-            .expect("Failed to execute remote update block");
     }
 }

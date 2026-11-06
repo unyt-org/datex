@@ -82,6 +82,14 @@ pub enum Response {
 }
 
 impl Response {
+    pub fn endpoint(&self) -> Option<&Endpoint> {
+        match self {
+            Response::ExactResponse(endpoint, _) => Some(endpoint),
+            Response::ResolvedResponse(endpoint, _) => Some(endpoint),
+            Response::UnspecifiedResponse(_) => None,
+        }
+    }
+
     pub fn take_incoming_section(self) -> IncomingSection {
         match self {
             Response::ExactResponse(_, section) => section,
@@ -96,6 +104,16 @@ pub enum ResponseError {
     NoResponseAfterTimeout(Endpoint, Duration),
     NotReachable(Endpoint),
     EarlyAbort(Endpoint),
+}
+
+impl ResponseError {
+    pub fn endpoint(&self) -> &Endpoint {
+        match self {
+            ResponseError::NoResponseAfterTimeout(endpoint, _) => endpoint,
+            ResponseError::NotReachable(endpoint) => endpoint,
+            ResponseError::EarlyAbort(endpoint) => endpoint,
+        }
+    }
 }
 
 impl Display for ResponseError {
