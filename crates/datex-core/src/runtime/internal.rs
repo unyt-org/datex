@@ -62,8 +62,11 @@ use core::{
     ops::DerefMut,
     pin::Pin,
 };
+use futures_util::future::join_all;
 use indexmap::IndexMap;
 use log::{debug, error, info};
+
+pub type RemoteExecutionResult = Result<Option<ValueContainer>, ExecutionError>;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -457,7 +460,10 @@ impl RuntimeInternal {
                     if initial_stack_values.is_some() {
                         return Err(ExecutionError::InvalidExecutionState);
                     }
-                    RuntimeInternal::execute_remote(self, context, input).await
+                    RuntimeInternal::execute_remote_single_receiver(
+                        self, context, input,
+                    )
+                    .await
                 }
                 ExecutionContext::Local(_) => {
                     execution_context
@@ -513,11 +519,31 @@ impl RuntimeInternal {
         }
     }
 
+    /// Executes a remote block expecting a single receiver.
+    /// # Safety
+    /// The caller must ensure, to pass an remote execution context with a single receiver.
+    pub async fn execute_remote_single_receiver(
+        self: Rc<RuntimeInternal>,
+        remote_execution_context: &RemoteExecutionContext,
+        input: DXBWithSharedValues,
+    ) -> RemoteExecutionResult {
+        if remote_execution_context.endpoints().len() != 1 {
+            panic!(
+                "execute_remote_single_receiver called with remote_execution_context that has more than one endpoint"
+            );
+        }
+        self.execute_remote(remote_execution_context, input)
+            .await?
+            .remove(0)
+    }
+
+    /// Execute a remote block, waiting for all the peers to send their response.
+    /// It might be, that a subset of the responses are errors
     pub async fn execute_remote(
         self: Rc<RuntimeInternal>,
         remote_execution_context: &RemoteExecutionContext,
         input: DXBWithSharedValues,
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
+    ) -> Result<Vec<RemoteExecutionResult>, SubscriberError> {
         let routing_header: RoutingHeader = RoutingHeader::default()
             .with_sender(self.endpoint.clone())
             .to_owned();
@@ -558,24 +584,36 @@ impl RuntimeInternal {
             )?;
         }
 
-        let response = self
+        let responses = self
             .com_hub
             .send_own_block_await_response(block, ResponseOptions::default())
-            .await
-            .remove(0)?;
-        let incoming_section = response.take_incoming_section();
+            .await;
 
-        // TODO: do we need to pass input.shared_values here to execution?
-        RuntimeInternal::execute_incoming_section(self, incoming_section, None)
-            .await
-            .0
+        let self_clone = self.clone();
+        // TODO parallelize
+        Ok(join_all(responses.into_iter().map(|response| {
+            let self_clone = self_clone.clone();
+            async move {
+                let incoming_section = response?.take_incoming_section();
+
+                // TODO: do we need to pass input.shared_values here to execution?
+                RuntimeInternal::execute_incoming_section(
+                    self_clone,
+                    incoming_section,
+                    None,
+                )
+                .await
+                .0
+            }
+        }))
+        .await)
     }
 
     pub async fn execute_instructions_remote(
         self: Rc<RuntimeInternal>,
         endpoints: Vec<Endpoint>,
         instructions_input: Vec<InstructionInput>,
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
+    ) -> Result<Vec<RemoteExecutionResult>, SubscriberError> {
         let dxb = core_compile(
             &self.pointer_availability_lookup(),
             &endpoints,
@@ -589,6 +627,20 @@ impl RuntimeInternal {
             Runtime::from(self.clone()),
         );
         self.execute_remote(&remote_execution_context, dxb).await
+    }
+
+    pub async fn execute_instructions_remote_single_receiver(
+        self: Rc<RuntimeInternal>,
+        endpoint: Endpoint,
+        instructions_input: Vec<InstructionInput>,
+    ) -> RemoteExecutionResult {
+        RuntimeInternal::execute_instructions_remote(
+            self,
+            vec![endpoint],
+            instructions_input,
+        )
+        .await?
+        .remove(0)
     }
 
     pub(crate) async fn execute_incoming_section(

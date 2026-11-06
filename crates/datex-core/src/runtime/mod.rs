@@ -1,7 +1,7 @@
 //! This module contains the implementation of the runtime, which is the backbone of the DATEX system.
 use crate::{
     core_compiler::core_compilation_context::DXBWithSharedValues,
-    runtime::execution::ExecutionError,
+    runtime::{execution::ExecutionError, remote_value_sync::SubscriberError},
     values::value_container::ValueContainer,
 };
 
@@ -133,8 +133,21 @@ impl Runtime {
         &self,
         remote_execution_context: &mut RemoteExecutionContext,
         input: DXBWithSharedValues,
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
+    ) -> Result<Vec<RemoteExecutionResult>, SubscriberError> {
         RuntimeInternal::execute_remote(
+            self.internal(),
+            remote_execution_context,
+            input,
+        )
+        .await
+    }
+
+    pub async fn execute_remote_single_receiver(
+        &self,
+        remote_execution_context: &mut RemoteExecutionContext,
+        input: DXBWithSharedValues,
+    ) -> RemoteExecutionResult {
+        RuntimeInternal::execute_remote_single_receiver(
             self.internal(),
             remote_execution_context,
             input,
@@ -146,10 +159,23 @@ impl Runtime {
         &self,
         endpoints: Vec<Endpoint>,
         instructions_input: Vec<InstructionInput>,
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
+    ) -> Result<Vec<RemoteExecutionResult>, SubscriberError> {
         RuntimeInternal::execute_instructions_remote(
             self.internal(),
             endpoints,
+            instructions_input,
+        )
+        .await
+    }
+
+    pub async fn execute_instructions_remote_single_receiver(
+        &self,
+        endpoint: Endpoint,
+        instructions_input: Vec<InstructionInput>,
+    ) -> RemoteExecutionResult {
+        RuntimeInternal::execute_instructions_remote_single_receiver(
+            self.internal(),
+            endpoint,
             instructions_input,
         )
         .await
