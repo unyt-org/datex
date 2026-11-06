@@ -1,22 +1,26 @@
 use crate::{
     channel::{mpsc, mpsc::create_unbounded_channel},
+    core_compiler::{
+        core_compilation_context::CompileInput,
+        update_compiler::compile_updates,
+    },
+    prelude::*,
+    runtime::Runtime,
     shared_values::{
-        ReferencedSharedContainer, traits::SharedContainerCommon,
+        ReferencedSharedContainer, SharedContainer,
+        base_shared_value_container::observers::TransceiverId,
+        traits::SharedContainerCommon,
         weak_shared_container::WeakSharedContainer,
+    },
+    traits::convert_value_container::ConvertValueContainer,
+    value_updates::update_data::{
+        AppendEntryUpdateData, Update, UpdateData, UpdateOperation,
     },
     values::{
         core_values::{native::DatexNativeBase, receiver::Receiver},
         value_container::ValueContainer,
     },
 };
-use crate::core_compiler::core_compilation_context::CompileInput;
-use crate::core_compiler::update_compiler::compile_updates;
-use crate::runtime::Runtime;
-use crate::shared_values::base_shared_value_container::observers::TransceiverId;
-use crate::shared_values::SharedContainer;
-use crate::traits::convert_value_container::ConvertValueContainer;
-use crate::value_updates::update_data::{AppendEntryUpdateData, Update, UpdateData, UpdateOperation};
-
 mod classification;
 mod convert_parts;
 mod convert_value;
@@ -64,20 +68,18 @@ impl<T: ConvertValueContainer> Sender<T> {
             Sender::LocalReceiver { sender } => sender.send(value).await,
             Sender::RemoteReceiver { receiver } => {
                 if let Some(receiver) = receiver.upgrade() {
-                    receiver.observer_data().call_observers(
-                        &Update::new(
-                            TransceiverId::Local,
-                            UpdateData::new(UpdateOperation::AppendEntry(Box::new(AppendEntryUpdateData {
+                    receiver.observer_data().call_observers(&Update::new(
+                        TransceiverId::Local,
+                        UpdateData::new(UpdateOperation::AppendEntry(
+                            Box::new(AppendEntryUpdateData {
                                 value: value.to_value_container(),
-                            }))),
-                        )
-                    );
+                            }),
+                        )),
+                    ));
                     Ok(())
-                }
-                else {
+                } else {
                     Err(())
                 }
-
             }
         }
     }
