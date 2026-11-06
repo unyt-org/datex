@@ -79,8 +79,8 @@ impl SharedContainer {
         // For now, local borrows are not supported cross endpoint
 
         let res = runtime
-            .execute_instructions_remote(
-                vec![self.pointer_address().endpoint()],
+            .execute_instructions_remote_single_receiver(
+                self.pointer_address().endpoint(),
                 instructions,
             )
             .await

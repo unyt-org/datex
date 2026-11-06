@@ -144,7 +144,10 @@ impl ApplyArgument {
         );
 
         let res = runtime
-            .execute_instructions_remote(vec![owner_endpoint], instructions)
+            .execute_instructions_remote_single_receiver(
+                owner_endpoint,
+                instructions,
+            )
             .await?;
 
         // FIXME: restore borrowed stack values across remote execution.

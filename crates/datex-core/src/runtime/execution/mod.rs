@@ -288,7 +288,7 @@ pub async fn execute_dxb(
                             runtime.clone(),
                         );
                     let res = runtime
-                        .execute_remote(
+                        .execute_remote_single_receiver(
                             &mut remote_execution_context,
                             dxb_with_shared_values,
                         )
@@ -330,8 +330,8 @@ async fn set_remote_endpoint_property(
     value: ValueContainer,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     runtime
-        .execute_instructions_remote(
-            vec![endpoint],
+        .execute_instructions_remote_single_receiver(
+            endpoint,
             vec![
                 RegularInstruction::set_entry_text(property_name).into(),
                 InstructionInput::ValueContainer(value),
@@ -347,8 +347,8 @@ async fn get_remote_endpoint_property(
     property_name: String,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     runtime
-        .execute_instructions_remote(
-            vec![endpoint],
+        .execute_instructions_remote_single_receiver(
+            endpoint,
             vec![
                 RegularInstruction::get_entry_text(property_name).into(),
                 RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
