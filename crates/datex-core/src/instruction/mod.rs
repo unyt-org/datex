@@ -2,16 +2,18 @@
 pub mod instruction_codes;
 pub mod instruction_data;
 pub mod regular_instruction;
+pub mod traits;
 pub mod type_instruction;
 pub mod type_instruction_codes;
 
 use crate::{
     instruction::{
-        regular_instruction::RegularInstruction,
+        regular_instruction::RegularInstruction, traits::to_bytes::ToBytes,
         type_instruction::TypeInstruction,
     },
     prelude::*,
 };
+mod to_bytes;
 use binrw::{
     BinResult, BinWrite, Endian,
     io::{Seek, Write},

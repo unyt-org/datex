@@ -1,6 +1,7 @@
 //! This module contains the implementation of the execution engine which is responsible for executing compiled DATEX bytecode (DXB) and handling interrupts that can occur during execution, such as calling functions, loading pointers, and performing pointer updates.
 use crate::{
     core_compiler::instruction_input::InstructionInput,
+    global::root_properties::RootProperty,
     instruction::regular_instruction::RegularInstruction,
     libs::core::core_lib_id::CoreLibId,
     prelude::*,
@@ -8,8 +9,10 @@ use crate::{
         Runtime,
         execution::{
             context::{ExecutionMode, RemoteExecutionContext},
-            execution_loop::interrupts::{
-                ExternalExecutionInterrupt, InterruptResult,
+            execution_input::ExecutionCallerMetadata,
+            execution_loop::{
+                internal_slots::get_root_property,
+                interrupts::{ExternalExecutionInterrupt, InterruptResult},
             },
         },
     },
@@ -22,14 +25,10 @@ use crate::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
-use core::{result::Result, unreachable};
-use core::str::FromStr;
+use core::{result::Result, str::FromStr, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
-use crate::global::root_properties::RootProperty;
-use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
-use crate::runtime::execution::execution_loop::internal_slots::get_root_property;
 
 pub mod context;
 mod errors;
@@ -75,7 +74,13 @@ pub fn execute_dxb_sync(
                 if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
                     interrupt_provider.provide_result(
                         InterruptResult::ResolvedValue(Some(
-                            ValueContainer::new_from_option(get_local_endpoint_property(&runtime, &caller_metadata, property_name)?),
+                            ValueContainer::new_from_option(
+                                get_local_endpoint_property(
+                                    &runtime,
+                                    &caller_metadata,
+                                    property_name,
+                                )?,
+                            ),
                         )),
                     );
                 } else {
@@ -204,7 +209,13 @@ pub async fn execute_dxb(
                 if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
                     interrupt_provider.provide_result(
                         InterruptResult::ResolvedValue(Some(
-                            ValueContainer::new_from_option(get_local_endpoint_property(&runtime, &caller_metadata, property_name)?),
+                            ValueContainer::new_from_option(
+                                get_local_endpoint_property(
+                                    &runtime,
+                                    &caller_metadata,
+                                    property_name,
+                                )?,
+                            ),
                         )),
                     );
                 } else {
@@ -353,27 +364,22 @@ async fn get_remote_endpoint_property(
         .await
 }
 
-
 /// Tries to get the endpoint property, either directly from endpoint properties, or from root properties ($.x), if not found
 fn get_local_endpoint_property(
     runtime: &Runtime,
     caller_metadata: &ExecutionCallerMetadata,
     property_name: String,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
-    let value = runtime
-        .endpoint_properties()
-        .get(&property_name)
-        .cloned();
+    let value = runtime.endpoint_properties().get(&property_name).cloned();
 
     if let Some(value) = value {
         return Ok(Some(value));
-    }
-    else if let Ok(root_property) = RootProperty::from_str(&property_name) {
+    } else if let Ok(root_property) = RootProperty::from_str(&property_name) {
         return Ok(Some(get_root_property(
             runtime,
             caller_metadata,
             root_property,
-        )?))
+        )?));
     }
 
     Ok(None)
@@ -418,11 +424,8 @@ mod tests {
     use crate::{
         collections::HashMap,
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
-        core_compiler::{
-            core_compilation_context::DXBWithSharedValues,
-            value_compiler::compile_instruction,
-        },
-        instruction::Instruction,
+        core_compiler::core_compilation_context::DXBWithSharedValues,
+        instruction::{Instruction, traits::to_bytes::ToBytes},
         libs::core::type_id::CoreLibBaseTypeId,
         prelude::*,
         runtime::{
@@ -947,9 +950,7 @@ mod tests {
                 body: CallableBody::DatexBytecode(DatexBytecodeCallable {
                     requires_async: false,
                     injected_values: vec![],
-                    body: compile_instruction(RegularInstruction::statements(
-                        0, false
-                    )),
+                    body: RegularInstruction::statements(0, false).to_bytes(),
                 }),
                 creator: Endpoint::LOCAL,
                 docs: None,
@@ -978,7 +979,7 @@ mod tests {
                 body: CallableBody::DatexBytecode(DatexBytecodeCallable {
                     requires_async: false,
                     injected_values: vec![],
-                    body: compile_instruction(RegularInstruction::Null),
+                    body: RegularInstruction::Null.to_bytes(),
                 }),
                 creator: Endpoint::LOCAL,
                 docs: None,
@@ -1013,7 +1014,7 @@ mod tests {
                 body: CallableBody::DatexBytecode(DatexBytecodeCallable {
                     requires_async: false,
                     injected_values: vec![],
-                    body: compile_instruction(RegularInstruction::Null),
+                    body: RegularInstruction::Null.to_bytes(),
                 }),
                 creator: Endpoint::LOCAL,
                 docs: None,

@@ -596,19 +596,12 @@ mod tests {
                 UnboundedStatementsData,
             },
             regular_instruction::RegularInstruction,
+            traits::to_bytes::ToBytes,
         },
         runtime::{Runtime, RuntimeConfig, RuntimeRunner},
     };
     use binrw::io::Cursor;
     use test_case::test_case;
-
-    fn instructions_to_bytes(instructions: Vec<Instruction>) -> Vec<u8> {
-        let mut cursor = Cursor::new(Vec::new());
-        for instruction in instructions {
-            append_instruction(&mut cursor, instruction);
-        }
-        cursor.into_inner()
-    }
 
     #[test_case(
         &[],
@@ -741,7 +734,7 @@ mod tests {
         expected_tree: InstructionTree<Instruction>,
         expected_err: Option<DXBParserError>,
     ) {
-        let dxb = instructions_to_bytes(instructions.to_vec());
+        let dxb = instructions.to_bytes();
         let (tree, err) = disassemble_body(
             &dxb,
             NestedInstructionResolutionStrategy::default(),
@@ -770,7 +763,7 @@ mod tests {
             )),
             Instruction::Regular(RegularInstruction::True),
         ];
-        let dxb = instructions_to_bytes(instructions.to_vec());
+        let dxb = instructions.to_bytes();
         let (tree, err) = disassemble_body(
             &dxb,
             NestedInstructionResolutionStrategy::ResolveNestedScopesFlat,
@@ -824,7 +817,7 @@ mod tests {
             )),
             Instruction::Regular(RegularInstruction::True),
         ];
-        let dxb = instructions_to_bytes(instructions.to_vec());
+        let dxb = instructions.to_bytes();
         let (tree, err) = disassemble_body(
             &dxb,
             NestedInstructionResolutionStrategy::ResolveNestedScopesTree,
