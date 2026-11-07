@@ -19,7 +19,9 @@ impl ConvertValueContainer for ValueContainer {
     fn as_borrowed_value_container_mut(
         &mut self,
     ) -> BorrowedValueContainerMut<'_> {
-        BorrowedValueContainerMut::from(self)
+        // FIXME: Do we want to panic here if the conversion fails, or handle it differently?
+        BorrowedValueContainerMut::try_from(self)
+            .expect("Failed to get borrowed value container mut")
     }
 
     fn try_from_value_container(

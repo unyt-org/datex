@@ -26,7 +26,9 @@ impl IterParts for List {
     {
         Some(Box::new(gen {
             for value in self.iter_mut() {
-                yield value.into();
+                yield value
+                    .try_into()
+                    .expect("Failed to get borrowed value container mut");
             }
         }))
     }

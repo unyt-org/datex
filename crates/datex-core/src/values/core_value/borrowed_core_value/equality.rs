@@ -1,6 +1,8 @@
 use crate::{
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
-    values::core_value::borrowed_core_value::BorrowedCoreValue,
+    values::core_value::borrowed_core_value::{
+        BorrowedCoreValue, BorrowedCoreValueMut,
+    },
 };
 
 impl StructuralEq for BorrowedCoreValue<'_> {
@@ -26,3 +28,42 @@ impl PartialEq for BorrowedCoreValue<'_> {
 }
 
 impl Eq for BorrowedCoreValue<'_> {}
+
+impl StructuralEq for BorrowedCoreValueMut<'_> {
+    fn structural_eq(&self, other: &Self) -> bool {
+        // TODO: optimize?
+        if let Some(lhs) = self.try_clone_to_core_value()
+            && let Some(rhs) = other.try_clone_to_core_value()
+        {
+            lhs.structural_eq(&rhs)
+        } else {
+            false
+        }
+    }
+}
+
+impl ValueEq for BorrowedCoreValueMut<'_> {
+    fn value_eq(&self, other: &Self) -> bool {
+        if let Some(lhs) = self.try_clone_to_core_value()
+            && let Some(rhs) = other.try_clone_to_core_value()
+        {
+            lhs.structural_eq(&rhs)
+        } else {
+            false
+        }
+    }
+}
+
+impl PartialEq for BorrowedCoreValueMut<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        if let Some(lhs) = self.try_clone_to_core_value()
+            && let Some(rhs) = other.try_clone_to_core_value()
+        {
+            lhs.structural_eq(&rhs)
+        } else {
+            false
+        }
+    }
+}
+
+impl Eq for BorrowedCoreValueMut<'_> {}

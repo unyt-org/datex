@@ -212,7 +212,7 @@ mod tests {
     fn try_borrowed_core_value_mut_integer() {
         let mut core_value =
             CoreValue::TypedInteger(TypedInteger::I32(42)).to_value();
-        let borrowed = BorrowedValueMut::from(&mut core_value);
+        let borrowed = BorrowedValueMut::try_from(&mut core_value).unwrap();
         let mut result = GoatMut::<i32>::try_from(borrowed).unwrap();
         *result = 123;
         drop(result);

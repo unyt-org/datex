@@ -43,7 +43,12 @@ impl IterParts for Map {
     > {
         Some(Box::new(gen move {
             for (key, value) in self.iter_mut() {
-                yield (key.into(), value.into());
+                yield (
+                    key.into(),
+                    value
+                        .try_into()
+                        .expect("Failed to get borrowed value container mut"),
+                );
             }
         }))
     }

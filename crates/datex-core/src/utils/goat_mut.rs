@@ -1,8 +1,10 @@
 use core::{
-    cell::RefMut,
+    cell::{Ref, RefMut},
     fmt::Debug,
     ops::{Deref, DerefMut},
 };
+
+use crate::utils::goat::Goat;
 
 /// A goat can be a Ref or a borrowed value
 pub enum GoatMut<'a, T: ?Sized> {

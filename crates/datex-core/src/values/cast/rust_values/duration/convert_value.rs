@@ -122,7 +122,7 @@ mod tests {
     #[test]
     fn try_borrowed_core_value_mut_duration() {
         let mut core_value = Duration::from_secs(10).to_value();
-        let borrowed = BorrowedValueMut::from(&mut core_value);
+        let borrowed = BorrowedValueMut::try_from(&mut core_value).unwrap();
         let mut result = GoatMut::<Duration>::try_from(borrowed).unwrap();
         *result = Duration::from_secs(20);
         drop(result);

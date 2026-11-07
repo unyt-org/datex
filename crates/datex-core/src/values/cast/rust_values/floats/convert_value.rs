@@ -275,7 +275,7 @@ mod tests {
     fn try_borrowed_core_value_mut_f32() {
         let mut core_value =
             CoreValue::TypedDecimal(TypedDecimal::F32(1.5.into())).to_value();
-        let borrowed = BorrowedValueMut::from(&mut core_value);
+        let borrowed = BorrowedValueMut::try_from(&mut core_value).unwrap();
         let result = GoatMut::<f32>::try_from(borrowed);
         *result.unwrap() = 2.5;
         assert_eq!(*core_value.try_as::<f32>().unwrap(), 2.5);
@@ -358,7 +358,7 @@ mod tests {
     fn try_borrowed_core_value_mut_f64() {
         let mut core_value =
             CoreValue::TypedDecimal(TypedDecimal::F64(1.5.into())).to_value();
-        let borrowed = BorrowedValueMut::from(&mut core_value);
+        let borrowed = BorrowedValueMut::try_from(&mut core_value).unwrap();
         let result = GoatMut::<f64>::try_from(borrowed);
         *result.unwrap() = 2.5;
         assert_eq!(*core_value.try_as::<f64>().unwrap(), 2.5);

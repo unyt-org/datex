@@ -63,10 +63,10 @@ impl Text {
         }
     }
 
-    pub fn try_as_mut_str(&mut self) -> Result<&mut str, ()> {
+    pub fn try_as_mut_str(&mut self) -> Option<&mut str> {
         match self {
-            Text::String(s) => Ok(s.as_mut_str()),
-            Text::StaticStr(_) => Err(()),
+            Text::String(s) => Some(s.as_mut_str()),
+            Text::StaticStr(_) => None,
         }
     }
 

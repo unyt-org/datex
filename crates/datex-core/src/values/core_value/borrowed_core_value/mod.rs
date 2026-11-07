@@ -216,59 +216,61 @@ pub enum BorrowedCoreValueMut<'a> {
 }
 
 impl<'a> BorrowedCoreValueMut<'a> {
-    pub fn try_clone_to_core_value(self) -> Result<CoreValue, ()> {
+    pub fn try_clone_to_core_value(&self) -> Option<CoreValue> {
         match self {
-            BorrowedCoreValueMut::Uninitialized => Ok(CoreValue::Uninitialized),
-            BorrowedCoreValueMut::Null => Ok(CoreValue::Null),
+            BorrowedCoreValueMut::Uninitialized => {
+                Some(CoreValue::Uninitialized)
+            }
+            BorrowedCoreValueMut::Null => Some(CoreValue::Null),
             BorrowedCoreValueMut::Boolean(boolean) => {
-                Ok(CoreValue::Boolean(boolean.deref().clone()))
+                Some(CoreValue::Boolean(boolean.deref().clone()))
             }
             BorrowedCoreValueMut::Integer(integer) => {
-                Ok(CoreValue::Integer(integer.deref().clone()))
+                Some(CoreValue::Integer(integer.deref().clone()))
             }
             BorrowedCoreValueMut::TypedInteger(typed_integer) => {
-                Ok(CoreValue::TypedInteger(typed_integer.deref().clone()))
+                Some(CoreValue::TypedInteger(typed_integer.deref().clone()))
             }
             BorrowedCoreValueMut::Decimal(decimal) => {
-                Ok(CoreValue::Decimal(decimal.deref().clone()))
+                Some(CoreValue::Decimal(decimal.deref().clone()))
             }
             BorrowedCoreValueMut::TypedDecimal(typed_decimal) => {
-                Ok(CoreValue::TypedDecimal(typed_decimal.deref().clone()))
+                Some(CoreValue::TypedDecimal(typed_decimal.deref().clone()))
             }
             BorrowedCoreValueMut::Text(text) => {
-                Ok(CoreValue::Text(text.to_string().into()))
+                Some(CoreValue::Text(text.to_string().into()))
             }
             BorrowedCoreValueMut::Endpoint(endpoint) => {
-                Ok(CoreValue::Endpoint(endpoint.deref().clone()))
+                Some(CoreValue::Endpoint(endpoint.deref().clone()))
             }
             BorrowedCoreValueMut::List(list) => {
-                Ok(CoreValue::List(list.deref().clone()))
+                Some(CoreValue::List(list.deref().clone()))
             }
             BorrowedCoreValueMut::Map(map) => {
-                Ok(CoreValue::Map(map.deref().clone()))
+                Some(CoreValue::Map(map.deref().clone()))
             }
             BorrowedCoreValueMut::Type(type_value) => {
-                Ok(CoreValue::Type(type_value.deref().clone()))
+                Some(CoreValue::Type(type_value.deref().clone()))
             }
             BorrowedCoreValueMut::EntityTypeDefinition(
                 entity_type_definition,
-            ) => Ok(CoreValue::EntityTypeDefinition(
+            ) => Some(CoreValue::EntityTypeDefinition(
                 entity_type_definition.deref().clone(),
             )),
             BorrowedCoreValueMut::Callable(callable) => {
-                Ok(CoreValue::Callable(callable.deref().clone()))
+                Some(CoreValue::Callable(callable.deref().clone()))
             }
             BorrowedCoreValueMut::Range(range) => {
-                Ok(CoreValue::Range(range.deref().clone()))
+                Some(CoreValue::Range(range.deref().clone()))
             }
             BorrowedCoreValueMut::Box(boxed_value) => {
-                Ok(CoreValue::Box(boxed_value.deref().clone()))
+                Some(CoreValue::Box(boxed_value.deref().clone()))
             }
             BorrowedCoreValueMut::Instant(instant) => {
-                Ok(CoreValue::Instant(*instant.deref()))
+                Some(CoreValue::Instant(*instant.deref()))
             }
             BorrowedCoreValueMut::Sender(sender) => {
-                Ok(CoreValue::Sender(sender.deref().clone()))
+                Some(CoreValue::Sender(sender.deref().clone()))
             }
             BorrowedCoreValueMut::Receiver(_receiver) => {
                 todo!("cannot clone receiver")
@@ -277,9 +279,13 @@ impl<'a> BorrowedCoreValueMut<'a> {
     }
 }
 
-impl<'a> From<&'a mut CoreValue> for BorrowedCoreValueMut<'a> {
-    fn from(core_value: &'a mut CoreValue) -> Self {
-        match core_value {
+impl<'a> TryFrom<&'a mut CoreValue> for BorrowedCoreValueMut<'a> {
+    type Error = ();
+
+    /// Attempts to create a [BorrowedCoreValueMut] from a mutable reference to a [CoreValue].
+    /// Returns an error if the conversion is not possible, like mutable borrowing a static string slice.
+    fn try_from(core_value: &'a mut CoreValue) -> Result<Self, Self::Error> {
+        Ok(match core_value {
             CoreValue::Callable(callable) => {
                 BorrowedCoreValueMut::Callable(GoatMut::Borrowed(callable))
             }
@@ -305,7 +311,7 @@ impl<'a> From<&'a mut CoreValue> for BorrowedCoreValueMut<'a> {
                 ))
             }
             CoreValue::Text(text) => BorrowedCoreValueMut::Text(
-                GoatMut::Borrowed(text.try_as_mut_str().expect("fixme")),
+                GoatMut::Borrowed(text.try_as_mut_str().ok_or(())?),
             ),
             CoreValue::Endpoint(endpoint) => {
                 BorrowedCoreValueMut::Endpoint(GoatMut::Borrowed(endpoint))
@@ -339,7 +345,7 @@ impl<'a> From<&'a mut CoreValue> for BorrowedCoreValueMut<'a> {
             CoreValue::Receiver(receiver) => {
                 BorrowedCoreValueMut::Receiver(GoatMut::Borrowed(receiver))
             }
-        }
+        })
     }
 }
 
