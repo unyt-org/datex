@@ -5,7 +5,10 @@ use crate::{
         value_with_serde_context::ValueWithSerdeContext,
     },
     traits::classification::Classification,
-    values::core_values::native::NativeCoreValue,
+    values::{
+        core_value_with_classification::serde_dif::TagMarker,
+        core_values::native::NativeCoreValue,
+    },
 };
 use core::ops::DerefMut;
 use serde::{Serialize, Serializer, ser::SerializeMap};
@@ -25,14 +28,20 @@ impl SerializeWithSerdeContext for &NativeCoreValue {
         } else {
             let mut map_serializer = serializer.serialize_map(Some(3))?;
             // "_" key to indicate that this is a classified value
-            map_serializer.serialize_entry("_", "c")?;
+            map_serializer.serialize_entry(
+                TagMarker::Hint.as_ref(),
+                &TagMarker::Classification.as_ref(),
+            )?;
             // "c" key for classification
             map_serializer.serialize_entry(
-                "c",
+                TagMarker::Classification.as_ref(),
                 &ValueWithSerdeContext::new(&classification, ctx),
             )?;
             // "v" key for value
-            map_serializer.serialize_entry("v", &self.with_ctx(ctx))?;
+            map_serializer.serialize_entry(
+                TagMarker::Value.as_ref(),
+                &self.with_ctx(ctx),
+            )?;
             map_serializer.end()
         }
     }

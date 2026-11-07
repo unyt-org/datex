@@ -90,6 +90,26 @@ pub enum TypeDefinition {
     CoreType(CoreLibTypeId), // -> $123
 }
 
+use strum::{EnumString, VariantNames};
+
+#[derive(Debug, Clone, PartialEq, Eq, AsRefStr, EnumString, VariantNames)]
+#[strum(serialize_all = "snake_case")]
+pub enum TypeDefinitionKind {
+    Literal,
+    List,
+    Map,
+    Range,
+    Collection,
+    Shared,
+    Box,
+    Callable,
+    ImplMarkers,
+    Intersection,
+    Union,
+    TaggedType,
+    CoreType,
+}
+
 impl TypeDefinition {
     /// Returns true if the type definition is a structural type (e.g. a collection, literal, or shared type).
     pub fn is_structural(&self) -> bool {

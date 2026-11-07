@@ -31,16 +31,13 @@ impl<'ctx> SerdeContext<'ctx> {
         Ok(())
     }
 }
-impl<'de> Visitor<'de>
-    for DeserializeSerdeContext<'de, '_, DecrementUpdateData>
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, DecrementUpdateData>
 {
     type Value = DecrementUpdateData;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "a delete entry update data sequence with 1 element (key)"
-        )
+        write!(f, "a decrement update data sequence with 1 element (value)")
     }
 
     fn visit_seq<A: serde::de::SeqAccess<'de>>(

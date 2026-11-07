@@ -1,4 +1,4 @@
-use strum::AsRefStr;
+use strum::{AsRefStr, EnumString, VariantNames};
 pub mod type_definition;
 use crate::types::type_definition::{
     collection::type_definition::{
@@ -29,6 +29,19 @@ pub enum CollectionTypeDefinition {
     Sender(SenderTypeDefinition),
     // Receiver<T>
     Receiver(ReceiverTypeDefinition),
+}
+
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, AsRefStr, EnumString, VariantNames,
+)]
+#[strum(serialize_all = "snake_case")]
+pub enum CollectionTypeDefinitionKind {
+    List,
+    ListSlice,
+    Map,
+    Range,
+    Sender,
+    Receiver,
 }
 
 impl Display for CollectionTypeDefinition {

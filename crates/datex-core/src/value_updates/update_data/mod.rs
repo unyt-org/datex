@@ -5,7 +5,7 @@ use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,
     values::value_container::ValueContainer,
 };
-use strum::AsRefStr;
+use strum::{AsRefStr, EnumString};
 mod append_entry;
 mod decrement;
 mod delete_entry;
@@ -23,6 +23,21 @@ pub use replace::*;
 pub use set_entry::*;
 
 mod to_instructions;
+
+use strum::VariantNames;
+
+#[derive(Clone, Debug, PartialEq, AsRefStr, EnumString, VariantNames)]
+#[strum(serialize_all = "snake_case")]
+pub enum UpdateOperationKind {
+    Replace,
+    SetEntry,
+    DeleteEntry,
+    Clear,
+    AppendEntry,
+    ListSplice,
+    Increment,
+    Decrement,
+}
 
 #[derive(Clone, Debug, PartialEq, AsRefStr, Hash)]
 #[strum(serialize_all = "snake_case")]

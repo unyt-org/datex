@@ -32,8 +32,8 @@ impl<'ctx> SerdeContext<'ctx> {
         Ok(())
     }
 }
-impl<'de> Visitor<'de>
-    for DeserializeSerdeContext<'de, '_, IncrementUpdateData>
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, IncrementUpdateData>
 {
     type Value = IncrementUpdateData;
 

@@ -11,20 +11,23 @@ use crate::{
     types::entities::entity_type_definition::dyn_deserialize::DynSeed,
     values::{
         core_value::CoreValue,
-        core_value_with_classification::CoreValueWithClassification,
+        core_value_with_classification::{
+            CoreValueWithClassification, serde_dif::TagMarker,
+        },
         value::{
             Value,
             value_classification::{ValueClassification, ValueTag},
         },
     },
 };
-use core::fmt;
+use core::{fmt, str::FromStr};
 use num::ToPrimitive;
 use serde::{
     Deserializer, Serialize, Serializer,
-    de::{Error as DeError, MapAccess, Visitor},
+    de::{self, Error as DeError, MapAccess, Visitor},
     ser::{SerializeMap, SerializeTuple},
 };
+use strum::VariantNames;
 
 impl<'ctx> SerdeContext<'ctx> {
     /// This method is used to serialize a value that can be represented directly depending on the flag set (e.g. a boolean or a text)
@@ -128,10 +131,13 @@ impl SerializeWithSerdeContext for (&CoreValue, &Option<ValueTag>) {
         // else serialize as a map with "t" and "v" keys
         else {
             let mut map = serializer.serialize_map(Some(3))?;
-            map.serialize_entry("_", "t")?;
-            map.serialize_entry("t", &self.1)?;
             map.serialize_entry(
-                "v",
+                TagMarker::Hint.as_ref(),
+                TagMarker::Tag.as_ref(),
+            )?;
+            map.serialize_entry(TagMarker::Tag.as_ref(), &self.1)?;
+            map.serialize_entry(
+                TagMarker::Value.as_ref(),
                 &ValueWithSerdeContext::new(&self.0, ctx),
             )?;
             map.end()
@@ -304,55 +310,69 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
     {
         let mut classification = ValueClassification::new_unclassified();
 
-        // loop over keys until we find "c" or "v" or reach the end of the map
         while let Some(key) = map.next_key::<String>()? {
-            // if "_" indicator is present, skip it and continue to the next key
-            // not relevant on this level
-            if key == "_" {
-                let _: serde_json::Value = map.next_value()?;
-                continue;
-            }
-            // get the classification first if it exists
-            else if key == "c" {
-                classification =
-                    map.next_value_seed(self.cast::<ValueClassification>())?;
-                // resolve native value based on entity classification
-                if let Some(entity_type) = &classification.entity_type
-                    && let Some(deserialize_fn) =
-                        entity_type.entity_definition().deserialize_from_dif
-                {
-                    // next key must be "v" for the value, otherwise error
-                    let key = map.next_key::<String>()?.ok_or_else(|| {
-                        DeError::custom("Expected key 'v' not found in map")
-                    })?;
-                    if key != "v" {
-                        return Err(DeError::custom(format!(
-                            "Expected key 'v' not found in map, found key '{key}' instead"
-                        )));
+            match TagMarker::from_str(&key).map_err(|_| {
+                de::Error::unknown_variant(&key, TagMarker::VARIANTS)
+            })? {
+                // Not relevant at this level.
+                TagMarker::Hint => {
+                    let _: serde_json::Value = map.next_value()?;
+                }
+
+                // Get the classification first if it exists.
+                TagMarker::Classification => {
+                    classification = map
+                        .next_value_seed(self.cast::<ValueClassification>())?;
+
+                    // Resolve native value based on entity classification.
+                    if let Some(entity_type) = &classification.entity_type
+                        && let Some(deserialize_fn) =
+                            entity_type.entity_definition().deserialize_from_dif
+                    {
+                        // The next key must be "v".
+                        let key =
+                            map.next_key::<String>()?.ok_or_else(|| {
+                                DeError::custom(
+                                    "Expected key 'v' not found in map",
+                                )
+                            })?;
+
+                        if key != TagMarker::Value.as_ref() {
+                            return Err(DeError::custom(format!(
+                                "Expected key 'v' not found in map, found key '{key}' instead"
+                            )));
+                        }
+
+                        // Deserialize via the entity type deserialize function.
+                        let value = map.next_value_seed(DynSeed {
+                            f: deserialize_fn,
+                            ctx: self.ctx,
+                        })?;
+
+                        return Ok(value);
                     }
-                    // deserialize via the entity type deserialize function
-                    let value = map.next_value_seed(DynSeed {
-                        f: deserialize_fn,
-                        ctx: self.ctx,
-                    })?;
-                    return Ok(value);
+                }
+
+                // Normal, non-native core value.
+                TagMarker::Value => {
+                    let mut value = map.next_value_seed(
+                        self.cast::<CoreValueWithClassification>(),
+                    )?;
+
+                    value.classification =
+                        value.classification.merge(classification);
+
+                    return Ok(Value::Core(value));
+                }
+                TagMarker::Tag => {
+                    return Err(DeError::custom("Unexpected Tag here"));
                 }
             }
-            // Normal, non-native core value:
-            else if key == "v" {
-                let mut value = map.next_value_seed(
-                    self.cast::<CoreValueWithClassification>(),
-                )?;
-                value.classification =
-                    value.classification.merge(classification);
-                return Ok(Value::Core(value));
-            } else {
-                return Err(DeError::custom(format!(
-                    "Unexpected key in map: {key}"
-                )));
-            }
         }
-        Err(DeError::custom("Expected key 'v' not found in map"))
+
+        Err(DeError::custom(
+            "Expected either classification or value key in map",
+        ))
     }
 }
 

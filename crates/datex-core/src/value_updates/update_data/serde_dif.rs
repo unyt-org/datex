@@ -9,18 +9,20 @@ use crate::{
     prelude::*,
     shared_values::base_shared_value_container::observers::TransceiverId,
     value_updates::update_data::{
-        AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-        ReplaceUpdateData, SetEntryUpdateData, Update, UpdateData,
-        UpdateOperation,
+        AppendEntryUpdateData, DecrementUpdateData, DeleteEntryUpdateData,
+        IncrementUpdateData, ListSpliceUpdateData, ReplaceUpdateData,
+        SetEntryUpdateData, Update, UpdateData, UpdateOperation,
+        UpdateOperationKind,
     },
     values::value_container::ValueContainer,
 };
-use core::fmt;
+use core::{fmt, str::FromStr};
 use serde::{
     Deserializer, Serializer,
     de::{self, SeqAccess, Visitor},
     ser::SerializeSeq,
 };
+use strum::VariantNames;
 
 impl SerializeWithSerdeContext for Update {
     fn serialize_with_ctx<S: Serializer>(
@@ -119,41 +121,46 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Update> {
             .next_element()?
             .ok_or_else(|| de::Error::invalid_length(0, &self))?;
 
-        let operation = match kind.as_str() {
-            "replace" => UpdateOperation::Replace(Box::new(
+        let operation = match UpdateOperationKind::from_str(kind.as_str())
+            .map_err(|_| {
+                de::Error::unknown_variant(
+                    kind.as_str(),
+                    UpdateOperationKind::VARIANTS,
+                )
+            })? {
+            UpdateOperationKind::Replace => UpdateOperation::Replace(Box::new(
                 self.cast::<ReplaceUpdateData>().visit_seq(&mut seq)?,
             )),
-
-            "set_entry" => UpdateOperation::SetEntry(Box::new(
-                self.cast::<SetEntryUpdateData>().visit_seq(&mut seq)?,
-            )),
-
-            "delete_entry" => UpdateOperation::DeleteEntry(Box::new(
-                self.cast::<DeleteEntryUpdateData>().visit_seq(&mut seq)?,
-            )),
-
-            "clear" => UpdateOperation::Clear,
-
-            "append_entry" => UpdateOperation::AppendEntry(Box::new(
-                self.cast::<AppendEntryUpdateData>().visit_seq(&mut seq)?,
-            )),
-
-            "list_splice" => UpdateOperation::ListSplice(Box::new(
-                self.cast::<ListSpliceUpdateData>().visit_seq(&mut seq)?,
-            )),
-
-            other => {
-                return Err(de::Error::unknown_variant(
-                    other,
-                    &[
-                        "replace",
-                        "set_entry",
-                        "delete_entry",
-                        "clear",
-                        "append_entry",
-                        "list_splice",
-                    ],
-                ));
+            UpdateOperationKind::SetEntry => {
+                UpdateOperation::SetEntry(Box::new(
+                    self.cast::<SetEntryUpdateData>().visit_seq(&mut seq)?,
+                ))
+            }
+            UpdateOperationKind::DeleteEntry => {
+                UpdateOperation::DeleteEntry(Box::new(
+                    self.cast::<DeleteEntryUpdateData>().visit_seq(&mut seq)?,
+                ))
+            }
+            UpdateOperationKind::Clear => UpdateOperation::Clear,
+            UpdateOperationKind::AppendEntry => {
+                UpdateOperation::AppendEntry(Box::new(
+                    self.cast::<AppendEntryUpdateData>().visit_seq(&mut seq)?,
+                ))
+            }
+            UpdateOperationKind::ListSplice => {
+                UpdateOperation::ListSplice(Box::new(
+                    self.cast::<ListSpliceUpdateData>().visit_seq(&mut seq)?,
+                ))
+            }
+            UpdateOperationKind::Increment => {
+                UpdateOperation::Increment(Box::new(
+                    self.cast::<IncrementUpdateData>().visit_seq(&mut seq)?,
+                ))
+            }
+            UpdateOperationKind::Decrement => {
+                UpdateOperation::Decrement(Box::new(
+                    self.cast::<DecrementUpdateData>().visit_seq(&mut seq)?,
+                ))
             }
         };
 

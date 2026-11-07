@@ -1,3 +1,5 @@
+use core::str::FromStr;
+
 use crate::{
     dif::{
         deserialize_serde_context::DeserializeSerdeContext,
@@ -9,7 +11,7 @@ use crate::{
     prelude::*,
     types::type_definition::{
         collection::{
-            CollectionTypeDefinition,
+            CollectionTypeDefinition, CollectionTypeDefinitionKind,
             type_definition::{
                 ListCollectionTypeDefinition,
                 ListSliceCollectionTypeDefinition, MapCollectionTypeDefinition,
@@ -24,6 +26,7 @@ use serde::{
     de::{self, Visitor},
     ser::{SerializeMap, SerializeSeq},
 };
+use strum::VariantNames;
 
 impl SerializeWithSerdeContext for CollectionTypeDefinition {
     fn serialize_with_ctx<S: Serializer>(
@@ -90,37 +93,49 @@ impl<'de, 'a, 'ctx> Visitor<'de>
     where
         A: serde::de::MapAccess<'de>,
     {
-        let key = map.next_key::<String>()?.ok_or_else(|| {
+        let kind = map.next_key::<String>()?.ok_or_else(|| {
             de::Error::custom(
                 "expected a single key for collection type definition",
             )
         })?;
-        match key.as_str() {
-            "List" => Ok(CollectionTypeDefinition::List(map.next_value_seed(
-                self.cast::<ListCollectionTypeDefinition>(),
-            )?)),
-            "ListSlice" => {
+        match CollectionTypeDefinitionKind::from_str(kind.as_str()).map_err(
+            |_| {
+                de::Error::unknown_variant(
+                    kind.as_str(),
+                    CollectionTypeDefinitionKind::VARIANTS,
+                )
+            },
+        )? {
+            CollectionTypeDefinitionKind::List => {
+                Ok(CollectionTypeDefinition::List(map.next_value_seed(
+                    self.cast::<ListCollectionTypeDefinition>(),
+                )?))
+            }
+            CollectionTypeDefinitionKind::ListSlice => {
                 Ok(CollectionTypeDefinition::ListSlice(map.next_value_seed(
                     self.cast::<ListSliceCollectionTypeDefinition>(),
                 )?))
             }
-            "Map" => Ok(CollectionTypeDefinition::Map(map.next_value_seed(
-                self.cast::<MapCollectionTypeDefinition>(),
-            )?)),
-            "Range" => Ok(CollectionTypeDefinition::Range(
-                map.next_value_seed(self.cast::<RangeTypeDefinition>())?,
-            )),
-            "Sender" => Ok(CollectionTypeDefinition::Sender(
-                map.next_value_seed(self.cast::<SenderTypeDefinition>())?,
-            )),
-            "Receiver" => Ok(CollectionTypeDefinition::Receiver(
-                map.next_value_seed(self.cast::<ReceiverTypeDefinition>())?,
-            )),
-
-            _ => Err(de::Error::unknown_variant(
-                &key,
-                &["List", "ListSlice", "Map", "Range", "Sender", "Receiver"],
-            )),
+            CollectionTypeDefinitionKind::Map => {
+                Ok(CollectionTypeDefinition::Map(map.next_value_seed(
+                    self.cast::<MapCollectionTypeDefinition>(),
+                )?))
+            }
+            CollectionTypeDefinitionKind::Range => {
+                Ok(CollectionTypeDefinition::Range(
+                    map.next_value_seed(self.cast::<RangeTypeDefinition>())?,
+                ))
+            }
+            CollectionTypeDefinitionKind::Sender => {
+                Ok(CollectionTypeDefinition::Sender(
+                    map.next_value_seed(self.cast::<SenderTypeDefinition>())?,
+                ))
+            }
+            CollectionTypeDefinitionKind::Receiver => {
+                Ok(CollectionTypeDefinition::Receiver(
+                    map.next_value_seed(self.cast::<ReceiverTypeDefinition>())?,
+                ))
+            }
         }
     }
 }
