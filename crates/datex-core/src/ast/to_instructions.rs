@@ -454,7 +454,7 @@ impl AstNodeToInstructions for ValueAccessType {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         _ast_metadata: &'a mut AstMetadata,
-        ctx_metadata: CompileContextMetadata,
+        _ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -719,7 +719,7 @@ impl AstNodeToInstructions for VariableAccess {
         compilation_context: &'a mut CompilationContext,
         _cache: &'a mut SharedReferencesCache,
         _ast_metadata: &'a mut AstMetadata,
-        ctx_metadata: CompileContextMetadata,
+        _ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1588,7 +1588,7 @@ impl AstNodeToInstructions for GenericInstantiation {
         _compilation_context: &'a mut CompilationContext,
         _cache: &'a mut SharedReferencesCache,
         _ast_metadata: &'a mut AstMetadata,
-        ctx_metadata: CompileContextMetadata,
+        _ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1607,7 +1607,7 @@ impl AstNodeToInstructions for RequestSharedRef {
         compilation_context: &'a mut CompilationContext,
         _cache: &'a mut SharedReferencesCache,
         _ast_metadata: &'a mut AstMetadata,
-        ctx_metadata: CompileContextMetadata,
+        _ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1751,7 +1751,7 @@ impl AstNodeToInstructions for RootPropertyAccess {
         _compilation_context: &'a mut CompilationContext,
         _cache: &'a mut SharedReferencesCache,
         _ast_metadata: &'a mut AstMetadata,
-        ctx_metadata: CompileContextMetadata,
+        _ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
