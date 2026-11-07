@@ -13,11 +13,11 @@ use crate::{
         value::value_classification::{ValueClassification, ValueTag},
     },
 };
-use core::fmt;
+use core::{fmt, str::FromStr};
 use num_traits::ToPrimitive;
 use serde::{
     Deserializer, Serialize, Serializer,
-    de::{Error, MapAccess, Visitor},
+    de::{self, Error, MapAccess, Visitor},
     ser::SerializeMap,
 };
 
@@ -33,14 +33,30 @@ impl SerializeWithSerdeContext for TaggedCoreValue<'_> {
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut map = serializer.serialize_map(Some(3))?;
-        map.serialize_entry("_", "t")?;
-        map.serialize_entry("t", self.tag)?;
+        map.serialize_entry(TagMarker::Hint.as_ref(), TagMarker::Tag.as_ref())?;
+        map.serialize_entry(TagMarker::Tag.as_ref(), self.tag)?;
         map.serialize_entry(
-            "v",
+            TagMarker::Value.as_ref(),
             &ValueWithSerdeContext::new(self.core_value, ctx),
         )?;
         map.end()
     }
+}
+
+use strum::{AsRefStr, EnumString, VariantNames};
+
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, AsRefStr, EnumString, VariantNames,
+)]
+pub enum TagMarker {
+    #[strum(serialize = "_")]
+    Hint,
+    #[strum(serialize = "t")]
+    Tag,
+    #[strum(serialize = "v")]
+    Value,
+    #[strum(serialize = "c")]
+    Classification,
 }
 
 impl SerializeWithSerdeContext for CoreValueWithClassification {
@@ -56,15 +72,18 @@ impl SerializeWithSerdeContext for CoreValueWithClassification {
             || classification.entity_type.is_some()
         {
             let mut map = serializer.serialize_map(Some(3))?;
-            map.serialize_entry("_", "c")?;
             map.serialize_entry(
-                "c",
+                TagMarker::Hint.as_ref(),
+                TagMarker::Classification.as_ref(),
+            )?;
+            map.serialize_entry(
+                TagMarker::Classification.as_ref(),
                 &ValueWithSerdeContext::new(classification, ctx),
             )?;
 
             if let Some(tag) = &classification.tag {
                 map.serialize_entry(
-                    "v",
+                    TagMarker::Value.as_ref(),
                     &ValueWithSerdeContext::new(
                         &TaggedCoreValue {
                             core_value: &self.inner,
@@ -77,7 +96,7 @@ impl SerializeWithSerdeContext for CoreValueWithClassification {
             // if no tag, just serialize the inner value with the context
             else {
                 map.serialize_entry(
-                    "v",
+                    TagMarker::Value.as_ref(),
                     &ValueWithSerdeContext::new(&self.inner, ctx),
                 )?;
             }
@@ -279,30 +298,27 @@ impl<'de, 'a, 'ctx> Visitor<'de>
         // TODO: classification
 
         while let Some(field) = map.next_key::<String>()? {
-            match field.as_str() {
-                "_" => {
+            match TagMarker::from_str(&field).map_err(|_| {
+                de::Error::unknown_variant(field.as_str(), TagMarker::VARIANTS)
+            })? {
+                TagMarker::Hint => {
                     // if is "_" key, skip it (but expect value to be "t")
                     let marker: String = map.next_value()?;
-                    if marker != "t" {
+                    if marker != TagMarker::Hint.as_ref() {
                         return Err(A::Error::custom(format!(
                             "Expected '_' key to have value 't' for DIF value with tag, but got: {}",
                             marker
                         )));
                     }
                 }
-                "v" => {
+                TagMarker::Value => {
                     core_value =
                         Some(map.next_value_seed(self.cast::<CoreValue>())?);
                 }
-                "t" => {
+                TagMarker::Tag => {
                     tag = Some(map.next_value()?);
                 }
-                _ => {
-                    return Err(A::Error::custom(format!(
-                        "Unexpected key for DIF value with tag: {}",
-                        field
-                    )));
-                }
+                TagMarker::Classification => todo!(),
             }
         }
 

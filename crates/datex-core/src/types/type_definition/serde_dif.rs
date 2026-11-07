@@ -1,4 +1,4 @@
-use core::{fmt, ops::Deref};
+use core::{fmt, ops::Deref, str::FromStr};
 
 use crate::{
     dif::{
@@ -15,7 +15,8 @@ use crate::{
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type,
         type_definition::{
-            TypeDefinition, callable::CallableTypeDefinition,
+            TypeDefinition, TypeDefinitionKind,
+            callable::CallableTypeDefinition,
             collection::CollectionTypeDefinition, impl_type::ImplMarkers,
             intersection::IntersectionTypeDefinition, list::ListTypeDefinition,
             map::MapTypeDefinition, range::RangeTypeDefinition,
@@ -28,6 +29,7 @@ use serde::{
     de::{self, Visitor},
     ser::SerializeMap,
 };
+use strum::VariantNames;
 
 impl SerializeWithSerdeContext for TypeDefinition {
     fn serialize_with_ctx<S>(
@@ -147,76 +149,83 @@ impl<'de, 'a, 'ctx> Visitor<'de>
     where
         A: de::MapAccess<'de>,
     {
-        let key: String = map.next_key()?.ok_or_else(|| {
+        let kind: String = map.next_key()?.ok_or_else(|| {
             de::Error::custom("expected TypeDefinition map with one key")
         })?;
 
-        let value = match key.as_str() {
-            "literal" => {
+        let value = match TypeDefinitionKind::from_str(kind.as_str()).map_err(
+            |_| {
+                de::Error::unknown_variant(
+                    kind.as_str(),
+                    TypeDefinitionKind::VARIANTS,
+                )
+            },
+        )? {
+            TypeDefinitionKind::Literal => {
                 let literal = map.next_value()?;
                 TypeDefinition::Literal(literal)
             }
 
-            "list" => {
+            TypeDefinitionKind::List => {
                 let list =
                     map.next_value_seed(self.cast::<ListTypeDefinition>())?;
                 TypeDefinition::List(list)
             }
 
-            "map" => {
+            TypeDefinitionKind::Map => {
                 let map_def =
                     map.next_value_seed(self.cast::<MapTypeDefinition>())?;
                 TypeDefinition::Map(map_def)
             }
 
-            "range" => {
+            TypeDefinitionKind::Range => {
                 let range =
                     map.next_value_seed(self.cast::<RangeTypeDefinition>())?;
                 TypeDefinition::Range(range)
             }
 
-            "collection" => {
+            TypeDefinitionKind::Collection => {
                 let collection = map
                     .next_value_seed(self.cast::<CollectionTypeDefinition>())?;
                 TypeDefinition::Collection(collection)
             }
 
-            "nested" => {
+            TypeDefinitionKind::Box => {
                 let ty = map.next_value_seed(self.cast::<Type>())?;
                 TypeDefinition::Box(Box::new(ty))
             }
 
-            "callable" => {
+            TypeDefinitionKind::Callable => {
                 let callable =
                     map.next_value_seed(self.cast::<CallableTypeDefinition>())?;
                 TypeDefinition::Callable(callable)
             }
 
-            "impl_markers" => {
+            TypeDefinitionKind::ImplMarkers => {
                 let def = map.next_value_seed(self.cast::<ImplMarkers>())?;
                 TypeDefinition::ImplMarkers(def)
             }
 
-            "intersection" => {
+            TypeDefinitionKind::Intersection => {
                 let intersection = map.next_value_seed(
                     self.cast::<IntersectionTypeDefinition>(),
                 )?;
                 TypeDefinition::Intersection(intersection)
             }
 
-            "union" => {
+            TypeDefinitionKind::Union => {
                 let union =
                     map.next_value_seed(self.cast::<UnionTypeDefinition>())?;
                 TypeDefinition::Union(union)
             }
 
-            "tagged_type" => {
+            TypeDefinitionKind::TaggedType => {
                 let tagged =
                     map.next_value_seed(self.cast::<TaggedTypeDefinition>())?;
                 TypeDefinition::TaggedType(tagged)
             }
 
-            "shared" => {
+            TypeDefinitionKind::Shared => {
                 let shared_container =
                     map.next_value_seed(self.cast::<SharedContainer>())?;
                 SharedContainerContainingType::try_from(shared_container)
@@ -225,26 +234,9 @@ impl<'de, 'a, 'ctx> Visitor<'de>
                         de::Error::custom("Failed to convert shared container to SharedContainerContainingType".to_string())
                     })?
             }
-
-            other => {
-                return Err(de::Error::unknown_variant(
-                    other,
-                    &[
-                        "literal",
-                        "list",
-                        "map",
-                        "range",
-                        "collection",
-                        "nested",
-                        "callable",
-                        "impl_markers",
-                        "intersection",
-                        "union",
-                        "tagged_type",
-                        "shared",
-                    ],
-                ));
-            }
+            TypeDefinitionKind::CoreType => Err(de::Error::custom(
+                "CoreType should not appear in this context",
+            ))?,
         };
 
         if let Some(extra_key) = map.next_key::<String>()? {
