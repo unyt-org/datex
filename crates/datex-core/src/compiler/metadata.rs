@@ -1,9 +1,7 @@
 use core::cell::RefCell;
 
 use alloc::rc::Rc;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Label(pub u32);
+use crate::instruction::Label;
 
 #[derive(Debug, Clone)]
 pub struct CompileContextMetadata {
