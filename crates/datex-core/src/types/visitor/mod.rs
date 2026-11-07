@@ -1,6 +1,7 @@
 use crate::{
     libs::core::type_id::CoreLibTypeId,
     prelude::*,
+    shared_values::{SharedContainerMutability, SharedContainerOwnership},
     types::{
         entity_type::EntityType,
         literal_type_definition::LiteralTypeDefinition,
@@ -12,11 +13,11 @@ use crate::{
             collection::{
                 CollectionTypeDefinition,
                 type_definition::{
-                    list::ListCollectionTypeDefinition,
-                    list_slice::ListSliceCollectionTypeDefinition,
-                    map::MapCollectionTypeDefinition,
-                    receiver::ReceiverTypeDefinition,
-                    sender::SenderTypeDefinition,
+                    ListCollectionTypeDefinition,
+                    ListSliceCollectionTypeDefinition,
+                    MapCollectionTypeDefinition,
+                    ReceiverTypeDefinition,
+                    SenderTypeDefinition,
                 },
             },
             impl_type::ImplMarkers,
@@ -27,10 +28,11 @@ use crate::{
             tagged_type::TaggedTypeDefinition,
             union::UnionTypeDefinition,
         },
+        type_definition_with_metadata::{
+            TypeDefinitionWithMetadata, TypeMetadata,
+        },
     },
 };
-use crate::shared_values::{SharedContainerMutability, SharedContainerOwnership};
-use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
 
 /// Folds a type using the provided folder.
 pub fn fold_type<F>(folder: &mut F, ty: &Type) -> Result<F::Output, F::Error>

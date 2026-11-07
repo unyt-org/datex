@@ -69,9 +69,9 @@ use crate::{
             collection::{
                 CollectionTypeDefinition,
                 type_definition::{
-                    list::ListCollectionTypeDefinition,
-                    list_slice::ListSliceCollectionTypeDefinition,
-                    map::MapCollectionTypeDefinition,
+                    ListCollectionTypeDefinition,
+                    ListSliceCollectionTypeDefinition,
+                    MapCollectionTypeDefinition,
                 },
             },
             impl_type::ImplMarkers,
@@ -119,7 +119,7 @@ use crate::{
         type_definition::{
             callable::CallableTypeDefinition,
             collection::type_definition::{
-                receiver::ReceiverTypeDefinition, sender::SenderTypeDefinition,
+                ReceiverTypeDefinition, SenderTypeDefinition,
             },
         },
     },

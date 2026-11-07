@@ -1,7 +1,6 @@
 use crate::{
     core_compiler::{
         core_compilation_context::{CompileInput, DXBWithSharedValues},
-        type_compiler::append_type_instruction,
         value_visitor::ValueVisitor,
     },
     instruction::regular_instruction::RegularInstruction,

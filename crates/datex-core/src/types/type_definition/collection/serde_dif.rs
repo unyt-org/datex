@@ -11,10 +11,9 @@ use crate::{
         collection::{
             CollectionTypeDefinition,
             type_definition::{
-                list::ListCollectionTypeDefinition,
-                list_slice::ListSliceCollectionTypeDefinition,
-                map::MapCollectionTypeDefinition,
-                receiver::ReceiverTypeDefinition, sender::SenderTypeDefinition,
+                ListCollectionTypeDefinition,
+                ListSliceCollectionTypeDefinition, MapCollectionTypeDefinition,
+                ReceiverTypeDefinition, SenderTypeDefinition,
             },
         },
         range::RangeTypeDefinition,

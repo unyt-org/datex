@@ -96,7 +96,7 @@ mod tests {
                 TypeDefinition,
                 collection::{
                     CollectionTypeDefinition,
-                    type_definition::map::MapCollectionTypeDefinition,
+                    type_definition::MapCollectionTypeDefinition,
                 },
             };
 

@@ -34,8 +34,8 @@ pub mod list;
 pub mod map;
 pub mod range;
 pub mod tagged_type;
+mod to_instructions;
 pub mod type_match;
-
 /// Base enum for a type definition
 /// This is normally the base for types at runtime, in contrast to [Type], which is the base for types
 /// at compile time.

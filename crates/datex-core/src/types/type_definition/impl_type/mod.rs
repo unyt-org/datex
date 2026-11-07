@@ -3,6 +3,7 @@ use core::fmt::Display;
 use itertools::Itertools;
 
 pub mod serde_dif;
+mod to_instructions;
 mod type_match;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

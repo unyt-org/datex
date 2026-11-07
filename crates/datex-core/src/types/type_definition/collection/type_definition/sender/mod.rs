@@ -4,7 +4,7 @@ use crate::dif::{
 };
 use core::fmt::Display;
 use serde::{Deserializer, Serializer, de::DeserializeSeed};
-
+mod to_instructions;
 use crate::{
     dif::{
         deserialize_serde_context::DeserializeSerdeContext,
@@ -15,18 +15,18 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
-pub struct ReceiverTypeDefinition(pub Box<Type>);
-impl Display for ReceiverTypeDefinition {
+pub struct SenderTypeDefinition(pub Box<Type>);
+impl Display for SenderTypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::write!(f, "Receiver<{}>", self.0)
+        core::write!(f, "Sender<{}>", self.0)
     }
 }
-impl ReceiverTypeDefinition {
+impl SenderTypeDefinition {
     pub fn new(item: Type) -> Self {
         Self(Box::new(item))
     }
 }
-impl SerializeWithSerdeContext for ReceiverTypeDefinition {
+impl SerializeWithSerdeContext for SenderTypeDefinition {
     fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
@@ -36,8 +36,8 @@ impl SerializeWithSerdeContext for ReceiverTypeDefinition {
     }
 }
 
-/// Deserialization implementations for [ReceiverTypeDefinition].
-impl<'de> DeserializeWithSerdeContext<'de> for ReceiverTypeDefinition {
+/// Deserialization implementations for [SenderTypeDefinition].
+impl<'de> DeserializeWithSerdeContext<'de> for SenderTypeDefinition {
     fn deserialize_with_ctx<D>(
         ctx: &SerdeContext<'_>,
         deserializer: D,
@@ -47,6 +47,6 @@ impl<'de> DeserializeWithSerdeContext<'de> for ReceiverTypeDefinition {
     {
         let item_type = DeserializeSerdeContext::<Type>::new(ctx)
             .deserialize(deserializer)?;
-        Ok(ReceiverTypeDefinition(Box::new(item_type)))
+        Ok(SenderTypeDefinition(Box::new(item_type)))
     }
 }

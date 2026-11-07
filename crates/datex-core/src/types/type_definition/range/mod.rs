@@ -2,7 +2,7 @@ use crate::{prelude::*, types::r#type::Type};
 use core::fmt::Display;
 pub mod equality;
 mod serde_dif;
-
+mod to_instructions;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RangeTypeDefinition {
     pub start: Box<Type>,

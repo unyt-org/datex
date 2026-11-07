@@ -23,7 +23,7 @@ mod tests {
             r#type::Type,
             type_definition::collection::{
                 CollectionTypeDefinition,
-                type_definition::list::ListCollectionTypeDefinition,
+                type_definition::ListCollectionTypeDefinition,
             },
         },
         values::{core_values::list::List, value::Value},
