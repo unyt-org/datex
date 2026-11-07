@@ -22,6 +22,8 @@ pub use list_splice::*;
 pub use replace::*;
 pub use set_entry::*;
 
+mod to_instructions;
+
 #[derive(Clone, Debug, PartialEq, AsRefStr, Hash)]
 #[strum(serialize_all = "snake_case")]
 pub enum UpdateOperation {

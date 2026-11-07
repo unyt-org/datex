@@ -2,6 +2,7 @@ use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
+mod to_instructions;
 
 use crate::{
     dif::{

@@ -10,47 +10,45 @@ use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
+mod to_instructions;
 
 #[derive(Clone, Debug, PartialEq, Hash)]
-pub struct IncrementUpdateData {
+pub struct AppendEntryUpdateData {
     pub value: ValueContainer,
 }
-impl IncrementUpdateData {
+impl AppendEntryUpdateData {
     pub fn new(value: ValueContainer) -> Self {
-        IncrementUpdateData { value }
+        AppendEntryUpdateData { value }
     }
 }
 
 impl<'ctx> SerdeContext<'ctx> {
-    pub fn serialize_increment_fields<S: SerializeSeq>(
+    pub fn serialize_append_entry_fields<S: SerializeSeq>(
         &self,
-        value: &IncrementUpdateData,
+        value: &AppendEntryUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {
         seq.serialize_element(&ValueWithSerdeContext::new(&value.value, self))?;
+
         Ok(())
     }
 }
-impl<'de> Visitor<'de>
-    for DeserializeSerdeContext<'de, '_, IncrementUpdateData>
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, AppendEntryUpdateData>
 {
-    type Value = IncrementUpdateData;
+    type Value = AppendEntryUpdateData;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "an increment update data sequence with 1 element (value)"
-        )
+        write!(f, "an append entry update data sequence with 1 element")
     }
-
     fn visit_seq<A: serde::de::SeqAccess<'de>>(
         self,
         mut seq: A,
     ) -> Result<Self::Value, A::Error> {
-        let key = seq
+        let value = seq
             .next_element_seed(self.cast::<ValueContainer>())?
             .ok_or_else(|| de::Error::invalid_length(0, &self))?;
 
-        Ok(IncrementUpdateData { value: key })
+        Ok(AppendEntryUpdateData { value })
     }
 }

@@ -10,44 +10,48 @@ use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
+mod to_instructions;
 
 #[derive(Clone, Debug, PartialEq, Hash)]
-pub struct AppendEntryUpdateData {
-    pub value: ValueContainer,
+pub struct DeleteEntryUpdateData {
+    pub key: ValueContainer,
 }
-impl AppendEntryUpdateData {
-    pub fn new(value: ValueContainer) -> Self {
-        AppendEntryUpdateData { value }
+impl DeleteEntryUpdateData {
+    pub fn new(key: ValueContainer) -> Self {
+        DeleteEntryUpdateData { key }
     }
 }
 
 impl<'ctx> SerdeContext<'ctx> {
-    pub fn serialize_append_entry_fields<S: SerializeSeq>(
+    pub fn serialize_delete_entry_fields<S: SerializeSeq>(
         &self,
-        value: &AppendEntryUpdateData,
+        value: &DeleteEntryUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {
-        seq.serialize_element(&ValueWithSerdeContext::new(&value.value, self))?;
-
+        seq.serialize_element(&ValueWithSerdeContext::new(&value.key, self))?;
         Ok(())
     }
 }
 impl<'de, 'a, 'ctx> Visitor<'de>
-    for DeserializeSerdeContext<'a, 'ctx, AppendEntryUpdateData>
+    for DeserializeSerdeContext<'a, 'ctx, DeleteEntryUpdateData>
 {
-    type Value = AppendEntryUpdateData;
+    type Value = DeleteEntryUpdateData;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "an append entry update data sequence with 1 element")
+        write!(
+            f,
+            "a delete entry update data sequence with 1 element (key)"
+        )
     }
+
     fn visit_seq<A: serde::de::SeqAccess<'de>>(
         self,
         mut seq: A,
     ) -> Result<Self::Value, A::Error> {
-        let value = seq
+        let key = seq
             .next_element_seed(self.cast::<ValueContainer>())?
             .ok_or_else(|| de::Error::invalid_length(0, &self))?;
 
-        Ok(AppendEntryUpdateData { value })
+        Ok(DeleteEntryUpdateData { key })
     }
 }
