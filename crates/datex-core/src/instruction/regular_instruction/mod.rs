@@ -27,6 +27,7 @@ use crate::{
             StatementsData, TextData, UInt8Data, UInt16Data, UInt32Data,
             UInt64Data, UInt128Data, UnboundedStatementsData,
         },
+        traits::to_bytes::ToBytes,
     },
     libs::core::core_lib_id::CoreLibIdIndex,
     prelude::*,
@@ -45,7 +46,7 @@ use crate::{
     },
 };
 use binrw::{
-    BinRead,
+    BinRead, BinWrite,
     io::{Read, Seek},
 };
 use core::fmt::{Display, Write as FmtWrite};
@@ -1484,6 +1485,14 @@ impl Display for RegularInstruction {
         Ok(())
     }
 }
+impl ToBytes for RegularInstruction {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut writer = binrw::io::Cursor::new(Vec::new());
+        self.write(&mut writer)
+            .expect("instruction should serialize");
+        writer.into_inner()
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -1491,14 +1500,6 @@ mod tests {
 
     use super::*;
     use binrw::io::Cursor;
-
-    fn encode(instruction: &RegularInstruction) -> Vec<u8> {
-        let mut writer = Cursor::new(Vec::new());
-        instruction
-            .write(&mut writer)
-            .expect("instruction should serialize");
-        writer.into_inner()
-    }
 
     fn decode(bytes: &[u8]) -> BinResult<RegularInstruction> {
         let mut reader = Cursor::new(bytes);
@@ -1512,7 +1513,7 @@ mod tests {
     }
 
     fn assert_round_trip(instruction: RegularInstruction) {
-        let encoded = encode(&instruction);
+        let encoded = instruction.to_bytes();
         let decoded =
             decode(&encoded).expect("encoded instruction should deserialize");
 
@@ -1522,14 +1523,15 @@ mod tests {
     #[test]
     fn int8() {
         let instruction = RegularInstruction::int8(42);
-        let encoded = encode(&instruction);
+        let encoded = instruction.to_bytes();
+
         assert_eq!(encoded, vec![InstructionCode::INT_8.as_u8(), 42u8,]);
     }
 
     #[test]
     fn negative_int8() {
         let instruction = RegularInstruction::int8(-5);
-        let encoded = encode(&instruction);
+        let encoded = instruction.to_bytes();
         assert_eq!(
             encoded,
             vec![InstructionCode::INT_8.as_u8(), (-5i8) as u8,]
@@ -1540,7 +1542,7 @@ mod tests {
     #[test]
     fn int16() {
         let instruction = RegularInstruction::int16(0x1234);
-        let encoded = encode(&instruction);
+        let encoded = instruction.to_bytes();
         assert_eq!(encoded, vec![InstructionCode::INT_16.as_u8(), 0x34, 0x12,]);
     }
 
@@ -1650,7 +1652,7 @@ mod tests {
         let original =
             vec![InstructionCode::INT_32.as_u8(), 0x78, 0x56, 0x34, 0x12];
         let decoded = decode(&original).expect("valid INT_32");
-        let reencoded = encode(&decoded);
+        let reencoded = decoded.to_bytes();
         assert_eq!(reencoded, original);
     }
 }

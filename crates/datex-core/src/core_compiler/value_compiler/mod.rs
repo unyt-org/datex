@@ -110,12 +110,6 @@ gen fn append_apply<'a>(
     yield callee.into();
 }
 
-/// Helper function to directly compile an instruction into a byte vector
-pub fn compile_instruction(instruction: impl Into<Instruction>) -> Vec<u8> {
-    let mut cursor = Cursor::new(Vec::new());
-    append_instruction(&mut cursor, instruction.into());
-    cursor.into_inner()
-}
 #[deprecated(note = "Use ToInstructions trait instead")]
 pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) {
     match instruction {
@@ -123,7 +117,7 @@ pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) {
             instruction.write(cursor).unwrap();
         }
         Instruction::Type(instruction) => {
-            append_type_instruction(cursor, instruction)
+            instruction.write(cursor).unwrap();
         }
     }
 }
