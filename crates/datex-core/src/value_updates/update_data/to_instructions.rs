@@ -1,7 +1,6 @@
 use crate::{
     core_compiler::{
-        to_instructions::{ToInstructions, yield_all},
-        value_visitor::ValueVisitor,
+        to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
     global::stack_index::StackIndex,
     instruction::{Instruction, regular_instruction::RegularInstruction},

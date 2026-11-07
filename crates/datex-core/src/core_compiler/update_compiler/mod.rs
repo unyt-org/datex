@@ -8,7 +8,6 @@ use crate::{
         to_instructions::{ToInstructions, yield_all},
         value_visitor::ValueVisitor,
     },
-    global::stack_index::StackIndex,
     instruction::{
         instruction_data::SharedRef, regular_instruction::RegularInstruction,
     },
@@ -17,11 +16,7 @@ use crate::{
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerMutability,
     },
-    value_updates::update_data::{
-        AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-        ReplaceUpdateData, SetEntryUpdateData, UpdateData, UpdateOperation,
-    },
-    values::value_container::ValueContainer,
+    value_updates::update_data::UpdateData,
 };
 
 /// Compiles an update operation on a shared container into DXB

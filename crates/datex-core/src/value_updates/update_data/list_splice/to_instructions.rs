@@ -6,7 +6,7 @@ use crate::{
     global::stack_index::StackIndex,
     instruction::regular_instruction::RegularInstruction,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    value_updates::update_data::{AppendEntryUpdateData, ListSpliceUpdateData},
+    value_updates::update_data::ListSpliceUpdateData,
 };
 
 use crate::prelude::*;

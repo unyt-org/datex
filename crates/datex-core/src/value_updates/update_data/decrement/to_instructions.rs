@@ -11,8 +11,8 @@ use crate::prelude::*;
 impl ToInstructions for DecrementUpdateData {
     fn to_instructions<'a>(
         &'a self,
-        visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache,
+        _visitor: &'a mut dyn ValueVisitor,
+        _cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = Instruction> + 'a> {
         todo!()
     }

@@ -7,9 +7,7 @@ use crate::{
     instruction::regular_instruction::RegularInstruction,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    value_updates::update_data::{
-        AppendEntryUpdateData, ListSpliceUpdateData, ReplaceUpdateData,
-    },
+    value_updates::update_data::ReplaceUpdateData,
 };
 
 /// Appends a replace operation on a shared container
