@@ -32,7 +32,7 @@ use crate::{
         stack_index::StackIndex,
     },
     instruction::{
-        BytecodeItem, Label,
+        BytecodeItem,
         instruction_data::{
             CallableDeclarationData, CallableSignatureData, ShortTextData,
             UnboundedStatementsData,

@@ -2,7 +2,8 @@ use core::cell::RefCell;
 
 use alloc::rc::Rc;
 
-use crate::instruction::Label;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Label(pub u32);
 
 #[derive(Debug, Clone)]
 pub struct CompileContextMetadata {
@@ -10,13 +11,13 @@ pub struct CompileContextMetadata {
     is_outer_context: bool,
 
     /// The next available label for generating unique labels within the scope.
-    next_label: Rc<RefCell<u32>>,
+    next_label: Rc<RefCell<Label>>,
 }
 impl CompileContextMetadata {
     pub fn outer() -> Self {
         CompileContextMetadata {
             is_outer_context: true,
-            next_label: Rc::new(RefCell::new(0)),
+            next_label: Rc::new(RefCell::new(Label(0))),
         }
     }
     pub fn is_outer_context(&self) -> bool {
@@ -31,8 +32,8 @@ impl CompileContextMetadata {
     }
 
     pub fn next_label(&self) -> Label {
-        let label = *self.next_label.borrow();
-        *self.next_label.borrow_mut() += 1;
+        let label = self.next_label.borrow().0;
+        *self.next_label.borrow_mut() = Label(label + 1);
         Label(label)
     }
 }

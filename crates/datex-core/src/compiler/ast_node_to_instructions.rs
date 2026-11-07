@@ -1,12 +1,13 @@
 use crate::{
     compiler::{
-        context::CompilationContext, error::CompilerError,
-        metadata::CompileContextMetadata,
+        context::CompilationContext,
+        error::CompilerError,
+        metadata::{CompileContextMetadata, Label},
         precompiler::precompiled_ast::AstMetadata,
     },
     core_compiler::core_compilation_context::ByteCursor,
     instruction::{
-        BytecodeItem, Instruction, Label, instruction_data::JumpData,
+        BytecodeItem, Instruction, instruction_data::JumpData,
         regular_instruction::RegularInstruction,
     },
     prelude::*,
