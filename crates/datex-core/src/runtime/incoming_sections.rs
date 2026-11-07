@@ -1,5 +1,5 @@
 use crate::{
-    core_compiler::core_compilation_context::CompileInput,
+    core_compiler::{core_compilation_context::CompileInput, panic::Panic},
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{
@@ -15,8 +15,7 @@ use crate::{
 };
 
 use crate::{
-    core_compiler::value_compiler::{compile_panic, compile_value_container},
-    prelude::*,
+    core_compiler::value_compiler::compile_value_container, prelude::*,
 };
 use core::result::Result;
 use log::info;
@@ -147,7 +146,8 @@ impl RuntimeInternal {
                 Err(e) => {
                     info!("Execution error (on {}): {}", self.endpoint(), e);
                     let mut cache = self.shared_references_cache_mut();
-                    compile_panic(e.to_string(), compile_input, &mut cache)
+                    Panic::new(e.to_string())
+                        .to_bytes(compile_input, &mut cache)
                 }
             };
 

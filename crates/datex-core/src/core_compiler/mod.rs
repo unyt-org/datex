@@ -2,6 +2,7 @@
 pub mod core_compilation_context;
 pub mod injected_values;
 pub mod instruction_input;
+pub mod panic;
 mod preamble;
 pub mod shared_value_tracking;
 pub mod traits;
