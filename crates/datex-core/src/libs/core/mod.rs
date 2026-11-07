@@ -263,7 +263,7 @@ mod tests {
     #[test]
     fn debug() {
         flexi_logger::init();
-        info!("{}", CoreLibrary::default().map());
+        log::info!("{}", CoreLibrary::default().map());
     }
 
     #[test]
