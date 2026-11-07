@@ -183,7 +183,7 @@ impl SocketConfiguration {
     pub fn new_combined<I>(
         socket_configuration: SocketProperties,
         generator_initializer: impl FnOnce(
-            UnboundedReceiver<(DXBBlock, Sender<Result<(), SendFailure>>)>,
+            UnboundedReceiver<(DXBBlock, Sender<Result<SendSuccess, SendFailure>>)>,
         ) -> I,
     ) -> Self
     where
@@ -191,7 +191,7 @@ impl SocketConfiguration {
     {
         let (out_sender, out_receiver) = create_unbounded_channel::<(
             DXBBlock,
-            Sender<Result<(), SendFailure>>,
+            Sender<Result<SendSuccess, SendFailure>>,
         )>();
         let out_sender = Rc::new(Mutex::new(out_sender));
 
@@ -202,7 +202,7 @@ impl SocketConfiguration {
                 let out_sender = out_sender.clone();
                 async move {
                     let (sender, receiver) = futures::channel::oneshot::channel::<
-                        Result<(), SendFailure>,
+                        Result<SendSuccess, SendFailure>,
                     >();
                     out_sender
                         .try_lock()
@@ -229,10 +229,10 @@ pub enum SendCallback {
     /// An asynchronous send callback.
     /// The callback receives a DXBBlock and the UUID of the socket to send the data through.
     /// It returns a future that resolves to a Result indicating success or failure.
-    /// The success case does not return any data, as any received data should be handled
-    /// through the receive iterator.
+    /// The success case should always return [SendSuccess::Sent] without any response data,
+    /// as any received data should be handled through the receive iterator.
     /// The failure case returns a SendFailure containing the original DXBBlock.
-    Async(AsyncCallback<DXBBlock, Result<(), SendFailure>>),
+    Async(AsyncCallback<DXBBlock, Result<SendSuccess, SendFailure>>),
 }
 
 impl Debug for SendCallback {
@@ -289,14 +289,14 @@ impl SendCallback {
     pub fn new_async<F, Fut>(f: F) -> Self
     where
         F: Fn(DXBBlock) -> Fut + 'static,
-        Fut: core::future::Future<Output = Result<(), SendFailure>> + 'static,
+        Fut: core::future::Future<Output = Result<SendSuccess, SendFailure>> + 'static,
     {
         SendCallback::Async(AsyncCallback::new(f))
     }
 }
 
 pub struct ComInterfaceConfiguration {
-    // should not be provided from JS side
+    /// should not be provided from JS side
     uuid: ComInterfaceUUID,
     /// The properties of the interface instance
     pub properties: Rc<ComInterfaceProperties>,

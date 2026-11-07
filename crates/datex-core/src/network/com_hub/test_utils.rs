@@ -20,6 +20,7 @@ use alloc::{rc::Rc, sync::Arc};
 use core::{pin::Pin, str::FromStr};
 use futures_util::future::join;
 use tokio::task::{LocalSet, spawn_local, yield_now};
+use crate::network::com_interfaces::com_interface::factory::SendSuccess;
 
 lazy_static::lazy_static! {
     pub static ref TEST_ENDPOINT_A: Endpoint = Endpoint::from_str("@test-a").unwrap();
@@ -147,7 +148,7 @@ fn couple_com_hubs_internal(
                 let send_b_to_a = send_b_to_a.clone();
                 async move {
                     send_b_to_a.try_lock().unwrap().start_send(block).unwrap();
-                    Ok(())
+                    Ok(SendSuccess::Sent)
                 }
             }),
         ),
@@ -170,7 +171,7 @@ fn couple_com_hubs_internal(
                 let send_a_to_b = send_a_to_b.clone();
                 async move {
                     send_a_to_b.try_lock().unwrap().start_send(block).unwrap();
-                    Ok(())
+                    Ok(SendSuccess::Sent)
                 }
             }),
         ),

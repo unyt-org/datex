@@ -15,7 +15,6 @@ use crate::{
         options::ComHubOptions,
     },
     task,
-    utils::maybe_async::SyncOrAsyncResolved,
 };
 
 use crate::prelude::*;
@@ -82,7 +81,7 @@ use crate::{
     time::now_ms,
     utils::{
         async_iterators::async_next_pin_box,
-        maybe_async::{MaybeAsync, SyncOrAsync, SyncOrAsyncResult},
+        maybe_async::{MaybeAsync},
         task_manager::TaskManager,
     },
 };
@@ -91,6 +90,7 @@ use datex_crypto_facade::crypto::Crypto;
 use datex_macros_internal::Datex;
 use futures::channel::{oneshot, oneshot::Sender};
 use futures_util::FutureExt;
+use crate::utils::maybe_async::MaybeAsyncResult;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -173,13 +173,12 @@ pub struct ReceiveBlockPreprocessResult {
 }
 
 pub type BlockSendSyncOrAsyncResult<F> =
-    SyncOrAsyncResult<Option<Vec<Vec<u8>>>, (), Vec<Endpoint>, F>;
+    MaybeAsyncResult<Option<Vec<Vec<u8>>>, Vec<Endpoint>, F>;
 
 pub type PrepareOwnBlockFuture<'a> =
     Pin<Box<dyn Future<Output = Result<DXBBlock, ComHubError>> + 'a>>;
 
-pub type PrepareOwnBlockResult<'a> = SyncOrAsyncResult<
-    DXBBlock,
+pub type PrepareOwnBlockResult<'a> = MaybeAsyncResult<
     DXBBlock,
     ComHubError,
     PrepareOwnBlockFuture<'a>,
@@ -1018,7 +1017,7 @@ impl ComHub {
 
         match block.routing_header.flags.signature_type() {
             // SignatureType::None can be handled synchronously
-            SignatureType::None => SyncOrAsync::Sync(
+            SignatureType::None => MaybeAsyncResult::Sync(
                 update_sender_and_timestamp(block, self.endpoint.clone()),
             ),
 
@@ -1026,7 +1025,7 @@ impl ComHub {
             sig_ty => {
                 let endpoint = self.endpoint.clone();
 
-                SyncOrAsync::Async(Box::pin(async move {
+                MaybeAsyncResult::Async(Box::pin(async move {
                     let (pub_key, pri_key) = CryptoImpl::gen_ed25519()
                         .await
                         .map_err(|_| ComHubError::SignatureCreationError)?;
@@ -1100,10 +1099,10 @@ impl ComHub {
     ) -> Result<Option<Vec<Vec<u8>>>, Vec<Endpoint>> {
         let receivers = block.receiver_endpoints();
         block = match self.prepare_own_block(block) {
-            SyncOrAsync::Sync(res) => res.unwrap_or_else(|e| {
+            MaybeAsyncResult::Sync(res) => res.unwrap_or_else(|e| {
                 panic!("Error preparing own block for sending: {:?}", e)
             }),
-            SyncOrAsync::Async(_) => {
+            MaybeAsyncResult::Async(_) => {
                 return Err(receivers);
             }
         };
@@ -1326,11 +1325,11 @@ impl ComHub {
         forked: bool,
     ) -> Result<(), Vec<Endpoint>> {
         match self.send_block(block, exclude_sockets, forked) {
-            SyncOrAsyncResult::Sync(res) => {
+            MaybeAsyncResult::Sync(res) => {
                 // TODO #735: handle received blocks
                 res.map(|_| ())
             }
-            SyncOrAsyncResult::Async(fut) => fut.await,
+            MaybeAsyncResult::Async(fut) => fut.await.map(|_| ()),
         }
     }
 
@@ -1348,7 +1347,7 @@ impl ComHub {
         exclude_sockets: Vec<ComInterfaceSocketUUID>,
         forked: bool,
     ) -> BlockSendSyncOrAsyncResult<
-        impl Future<Output = Result<(), Vec<Endpoint>>>,
+        impl Future<Output = Result<Option<Vec<Vec<u8>>>, Vec<Endpoint>>>,
     > {
         let outbound_receiver_groups =
             self.socket_manager.get_outbound_receiver_groups(
@@ -1359,7 +1358,7 @@ impl ComHub {
 
         if outbound_receiver_groups.is_none() {
             error!("No outbound receiver groups found for block");
-            return SyncOrAsyncResult::Sync(Err(vec![]));
+            return MaybeAsyncResult::Sync(Err(vec![]));
         }
 
         let outbound_receiver_groups = outbound_receiver_groups.unwrap();
@@ -1407,18 +1406,18 @@ impl ComHub {
 
         // return error if any unreachable endpoints
         if !unreachable_endpoints.is_empty() {
-            return SyncOrAsyncResult::Sync(Err(unreachable_endpoints));
+            return MaybeAsyncResult::Sync(Err(unreachable_endpoints));
         }
 
         // if all results are sync, return sync
         if results
             .iter()
-            .all(|(_, res)| matches!(res, SyncOrAsync::Sync(_)))
+            .all(|(_, res)| matches!(res, MaybeAsyncResult::Sync(_)))
         {
             let mut received_blocks = Vec::new();
             for (endpoints, res) in results {
                 match res {
-                    SyncOrAsync::Sync(r) => {
+                    MaybeAsyncResult::Sync(r) => {
                         match r {
                             Ok(Some(data)) => {
                                 received_blocks.push(data); // TODO #736: already DXBBlocks here?
@@ -1433,23 +1432,23 @@ impl ComHub {
                 }
             }
             if !unreachable_endpoints.is_empty() {
-                SyncOrAsyncResult::Sync(Err(unreachable_endpoints))
+                MaybeAsyncResult::Sync(Err(unreachable_endpoints))
             } else {
-                SyncOrAsyncResult::Sync(Ok(Some(received_blocks)))
+                MaybeAsyncResult::Sync(Ok(Some(received_blocks)))
             }
         }
         // otherwise return async
         else {
-            SyncOrAsyncResult::Async(async move {
+            MaybeAsyncResult::Async(async move {
                 let futures =
                     results.into_iter().map(|(endpoints, res)| async move {
                         match res {
-                            SyncOrAsync::Sync(r) => {
+                            MaybeAsyncResult::Sync(r) => {
                                 // TODO #737 directly process received blocks
                                 r.map(|_data| ()).map_err(|_| endpoints)
                             }
-                            SyncOrAsync::Async(fut) => {
-                                fut.await.map_err(|_| endpoints)
+                            MaybeAsyncResult::Async(fut) => {
+                                fut.await.map(|_data| ()).map_err(|_| endpoints)
                             }
                         }
                     });
@@ -1464,7 +1463,7 @@ impl ComHub {
                 if !all_unreachable_endpoints.is_empty() {
                     Err(all_unreachable_endpoints)
                 } else {
-                    Ok(())
+                    Ok(None)
                 }
             })
         }
@@ -1479,11 +1478,10 @@ impl ComHub {
         endpoints: Vec<Endpoint>,
         // currently only used for trace debugging (TODO: put behind debug flag)
         fork_count: Option<usize>,
-    ) -> SyncOrAsyncResult<
+    ) -> MaybeAsyncResult<
         Option<Vec<u8>>,
-        (),
         SendFailure,
-        impl Future<Output = Result<(), SendFailure>>,
+        impl Future<Output = Result<Option<Vec<u8>>, SendFailure>>,
     > {
         block.set_receivers(&endpoints);
 
@@ -1491,7 +1489,7 @@ impl ComHub {
             match self.socket_manager.get_socket_by_uuid(&socket_uuid) {
                 Some(socket_data) => socket_data,
                 None => {
-                    return SyncOrAsyncResult::Sync(Err(SendFailure(
+                    return MaybeAsyncResult::Sync(Err(SendFailure(
                         Box::new(block),
                     )));
                 }
@@ -1540,7 +1538,7 @@ impl ComHub {
                 &socket_data.socket_properties.direct_endpoint
             && self.is_local_endpoint_exact(direct_endpoint)
         {
-            return SyncOrAsyncResult::Sync(Ok(None));
+            return MaybeAsyncResult::Sync(Ok(None));
         }
         for interceptor in self.outgoing_block_interceptors.borrow().iter() {
             interceptor(&block, &socket_uuid, &endpoints);
@@ -1555,7 +1553,7 @@ impl ComHub {
         if let Some(send_callback) = socket_data.send_callback.clone() {
             match send_callback {
                 SendCallback::Sync(callback)
-                | SendCallback::SyncOnce(callback) => SyncOrAsyncResult::Sync(
+                | SendCallback::SyncOnce(callback) => MaybeAsyncResult::Sync(
                     callback(block).map(|send_success| match send_success {
                         SendSuccess::SentWithNewIncomingData(data) => {
                             Some(data)
@@ -1564,11 +1562,14 @@ impl ComHub {
                     }),
                 ),
                 SendCallback::Async(callback) => {
-                    SyncOrAsyncResult::Async(async move {
-                        callback.call(block).await.map(|_| ())
+                    MaybeAsyncResult::Async(async move {
+                        callback.call(block).await.map(|_| None)
                     })
                 }
-            }
+            }.map(move |res| {
+                info!("removing socket because of send failure {}", socket_uuid);
+                res
+            })
         } else {
             panic!("No send callback registered for socket {}", socket_uuid);
         }
@@ -1595,7 +1596,7 @@ impl ComHub {
                 panic!("Error preparing own block for sending: {:?}", e)
             });
 
-        match self
+        self
             .send_block_to_endpoints_via_socket(
                 block,
                 socket_uuid.clone(),
@@ -1604,10 +1605,7 @@ impl ComHub {
             )
             .into_future()
             .await
-        {
-            SyncOrAsyncResolved::Sync(r) => r.map(|_| ()),
-            SyncOrAsyncResolved::Async(fut) => fut,
-        }
+            .map(|_| ())
     }
 
     pub fn clear_endpoint_blacklist(&self) {
