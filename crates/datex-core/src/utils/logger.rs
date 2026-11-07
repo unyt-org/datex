@@ -1,6 +1,8 @@
 use core::cell::RefCell;
 use datex_macros_internal::Datex;
 use crate::values::core_values::sender::Sender;
+use crate::prelude::*;
+use crate::std_sync::Mutex;
 
 
 #[derive(Datex, Clone, Copy)]
@@ -41,27 +43,28 @@ impl LogMessage {
     }
 }
 
-thread_local! {
-    /// global list containing logger senders
-    static SENDERS: RefCell<Vec<Sender<LogMessage>>> = RefCell::new(Vec::new());
-}
+// FIXME: better solution, should be thread_local here, but not supported on esp32 target
+struct SingleContext<T>(T);
+/// SAFETY: only works for single threaded
+unsafe impl<T> Sync for SingleContext<T> {}
+
+static SENDERS: SingleContext<RefCell<Vec<Sender<LogMessage>>>> =
+    SingleContext(RefCell::new(Vec::new()));
+
 
 /// Registers a sender which is called for any global log
 pub fn register_log_sender(sender: Sender<LogMessage>) {
-    SENDERS.with(|senders| {
-        senders.borrow_mut().push(sender);
-    })
+    SENDERS.0.borrow_mut().push(sender);
+
 }
 
 pub fn log_message(message: LogMessage) {
-    SENDERS.with(|senders| {
-        let mut senders = senders.borrow_mut();
+    let senders = &mut SENDERS.0.borrow_mut();
 
-        // send message on all senders, remove all closed senders
-        senders.retain_mut(|sender| {
-            sender.send(message.clone()).is_ok()
-        });
-    })
+    // send message on all senders, remove all closed senders
+    senders.retain_mut(|sender| {
+        sender.send(message.clone()).is_ok()
+    });
 }
 
 pub fn string_with_maybe_tag(string: String, tag: &Option<String>) -> String {

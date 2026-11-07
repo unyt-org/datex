@@ -70,6 +70,7 @@ impl ApplyArgument {
             }
             // FIXME: only temp test, method should always be declared in the type
             Err(_) => {
+                drop(method);
                 info!("fallback to remote call for method: {}", method_name);
                 let owner = self.value.owner();
                 // append callee to args
