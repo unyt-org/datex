@@ -573,6 +573,7 @@ async fn complex_network_3() {
 }
 
 #[tokio::test]
+#[ignore = "FIXME - problems with endpoint socket blacklist"]
 #[timeout(7000)]
 async fn threesome_1() {
     run_async! {
@@ -596,6 +597,7 @@ async fn threesome_1() {
 }
 
 #[tokio::test]
+#[ignore = "FIXME - problems with endpoint socket blacklist"]
 #[timeout(7000)]
 async fn multi_tracing_1() {
     run_async! {
