@@ -1,13 +1,17 @@
 use crate::{
-    ast::expressions::{
-        Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        Conditional, CreateShared, DatexExpression, DatexExpressionData,
-        DeriveRef, DeriveSharedRef, GenericInstantiation, InterfaceMethodCall,
-        List, Map, PropertyAccess, PropertyAssignment, RangeDeclaration,
-        RemoteExecution, RequestSharedRef, RootPropertyAccess, Statements,
-        TagExpression, UnaryOperation, UnboundedStatement, Unbox,
-        UnboxAssignment, ValueAccessType, VariableAccess, VariableAssignment,
-        VariableDeclaration, VariableKind,
+    ast::{
+        expressions::{
+            Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
+            Conditional, CreateShared, DatexExpression, DatexExpressionData,
+            DeriveRef, DeriveSharedRef, GenericInstantiation,
+            InterfaceMethodCall, List, Map, PropertyAccess, PropertyAssignment,
+            RangeDeclaration, RemoteExecution, RequestSharedRef,
+            RootPropertyAccess, Statements, TagExpression, UnaryOperation,
+            UnboundedStatement, Unbox, UnboxAssignment, ValueAccessType,
+            VariableAccess, VariableAssignment, VariableDeclaration,
+            VariableKind,
+        },
+        type_expressions::{TypeExpression, TypeExpressionData},
     },
     compiler::{
         Variable, VariableModel,
@@ -34,6 +38,7 @@ use crate::{
             UnboundedStatementsData,
         },
         regular_instruction::RegularInstruction,
+        type_instruction::TypeInstruction,
     },
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
@@ -41,12 +46,16 @@ use crate::{
         ReferenceMutability, SharedContainer, SharedContainerMutability,
         traits::SharedContainerCommon,
     },
+    types::literal_type_definition::LiteralTypeDefinition,
     values::{
         value::value_classification::{ValueClassification, ValueTag},
         value_container::ValueContainer,
     },
 };
-use core::{ops::DerefMut, str::FromStr};
+use core::{
+    ops::{Deref, DerefMut},
+    str::FromStr,
+};
 use log::info;
 
 macro yield_unwrap($expr:expr) {
@@ -1873,6 +1882,64 @@ impl AstNodeToInstructions for BinaryOperation {
                 cache,
                 ast_metadata
             ));
+        })
+    }
+}
+
+impl AstNodeToInstructions for TypeExpression {
+    fn ast_node_to_instructions<'a>(
+        &'a self,
+        compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
+        ast_metadata: &'a mut AstMetadata,
+        _ctx_metadata: CompileContextMetadata,
+    ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a>
+    {
+        Box::new(gen move {
+            match self.data() {
+                TypeExpressionData::Integer(integer) => {
+                    yield Ok(TypeInstruction::Literal(
+                        LiteralTypeDefinition::Integer(integer.clone()),
+                    )
+                    .into())
+                }
+                TypeExpressionData::Text(text) => {
+                    yield Ok(TypeInstruction::Literal(
+                        LiteralTypeDefinition::Text(text.clone()),
+                    )
+                    .into())
+                }
+                TypeExpressionData::Boolean(boolean) => {
+                    yield Ok(TypeInstruction::Literal(
+                        LiteralTypeDefinition::Boolean(boolean.clone()),
+                    )
+                    .into())
+                }
+                TypeExpressionData::GetCoreLibType(core_lib_id) => {
+                    yield Ok(TypeInstruction::CoreType(*core_lib_id).into())
+                }
+                TypeExpressionData::Range(range) => {
+                    yield Ok(TypeInstruction::Range.into());
+                    yield_all!(
+                        range.start.deref().ast_node_to_instructions_inner(
+                            compilation_context,
+                            cache,
+                            ast_metadata
+                        )
+                    );
+                    yield_all!(
+                        range.end.deref().ast_node_to_instructions_inner(
+                            compilation_context,
+                            cache,
+                            ast_metadata
+                        )
+                    );
+                }
+                e => todo!(
+                    "Type expression to instruction not implemented for {:?}",
+                    e
+                ),
+            }
         })
     }
 }
