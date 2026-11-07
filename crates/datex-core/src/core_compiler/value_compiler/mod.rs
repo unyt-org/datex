@@ -69,29 +69,15 @@ pub fn compile_value(
     compile_value_container(&ValueContainer::Local(value), compile_input, cache)
 }
 
-// TODO: add struct for panics
-pub fn compile_panic(
-    panic_value: String,
-    compile_input: CompileInput,
-    cache: &mut SharedReferencesCache,
-) -> Vec<u8> {
-    CoreCompilationContext::new(compile_input)
-        .compile_to_dxb_with_shared_values(
-            &ApplyWithArgs {
-                callee: RegularInstruction::get_core_lib_value(
-                    CoreLibId::Value(CoreLibValueId::Panic).into(),
-                ),
-                args: vec![ValueContainer::Local(panic_value.into())],
-            },
-            cache,
-        )
-        .dxb
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct ApplyWithArgs {
     callee: RegularInstruction,
     args: Vec<ValueContainer>,
+}
+impl ApplyWithArgs {
+    pub fn new(callee: RegularInstruction, args: Vec<ValueContainer>) -> Self {
+        Self { callee, args }
+    }
 }
 
 impl ToInstructions for ApplyWithArgs {
