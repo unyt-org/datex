@@ -34,8 +34,6 @@ pub struct CompilationContext<'a> {
 }
 
 impl<'a> CompilationContext<'a> {
-    const INT_32_BYTES: u8 = 4;
-
     pub fn new(
         inserted_values: Vec<Option<ValueContainer>>,
         execution_mode: ExecutionMode,

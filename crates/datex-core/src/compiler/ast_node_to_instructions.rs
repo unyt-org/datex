@@ -30,13 +30,14 @@ pub trait AstNodeToInstructions {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a>
     {
         self.ast_node_to_instructions(
             compilation_context,
             cache,
             ast_metadata,
-            CompileContextMetadata::default(),
+            ctx_metadata,
         )
     }
 
@@ -48,29 +49,31 @@ pub trait AstNodeToInstructions {
         ast_metadata: &mut AstMetadata,
     ) -> Result<Vec<u8>, CompilerError> {
         let mut buffer = ByteCursor::new(Vec::new());
-        let mut labels: HashMap<Label, usize> = HashMap::new();
+        let mut labels: HashMap<Label, u32> = HashMap::new();
 
         // byte position, offset base label, target label
-        let mut fixes: Vec<(usize, Label, Label)> = Vec::new();
+        let mut fixes: Vec<(u32, Label, Label)> = Vec::new();
 
         for item in self.ast_node_to_instructions(
             compilation_context,
             cache,
             ast_metadata,
             CompileContextMetadata::outer(),
+            // TODO see how to pass the context trought ast_node_to_instructions and when
+            // to fork
         ) {
             match item? {
                 BytecodeItem::Instruction(instruction) => {
                     instruction.write(&mut buffer)?;
                 }
                 BytecodeItem::Label(label) => {
-                    labels.insert(label, buffer.position() as usize);
+                    labels.insert(label, buffer.position() as u32);
                 }
                 BytecodeItem::Jump { target } => {
                     let instruction = Instruction::Regular(
                         RegularInstruction::Jump(JumpData { offset: 0 }),
                     );
-                    let start = buffer.position() as usize;
+                    let start = buffer.position() as u32;
                     instruction.write(&mut buffer)?;
                     fixes.push((start + 1, Label(start), target));
                 }
@@ -82,7 +85,7 @@ pub trait AstNodeToInstructions {
                     let instruction = Instruction::Regular(
                         RegularInstruction::JumpIfFalse(JumpData { offset: 0 }),
                     );
-                    let start = buffer.position() as usize;
+                    let start = buffer.position() as u32;
                     instruction.write(&mut buffer)?;
                     fixes.push((start + 1, condition_end, target));
                 }
@@ -107,9 +110,8 @@ pub trait AstNodeToInstructions {
 
             let offset = i32::try_from(target as i64 - base as i64)
                 .map_err(|_| CompilerError::InvalidJump)?;
-
-            bytes[operand_pos..operand_pos + 4]
-                .copy_from_slice(&offset.to_le_bytes());
+            let range = (operand_pos as usize)..operand_pos as usize + 4;
+            bytes[range].copy_from_slice(&offset.to_le_bytes());
         }
 
         Ok(bytes)

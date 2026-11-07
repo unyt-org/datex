@@ -424,6 +424,7 @@ mod tests {
         collections::HashMap,
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
         core_compiler::core_compilation_context::DXBWithSharedValues,
+        disassembler::{disassemble_body, print_disassembled},
         global::protocol_structures::serializable::Serializable,
         instruction::Instruction,
         libs::core::type_id::CoreLibBaseTypeId,
@@ -486,6 +487,10 @@ mod tests {
             runtime.clone(),
         )
         .unwrap();
+
+        flexi_logger::init();
+        print_disassembled(&dxb);
+
         let context = ExecutionInput::new(
             DXBWithSharedValues::new(dxb, vec![]),
             ExecutionCallerMetadata::local_default(),

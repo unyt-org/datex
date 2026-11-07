@@ -82,7 +82,7 @@ impl AstNodeToInstructions for DatexExpression {
                 compilation_context,
                 cache,
                 ast_metadata,
-                ctx_metadata
+                ctx_metadata.inner()
             ));
         })
     }
@@ -454,7 +454,7 @@ impl AstNodeToInstructions for ValueAccessType {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         _ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -559,7 +559,7 @@ impl AstNodeToInstructions for Conditional {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a>
     {
         Box::new(gen move {
@@ -585,7 +585,7 @@ impl AstNodeToInstructions for Conditional {
                         &mut inner_ctx,
                         cache,
                         ast_metadata,
-                        CompileContextMetadata::default(),
+                        ctx_metadata.inner(),
                     )
                     .collect::<Vec<_>>()
             };
@@ -603,7 +603,7 @@ impl AstNodeToInstructions for Conditional {
                         &mut inner_ctx,
                         cache,
                         ast_metadata,
-                        CompileContextMetadata::default(),
+                        ctx_metadata.inner(),
                     )
                     .collect::<Vec<_>>()
             };
@@ -622,16 +622,16 @@ impl AstNodeToInstructions for Conditional {
                             &mut inner_ctx,
                             cache,
                             ast_metadata,
-                            CompileContextMetadata::default(),
+                            ctx_metadata.inner(),
                         )
                         .collect::<Vec<_>>()
                 }
                 None => Vec::new(),
             };
 
-            let else_label = Label::new();
-            let condition_end = Label::new();
-            let end_label = Label::new();
+            let else_label = ctx_metadata.next_label();
+            let condition_end = ctx_metadata.next_label();
+            let end_label = ctx_metadata.next_label();
 
             yield Ok(RegularInstruction::UnboundedStatements.into());
 
@@ -669,7 +669,7 @@ impl AstNodeToInstructions for RemoteExecution {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -706,7 +706,8 @@ impl AstNodeToInstructions for RemoteExecution {
             yield_all!(caller.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner().inner(),
             ));
         })
     }
@@ -718,7 +719,7 @@ impl AstNodeToInstructions for VariableAccess {
         compilation_context: &'a mut CompilationContext,
         _cache: &'a mut SharedReferencesCache,
         _ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -793,7 +794,7 @@ impl AstNodeToInstructions for VariableAssignment {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -842,12 +843,13 @@ impl AstNodeToInstructions for VariableAssignment {
                     yield Ok(
                         RegularInstruction::set_stack_value(stack_index).into()
                     );
-
+                    let inner = ctx_metadata.inner();
                     // compile expression
                     yield_all!(expression.ast_node_to_instructions_inner(
                         compilation_context,
                         cache,
-                        ast_metadata
+                        ast_metadata,
+                        inner,
                     ));
                 }
                 Some(operator) => {
@@ -884,7 +886,8 @@ impl AstNodeToInstructions for VariableAssignment {
                         yield_all!(expression.ast_node_to_instructions_inner(
                             compilation_context,
                             cache,
-                            ast_metadata
+                            ast_metadata,
+                            ctx_metadata
                         ));
 
                         yield Ok(RegularInstruction::borrow_stack_value(
@@ -907,7 +910,7 @@ impl AstNodeToInstructions for VariableDeclaration {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -931,7 +934,8 @@ impl AstNodeToInstructions for VariableDeclaration {
             yield_all!(value.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
 
             let stack_index = compilation_context.scope.get_next_stack_index();
@@ -987,7 +991,8 @@ impl AstNodeToInstructions for Statements {
                 yield_all!(statements[0].ast_node_to_instructions_inner(
                     compilation_context,
                     cache,
-                    ast_metadata
+                    ast_metadata,
+                    ctx_metadata
                 ));
             } else {
                 let is_outer_context = ctx_metadata.is_outer_context();
@@ -1021,7 +1026,8 @@ impl AstNodeToInstructions for Statements {
                     yield_all!(statement.ast_node_to_instructions_inner(
                         compilation_context,
                         cache,
-                        ast_metadata
+                        ast_metadata,
+                        ctx_metadata.inner()
                     ));
                 }
 
@@ -1056,7 +1062,7 @@ impl AstNodeToInstructions for CallableDeclaration {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1131,7 +1137,8 @@ impl AstNodeToInstructions for CallableDeclaration {
                 yield_all!(param.ast_node_to_instructions_inner(
                     compilation_context,
                     cache,
-                    ast_metadata
+                    ast_metadata,
+                    ctx_metadata.inner()
                 ));
             }
             // add rest parameter type
@@ -1139,7 +1146,8 @@ impl AstNodeToInstructions for CallableDeclaration {
                 yield_all!(param.ast_node_to_instructions_inner(
                     compilation_context,
                     cache,
-                    ast_metadata
+                    ast_metadata,
+                    ctx_metadata.inner()
                 ));
             }
             // add return type
@@ -1147,7 +1155,8 @@ impl AstNodeToInstructions for CallableDeclaration {
                 yield_all!(ty.ast_node_to_instructions_inner(
                     compilation_context,
                     cache,
-                    ast_metadata
+                    ast_metadata,
+                    ctx_metadata.inner()
                 ));
             }
             // add yield type
@@ -1155,7 +1164,8 @@ impl AstNodeToInstructions for CallableDeclaration {
                 yield_all!(ty.ast_node_to_instructions_inner(
                     compilation_context,
                     cache,
-                    ast_metadata
+                    ast_metadata,
+                    ctx_metadata
                 ));
             }
         })
@@ -1168,7 +1178,7 @@ impl AstNodeToInstructions for RangeDeclaration {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1179,12 +1189,14 @@ impl AstNodeToInstructions for RangeDeclaration {
             yield_all!(self.start.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
             yield_all!(self.end.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
         })
     }
@@ -1196,7 +1208,7 @@ impl AstNodeToInstructions for ComparisonOperation {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1211,12 +1223,14 @@ impl AstNodeToInstructions for ComparisonOperation {
             yield_all!(self.left.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
             yield_all!(self.right.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
         })
     }
@@ -1228,7 +1242,7 @@ impl AstNodeToInstructions for UnboxAssignment {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1259,7 +1273,8 @@ impl AstNodeToInstructions for UnboxAssignment {
                 self.assigned_expression.ast_node_to_instructions_inner(
                     compilation_context,
                     cache,
-                    ast_metadata
+                    ast_metadata,
+                    ctx_metadata.inner()
                 )
             );
 
@@ -1267,7 +1282,8 @@ impl AstNodeToInstructions for UnboxAssignment {
             yield_all!(self.unbox_expression.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
         })
     }
@@ -1279,7 +1295,7 @@ impl AstNodeToInstructions for PropertyAssignment {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1317,7 +1333,8 @@ impl AstNodeToInstructions for PropertyAssignment {
                     yield_all!(property.ast_node_to_instructions_inner(
                         compilation_context,
                         cache,
-                        ast_metadata
+                        ast_metadata,
+                        ctx_metadata.inner()
                     ));
                 }
             }
@@ -1325,14 +1342,16 @@ impl AstNodeToInstructions for PropertyAssignment {
             yield_all!(assigned_expression.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
 
             // compile base expression
             yield_all!(base.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
         })
     }
@@ -1344,7 +1363,7 @@ impl AstNodeToInstructions for UnaryOperation {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1357,7 +1376,8 @@ impl AstNodeToInstructions for UnaryOperation {
             yield_all!(self.expression.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
         })
     }
@@ -1369,7 +1389,7 @@ impl AstNodeToInstructions for Apply {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1390,14 +1410,16 @@ impl AstNodeToInstructions for Apply {
                 yield_all!(argument.ast_node_to_instructions_inner(
                     compilation_context,
                     cache,
-                    ast_metadata
+                    ast_metadata,
+                    ctx_metadata.inner()
                 ));
             }
             // compile function expression
             yield_all!(self.base.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
         })
     }
@@ -1409,7 +1431,7 @@ impl AstNodeToInstructions for InterfaceMethodCall {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1436,7 +1458,8 @@ impl AstNodeToInstructions for InterfaceMethodCall {
                         yield_all!(argument.ast_node_to_instructions_inner(
                             compilation_context,
                             cache,
-                            ast_metadata
+                            ast_metadata,
+                            ctx_metadata.inner()
                         ));
                     }
                 }
@@ -1470,7 +1493,8 @@ impl AstNodeToInstructions for InterfaceMethodCall {
                         yield_all!(argument.ast_node_to_instructions_inner(
                             compilation_context,
                             cache,
-                            ast_metadata
+                            ast_metadata,
+                            ctx_metadata.inner()
                         ));
                     }
                 }
@@ -1488,7 +1512,8 @@ impl AstNodeToInstructions for InterfaceMethodCall {
                         yield_all!(argument.ast_node_to_instructions_inner(
                             compilation_context,
                             cache,
-                            ast_metadata
+                            ast_metadata,
+                            ctx_metadata.inner()
                         ));
                     }
                 }
@@ -1498,7 +1523,8 @@ impl AstNodeToInstructions for InterfaceMethodCall {
             yield_all!(self.target.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
         })
     }
@@ -1510,7 +1536,7 @@ impl AstNodeToInstructions for PropertyAccess {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1539,7 +1565,8 @@ impl AstNodeToInstructions for PropertyAccess {
                     yield_all!(self.property.ast_node_to_instructions_inner(
                         compilation_context,
                         cache,
-                        ast_metadata
+                        ast_metadata,
+                        ctx_metadata.inner()
                     ));
                 }
             }
@@ -1548,7 +1575,8 @@ impl AstNodeToInstructions for PropertyAccess {
             yield_all!(self.base.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
         })
     }
@@ -1560,7 +1588,7 @@ impl AstNodeToInstructions for GenericInstantiation {
         _compilation_context: &'a mut CompilationContext,
         _cache: &'a mut SharedReferencesCache,
         _ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1579,7 +1607,7 @@ impl AstNodeToInstructions for RequestSharedRef {
         compilation_context: &'a mut CompilationContext,
         _cache: &'a mut SharedReferencesCache,
         _ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1601,7 +1629,7 @@ impl AstNodeToInstructions for List {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1613,7 +1641,8 @@ impl AstNodeToInstructions for List {
                 yield_all!(item.ast_node_to_instructions_inner(
                     compilation_context,
                     cache,
-                    ast_metadata
+                    ast_metadata,
+                    ctx_metadata.inner()
                 ));
             }
         })
@@ -1626,7 +1655,7 @@ impl AstNodeToInstructions for Map {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1667,7 +1696,8 @@ impl AstNodeToInstructions for Map {
                         yield_all!(key.ast_node_to_instructions_inner(
                             compilation_context,
                             cache,
-                            ast_metadata
+                            ast_metadata,
+                            ctx_metadata.inner()
                         ));
                     }
                 };
@@ -1676,7 +1706,8 @@ impl AstNodeToInstructions for Map {
                 yield_all!(value.ast_node_to_instructions_inner(
                     compilation_context,
                     cache,
-                    ast_metadata
+                    ast_metadata,
+                    ctx_metadata.inner()
                 ));
             }
         })
@@ -1689,7 +1720,7 @@ impl AstNodeToInstructions for TagExpression {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1707,7 +1738,8 @@ impl AstNodeToInstructions for TagExpression {
                 yield_all!(expression.ast_node_to_instructions_inner(
                     compilation_context,
                     cache,
-                    ast_metadata
+                    ast_metadata,
+                    ctx_metadata.inner()
                 ));
             }
         })
@@ -1719,7 +1751,7 @@ impl AstNodeToInstructions for RootPropertyAccess {
         _compilation_context: &'a mut CompilationContext,
         _cache: &'a mut SharedReferencesCache,
         _ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1747,7 +1779,7 @@ impl AstNodeToInstructions for Unbox {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1758,7 +1790,8 @@ impl AstNodeToInstructions for Unbox {
             yield_all!(self.expression.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
         })
     }
@@ -1770,7 +1803,7 @@ impl AstNodeToInstructions for DeriveRef {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1784,7 +1817,8 @@ impl AstNodeToInstructions for DeriveRef {
             yield_all!(self.expression.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
         })
     }
@@ -1796,7 +1830,7 @@ impl AstNodeToInstructions for CreateShared {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1817,7 +1851,8 @@ impl AstNodeToInstructions for CreateShared {
             yield_all!(self.expression.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
         })
     }
@@ -1829,7 +1864,7 @@ impl AstNodeToInstructions for DeriveSharedRef {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1851,7 +1886,8 @@ impl AstNodeToInstructions for DeriveSharedRef {
             yield_all!(self.expression.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
         })
     }
@@ -1863,7 +1899,7 @@ impl AstNodeToInstructions for BinaryOperation {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<
         dyn Iterator<
                 Item = Result<crate::instruction::BytecodeItem, CompilerError>,
@@ -1875,12 +1911,14 @@ impl AstNodeToInstructions for BinaryOperation {
             yield_all!(self.left.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
             yield_all!(self.right.ast_node_to_instructions_inner(
                 compilation_context,
                 cache,
-                ast_metadata
+                ast_metadata,
+                ctx_metadata.inner()
             ));
         })
     }
@@ -1892,7 +1930,7 @@ impl AstNodeToInstructions for TypeExpression {
         compilation_context: &'a mut CompilationContext,
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
-        _ctx_metadata: CompileContextMetadata,
+        ctx_metadata: CompileContextMetadata,
     ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a>
     {
         Box::new(gen move {
@@ -1924,14 +1962,16 @@ impl AstNodeToInstructions for TypeExpression {
                         range.start.deref().ast_node_to_instructions_inner(
                             compilation_context,
                             cache,
-                            ast_metadata
+                            ast_metadata,
+                            ctx_metadata.inner()
                         )
                     );
                     yield_all!(
                         range.end.deref().ast_node_to_instructions_inner(
                             compilation_context,
                             cache,
-                            ast_metadata
+                            ast_metadata,
+                            ctx_metadata.inner()
                         )
                     );
                 }
