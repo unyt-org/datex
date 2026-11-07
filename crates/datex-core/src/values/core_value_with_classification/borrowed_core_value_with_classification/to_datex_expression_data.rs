@@ -10,7 +10,7 @@ use crate::{
         value_classification::{ValueClassification, ValueTag},
     },
 };
-use crate::values::core_value_with_classification::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification;
+use crate::values::core_value_with_classification::borrowed_core_value_with_classification::{BorrowedCoreValueWithClassification, BorrowedCoreValueWithClassificationMut};
 
 impl<'a> ToDatexExpressionData for BorrowedCoreValueWithClassification<'a> {
     fn to_datex_expression_data(&self) -> DatexExpressionData {
@@ -18,6 +18,14 @@ impl<'a> ToDatexExpressionData for BorrowedCoreValueWithClassification<'a> {
         classification_expression(core_value_expression, &self.classification)
     }
 }
+
+impl<'a> ToDatexExpressionData for BorrowedCoreValueWithClassificationMut<'a> {
+    fn to_datex_expression_data(&self) -> DatexExpressionData {
+        let core_value_expression = self.inner.to_datex_expression_data();
+        classification_expression(core_value_expression, &self.classification)
+    }
+}
+
 
 fn classification_expression(
     mut expression: DatexExpressionData,
