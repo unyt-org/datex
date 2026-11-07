@@ -227,9 +227,9 @@ impl Text {
         })
     }
     pub fn replace(&mut self, from: &str, to: &str) -> Result<(), ()> {
-        self.try_as_mut_string().and_then(|inner| {
+        self.try_as_mut_string().map(|inner| {
             *inner = inner.replace(from, to);
-            Ok(())
+            ()
         })
     }
     pub fn replace_range(

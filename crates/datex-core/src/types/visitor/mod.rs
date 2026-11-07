@@ -1,7 +1,6 @@
 use crate::{
     libs::core::type_id::CoreLibTypeId,
     prelude::*,
-    shared_values::{SharedContainerMutability, SharedContainerOwnership},
     types::{
         entity_type::EntityType,
         literal_type_definition::LiteralTypeDefinition,
@@ -15,8 +14,7 @@ use crate::{
                 type_definition::{
                     ListCollectionTypeDefinition,
                     ListSliceCollectionTypeDefinition,
-                    MapCollectionTypeDefinition,
-                    ReceiverTypeDefinition,
+                    MapCollectionTypeDefinition, ReceiverTypeDefinition,
                     SenderTypeDefinition,
                 },
             },
@@ -233,7 +231,7 @@ pub trait TypeFolder {
 
     fn fold_type_definition_with_metadata(
         &mut self,
-        metadata: &TypeMetadata,
+        _metadata: &TypeMetadata,
         inner: Self::Output,
     ) -> Result<Self::Output, Self::Error> {
         Ok(inner)

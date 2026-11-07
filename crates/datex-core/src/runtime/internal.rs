@@ -838,7 +838,7 @@ impl RuntimeInternal {
     pub fn get_env(&self) -> IndexMap<String, String, RandomState> {
         self.config.env.clone().unwrap_or_default()
     }
-    
+
     /// Get the human-readable name of the endpoint (can be provided in config)
     pub fn get_name(&self) -> Option<String> {
         self.config.name.clone()

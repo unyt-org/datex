@@ -288,12 +288,11 @@ pub async fn execute_dxb(
                     interrupt_provider
                         .provide_result(InterruptResult::ResolvedValue(result));
                 } else {
-                    let mut remote_execution_context =
-                        RemoteExecutionContext::new(
-                            receivers,
-                            ExecutionMode::Static,
-                            runtime.clone(),
-                        );
+                    let remote_execution_context = RemoteExecutionContext::new(
+                        receivers,
+                        ExecutionMode::Static,
+                        runtime.clone(),
+                    );
                     let res = runtime
                         .execute_remote_single_receiver(
                             &remote_execution_context.target,

@@ -1,9 +1,6 @@
+use crate::{prelude::*, values::core_values::sender::Sender};
 use core::cell::RefCell;
 use datex_macros_internal::Datex;
-use crate::values::core_values::sender::Sender;
-use crate::prelude::*;
-use crate::std_sync::Mutex;
-
 
 #[derive(Datex, Clone, Copy)]
 #[datex(structural)]
@@ -27,7 +24,6 @@ impl From<LogLevel> for log::Level {
     }
 }
 
-
 #[derive(Datex, Clone)]
 #[datex(structural)]
 pub struct LogMessage {
@@ -38,8 +34,18 @@ pub struct LogMessage {
 }
 
 impl LogMessage {
-    pub fn new(level: LogLevel, module: String, tag: Option<String>, message: String) -> Self {
-        Self { level, module, tag, message }
+    pub fn new(
+        level: LogLevel,
+        module: String,
+        tag: Option<String>,
+        message: String,
+    ) -> Self {
+        Self {
+            level,
+            module,
+            tag,
+            message,
+        }
     }
 }
 
@@ -51,20 +57,16 @@ unsafe impl<T> Sync for SingleContext<T> {}
 static SENDERS: SingleContext<RefCell<Vec<Sender<LogMessage>>>> =
     SingleContext(RefCell::new(Vec::new()));
 
-
 /// Registers a sender which is called for any global log
 pub fn register_log_sender(sender: Sender<LogMessage>) {
     SENDERS.0.borrow_mut().push(sender);
-
 }
 
 pub fn log_message(message: LogMessage) {
     let senders = &mut SENDERS.0.borrow_mut();
 
     // send message on all senders, remove all closed senders
-    senders.retain_mut(|sender| {
-        sender.send(message.clone()).is_ok()
-    });
+    senders.retain_mut(|sender| sender.send(message.clone()).is_ok());
 }
 
 pub fn string_with_maybe_tag(string: String, tag: &Option<String>) -> String {
@@ -82,7 +84,6 @@ macro _log($level:expr, $tag:expr, $($arg:tt)+) {
     log::log!(log::Level::from($level), "{}", string_with_tag);
     log_message(LogMessage::new($level, module_path!().to_string(), $tag, string));
 }
-
 
 pub macro log_info($($arg:tt)+) {
     _log!(LogLevel::Info, None, $($arg)+);

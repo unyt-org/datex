@@ -6,18 +6,12 @@ use crate::{
     instruction::regular_instruction::RegularInstruction,
     values::{value::Value, value_container::ValueContainer},
 };
-use binrw::{
-    BinWrite,
-    io::{Cursor, Write},
-};
 
 use crate::{
     core_compiler::{
-        core_compilation_context::{ByteCursor, CoreCompilationContext},
+        core_compilation_context::CoreCompilationContext,
         to_instructions::{ToInstructions, yield_all, yield_all_collected},
     },
-    instruction::Instruction,
-    libs::core::{core_lib_id::CoreLibId, value_id::CoreLibValueId},
     prelude::*,
     runtime::{
         cache::shared_references_cache::SharedReferencesCache,

@@ -2,19 +2,19 @@
 pub mod test;
 
 use crate::{
-    prelude::*, runtime::Runtime, traits::get_datex_type::GetDatexType,
+    prelude::*,
+    runtime::Runtime,
+    traits::get_datex_type::GetDatexType,
+    utils::logger::{LogMessage, register_log_sender},
     values::value_container::ValueContainer,
-    utils::logger::LogMessage,
 };
 use datex_macros_internal::{Datex, datex};
-use crate::utils::logger::register_log_sender;
 
 #[datex(name = "inspector")]
 mod datex_inspector {
     use super::*;
     use crate::{
         shared_wrappers::shared::{shared_ref::SharedRef, to_shared::ToShared},
-        task::sleep,
         values::core_values::{channel::create_channel, receiver::Receiver},
     };
 

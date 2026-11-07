@@ -38,14 +38,13 @@ use crate::{
         execution::execution_input::ExecutionCallerMetadata,
     },
     traits::convert_value_container::ConvertValueContainer,
+    utils::logger::log_info,
     values::core_values::list::List,
 };
 use datex_macros_internal::Datex;
-use log::{error, info};
+use log::error;
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
-use crate::utils::logger::log_info;
-use crate::prelude::*;
 
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
 #[datex(structural)]

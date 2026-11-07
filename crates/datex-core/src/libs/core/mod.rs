@@ -5,6 +5,7 @@ use crate::{
         type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
         value_id::CoreLibValueId,
     },
+    prelude::*,
     random::RandomState,
     types::type_definition::callable::CallableTypeDefinition,
     values::{
@@ -18,7 +19,6 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use crate::prelude::*;
 
 pub mod core_lib_id;
 pub mod type_id;
@@ -26,16 +26,14 @@ mod type_match;
 pub mod value_id;
 
 use crate::{
-    prelude::*,
     runtime::Runtime,
     traits::apply::{ApplyArgument, get_borrowed_apply_argument_values},
     types::{r#type::Type, type_definition::callable::CallableKind},
+    utils::logger::log_info_with_tag,
     values::core_values::{callable::CoreStub, endpoint::Endpoint},
 };
 use indexmap::IndexMap;
-use log::info;
 use strum::IntoEnumIterator;
-use crate::utils::logger::{log_info, log_info_with_tag};
 
 #[derive(Debug)]
 pub struct CoreLibraryValues {
