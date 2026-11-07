@@ -1,6 +1,6 @@
 use crate::values::value_container::ValueContainer;
 use core::fmt;
-
+mod to_instructions;
 use crate::dif::{
     deserialize_serde_context::DeserializeSerdeContext,
     serde_context::SerdeContext,
@@ -12,29 +12,29 @@ use serde::{
 };
 
 #[derive(Clone, Debug, PartialEq, Hash)]
-pub struct DeleteEntryUpdateData {
-    pub key: ValueContainer,
+pub struct DecrementUpdateData {
+    pub value: ValueContainer,
 }
-impl DeleteEntryUpdateData {
-    pub fn new(key: ValueContainer) -> Self {
-        DeleteEntryUpdateData { key }
+impl DecrementUpdateData {
+    pub fn new(value: ValueContainer) -> Self {
+        DecrementUpdateData { value }
     }
 }
 
 impl<'ctx> SerdeContext<'ctx> {
-    pub fn serialize_delete_entry_fields<S: SerializeSeq>(
+    pub fn serialize_decrement_fields<S: SerializeSeq>(
         &self,
-        value: &DeleteEntryUpdateData,
+        value: &DecrementUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {
-        seq.serialize_element(&ValueWithSerdeContext::new(&value.key, self))?;
+        seq.serialize_element(&ValueWithSerdeContext::new(&value.value, self))?;
         Ok(())
     }
 }
-impl<'de, 'a, 'ctx> Visitor<'de>
-    for DeserializeSerdeContext<'a, 'ctx, DeleteEntryUpdateData>
+impl<'de> Visitor<'de>
+    for DeserializeSerdeContext<'de, '_, DecrementUpdateData>
 {
-    type Value = DeleteEntryUpdateData;
+    type Value = DecrementUpdateData;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -51,6 +51,6 @@ impl<'de, 'a, 'ctx> Visitor<'de>
             .next_element_seed(self.cast::<ValueContainer>())?
             .ok_or_else(|| de::Error::invalid_length(0, &self))?;
 
-        Ok(DeleteEntryUpdateData { key })
+        Ok(DecrementUpdateData { value: key })
     }
 }
