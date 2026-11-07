@@ -55,7 +55,6 @@ pub mod error;
 pub mod metadata;
 pub mod precompiler;
 pub mod scope;
-pub mod type_compiler;
 #[cfg(feature = "std")]
 pub mod workspace;
 
