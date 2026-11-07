@@ -247,7 +247,7 @@ impl Debug for SendCallback {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub enum SendSuccess {
     /// Indicates that the data was sent successfully without any immediate received data.
     #[default]
