@@ -117,6 +117,20 @@ impl ComInterfaceSocketManager {
             .insert(socket_uuid.clone());
     }
 
+    /// Removes a socket from the blocklist of a specific endpoint
+    pub fn remove_socket_from_endpoint_blocklist(
+        &self,
+        endpoint: &Endpoint,
+        socket_uuid: &ComInterfaceSocketUUID,
+    ) {
+        if let Some(list) = self.endpoint_sockets_blacklist
+            .borrow_mut()
+            .get_mut(endpoint)
+        {
+            list.remove(socket_uuid);
+        }
+    }
+
     /// Registers a new endpoint that is reachable over the socket if the socket is not
     /// already registered, it will be added to the socket list.
     /// If the provided endpoint is not the same as the socket endpoint, it is registered

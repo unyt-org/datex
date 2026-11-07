@@ -913,7 +913,7 @@ impl ComHub {
         };
 
         // send block for unreachable endpoints back to the sender
-        if let Err(unreachable_endpoints) = res {
+        let res = if let Err(unreachable_endpoints) = res {
             // try to send back to original socket
             // if already in history, get original socket from history
             // otherwise, directly send back to the incoming socket
@@ -940,7 +940,9 @@ impl ComHub {
                     self.socket_manager.get_socket_by_uuid(&send_back_socket)
                     && socket.socket_properties.direction.can_send()
                 {
+                    drop(socket);
                     block.set_bounce_back(true);
+                    info!("Sending undeliverable block for receivers {:?} back to original incoming socket {}", unreachable_endpoints, send_back_socket);
                     self
                         .send_block_to_endpoints_via_socket(
                             block,
@@ -978,7 +980,19 @@ impl ComHub {
             }
         } else {
             Ok(())
+        };
+
+        // clear socket from endpoint blacklists again
+        for receiver in &receivers {
+            if !self.is_local_endpoint_exact(receiver) {
+                self.socket_manager.remove_socket_from_endpoint_blocklist(
+                    receiver,
+                    &incoming_socket,
+                );
+            }
         }
+
+        res
     }
 
     /// Prepares an own block for sending by setting sender, timestamp, distance and signing if needed.

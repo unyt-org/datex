@@ -70,13 +70,19 @@ pub enum EndpointType {
     Anonymous = 0xFF,
 }
 
-#[derive(BinWrite, BinRead, Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(BinWrite, BinRead, Clone, Hash, PartialEq, Eq)]
 #[brw(little)]
 pub struct Endpoint {
     // 1 byte type, 18 bytes name, 2 bytes instance
     pub ty: EndpointType,
     pub identifier: [u8; 18],
     pub instance: EndpointInstance,
+}
+
+impl Debug for Endpoint {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "Endpoint({})", self)
+    }
 }
 
 impl Default for Endpoint {
