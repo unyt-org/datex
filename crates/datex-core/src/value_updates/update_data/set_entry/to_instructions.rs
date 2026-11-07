@@ -18,6 +18,7 @@ impl ToInstructions for SetEntryUpdateData {
     ) -> Box<dyn Iterator<Item = Instruction> + 'a> {
         Box::new(gen {
             // key
+            // FIXME can we reuse this and outsouce to set_entry into regular instructions?
             if let Some(string) = self.key.try_as_str() {
                 yield RegularInstruction::set_entry_text(string.to_string())
                     .into();

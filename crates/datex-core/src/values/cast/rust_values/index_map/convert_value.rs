@@ -146,7 +146,7 @@ mod tests {
         let mut map = TestMap::default();
         map.insert(1, 10);
         let mut core_value = Value::native(map);
-        let borrowed = BorrowedValueMut::from(&mut core_value);
+        let borrowed = BorrowedValueMut::try_from(&mut core_value).unwrap();
         let mut result = GoatMut::<TestMap>::try_from(borrowed).unwrap();
         result.insert(2, 20);
         drop(result);
@@ -165,7 +165,7 @@ mod tests {
     fn try_borrowed_index_map_mut_wrong_type_fails() {
         let mut core_value =
             Value::native(IndexMap::<String, String, RandomState>::default());
-        let borrowed = BorrowedValueMut::from(&mut core_value);
+        let borrowed = BorrowedValueMut::try_from(&mut core_value).unwrap();
         assert!(GoatMut::<TestMap>::try_from(borrowed).is_err());
     }
 }

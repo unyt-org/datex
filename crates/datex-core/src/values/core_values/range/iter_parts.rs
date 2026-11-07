@@ -24,8 +24,16 @@ impl IterParts for Range {
     ) -> Option<Box<dyn Iterator<Item = BorrowedValueContainerMut<'a>> + 'a>>
     {
         Some(Box::new(gen {
-            yield self.start.as_mut().into();
-            yield self.end.as_mut().into();
+            yield self
+                .start
+                .as_mut()
+                .try_into()
+                .expect("Failed to get borrowed value container mut");
+            yield self
+                .end
+                .as_mut()
+                .try_into()
+                .expect("Failed to get borrowed value container mut");
         }))
     }
 }

@@ -70,7 +70,7 @@ impl<'a> BorrowedCoreValueWithClassificationMut<'a> {
     pub(crate) fn try_clone_to_core_value_with_classification(
         self,
     ) -> Result<CoreValueWithClassification, ()> {
-        let inner = self.inner.try_clone_to_core_value()?;
+        let inner = self.inner.try_clone_to_core_value().ok_or(())?;
         Ok(CoreValueWithClassification {
             inner,
             classification: self.classification.clone(),
@@ -78,15 +78,18 @@ impl<'a> BorrowedCoreValueWithClassificationMut<'a> {
     }
 }
 
-impl<'a> From<&'a mut CoreValueWithClassification>
+impl<'a> TryFrom<&'a mut CoreValueWithClassification>
     for BorrowedCoreValueWithClassificationMut<'a>
 {
-    fn from(value: &'a mut CoreValueWithClassification) -> Self {
-        let inner = BorrowedCoreValueMut::from(&mut value.inner);
+    type Error = ();
+    fn try_from(
+        value: &'a mut CoreValueWithClassification,
+    ) -> Result<Self, ()> {
+        let inner = BorrowedCoreValueMut::try_from(&mut value.inner)?;
         let classification = value.classification.clone();
-        BorrowedCoreValueWithClassificationMut {
+        Ok(BorrowedCoreValueWithClassificationMut {
             inner,
             classification,
-        }
+        })
     }
 }

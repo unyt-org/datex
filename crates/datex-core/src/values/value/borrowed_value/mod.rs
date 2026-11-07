@@ -184,15 +184,16 @@ impl<'a> BorrowedValueMut<'a> {
     }
 }
 
-impl<'a> From<&'a mut Value> for BorrowedValueMut<'a> {
-    fn from(value: &'a mut Value) -> Self {
-        match value {
+impl<'a> TryFrom<&'a mut Value> for BorrowedValueMut<'a> {
+    type Error = ();
+    fn try_from(value: &'a mut Value) -> Result<Self, Self::Error> {
+        Ok(match value {
             Value::Core(core_value) => BorrowedValueMut::Core(
-                BorrowedCoreValueWithClassificationMut::from(core_value),
+                BorrowedCoreValueWithClassificationMut::try_from(core_value)?,
             ),
             Value::Native(native_value) => BorrowedValueMut::Native(
                 GoatMut::Borrowed(native_value.value.deref_mut()),
             ),
-        }
+        })
     }
 }

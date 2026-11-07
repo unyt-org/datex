@@ -25,7 +25,11 @@ impl ConvertValueContainer for Value {
     fn as_borrowed_value_container_mut(
         &mut self,
     ) -> BorrowedValueContainerMut<'_> {
-        BorrowedValueContainerMut::Local(BorrowedValueMut::from(self))
+        BorrowedValueContainerMut::Local(
+            // FIXME, shall we bubble up the error of static string slices really to that level?
+            BorrowedValueMut::try_from(self)
+                .expect("Failed to convert to BorrowedValueMut"),
+        )
     }
 
     fn try_from_value_container(

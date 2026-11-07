@@ -1,6 +1,6 @@
 use crate::{
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
-    values::value::borrowed_value::BorrowedValue,
+    values::value::borrowed_value::{BorrowedValue, BorrowedValueMut},
 };
 use core::ops::Deref;
 
@@ -16,6 +16,25 @@ impl StructuralEq for BorrowedValue<'_> {
             (
                 BorrowedValue::Native(native_self),
                 BorrowedValue::Native(native_other),
+            ) => {
+                native_self.dyn_eq(native_other.deref()) // TODO, structural_dyn_eq
+            }
+            _ => {
+                todo!("Structural equality not implemented for these variants")
+            }
+        }
+    }
+}
+impl StructuralEq for BorrowedValueMut<'_> {
+    fn structural_eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                BorrowedValueMut::Core(core_self),
+                BorrowedValueMut::Core(core_other),
+            ) => core_self.structural_eq(core_other),
+            (
+                BorrowedValueMut::Native(native_self),
+                BorrowedValueMut::Native(native_other),
             ) => {
                 native_self.dyn_eq(native_other.deref()) // TODO, structural_dyn_eq
             }
@@ -59,7 +78,40 @@ impl ValueEq for BorrowedValue<'_> {
     }
 }
 
+impl ValueEq for BorrowedValueMut<'_> {
+    fn value_eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                BorrowedValueMut::Core(core_self),
+                BorrowedValueMut::Core(core_other),
+            ) => core_self.value_eq(core_other),
+
+            (
+                BorrowedValueMut::Native(native_self),
+                BorrowedValueMut::Native(native_other),
+            ) => native_self.dyn_eq(native_other.deref()),
+
+            (
+                BorrowedValueMut::Core(_core_self),
+                BorrowedValueMut::Native(_native_other),
+            )
+            | (
+                BorrowedValueMut::Native(_native_other),
+                BorrowedValueMut::Core(_core_self),
+            ) => {
+                todo!()
+            }
+        }
+    }
+}
+
 impl PartialEq for BorrowedValue<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.value_eq(other)
+    }
+}
+
+impl PartialEq for BorrowedValueMut<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.value_eq(other)
     }

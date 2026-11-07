@@ -123,7 +123,7 @@ mod tests {
     fn try_borrowed_vec_mut() {
         let mut core_value = Value::native(vec![1, 2, 3]);
 
-        let borrowed = BorrowedValueMut::from(&mut core_value);
+        let borrowed = BorrowedValueMut::try_from(&mut core_value).unwrap();
         let mut result = GoatMut::<Vec<i32>>::try_from(borrowed).unwrap();
 
         result.push(4);

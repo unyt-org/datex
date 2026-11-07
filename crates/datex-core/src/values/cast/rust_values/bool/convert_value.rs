@@ -185,7 +185,7 @@ mod tests {
     #[test]
     fn try_borrowed_core_value_mut_bool() {
         let mut value = CoreValue::Boolean(Boolean(false)).to_value();
-        let borrowed = BorrowedValueMut::from(&mut value);
+        let borrowed = BorrowedValueMut::try_from(&mut value).unwrap();
         let mut result = GoatMut::<bool>::try_from(borrowed).unwrap();
         *result = true;
         drop(result);
@@ -202,7 +202,7 @@ mod tests {
     #[test]
     fn try_borrowed_core_value_mut_wrong_type_fails() {
         let mut core_value = CoreValue::Null.into();
-        let borrowed = BorrowedValueMut::from(&mut core_value);
+        let borrowed = BorrowedValueMut::try_from(&mut core_value).unwrap();
         assert!(GoatMut::<bool>::try_from(borrowed).is_err());
     }
 }

@@ -48,6 +48,21 @@ impl Display for BorrowedValueContainer<'_> {
     }
 }
 
+#[cfg(feature = "value_display")]
+impl Display for BorrowedValueContainerMut<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        use crate::decompiler::ast_to_source_code::value_to_source_code_default;
+
+        write!(f, "{}", value_to_source_code_default(self))
+    }
+}
+#[cfg(not(feature = "value_display"))]
+impl Display for BorrowedValueContainerMut<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "[[ BorrowedValueContainer ]]")
+    }
+}
+
 impl<'a> BorrowedValueContainer<'a> {
     /// Creates a new `BorrowedValueContainer` from a reference to a native value.
     pub fn native_borrowed<T: DatexNative>(
@@ -86,6 +101,7 @@ impl<'a> BorrowedValueContainer<'a> {
     }
 }
 
+#[derive(Debug)]
 pub enum BorrowedValueContainerMut<'a> {
     Local(BorrowedValueMut<'a>),
     Shared(SharedContainer),
@@ -158,18 +174,21 @@ impl<'a> From<&'a mut ValueContainer> for BorrowedValueContainer<'a> {
     }
 }
 
-impl<'a> From<&'a mut ValueContainer> for BorrowedValueContainerMut<'a> {
-    fn from(value_container: &'a mut ValueContainer) -> Self {
-        match value_container {
+impl<'a> TryFrom<&'a mut ValueContainer> for BorrowedValueContainerMut<'a> {
+    type Error = ();
+    fn try_from(
+        value_container: &'a mut ValueContainer,
+    ) -> Result<Self, Self::Error> {
+        Ok(match value_container {
             ValueContainer::Shared(shared_container) => {
                 BorrowedValueContainerMut::Shared(shared_container.clone())
             }
             ValueContainer::Local(local_value) => {
-                BorrowedValueContainerMut::Local(BorrowedValueMut::from(
+                BorrowedValueContainerMut::Local(BorrowedValueMut::try_from(
                     local_value,
-                ))
+                )?)
             }
-        }
+        })
     }
 }
 

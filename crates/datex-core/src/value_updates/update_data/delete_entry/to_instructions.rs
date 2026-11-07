@@ -1,8 +1,10 @@
 use crate::{
     core_compiler::{
-        to_instructions::ToInstructions, value_visitor::ValueVisitor,
+        to_instructions::{ToInstructions, yield_all},
+        value_visitor::ValueVisitor,
     },
-    instruction::Instruction,
+    global::stack_index::StackIndex,
+    instruction::{Instruction, regular_instruction::RegularInstruction},
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     value_updates::update_data::DeleteEntryUpdateData,
@@ -11,9 +13,15 @@ use crate::{
 impl ToInstructions for DeleteEntryUpdateData {
     fn to_instructions<'a>(
         &'a self,
-        _visitor: &'a mut dyn ValueVisitor,
-        _cache: &'a mut SharedReferencesCache,
+        visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = Instruction> + 'a> {
-        todo!()
+        Box::new(gen {
+            yield RegularInstruction::take_entry_dynamic().into();
+            yield_all!(self.key.to_instructions(visitor, cache));
+
+            // target
+            yield RegularInstruction::borrow_stack_value(StackIndex(0)).into();
+        })
     }
 }

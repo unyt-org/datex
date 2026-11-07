@@ -24,6 +24,8 @@ impl ValueAccess for Map {
         &mut self,
         key: &ValueContainer,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
-        Ok(self.try_get_mut(key)?.into())
+        self.try_get_mut(key)?
+            .try_into()
+            .map_err(|_| AccessError::InvalidIndexKey)
     }
 }
