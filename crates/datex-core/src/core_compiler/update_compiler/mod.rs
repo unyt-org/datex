@@ -37,6 +37,8 @@ pub fn compile_updates(
 }
 
 impl ToInstructions for (&SharedContainer, &[&UpdateData]) {
+    /// Appends a list of update operations on a shared container
+    /// The updates are appended as a single statement block, with the shared container being pushed to the stack first, followed by each update operation.
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
@@ -44,33 +46,22 @@ impl ToInstructions for (&SharedContainer, &[&UpdateData]) {
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         let (container, updates) = self;
         Box::new(gen move {
-            yield_all!(append_updates(visitor, cache, container, updates));
+            let statements_count = 1 + updates.len() as u32; // 1 for the push to stack, and 1 for each update operation
+
+            yield RegularInstruction::statements(statements_count, true).into();
+            yield RegularInstruction::push_to_stack().into();
+            yield RegularInstruction::shared_ref(SharedRef {
+                address: container.pointer_address(),
+                ref_mutability: ReferenceMutability::Mutable, // can always be upgraded to mutable since the executing endpoint is the owner
+                container_mutability: SharedContainerMutability::Mutable, // must be mutable for updates
+            })
+            .into();
+
+            for update in *updates {
+                // TODO append update.path
+                yield_all!(update.operation().to_instructions(visitor, cache));
+            }
         })
-    }
-}
-
-/// Appends a list of update operations on a shared container
-/// The updates are appended as a single statement block, with the shared container being pushed to the stack first, followed by each update operation.
-gen fn append_updates<'a>(
-    visitor: &mut dyn ValueVisitor,
-    cache: &mut SharedReferencesCache,
-    container: &SharedContainer,
-    updates: &[&UpdateData],
-) -> crate::instruction::Instruction {
-    let statements_count = 1 + updates.len() as u32; // 1 for the push to stack, and 1 for each update operation
-
-    yield RegularInstruction::statements(statements_count, true).into();
-    yield RegularInstruction::push_to_stack().into();
-    yield RegularInstruction::shared_ref(SharedRef {
-        address: container.pointer_address(),
-        ref_mutability: ReferenceMutability::Mutable, // can always be upgraded to mutable since the executing endpoint is the owner
-        container_mutability: SharedContainerMutability::Mutable, // must be mutable for updates
-    })
-    .into();
-
-    for update in updates {
-        // TODO append update.path
-        yield_all!(update.operation().to_instructions(visitor, cache));
     }
 }
 
