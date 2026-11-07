@@ -50,6 +50,7 @@ impl RuntimeConfigInterface {
 #[datex(structural)]
 pub struct RuntimeConfig {
     pub endpoint: Endpoint,
+    pub name: Option<String>,
     pub interfaces: Option<Vec<RuntimeConfigInterface>>,
     pub env: Option<IndexMap<String, String, RandomState>>,
 }
@@ -58,6 +59,7 @@ impl RuntimeConfig {
     pub fn new_with_endpoint(endpoint: Endpoint) -> Self {
         RuntimeConfig {
             endpoint,
+            name: None,
             interfaces: None,
             env: None,
         }
@@ -252,6 +254,7 @@ pub mod tests {
     fn read_runtime_config_from_datex_source() {
         let config_source = r#"{
             endpoint: @test,
+            name: "Example",
             interfaces: [
                 {
                     type: "websocket-client",
@@ -269,6 +272,7 @@ pub mod tests {
             config,
             Ok(RuntimeConfig {
                 endpoint: Endpoint::new("@test"),
+                name: Some("Example".to_string()),
                 interfaces: Some(vec![RuntimeConfigInterface {
                     interface_type: "websocket-client".to_string(),
                     config: Map::from(vec![(

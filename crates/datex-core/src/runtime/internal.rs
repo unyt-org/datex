@@ -838,6 +838,11 @@ impl RuntimeInternal {
     pub fn get_env(&self) -> IndexMap<String, String, RandomState> {
         self.config.env.clone().unwrap_or_default()
     }
+    
+    /// Get the human-readable name of the endpoint (can be provided in config)
+    pub fn get_name(&self) -> Option<String> {
+        self.config.name.clone()
+    }
 
     /// Creates a new [DIFInterface] with a unique transceiver id and the runtime's pointer address provider
     pub fn create_dif_interface(&self) -> DIFInterface {
