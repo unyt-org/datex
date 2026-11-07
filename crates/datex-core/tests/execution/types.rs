@@ -27,8 +27,7 @@ use datex_core::{
             collection::{
                 CollectionTypeDefinition,
                 type_definition::{
-                    list::ListCollectionTypeDefinition,
-                    map::MapCollectionTypeDefinition,
+                    ListCollectionTypeDefinition, MapCollectionTypeDefinition,
                 },
             },
             impl_type::ImplMarkers,

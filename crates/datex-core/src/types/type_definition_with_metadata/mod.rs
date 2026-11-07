@@ -4,6 +4,7 @@ use core::{fmt::Display, hash::Hash};
 pub mod metadata;
 pub mod serde_dif;
 pub use metadata::*;
+mod to_instructions;
 #[cfg(feature = "ast")]
 mod to_type_expression_data;
 pub mod type_match;

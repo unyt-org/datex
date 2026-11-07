@@ -4,6 +4,7 @@ use crate::{prelude::*, types::r#type::Type};
 use core::ops::Deref;
 pub mod equality;
 pub mod serde_dif;
+mod to_instructions;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct IntersectionTypeDefinition(pub Vec<Type>);
 

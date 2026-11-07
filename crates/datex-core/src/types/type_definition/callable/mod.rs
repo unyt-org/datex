@@ -4,6 +4,7 @@ use core::fmt::{Display, Formatter};
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 pub mod serde_dif;
+mod to_instructions;
 use crate::{
     prelude::*, traits::apply::ApplyArgument,
     types::traits::type_match::TypeSatisfiesValueContainer,

@@ -1,21 +1,4 @@
-use crate::{
-    core_compiler::core_compilation_context::ByteCursor,
-    instruction::type_instruction::TypeInstruction,
-};
-use binrw::BinWrite;
-
 pub mod type_to_instructions;
-
-pub mod type_definition_to_instructions;
-
-#[deprecated(note = "Use ToInstructions trait instead")]
-pub fn append_type_instruction(
-    cursor: &mut ByteCursor,
-    instruction: TypeInstruction,
-) {
-    // add instruction
-    instruction.write(cursor).unwrap();
-}
 
 #[cfg(test)]
 #[cfg(feature = "disassembler")]

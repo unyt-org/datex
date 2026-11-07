@@ -8,7 +8,7 @@ use crate::{
             TypeDefinition,
             collection::{
                 CollectionTypeDefinition,
-                type_definition::sender::SenderTypeDefinition,
+                type_definition::SenderTypeDefinition,
             },
         },
     },

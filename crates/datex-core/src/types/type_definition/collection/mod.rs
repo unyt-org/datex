@@ -2,16 +2,15 @@ use strum::AsRefStr;
 pub mod type_definition;
 use crate::types::type_definition::{
     collection::type_definition::{
-        list::ListCollectionTypeDefinition,
-        list_slice::ListSliceCollectionTypeDefinition,
-        map::MapCollectionTypeDefinition, receiver::ReceiverTypeDefinition,
-        sender::SenderTypeDefinition,
+        ListCollectionTypeDefinition, ListSliceCollectionTypeDefinition,
+        MapCollectionTypeDefinition, ReceiverTypeDefinition,
+        SenderTypeDefinition,
     },
     range::RangeTypeDefinition,
 };
 use core::fmt::Display;
-
 pub mod serde_dif;
+mod to_instructions;
 // TODO #377: Rename to Generic type definition?
 #[derive(Debug, Clone, PartialEq, Hash, Eq, AsRefStr)]
 #[strum(serialize_all = "snake_case")]
