@@ -425,7 +425,8 @@ mod tests {
         collections::HashMap,
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
         core_compiler::core_compilation_context::DXBWithSharedValues,
-        instruction::{Instruction, traits::to_bytes::ToBytes},
+        global::protocol_structures::serializable::Serializable,
+        instruction::Instruction,
         libs::core::type_id::CoreLibBaseTypeId,
         prelude::*,
         runtime::{

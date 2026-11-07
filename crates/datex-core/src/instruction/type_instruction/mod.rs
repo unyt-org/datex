@@ -1,4 +1,5 @@
 use crate::{
+    global::protocol_structures::serializable::Serializable,
     instruction::{
         NextExpectedInstructions,
         instruction_data::{
@@ -6,7 +7,6 @@ use crate::{
             ListSliceCollectionData, MapData, TaggedTypeData,
             TypeReferenceData, UnionData,
         },
-        traits::to_bytes::ToBytes,
     },
     libs::core::type_id::CoreLibTypeId,
     prelude::*,
@@ -196,7 +196,7 @@ impl Display for TypeInstruction {
         Ok(())
     }
 }
-impl ToBytes for TypeInstruction {
+impl Serializable for TypeInstruction {
     fn to_bytes(&self) -> Vec<u8> {
         let mut writer = binrw::io::Cursor::new(Vec::new());
         self.write(&mut writer)

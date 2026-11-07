@@ -11,6 +11,7 @@ use crate::{
             ComparisonOperator, SharedValueUnaryOperator, UnaryOperator,
             binary::{ArithmeticOperator, RangeOperator},
         },
+        protocol_structures::serializable::Serializable,
         root_properties::RootProperty,
         stack_index::StackIndex,
     },
@@ -27,7 +28,6 @@ use crate::{
             StatementsData, TextData, UInt8Data, UInt16Data, UInt32Data,
             UInt64Data, UInt128Data, UnboundedStatementsData,
         },
-        traits::to_bytes::ToBytes,
     },
     libs::core::core_lib_id::CoreLibIdIndex,
     prelude::*,
@@ -1485,7 +1485,7 @@ impl Display for RegularInstruction {
         Ok(())
     }
 }
-impl ToBytes for RegularInstruction {
+impl Serializable for RegularInstruction {
     fn to_bytes(&self) -> Vec<u8> {
         let mut writer = binrw::io::Cursor::new(Vec::new());
         self.write(&mut writer)

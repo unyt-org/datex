@@ -8,12 +8,12 @@ pub mod type_instruction_codes;
 
 use crate::{
     instruction::{
-        regular_instruction::RegularInstruction, traits::to_bytes::ToBytes,
+        regular_instruction::RegularInstruction,
         type_instruction::TypeInstruction,
     },
     prelude::*,
 };
-mod to_bytes;
+mod serializeable;
 use binrw::{
     BinResult, BinWrite, Endian,
     io::{Seek, Write},
