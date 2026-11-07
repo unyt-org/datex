@@ -22,25 +22,8 @@ use binrw::{
 use core::{fmt::Display, prelude::rust_2024::*};
 use serde::Serialize;
 
-use core::sync::atomic::{AtomicUsize, Ordering};
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Label(pub usize);
-
-static NEXT_LABEL: AtomicUsize = AtomicUsize::new(0);
-
-impl Label {
-    pub fn new() -> Self {
-        // FIXME make part of compiler metadata, not global
-        Self(NEXT_LABEL.fetch_add(1, Ordering::Relaxed))
-    }
-}
-
-impl Default for Label {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+pub struct Label(pub u32);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum BytecodeItem {
