@@ -1,21 +1,9 @@
 //! The [ToBytes] implementations for converting instructions to bytes
 use crate::{
     global::protocol_structures::serializable::Serializable,
-    instruction::{
-        Instruction, regular_instruction::RegularInstruction,
-        type_instruction::TypeInstruction,
-    },
-    prelude::*,
+    instruction::Instruction, prelude::*,
 };
-use binrw::{
-    BinResult, BinWrite, Endian,
-    io::{Seek, Write},
-    meta::{EndianKind, WriteEndian},
-};
-use core::{fmt::Display, prelude::rust_2024::*};
-use serde::Serialize;
-
-use core::sync::atomic::{AtomicUsize, Ordering};
+use binrw::io::Write;
 
 impl Serializable for Instruction {
     fn to_bytes(&self) -> Vec<u8> {

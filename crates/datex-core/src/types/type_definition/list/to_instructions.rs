@@ -4,41 +4,12 @@ use crate::{
         value_visitor::ValueVisitor,
     },
     instruction::{
-        instruction_data::{
-            CallableSignatureData, ImplMarkersData, IntersectionData, ListData,
-            ListSliceCollectionData, MapData, ShortTextData, TaggedTypeData,
-            UnionData,
-        },
-        type_instruction::TypeInstruction,
+        instruction_data::ListData, type_instruction::TypeInstruction,
     },
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    types::{
-        type_definition::{
-            TypeDefinition,
-            callable::CallableTypeDefinition,
-            collection::{
-                CollectionTypeDefinition,
-                type_definition::{
-                    ListCollectionTypeDefinition,
-                    ListSliceCollectionTypeDefinition,
-                    MapCollectionTypeDefinition,
-                    ReceiverTypeDefinition,
-                    SenderTypeDefinition,
-                },
-            },
-            impl_type::ImplMarkers,
-            intersection::IntersectionTypeDefinition,
-            list::ListTypeDefinition,
-            map::MapTypeDefinition,
-            range::RangeTypeDefinition,
-            tagged_type::TaggedTypeDefinition,
-            union::UnionTypeDefinition,
-        },
-        type_definition_with_metadata::TypeDefinitionWithMetadata,
-    },
+    types::type_definition::list::ListTypeDefinition,
 };
-use core::ops::Deref;
 
 impl ToInstructions for ListTypeDefinition {
     fn to_instructions<'a>(

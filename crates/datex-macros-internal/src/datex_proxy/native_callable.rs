@@ -338,7 +338,7 @@ pub fn generate_native_callable(
         }
     };
 
-    let docs = match parse_doc_comments(&attrs) {
+    let docs = match parse_doc_comments(attrs) {
         Some(docs) => quote! {
             Some(#docs.to_string())
         },

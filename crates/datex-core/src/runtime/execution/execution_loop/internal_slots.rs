@@ -1,12 +1,11 @@
 use crate::{
     global::root_properties::RootProperty,
-    runtime::execution::{
-        ExecutionError, execution_loop::state::RuntimeExecutionState,
+    runtime::{
+        Runtime,
+        execution::{ExecutionError, execution_input::ExecutionCallerMetadata},
     },
     values::{value::Value, value_container::ValueContainer},
 };
-use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
-use crate::runtime::Runtime;
 
 pub fn get_root_property(
     runtime: &Runtime,
@@ -22,9 +21,9 @@ pub fn get_root_property(
         }
         RootProperty::ENV => ValueContainer::from(runtime.internal.get_env()),
         RootProperty::NAME => ValueContainer::from(runtime.internal.get_name()),
-        RootProperty::CONFIG => ValueContainer::Local(Value::native(
-            runtime.config().clone(),
-        )),
+        RootProperty::CONFIG => {
+            ValueContainer::Local(Value::native(runtime.config().clone()))
+        }
     };
     Ok(res)
 }
