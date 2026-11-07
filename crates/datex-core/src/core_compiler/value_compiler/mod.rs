@@ -110,18 +110,6 @@ gen fn append_apply<'a>(
     yield callee.into();
 }
 
-#[deprecated(note = "Use ToInstructions trait instead")]
-pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) {
-    match instruction {
-        Instruction::Regular(instruction) => {
-            instruction.write(cursor).unwrap();
-        }
-        Instruction::Type(instruction) => {
-            instruction.write(cursor).unwrap();
-        }
-    }
-}
-
 #[cfg(test)]
 #[cfg(feature = "disassembler")]
 mod tests {

@@ -583,7 +583,6 @@ fn disassemble_body_inner(
 mod tests {
     use super::*;
     use crate::{
-        core_compiler::value_compiler::append_instruction,
         disassembler::assertions::instructions_with_span,
         dxb_parser::next_instructions_stack::{
             NextInstructionsStack, NextScopeInstruction,
