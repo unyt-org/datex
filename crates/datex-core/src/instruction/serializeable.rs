@@ -1,8 +1,9 @@
 //! The [ToBytes] implementations for converting instructions to bytes
 use crate::{
+    global::protocol_structures::serializable::Serializable,
     instruction::{
         Instruction, regular_instruction::RegularInstruction,
-        traits::to_bytes::ToBytes, type_instruction::TypeInstruction,
+        type_instruction::TypeInstruction,
     },
     prelude::*,
 };
@@ -16,7 +17,7 @@ use serde::Serialize;
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-impl ToBytes for Instruction {
+impl Serializable for Instruction {
     fn to_bytes(&self) -> Vec<u8> {
         match self {
             Instruction::Regular(instr) => instr.to_bytes(),
@@ -24,7 +25,7 @@ impl ToBytes for Instruction {
         }
     }
 }
-impl ToBytes for &Instruction {
+impl Serializable for &Instruction {
     fn to_bytes(&self) -> Vec<u8> {
         match self {
             Instruction::Regular(instr) => instr.to_bytes(),
@@ -33,7 +34,7 @@ impl ToBytes for &Instruction {
     }
 }
 
-impl ToBytes for Vec<Instruction> {
+impl Serializable for Vec<Instruction> {
     fn to_bytes(&self) -> Vec<u8> {
         let mut cursor = binrw::io::Cursor::new(Vec::new());
         for instruction in self {
@@ -42,7 +43,7 @@ impl ToBytes for Vec<Instruction> {
         cursor.into_inner()
     }
 }
-impl ToBytes for &[Instruction] {
+impl Serializable for &[Instruction] {
     fn to_bytes(&self) -> Vec<u8> {
         let mut cursor = binrw::io::Cursor::new(Vec::new());
         for instruction in *self {

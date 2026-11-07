@@ -588,6 +588,7 @@ mod tests {
         dxb_parser::next_instructions_stack::{
             NextInstructionsStack, NextScopeInstruction,
         },
+        global::protocol_structures::serializable::Serializable,
         instruction::{
             instruction_codes::InstructionCode,
             instruction_data::{
@@ -596,7 +597,6 @@ mod tests {
                 UnboundedStatementsData,
             },
             regular_instruction::RegularInstruction,
-            traits::to_bytes::ToBytes,
         },
         runtime::{Runtime, RuntimeConfig, RuntimeRunner},
     };
