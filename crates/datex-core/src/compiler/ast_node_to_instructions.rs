@@ -2,7 +2,7 @@ use crate::{
     compiler::{
         context::CompilationContext,
         error::CompilerError,
-        metadata::{CompileContextMetadata, Label},
+        metadata::{CompileContextMetadata},
         precompiler::precompiled_ast::AstMetadata,
     },
     core_compiler::core_compilation_context::ByteCursor,
@@ -14,6 +14,7 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
 };
 use binrw::BinWrite;
+use crate::instruction::Label;
 
 pub trait AstNodeToInstructions {
     fn ast_node_to_instructions<'a>(

@@ -1,12 +1,15 @@
 //! The [ByteCode] item is the parent of the Instruction and hold special handle for labels and jumps as well as instructions.
 
 use crate::{
-    compiler::metadata::Label,
     instruction::{
         Instruction, regular_instruction::RegularInstruction,
         type_instruction::TypeInstruction,
     },
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Label(pub u32);
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum BytecodeItem {
     Instruction(Instruction),
