@@ -23,9 +23,13 @@ use crate::{
     },
 };
 use core::{result::Result, unreachable};
+use core::str::FromStr;
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
+use crate::global::root_properties::RootProperty;
+use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
+use crate::runtime::execution::execution_loop::internal_slots::get_root_property;
 
 pub mod context;
 mod errors;
@@ -69,13 +73,9 @@ pub fn execute_dxb_sync(
                 property_name,
             } => {
                 if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
-                    let value = runtime
-                        .endpoint_properties()
-                        .get(&property_name)
-                        .cloned();
                     interrupt_provider.provide_result(
                         InterruptResult::ResolvedValue(Some(
-                            ValueContainer::new_from_option(value),
+                            ValueContainer::new_from_option(get_local_endpoint_property(&runtime, &caller_metadata, property_name)?),
                         )),
                     );
                 } else {
@@ -202,13 +202,9 @@ pub async fn execute_dxb(
                 property_name,
             } => {
                 if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
-                    let value = runtime
-                        .endpoint_properties()
-                        .get(&property_name)
-                        .cloned();
                     interrupt_provider.provide_result(
                         InterruptResult::ResolvedValue(Some(
-                            ValueContainer::new_from_option(value),
+                            ValueContainer::new_from_option(get_local_endpoint_property(&runtime, &caller_metadata, property_name)?),
                         )),
                     );
                 } else {
@@ -355,6 +351,32 @@ async fn get_remote_endpoint_property(
             ],
         )
         .await
+}
+
+
+/// Tries to get the endpoint property, either directly from endpoint properties, or from root properties ($.x), if not found
+fn get_local_endpoint_property(
+    runtime: &Runtime,
+    caller_metadata: &ExecutionCallerMetadata,
+    property_name: String,
+) -> Result<Option<ValueContainer>, ExecutionError> {
+    let value = runtime
+        .endpoint_properties()
+        .get(&property_name)
+        .cloned();
+
+    if let Some(value) = value {
+        return Ok(Some(value));
+    }
+    else if let Ok(root_property) = RootProperty::from_str(&property_name) {
+        return Ok(Some(get_root_property(
+            runtime,
+            caller_metadata,
+            root_property,
+        )?))
+    }
+
+    Ok(None)
 }
 
 fn get_remote_shared_container_reference(

@@ -3,7 +3,7 @@
 mod implementation;
 use implementation::*;
 mod execution_result_popper;
-mod internal_slots;
+pub mod internal_slots;
 pub mod interrupts;
 mod runtime_value;
 pub mod state;
@@ -388,7 +388,8 @@ pub gen fn inner_execution_loop(
 
                                 RegularInstruction::GetRootProperty(stack_index) => {
                                     Some(RuntimeValue::ValueContainer(get_root_property(
-                                        &state,
+                                        &state.runtime,
+                                        &state.caller_metadata,
                                         stack_index,
                                     )?))
                                 }
