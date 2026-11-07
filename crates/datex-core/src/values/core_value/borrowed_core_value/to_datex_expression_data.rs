@@ -3,6 +3,7 @@ use crate::{
     traits::to_datex_expression_data::ToDatexExpressionData,
     values::core_value::borrowed_core_value::BorrowedCoreValue,
 };
+use crate::values::core_value::borrowed_core_value::BorrowedCoreValueMut;
 
 impl<'a> ToDatexExpressionData for BorrowedCoreValue<'a> {
     fn to_datex_expression_data(&self) -> DatexExpressionData {
@@ -55,3 +56,56 @@ impl<'a> ToDatexExpressionData for BorrowedCoreValue<'a> {
         }
     }
 }
+
+impl<'a> ToDatexExpressionData for BorrowedCoreValueMut<'a> {
+    fn to_datex_expression_data(&self) -> DatexExpressionData {
+        match &self {
+            BorrowedCoreValueMut::Integer(integer) => {
+                integer.to_datex_expression_data()
+            }
+            BorrowedCoreValueMut::TypedInteger(typed_integer) => {
+                typed_integer.to_datex_expression_data()
+            }
+            BorrowedCoreValueMut::Decimal(decimal) => {
+                decimal.to_datex_expression_data()
+            }
+            BorrowedCoreValueMut::TypedDecimal(typed_decimal) => {
+                typed_decimal.to_datex_expression_data()
+            }
+            BorrowedCoreValueMut::Boolean(boolean) => {
+                boolean.to_datex_expression_data()
+            }
+            BorrowedCoreValueMut::Text(text) => {
+                text.as_ref().to_datex_expression_data()
+            }
+            BorrowedCoreValueMut::Range(range) => range.to_datex_expression_data(),
+            BorrowedCoreValueMut::Endpoint(endpoint) => {
+                endpoint.to_datex_expression_data()
+            }
+            BorrowedCoreValueMut::Null => DatexExpressionData::Null,
+            BorrowedCoreValueMut::List(list) => list.to_datex_expression_data(),
+            BorrowedCoreValueMut::Map(map) => map.to_datex_expression_data(),
+            BorrowedCoreValueMut::Type(type_value) => {
+                type_value.to_datex_expression_data()
+            }
+            BorrowedCoreValueMut::Callable(callable) => {
+                callable.to_datex_expression_data()
+            }
+            BorrowedCoreValueMut::EntityTypeDefinition(entity_type_definition) => {
+                entity_type_definition.to_datex_expression_data()
+            }
+            BorrowedCoreValueMut::Uninitialized => todo!(),
+            BorrowedCoreValueMut::Box(inner) => inner.to_datex_expression_data(),
+            BorrowedCoreValueMut::Instant(instant) => {
+                instant.to_datex_expression_data()
+            }
+            BorrowedCoreValueMut::Sender(sender) => {
+                sender.to_datex_expression_data()
+            }
+            BorrowedCoreValueMut::Receiver(receiver) => {
+                receiver.to_datex_expression_data()
+            }
+        }
+    }
+}
+
