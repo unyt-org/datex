@@ -25,6 +25,7 @@ use strum_macros::{Display, EnumString};
 pub enum CoreLibValueId {
     Print, // #core.print
     Panic, // #core.panic
+    ReadLine,
 }
 
 impl From<CoreLibValueId> for CoreLibIdIndex {

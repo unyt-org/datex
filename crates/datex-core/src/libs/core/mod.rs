@@ -15,7 +15,7 @@ use crate::{
             callable::{CallableBody, error::CallableError},
             map::Map,
         },
-        value::Value,
+        value::{Value, value_classification::ValueClassification},
         value_container::ValueContainer,
     },
 };
@@ -39,6 +39,7 @@ use strum::IntoEnumIterator;
 pub struct CoreLibraryValues {
     print: Value,
     panic: Value,
+    read_line: Value,
 }
 
 impl Default for CoreLibraryValues {
@@ -76,6 +77,21 @@ impl Default for CoreLibraryValues {
                 CallableBody::CoreStub(CoreStub::Panic),
                 Endpoint::LOCAL,
             ),
+            read_line: Value::callable(
+                Some("read_line".to_string()),
+                CallableTypeDefinition {
+                    kind: CallableKind::Function,
+                    requires_async: false,
+                    parameters: vec![],
+                    rest_parameter: None,
+                    return_type: Some(Box::new(Type::core(
+                        CoreLibBaseTypeId::Text,
+                    ))),
+                    yeet_type: None,
+                },
+                CallableBody::native_sync(Self::read_line_impl),
+                Endpoint::LOCAL,
+            ),
         }
     }
 }
@@ -86,6 +102,7 @@ impl CoreLibraryValues {
         match id {
             CoreLibValueId::Print => &self.print,
             CoreLibValueId::Panic => &self.panic,
+            CoreLibValueId::ReadLine => &self.read_line,
         }
     }
 
@@ -153,6 +170,25 @@ impl CoreLibraryValues {
 
         // return all borrowed args
         Ok((None, get_borrowed_apply_argument_values(args)))
+    }
+
+    fn read_line_impl(
+        _args: Vec<ApplyArgument>,
+        _runtime: &Runtime,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>
+    {
+        // placeholder mirroring print
+        Ok((
+            Some(ValueContainer::Local(Value::Core(
+                CoreValueWithClassification {
+                    inner: CoreValue::Text(
+                        crate::values::core_values::text::Text::from(""),
+                    ),
+                    classification: ValueClassification::new_unclassified(),
+                },
+            ))),
+            vec![],
+        ))
     }
 }
 
