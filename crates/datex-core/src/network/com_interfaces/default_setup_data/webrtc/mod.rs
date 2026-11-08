@@ -57,6 +57,7 @@ pub enum WebRTCRoleDX {
 #[derive(Datex, Debug)]
 #[datex(structural)]
 pub struct WebRTCInterfaceSetupData {
+    // FIXME: must implement Clone
     /// The role of the WebRTC participant (Offerer or Answerer).
     pub role: WebRTCRoleDX,
     /// The label for the data channel to be used in the WebRTC connection (default is datex)

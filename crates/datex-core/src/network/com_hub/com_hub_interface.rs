@@ -15,6 +15,7 @@ use crate::{
     network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory,
     prelude::*, values::value::Value,
 };
+use crate::network::com_hub::managers::com_interface_manager::InterfaceInfo;
 
 /// Interface management methods
 impl ComHub {
@@ -52,6 +53,7 @@ impl ComHub {
             uuid,
             interface_configuration.properties.clone(),
             priority,
+            None,
         )?;
         let ready_signal = self.register_com_interface_handler(
             interface_configuration,
@@ -124,7 +126,7 @@ impl ComHub {
     pub async fn remove_interface(
         &self,
         interface_uuid: &ComInterfaceUUID,
-    ) -> Result<(), ()> {
+    ) -> Result<InterfaceInfo, ()> {
         info!("Removing interface with UUID: {}", interface_uuid);
 
         if !self.interfaces_manager.has_interface(interface_uuid) {
@@ -144,7 +146,7 @@ impl ComHub {
             None
         };
 
-        self.interfaces_manager.cleanup_interface(interface_uuid)?;
+        let info = self.interfaces_manager.cleanup_interface(interface_uuid)?;
 
         // clean up all associated sockets first, to trigger socket close callbacks and interface cleanup if necessary
         self.socket_manager
@@ -157,7 +159,7 @@ impl ComHub {
             let _ = remove_future.await;
         }
 
-        Ok(())
+        Ok(info)
     }
 
     pub fn has_interface(&self, interface_uuid: &ComInterfaceUUID) -> bool {

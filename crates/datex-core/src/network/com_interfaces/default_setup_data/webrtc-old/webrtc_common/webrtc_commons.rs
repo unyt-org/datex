@@ -59,7 +59,7 @@ impl WebRTCCommon {
     }
 }
 
-#[derive(Datex)]
+#[derive(Datex, Clone)]
 #[datex(structural)]
 pub struct WebRTCInterfaceSetupData {
     pub peer_endpoint: Endpoint,

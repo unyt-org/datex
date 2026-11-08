@@ -65,6 +65,8 @@ pub struct InterfaceInfo {
     pub properties: Rc<ComInterfaceProperties>,
     pub priority: InterfacePriority,
     pub is_waiting_for_socket_connections: bool,
+    /// Original setup data that was used to create this interface, needed for reconnect
+    pub original_setup_data: Option<Value>,
     pub close_sender: Option<oneshot::Sender<InterfaceCloseInfo>>,
 }
 
@@ -148,13 +150,14 @@ impl ComInterfaceManager {
                 | SyncOrAsyncComInterfaceImplementationFactoryFn::Dyn(_) => {
                     let com_interface_configuration =
                         Self::create_interface_from_async_factory_fn(
-                            &factory, setup_data,
+                            &factory, setup_data.clone(),
                         )
                         .await?;
                     self.add_interface(
                         com_interface_configuration.uuid(),
                         com_interface_configuration.properties.clone(),
                         priority,
+                        Some(setup_data),
                     )
                     .map_err(|e| e.into())
                     .map(|close_receiver| {
@@ -193,9 +196,9 @@ impl ComInterfaceManager {
                     let com_interface_configuration =
                         Self::create_interface_from_sync_factory_fn(
                             sync_factory,
-                            setup_data,
+                            setup_data.clone(),
                         )?;
-                    self.add_interface(com_interface_configuration.uuid(), com_interface_configuration.properties.clone(), priority)
+                    self.add_interface(com_interface_configuration.uuid(), com_interface_configuration.properties.clone(), priority, Some(setup_data))
                         .map_err(|e| e.into())
                         .map(|close_receiver| (com_interface_configuration, close_receiver))
                 }
@@ -323,6 +326,7 @@ impl ComInterfaceManager {
         uuid: ComInterfaceUUID,
         properties: Rc<ComInterfaceProperties>,
         priority: InterfacePriority,
+        original_setup_data: Option<Value>
     ) -> Result<InterfaceCloseReceiver, InterfaceAddError> {
         if self.interfaces.borrow().contains_key(&uuid) {
             return Err(InterfaceAddError::InterfaceAlreadyExists);
@@ -344,6 +348,7 @@ impl ComInterfaceManager {
             InterfaceInfo {
                 properties,
                 priority,
+                original_setup_data,
                 is_waiting_for_socket_connections: true,
                 close_sender: Some(close_sender),
             },
@@ -381,12 +386,11 @@ impl ComInterfaceManager {
     pub(crate) fn cleanup_interface(
         &self,
         interface_uuid: &ComInterfaceUUID,
-    ) -> Result<(), ()> {
+    ) -> Result<InterfaceInfo, ()> {
         self.interfaces
             .borrow_mut()
             .remove(interface_uuid)
             .ok_or(())
-            .map(|_| ())
     }
 }
 
@@ -403,7 +407,7 @@ mod tests {
     };
     use datex_macros_internal::Datex;
 
-    #[derive(Datex)]
+    #[derive(Datex, Clone)]
     #[datex(structural)]
     struct MockSetupData {
         name: String,

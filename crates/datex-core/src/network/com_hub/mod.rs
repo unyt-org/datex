@@ -1571,6 +1571,8 @@ impl ComHub {
 
         // TODO #190: resend block if socket failed to send
         if let Some(send_callback) = socket_data.send_callback.clone() {
+            drop(socket_data);
+
             match send_callback {
                 SendCallback::Sync(callback)
                 | SendCallback::SyncOnce(callback) => MaybeAsyncResult::Sync(
@@ -1602,18 +1604,58 @@ impl ComHub {
         &self,
         socket_uuid: &ComInterfaceSocketUUID
     ) {
-        if let SocketData {interface_uuid, interface_has_single_socket: true, ..} = &self.socket_manager.get_socket_by_uuid_mut(socket_uuid) {
+        if let Some(SocketData {interface_uuid, interface_has_single_socket: true, ..}) = &self.socket_manager.get_socket_by_uuid(socket_uuid) {
             info!("Closing interface {} because of send failure on single socket", interface_uuid);
             self.reconnect_interface_sender.borrow_mut().start_send(ComInterfaceReconnectRequest::new(interface_uuid.clone())).unwrap();
         }
     }
 
-    /// Completely removes an interface and tries to reconnect
+    /// Completely removes an existing interface and tries to reconnect
     pub async fn try_reconnect_interface(self: Rc<ComHub>, reconnect_request: ComInterfaceReconnectRequest) {
-        let interface_properties = self.interfaces_manager.get_interface_properties_by_uuid(&reconnect_request.uuid);;
-        self.remove_interface(&reconnect_request.uuid).await.unwrap();
+        let info = self.remove_interface(&reconnect_request.uuid).await.unwrap();
+        let interface_properties = info.properties;
+        let setup_data = info.original_setup_data;
+        let priority = info.priority;
 
-        info!("Closed interface {}, trying to reconnect", interface_properties.interface_type);
+        if let Some(reconnect_attempts) = interface_properties.reconnection_config.get_reconnect_attempts() {
+            let mut attempts = 0;
+
+            if let Some(setup_data) = setup_data {
+                info!("Closed interface {}, trying to reconnect", interface_properties.interface_type);
+                loop {
+                    // abort when max attempts reached
+                    if let Some(max_reconnect_attempts) = reconnect_attempts.max_attempts && attempts > max_reconnect_attempts {
+                        warn!("Max reconnect attempts of {} reached for interface {}, aborting reconnect", max_reconnect_attempts, interface_properties.interface_type);
+                        break;
+                    }
+
+                    let res = self.clone().create_interface(
+                        &interface_properties.interface_type,
+                        setup_data.clone(),
+                        priority
+                    ).await;
+                    match res {
+                        Err(err) => {
+                            error!(
+                                "Failed to reconnect to \"{}\": {}", interface_properties.interface_type, err
+                            );
+                            attempts += 1;
+                        }
+                        Ok((_, ready_receiver)) => {
+                            if let Some(ready_receiver) = ready_receiver {
+                                let _ = ready_receiver.await;
+                            }
+                            info!("Successfully reconnected to \"{}\"", interface_properties.interface_type);
+                            break;
+                        }
+                    }
+                }
+            }
+            else {
+                info!("Closed interface {}, cannot reconnect because of missing setup data", interface_properties.interface_type);
+                return;
+            }
+        }
     }
 
 

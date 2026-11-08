@@ -5,7 +5,7 @@ use crate::{
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
-#[derive(Datex, Serialize, Deserialize)]
+#[derive(Datex, Clone, Serialize, Deserialize)]
 #[datex(structural)]
 pub struct SerialClientInterfaceSetupData {
     pub port_name: Option<String>,

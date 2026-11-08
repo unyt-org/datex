@@ -95,53 +95,24 @@ pub struct ComInterfaceProperties {
 pub enum ReconnectionConfig {
     #[default]
     NoReconnect,
-    InstantReconnect,
-    ReconnectWithTimeout {
-        timeout: u64, // duration in milliseconds
-    },
-    ReconnectWithTimeoutAndAttempts {
-        timeout: u64, // duration in milliseconds
-        attempts: u8,
-    },
+    Reconnect,
+    /// number of reconnect attempts before aborting reconnect, default is unlimited
+    ReconnectWithAttempts(u16),
+}
+
+#[derive(Datex, Debug, PartialEq, Clone, Default, Eq)]
+pub struct ReconnectAttempts {
+    pub(crate) max_attempts: Option<u16>
 }
 
 impl ReconnectionConfig {
-    pub fn check_reconnect_timeout(
-        close_timestamp: Option<u64>,
-        timeout: &Duration,
-    ) -> bool {
-        let close_timestamp = match close_timestamp {
-            Some(ts) => ts,
-            None => return false,
-        };
-        let now = now_ms();
-        let elapsed = Duration::from_millis(now - close_timestamp);
-        elapsed >= *timeout
-    }
-
-    pub fn get_timeout(&self) -> Option<Duration> {
+    /// Returns a [ReconnectAttempts] struct if configured.
+    /// A [None] return value indicates that no form of reconnect was configured
+    pub fn get_reconnect_attempts(&self) -> Option<ReconnectAttempts> {
         match self {
             ReconnectionConfig::NoReconnect => None,
-            ReconnectionConfig::InstantReconnect => None,
-            ReconnectionConfig::ReconnectWithTimeout { timeout } => {
-                Some(Duration::from_millis(*timeout))
-            }
-            ReconnectionConfig::ReconnectWithTimeoutAndAttempts {
-                timeout,
-                ..
-            } => Some(Duration::from_millis(*timeout)),
-        }
-    }
-
-    pub fn get_attempts(&self) -> Option<u8> {
-        match self {
-            ReconnectionConfig::NoReconnect => None,
-            ReconnectionConfig::InstantReconnect => None,
-            ReconnectionConfig::ReconnectWithTimeout { .. } => None,
-            ReconnectionConfig::ReconnectWithTimeoutAndAttempts {
-                attempts,
-                ..
-            } => Some(*attempts),
+            ReconnectionConfig::Reconnect => Some(ReconnectAttempts::default()),
+            ReconnectionConfig::ReconnectWithAttempts(attempts) => Some(ReconnectAttempts { max_attempts: Some(*attempts) })
         }
     }
 }

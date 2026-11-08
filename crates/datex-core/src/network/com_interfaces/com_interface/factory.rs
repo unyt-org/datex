@@ -397,7 +397,7 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 /// use datex_core::network::com_interfaces::com_interface::factory::{ComInterfaceSyncFactory,ComInterfaceConfiguration};
 /// use datex_core::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
 ///
-/// #[derive(Datex)]
+/// #[derive(Datex, Clone)]
 /// # #[datex(_force_datex_core_namespace)]
 /// struct ExampleInterfaceSetupData {
 ///    pub example_data: String,
@@ -457,7 +457,7 @@ where
 /// use datex_core::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
 /// use datex_core::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;///
 ///
-/// #[derive(Datex)]
+/// #[derive(Datex, Clone)]
 /// # #[datex(_force_datex_core_namespace)]
 /// struct ExampleInterfaceSetupData {
 ///    pub example_data: String,

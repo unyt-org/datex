@@ -21,6 +21,7 @@ use crate::{
 
 /// A simple local loopback interface that puts outgoing data
 /// back into the incoming queue.
+#[derive(Clone)]
 pub struct LocalLoopbackInterfaceSetupData;
 
 impl LocalLoopbackInterfaceSetupData {
