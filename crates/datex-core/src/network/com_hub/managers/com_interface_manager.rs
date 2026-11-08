@@ -52,14 +52,22 @@ pub enum SyncOrAsyncComInterfaceImplementationFactoryFn {
     Dyn(DynInterfaceImplementationFactoryFn),
 }
 
-pub type InterfaceCloseReceiver = oneshot::Receiver<oneshot::Sender<()>>;
+#[derive(Debug)]
+pub struct InterfaceCloseInfo {
+    /// Boolean indicating whether the com hub should try to reconnect the interface
+    pub try_reconnect: bool,
+    pub closed_sender: Option<oneshot::Sender<()>>,
+}
+
+
+pub type InterfaceCloseReceiver = oneshot::Receiver<InterfaceCloseInfo>;
 
 #[derive(Debug)]
 pub struct InterfaceInfo {
     pub properties: Rc<ComInterfaceProperties>,
     pub priority: InterfacePriority,
     pub is_waiting_for_socket_connections: bool,
-    pub close_sender: Option<oneshot::Sender<oneshot::Sender<()>>>,
+    pub close_sender: Option<oneshot::Sender<InterfaceCloseInfo>>,
 }
 
 #[derive(Default)]
@@ -366,7 +374,7 @@ impl ComInterfaceManager {
             .close_sender
             .take()
             .unwrap();
-        close_sender.send(closed_sender).unwrap();
+        close_sender.send(InterfaceCloseInfo { try_reconnect: false, closed_sender: Some(closed_sender)}).unwrap();
         closed_receiver
     }
 

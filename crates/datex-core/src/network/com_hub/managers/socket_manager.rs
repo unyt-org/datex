@@ -24,6 +24,7 @@ use crate::{
     },
     values::core_values::endpoint::{Endpoint, EndpointInstance},
 };
+use crate::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
 
 #[derive(Debug, Clone, Default)]
 pub struct EndpointIterateOptions<'a> {
@@ -53,6 +54,8 @@ pub struct SocketData {
     pub(crate) endpoints: HashSet<Endpoint>,
     pub(crate) close_sender: Option<oneshot::Sender<oneshot::Sender<()>>>,
     pub(crate) socket_ready_sender: Option<oneshot::Sender<Result<(), ()>>>,
+    /// Set to true when the parent [ComInterfaceConfiguration] has `has_single_socket` set to true
+    pub(crate) interface_has_single_socket: bool,
 }
 
 pub struct ComInterfaceSocketManager {

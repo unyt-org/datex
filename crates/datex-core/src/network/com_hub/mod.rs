@@ -90,6 +90,7 @@ use datex_crypto_facade::crypto::Crypto;
 use datex_macros_internal::Datex;
 use futures::channel::{oneshot, oneshot::Sender};
 use futures_util::FutureExt;
+use crate::network::com_hub::managers::com_interface_manager::{InterfaceCloseInfo, InterfaceInfo};
 use crate::utils::maybe_async::MaybeAsyncResult;
 
 pub type IncomingBlockInterceptor =
@@ -279,7 +280,7 @@ impl ComHub {
                 None => (None, None),
             };
 
-        let closed_sender = select!(
+        let close_info = select!(
             _ = async {
                 while let Some(socket) = async_next_pin_box(&mut iterator).await {
 
@@ -309,6 +310,7 @@ impl ComHub {
                                     endpoints: HashSet::new(),
                                     close_sender: Some(socket_close_sender),
                                     socket_ready_sender: socket_ready_sender.take(),
+                                    interface_has_single_socket: com_interface_configuration.has_single_socket,
                                 },
                                 interface_priority,
                             );
@@ -372,9 +374,14 @@ impl ComHub {
             }
         }
 
-        if let Some(closed_sender) = closed_sender {
-            closed_sender.send(()).unwrap();
-        }
+        let try_reconnect = if let Some(InterfaceCloseInfo { try_reconnect, closed_sender}) = close_info {
+            if let Some(closed_sender) = closed_sender {
+                closed_sender.send(()).unwrap();
+            }
+            try_reconnect
+        } else {
+            false
+        };
 
         // if socket_ready_sender is still Some, socket was never connected, send Error
         if let Some(socket_ready_sender) = socket_ready_sender {
@@ -383,6 +390,10 @@ impl ComHub {
         // if hello_sent_sender is still Some, hello was never sent, send Error
         if let Some(hello_sent_sender) = hello_sent_sender {
             let _ = hello_sent_sender.send(Err(()));
+        }
+
+        if try_reconnect {
+            todo!("try reconnect")
         }
     }
 
@@ -926,9 +937,9 @@ impl ComHub {
 
             // If a send_back_socket is set, the original block is not from this endpoint,
             // so we can send it back to the original socket
-            if let Some(send_back_socket) = send_back_socket {
+            if let Some(send_back_socket_uuid) = send_back_socket {
                 // never send a bounce back block back again to the incoming socket
-                if block.is_bounce_back() && send_back_socket == incoming_socket
+                if block.is_bounce_back() && send_back_socket_uuid == incoming_socket
                 {
                     warn!(
                         "{}: Tried to send bounce back block back to incoming socket, but this is not allowed",
@@ -936,16 +947,16 @@ impl ComHub {
                     );
                     Ok(())
                 } else if let Some(socket) =
-                    self.socket_manager.get_socket_by_uuid(&send_back_socket)
+                    self.socket_manager.get_socket_by_uuid(&send_back_socket_uuid)
                     && socket.socket_properties.direction.can_send()
                 {
                     drop(socket);
                     block.set_bounce_back(true);
-                    info!("Sending undeliverable block for receivers {:?} back to original incoming socket {}", unreachable_endpoints, send_back_socket);
+                    info!("Sending undeliverable block for receivers {:?} back to original incoming socket {}", unreachable_endpoints, send_back_socket_uuid);
                     self
                         .send_block_to_endpoints_via_socket(
                             block,
-                            send_back_socket,
+                            send_back_socket_uuid.clone(),
                             unreachable_endpoints.clone(),
                             if forked { Some(0) } else { None },
                         )
@@ -1567,11 +1578,26 @@ impl ComHub {
                     })
                 }
             }.map(move |res| {
-                info!("removing socket because of send failure {}", socket_uuid);
+                if res.is_err() {
+                    self.handle_socket_send_failure(&socket_uuid);
+                }
                 res
             })
         } else {
             panic!("No send callback registered for socket {}", socket_uuid);
+        }
+    }
+
+    // if socket interface is single socket interface, close the interface (with potential reconnect)
+    fn handle_socket_send_failure(
+        &self,
+        socket_uuid: &ComInterfaceSocketUUID
+    ) {
+        if let Some(SocketData {interface_uuid, interface_has_single_socket: true, ..}) = &self.socket_manager.get_socket_by_uuid(socket_uuid)
+            && let Some(InterfaceInfo {close_sender, ..}) = self.interfaces_manager().interfaces.borrow_mut().get_mut(interface_uuid)
+            && let Some(close_sender) = close_sender.take() {
+            info!("Closing interface {} because of send failure on single socket", interface_uuid);
+            close_sender.send(InterfaceCloseInfo { try_reconnect: true, closed_sender: None}).unwrap();
         }
     }
 
