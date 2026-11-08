@@ -103,7 +103,7 @@ pub enum ReconnectionConfig {
     },
 }
 
-#[derive(Datex, Debug, PartialEq, Clone, Default, Eq)]
+#[derive(Debug, PartialEq, Clone, Default, Eq)]
 pub struct ReconnectAttempts {
     pub(crate) max_attempts: Option<u16>,
     pub(crate) interval: Duration,
