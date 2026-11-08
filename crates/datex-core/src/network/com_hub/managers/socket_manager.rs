@@ -493,7 +493,6 @@ impl ComInterfaceSocketManager {
             return Err(());
         }
         let remove_future = self.trigger_remove_socket(&socket_uuid);
-        self.cleanup_socket(&socket_uuid);
         let _ = remove_future.await;
 
         Ok(())
@@ -504,13 +503,16 @@ impl ComInterfaceSocketManager {
         socket_uuid: &ComInterfaceSocketUUID,
     ) -> oneshot::Receiver<()> {
         let (closed_sender, closed_receiver) = oneshot::channel();
-        let mut socket_data = self.get_socket_by_uuid_mut(socket_uuid);
-        socket_data
-            .close_sender
-            .take()
-            .unwrap()
-            .send(closed_sender)
-            .unwrap();
+        {
+            let mut socket_data = self.get_socket_by_uuid_mut(socket_uuid);
+            socket_data
+                .close_sender
+                .take()
+                .unwrap()
+                .send(closed_sender)
+                .unwrap();
+        }
+        self.cleanup_socket(socket_uuid);
 
         closed_receiver
     }

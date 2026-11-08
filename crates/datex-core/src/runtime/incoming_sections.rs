@@ -43,6 +43,29 @@ impl RuntimeInternal {
             }
         }
     }
+    
+    pub(crate) async fn handle_reconnect_requests_task(
+        self: Rc<RuntimeInternal>,
+    ) {
+        let mut receiver = self.com_interface_reconnect_request_receiver_mut();
+
+        while let Some(reconnect_request) = receiver.next().await {
+            // for embassy, run all sections in the same task to avoid spawning too many tasks
+            #[cfg(feature = "embassy_runtime")]
+            {
+                self.com_hub().clone().try_reconnect_interface(reconnect_request)
+            }
+            // otherwise, run each section in its own task
+            #[cfg(not(feature = "embassy_runtime"))]
+            {
+                // TODO #741: task
+                self.task_manager().register_task(
+                    self.com_hub().clone().try_reconnect_interface(reconnect_request)
+                );
+            }
+        }
+    }
+    
     async fn handle_incoming_section_task(
         self: Rc<RuntimeInternal>,
         section: IncomingSection,

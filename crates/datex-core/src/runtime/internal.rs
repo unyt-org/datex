@@ -65,6 +65,7 @@ use core::{
 use futures_util::future::join_all;
 use indexmap::IndexMap;
 use log::{debug, error, info};
+use crate::network::com_hub::ComInterfaceReconnectRequest;
 
 pub type RemoteExecutionResult = Result<Option<ValueContainer>, ExecutionError>;
 
@@ -88,8 +89,11 @@ pub struct RuntimeInternal {
 
     task_manager: TaskManager,
 
-    // receiver for incoming sections from com hub
+    /// receiver for incoming sections from com hub
     incoming_sections_receiver: RefCell<UnboundedReceiver<IncomingSection>>,
+
+    /// receiver for incoming interface reconnect requests from com hub
+    com_interface_reconnect_request_receiver: RefCell<UnboundedReceiver<ComInterfaceReconnectRequest>>,
 
     /// active execution contexts, stored by context_id
     execution_contexts:
@@ -133,6 +137,7 @@ impl RuntimeInternal {
         com_hub: Rc<ComHub>,
         task_manager: TaskManager,
         incoming_sections_receiver: UnboundedReceiver<IncomingSection>,
+        com_interface_reconnect_request_receiver: UnboundedReceiver<ComInterfaceReconnectRequest>,
     ) -> RuntimeInternal {
         let pointer_availability_lookup =
             PointerAvailabilityLookup::new(endpoint.clone());
@@ -148,6 +153,9 @@ impl RuntimeInternal {
             core_library: CoreLibrary::default(),
             incoming_sections_receiver: RefCell::new(
                 incoming_sections_receiver,
+            ),
+            com_interface_reconnect_request_receiver: RefCell::new(
+                com_interface_reconnect_request_receiver
             ),
             synced_value_data: RefCell::new(SyncedValueData::default()),
             execution_contexts: RefCell::new(HashMap::new()),
@@ -283,17 +291,19 @@ impl RuntimeInternal {
     ) -> RefMut<'_, UnboundedReceiver<IncomingSection>> {
         self.incoming_sections_receiver.borrow_mut()
     }
-    pub fn incoming_sections_receiver(
+    pub fn com_interface_reconnect_request_receiver_mut(
         &self,
-    ) -> Ref<'_, UnboundedReceiver<IncomingSection>> {
-        self.incoming_sections_receiver.borrow()
+    ) -> RefMut<'_, UnboundedReceiver<ComInterfaceReconnectRequest>> {
+        self.com_interface_reconnect_request_receiver.borrow_mut()
     }
     pub fn task_manager(&self) -> &TaskManager {
         &self.task_manager
     }
 
     pub fn stub() -> RuntimeInternal {
-        let (sender, receiver) = create_unbounded_channel();
+        let (incoming_block_sender, incoming_block_receiver) = create_unbounded_channel();
+        let (reconnect_request_sender, reconnect_request_receiver) = create_unbounded_channel();
+
         RuntimeInternal::new(
             Endpoint::default(),
             RefCell::new(SharedReferencesCache::default()),
@@ -301,9 +311,10 @@ impl RuntimeInternal {
                 Endpoint::default(),
             ))),
             RuntimeConfig::default(),
-            ComHub::create(Endpoint::default(), sender).0,
+            ComHub::create(Endpoint::default(), incoming_block_sender, reconnect_request_sender).0,
             TaskManager::create().0,
-            receiver,
+            incoming_block_receiver,
+            reconnect_request_receiver
         )
     }
 

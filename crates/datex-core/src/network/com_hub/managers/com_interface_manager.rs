@@ -54,9 +54,7 @@ pub enum SyncOrAsyncComInterfaceImplementationFactoryFn {
 
 #[derive(Debug)]
 pub struct InterfaceCloseInfo {
-    /// Boolean indicating whether the com hub should try to reconnect the interface
-    pub try_reconnect: bool,
-    pub closed_sender: Option<oneshot::Sender<()>>,
+    pub closed_sender: oneshot::Sender<()>,
 }
 
 
@@ -374,7 +372,7 @@ impl ComInterfaceManager {
             .close_sender
             .take()
             .unwrap();
-        close_sender.send(InterfaceCloseInfo { try_reconnect: false, closed_sender: Some(closed_sender)}).unwrap();
+        close_sender.send(InterfaceCloseInfo { closed_sender}).unwrap();
         closed_receiver
     }
 

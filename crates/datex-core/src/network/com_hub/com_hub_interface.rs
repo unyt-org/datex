@@ -123,17 +123,17 @@ impl ComHub {
 
     pub async fn remove_interface(
         &self,
-        interface_uuid: ComInterfaceUUID,
+        interface_uuid: &ComInterfaceUUID,
     ) -> Result<(), ()> {
         info!("Removing interface with UUID: {}", interface_uuid);
 
-        if !self.interfaces_manager.has_interface(&interface_uuid) {
+        if !self.interfaces_manager.has_interface(interface_uuid) {
             return Err(());
         }
 
         let interface_loop_active = self
             .interfaces_manager
-            .is_interface_waiting_for_socket_connections(&interface_uuid);
+            .is_interface_waiting_for_socket_connections(interface_uuid);
 
         let remove_future = if interface_loop_active {
             Some(
@@ -144,11 +144,11 @@ impl ComHub {
             None
         };
 
-        self.interfaces_manager.cleanup_interface(&interface_uuid)?;
+        self.interfaces_manager.cleanup_interface(interface_uuid)?;
 
         // clean up all associated sockets first, to trigger socket close callbacks and interface cleanup if necessary
         self.socket_manager
-            .remove_sockets_for_interface_uuid(&interface_uuid)
+            .remove_sockets_for_interface_uuid(interface_uuid)
             .await;
 
         // interface is still active, must be explicitly stopped
@@ -197,6 +197,7 @@ mod tests {
     use core::{future::join, time::Duration};
     use futures_util::future::select;
     use log::info;
+    use crate::network::com_hub::ComInterfaceReconnectRequest;
 
     fn get_metadata_sockets(
         com_hub_metadata: ComHubMetadata,
@@ -233,8 +234,10 @@ mod tests {
 
         let (incoming_sections_sender, _incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
+        let (reconnect_request_sender, _reconnect_request_receiver) =
+            create_unbounded_channel::<ComInterfaceReconnectRequest>();
         let (com_hub, task_future) =
-            ComHub::create(Endpoint::default(), incoming_sections_sender);
+            ComHub::create(Endpoint::default(), incoming_sections_sender, reconnect_request_sender);
 
         // add interface
         com_hub
@@ -273,7 +276,7 @@ mod tests {
         select(
             Box::pin(async {
                 com_hub
-                    .remove_interface(interface_uuid.clone())
+                    .remove_interface(&interface_uuid)
                     .await
                     .unwrap();
             }),
@@ -305,7 +308,7 @@ mod tests {
                         .are_sockets_registered_for_interface(&interface_uuid)
                 );
                 com_hub
-                    .remove_interface(interface_uuid.clone())
+                    .remove_interface(&interface_uuid)
                     .await
                     .unwrap();
             }),
@@ -325,10 +328,12 @@ mod tests {
     async fn remove_nonexistent_interface() {
         let (incoming_sections_sender, _incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
+        let (reconnect_request_sender, _reconnect_request_receiver) =
+            create_unbounded_channel::<ComInterfaceReconnectRequest>();
         let (com_hub, _task_future) =
-            ComHub::create(Endpoint::default(), incoming_sections_sender);
+            ComHub::create(Endpoint::default(), incoming_sections_sender, reconnect_request_sender);
 
-        let result = com_hub.remove_interface(ComInterfaceUUID::new()).await;
+        let result = com_hub.remove_interface(&ComInterfaceUUID::new()).await;
         assert!(result.is_err());
     }
 

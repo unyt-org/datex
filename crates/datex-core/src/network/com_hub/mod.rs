@@ -90,6 +90,8 @@ use datex_crypto_facade::crypto::Crypto;
 use datex_macros_internal::Datex;
 use futures::channel::{oneshot, oneshot::Sender};
 use futures_util::FutureExt;
+use crate::channel::mpsc;
+use crate::channel::mpsc::{create_unbounded_channel, UnboundedReceiver};
 use crate::network::com_hub::managers::com_interface_manager::{InterfaceCloseInfo, InterfaceInfo};
 use crate::utils::maybe_async::MaybeAsyncResult;
 
@@ -98,6 +100,17 @@ pub type IncomingBlockInterceptor =
 
 pub type OutgoingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID, &[Endpoint]) + 'static>;
+
+
+#[derive(Debug, Clone)]
+pub struct ComInterfaceReconnectRequest {
+    pub uuid: ComInterfaceUUID,
+}
+impl ComInterfaceReconnectRequest {
+    fn new(uuid: ComInterfaceUUID) -> Self {
+        ComInterfaceReconnectRequest { uuid }
+    }
+}
 
 pub struct ComHub {
     /// the runtime endpoint of the hub (@me)
@@ -113,6 +126,8 @@ pub struct ComHub {
 
     incoming_block_interceptors: RefCell<Vec<IncomingBlockInterceptor>>,
     outgoing_block_interceptors: RefCell<Vec<OutgoingBlockInterceptor>>,
+    /// Sender that requests reconnect task to be spawned on this [ComHub] - requests are spawned externally with by calling [Self::try_reconnect_interface] with an [Rc<ComHub>]
+    reconnect_interface_sender: RefCell<UnboundedSender<ComInterfaceReconnectRequest>>,
 
     pub task_manager: TaskManager,
 }
@@ -192,10 +207,12 @@ impl ComHub {
     pub fn create(
         endpoint: impl Into<Endpoint>,
         incoming_sections_sender: UnboundedSender<IncomingSection>,
+        com_interface_reconnect_request_sender: UnboundedSender<ComInterfaceReconnectRequest>
     ) -> (Rc<ComHub>, impl Future<Output = ()>) {
         let (task_manager, task_future) = TaskManager::create();
 
         let block_handler = BlockHandler::init(incoming_sections_sender);
+
         let com_hub = Rc::new(ComHub {
             endpoint: endpoint.into(),
             options: ComHubOptions::default(),
@@ -204,6 +221,7 @@ impl ComHub {
             interfaces_manager: ComInterfaceManager::default(),
             incoming_block_interceptors: RefCell::new(Vec::new()),
             outgoing_block_interceptors: RefCell::new(Vec::new()),
+            reconnect_interface_sender: RefCell::new(com_interface_reconnect_request_sender),
             task_manager,
         });
 
@@ -374,14 +392,9 @@ impl ComHub {
             }
         }
 
-        let try_reconnect = if let Some(InterfaceCloseInfo { try_reconnect, closed_sender}) = close_info {
-            if let Some(closed_sender) = closed_sender {
-                closed_sender.send(()).unwrap();
-            }
-            try_reconnect
-        } else {
-            false
-        };
+        if let Some(InterfaceCloseInfo { closed_sender}) = close_info {
+            let _ = closed_sender.send(()); // ignore if close receiver was dropped
+        }
 
         // if socket_ready_sender is still Some, socket was never connected, send Error
         if let Some(socket_ready_sender) = socket_ready_sender {
@@ -390,10 +403,6 @@ impl ComHub {
         // if hello_sent_sender is still Some, hello was never sent, send Error
         if let Some(hello_sent_sender) = hello_sent_sender {
             let _ = hello_sent_sender.send(Err(()));
-        }
-
-        if try_reconnect {
-            todo!("try reconnect")
         }
     }
 
@@ -1555,7 +1564,7 @@ impl ComHub {
             interceptor(&block, &socket_uuid, &endpoints);
         }
         info!(
-            "Sending block to socket {}: {}",
+            "Sending block to socket {} ({})",
             socket_uuid,
             endpoints.iter().map(|e| e.to_string()).join(", ")
         );
@@ -1593,13 +1602,20 @@ impl ComHub {
         &self,
         socket_uuid: &ComInterfaceSocketUUID
     ) {
-        if let Some(SocketData {interface_uuid, interface_has_single_socket: true, ..}) = &self.socket_manager.get_socket_by_uuid(socket_uuid)
-            && let Some(InterfaceInfo {close_sender, ..}) = self.interfaces_manager().interfaces.borrow_mut().get_mut(interface_uuid)
-            && let Some(close_sender) = close_sender.take() {
+        if let SocketData {interface_uuid, interface_has_single_socket: true, ..} = &self.socket_manager.get_socket_by_uuid_mut(socket_uuid) {
             info!("Closing interface {} because of send failure on single socket", interface_uuid);
-            close_sender.send(InterfaceCloseInfo { try_reconnect: true, closed_sender: None}).unwrap();
+            self.reconnect_interface_sender.borrow_mut().start_send(ComInterfaceReconnectRequest::new(interface_uuid.clone())).unwrap();
         }
     }
+
+    /// Completely removes an interface and tries to reconnect
+    pub async fn try_reconnect_interface(self: Rc<ComHub>, reconnect_request: ComInterfaceReconnectRequest) {
+        let interface_properties = self.interfaces_manager.get_interface_properties_by_uuid(&reconnect_request.uuid);;
+        self.remove_interface(&reconnect_request.uuid).await.unwrap();
+
+        info!("Closed interface {}, trying to reconnect", interface_properties.interface_type);
+    }
+
 
     /// Sends a hello block via the specified socket.
     /// Returns Ok(()) if the block was sent successfully, or Err(SendFailure) if sending failed.
@@ -1697,22 +1713,25 @@ pub mod tests {
     use log::info;
     use serde::Deserialize;
     use tokio::task::yield_now;
+    use crate::network::com_hub::ComInterfaceReconnectRequest;
 
     /// Creates a mock ComHub for testing without a connected channel
     async fn run_with_com_hub<AppReturn, AppFuture>(
         app_logic: impl FnOnce(
             Rc<ComHub>,
             UnboundedReceiver<IncomingSection>,
+            UnboundedReceiver<ComInterfaceReconnectRequest>
         ) -> AppFuture,
     ) -> AppReturn
     where
         AppFuture: Future<Output = AppReturn>,
     {
-        let (sender, receiver) = create_unbounded_channel();
+        let (incoming_section_sender, incoming_section_receiver) = create_unbounded_channel();
+        let (com_interface_reconnect_request_sender, com_interface_reconnect_request_receiver) = create_unbounded_channel();
         let (com_hub, com_hub_future) =
-            ComHub::create(TEST_ENDPOINT_A.clone(), sender);
+            ComHub::create(TEST_ENDPOINT_A.clone(), incoming_section_sender, com_interface_reconnect_request_sender);
         select! {
-            app_result = app_logic(com_hub, receiver).fuse() => app_result,
+            app_result = app_logic(com_hub, incoming_section_receiver, com_interface_reconnect_request_receiver).fuse() => app_result,
             _ = com_hub_future.fuse() => panic!("ComHub future should not complete during the test"),
         }
     }
@@ -1778,12 +1797,13 @@ pub mod tests {
             UnboundedSender<Vec<u8>>,
             UnboundedReceiver<DXBBlock>,
             UnboundedReceiver<IncomingSection>,
+            UnboundedReceiver<ComInterfaceReconnectRequest>,
         ) -> AppFuture,
     ) -> AppReturn
     where
         AppFuture: Future<Output = AppReturn>,
     {
-        run_with_com_hub(|com_hub, incoming_sections_receiver| async move {
+        run_with_com_hub(|com_hub, incoming_sections_receiver, com_interface_reconnect_request_receiver| async move {
             let (incoming_data_sender, outgoing_block_receiver) =
                 add_proxy_interface_to_com_hub(
                     com_hub.clone(),
@@ -1795,6 +1815,7 @@ pub mod tests {
                 incoming_data_sender,
                 outgoing_block_receiver,
                 incoming_sections_receiver,
+                com_interface_reconnect_request_receiver,
             )
             .await
         })
@@ -1955,7 +1976,7 @@ pub mod tests {
 
     #[tokio::test]
     pub async fn create_from_sync_factory() {
-        run_with_com_hub(|com_hub, _| async move {
+        run_with_com_hub(|com_hub, _, _| async move {
             let interface_configuration =
                 ComInterfaceManager::create_interface_sync_from_setup_data(
                     MockupInterfaceSetupData::new("test"),
@@ -1971,14 +1992,14 @@ pub mod tests {
                 )
                 .unwrap();
 
-            assert!(com_hub.remove_interface(uuid).await.is_ok());
+            assert!(com_hub.remove_interface(&uuid).await.is_ok());
         })
         .await;
     }
 
     #[tokio::test]
     pub async fn create_from_async_factory() {
-        run_with_com_hub(|com_hub, _| async move {
+        run_with_com_hub(|com_hub, _, _| async move {
             let interface_configuration =
                 ComInterfaceManager::create_interface_async_from_setup_data(
                     MockupInterfaceSetupData::new("test"),
@@ -1995,7 +2016,7 @@ pub mod tests {
                 )
                 .unwrap();
 
-            assert!(com_hub.remove_interface(uuid).await.is_ok());
+            assert!(com_hub.remove_interface(&uuid).await.is_ok());
         })
         .await;
     }
@@ -2023,7 +2044,7 @@ pub mod tests {
     #[tokio::test]
     pub async fn send() {
         run_with_com_hub_and_proxy_interface(
-            async move |com_hub, _, mut outgoing_block_receiver, _| {
+            async move |com_hub, _, mut outgoing_block_receiver, _, _| {
                 // send block via com hub to proxy interface
                 let mut block = DXBBlock::new_with_body(b"Hello world!");
                 block.set_receivers(vec![TEST_ENDPOINT_B.clone()]);
@@ -2062,7 +2083,7 @@ pub mod tests {
 
     #[tokio::test]
     pub async fn send_block_to_invalid_receiver() {
-        run_with_com_hub_and_proxy_interface(async move |com_hub, _, _, _| {
+        run_with_com_hub_and_proxy_interface(async move |com_hub, _, _, _, _| {
             let mut block = DXBBlock::new_with_body(b"Hello world!");
             // cannot send to endpoint c, since only interface is not a fallback interface and only knows endpoint b
             block.set_receivers(vec![TEST_ENDPOINT_C.clone()]);
@@ -2074,7 +2095,7 @@ pub mod tests {
 
     #[tokio::test]
     pub async fn send_block_via_multiple_interfaces() {
-        run_with_com_hub(|com_hub, _| async move {
+        run_with_com_hub(|com_hub, _, _| async move {
             let (_sender_b, mut outgoing_block_receiver_b) =
                 add_proxy_interface_to_com_hub(
                     com_hub.clone(),
@@ -2121,7 +2142,7 @@ pub mod tests {
             async move |com_hub,
                         mut incoming_data_sender,
                         _,
-                        mut incoming_sections_receiver| {
+                        mut incoming_sections_receiver, _ | {
                 // create block and send it via the incoming data sender to the com hub
                 let mut block = DXBBlock::new_with_body(b"Hello world!");
                 block.set_receivers(vec![TEST_ENDPOINT_A.clone()]);
@@ -2157,7 +2178,7 @@ pub mod tests {
             async move |com_hub,
                         mut incoming_data_sender,
                         _,
-                        mut incoming_sections_receiver| {
+                        mut incoming_sections_receiver, _ | {
                 let mut blocks = vec![
                     DXBBlock {
                         routing_header: RoutingHeader::default(),
@@ -2233,7 +2254,7 @@ pub mod tests {
             async move |com_hub,
                         mut incoming_data_sender,
                         _,
-                        mut incoming_sections_receiver| {
+                        mut incoming_sections_receiver, _| {
                 let mut blocks = vec![
                     DXBBlock {
                         routing_header: RoutingHeader::default(),

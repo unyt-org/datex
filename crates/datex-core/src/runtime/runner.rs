@@ -20,6 +20,7 @@ use futures_util::{
     join,
 };
 use log::info;
+use crate::network::com_hub::ComInterfaceReconnectRequest;
 
 pub struct RuntimeRunner {
     pub runtime: Runtime,
@@ -37,8 +38,11 @@ impl RuntimeRunner {
         let (incoming_sections_sender, incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
+        let (com_interface_reconnect_request_sender, com_interface_reconnect_request_receiver) =
+            create_unbounded_channel::<ComInterfaceReconnectRequest>();
+
         let (com_hub, com_hub_task_future) =
-            ComHub::create(endpoint.clone(), incoming_sections_sender);
+            ComHub::create(endpoint.clone(), incoming_sections_sender, com_interface_reconnect_request_sender);
         let memory = RefCell::new(SharedReferencesCache::default());
         let pointer_address_provider = Rc::new(RefCell::new(
             SelfOwnedPointerAddressProvider::new(endpoint.clone()),
@@ -52,6 +56,7 @@ impl RuntimeRunner {
             com_hub,
             task_manager,
             incoming_sections_receiver,
+            com_interface_reconnect_request_receiver,
         ));
 
         let runtime_internal = runtime.internal.clone();
@@ -64,7 +69,9 @@ impl RuntimeRunner {
                 // runtime task manager
                 runtime_task_future,
                 // runtime incoming sections handler
-                runtime_internal.handle_incoming_sections_task()
+                runtime_internal.clone().handle_incoming_sections_task(),
+                // runtime interface reconnect request handler
+                runtime_internal.handle_reconnect_requests_task(),
             );
         };
 

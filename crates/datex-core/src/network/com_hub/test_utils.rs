@@ -20,6 +20,7 @@ use alloc::{rc::Rc, sync::Arc};
 use core::{pin::Pin, str::FromStr};
 use futures_util::future::join;
 use tokio::task::{LocalSet, spawn_local, yield_now};
+use crate::network::com_hub::ComInterfaceReconnectRequest;
 use crate::network::com_interfaces::com_interface::factory::SendSuccess;
 
 lazy_static::lazy_static! {
@@ -33,6 +34,7 @@ pub struct ComHubPeerWithFuture {
     pub com_hub: Rc<ComHub>,
     pub task_future: Pin<Box<dyn Future<Output = ()>>>,
     pub incoming_sections_receiver: UnboundedReceiver<IncomingSection>,
+    pub com_interface_reconnect_request_receiver: UnboundedReceiver<ComInterfaceReconnectRequest>,
     pub com_interface_uuid: ComInterfaceUUID,
     pub com_interface_properties: Rc<ComInterfaceProperties>,
 }
@@ -40,6 +42,7 @@ pub struct ComHubPeerWithFuture {
 pub struct ComHubPeer {
     pub com_hub: Rc<ComHub>,
     pub incoming_sections_receiver: UnboundedReceiver<IncomingSection>,
+    pub com_interface_reconnect_request_receiver: UnboundedReceiver<ComInterfaceReconnectRequest>,
     pub com_interface_uuid: ComInterfaceUUID,
     pub com_interface_properties: Rc<ComInterfaceProperties>,
 }
@@ -50,6 +53,7 @@ impl ComHubPeerWithFuture {
             ComHubPeer {
                 com_hub: self.com_hub,
                 incoming_sections_receiver: self.incoming_sections_receiver,
+                com_interface_reconnect_request_receiver: self.com_interface_reconnect_request_receiver,
                 com_interface_uuid: self.com_interface_uuid,
                 com_interface_properties: self.com_interface_properties,
             },
@@ -66,13 +70,17 @@ pub async fn get_coupled_com_hubs() -> (
 ) {
     let (incoming_sections_sender_a, incoming_sections_receiver_a) =
         create_unbounded_channel::<IncomingSection>();
+    let (com_interface_reconnect_request_sender_a, com_interface_reconnect_request_receiver_a) =
+        create_unbounded_channel::<ComInterfaceReconnectRequest>();
     let (com_hub_a, task_future_a) =
-        ComHub::create(TEST_ENDPOINT_A.clone(), incoming_sections_sender_a);
+        ComHub::create(TEST_ENDPOINT_A.clone(), incoming_sections_sender_a, com_interface_reconnect_request_sender_a);
 
     let (incoming_sections_sender_b, incoming_sections_receiver_b) =
         create_unbounded_channel::<IncomingSection>();
+    let (com_interface_reconnect_request_sender_b, com_interface_reconnect_request_receiver_b) =
+        create_unbounded_channel::<ComInterfaceReconnectRequest>();
     let (com_hub_b, task_future_b) =
-        ComHub::create(TEST_ENDPOINT_B.clone(), incoming_sections_sender_b);
+        ComHub::create(TEST_ENDPOINT_B.clone(), incoming_sections_sender_b, com_interface_reconnect_request_sender_b);
 
     let res = couple_com_hubs_internal(com_hub_a.clone(), com_hub_b.clone());
 
@@ -87,6 +95,7 @@ pub async fn get_coupled_com_hubs() -> (
             com_hub: com_hub_a,
             task_future: Box::pin(task_future_a),
             incoming_sections_receiver: incoming_sections_receiver_a,
+            com_interface_reconnect_request_receiver: com_interface_reconnect_request_receiver_a,
             com_interface_uuid: com_interface_uuid_a,
             com_interface_properties: com_interface_properties_a,
         },
@@ -94,6 +103,7 @@ pub async fn get_coupled_com_hubs() -> (
             com_hub: com_hub_b,
             task_future: Box::pin(task_future_b),
             incoming_sections_receiver: incoming_sections_receiver_b,
+            com_interface_reconnect_request_receiver: com_interface_reconnect_request_receiver_b,
             com_interface_uuid: com_interface_uuid_b,
             com_interface_properties: com_interface_properties_b,
         },
