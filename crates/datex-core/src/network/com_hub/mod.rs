@@ -93,6 +93,7 @@ use futures_util::FutureExt;
 use crate::channel::mpsc;
 use crate::channel::mpsc::{create_unbounded_channel, UnboundedReceiver};
 use crate::network::com_hub::managers::com_interface_manager::{InterfaceCloseInfo, InterfaceInfo};
+use crate::task::sleep;
 use crate::utils::maybe_async::MaybeAsyncResult;
 
 pub type IncomingBlockInterceptor =
@@ -1621,7 +1622,8 @@ impl ComHub {
             let mut attempts = 0;
 
             if let Some(setup_data) = setup_data {
-                info!("Closed interface {}, trying to reconnect", interface_properties.interface_type);
+                sleep(reconnect_attempts.interval).await;
+                info!("Trying to reconnect to {}", interface_properties.interface_type);
                 loop {
                     // abort when max attempts reached
                     if let Some(max_reconnect_attempts) = reconnect_attempts.max_attempts && attempts > max_reconnect_attempts {

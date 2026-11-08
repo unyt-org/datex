@@ -4,6 +4,7 @@ use crate::{
 };
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
+use crate::network::com_interfaces::com_interface::properties::ReconnectionConfig;
 
 #[derive(Datex, Clone, Serialize, Deserialize)]
 #[datex(structural)]
@@ -17,6 +18,7 @@ impl SerialClientInterfaceSetupData {
         ComInterfaceProperties {
             interface_type: "serial".to_string(),
             channel: "serial".to_string(),
+            reconnection_config: ReconnectionConfig::reconnect(),
             round_trip_time: 40,
             max_bandwidth: 100,
             ..ComInterfaceProperties::default()

@@ -95,24 +95,42 @@ pub struct ComInterfaceProperties {
 pub enum ReconnectionConfig {
     #[default]
     NoReconnect,
-    Reconnect,
-    /// number of reconnect attempts before aborting reconnect, default is unlimited
-    ReconnectWithAttempts(u16),
+    Reconnect {
+        /// number of reconnect attempts before aborting reconnect, default is unlimited
+        attempts: Option<u16>,
+        /// interval between reconnect attempts in ms, default is 3 seconds
+        interval: Option<u64>,
+    },
 }
 
 #[derive(Datex, Debug, PartialEq, Clone, Default, Eq)]
 pub struct ReconnectAttempts {
-    pub(crate) max_attempts: Option<u16>
+    pub(crate) max_attempts: Option<u16>,
+    pub(crate) interval: Duration,
 }
 
 impl ReconnectionConfig {
+    const DEFAULT_RECONNECT_INTERVAL: Duration = Duration::from_secs(3);
+
+    pub fn reconnect() -> Self {
+        ReconnectionConfig::Reconnect { attempts: None, interval: None}
+    }
+
+    pub fn reconnect_with_interval(interval: Duration) -> Self {
+        ReconnectionConfig::Reconnect { attempts: None, interval: Some(interval.as_millis() as u64)}
+    }
+
     /// Returns a [ReconnectAttempts] struct if configured.
     /// A [None] return value indicates that no form of reconnect was configured
     pub fn get_reconnect_attempts(&self) -> Option<ReconnectAttempts> {
         match self {
             ReconnectionConfig::NoReconnect => None,
-            ReconnectionConfig::Reconnect => Some(ReconnectAttempts::default()),
-            ReconnectionConfig::ReconnectWithAttempts(attempts) => Some(ReconnectAttempts { max_attempts: Some(*attempts) })
+            ReconnectionConfig::Reconnect {
+                attempts, interval
+            } => Some(ReconnectAttempts {
+                max_attempts: *attempts,
+                interval: interval.map(Duration::from_millis).unwrap_or(Self::DEFAULT_RECONNECT_INTERVAL),
+            }),
         }
     }
 }
