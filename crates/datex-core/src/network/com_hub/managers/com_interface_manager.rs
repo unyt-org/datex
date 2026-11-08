@@ -18,6 +18,7 @@ use crate::{
     values::value::Value,
 };
 use core::{cell::RefCell, pin::Pin};
+use core::cell::Ref;
 use futures::channel::oneshot;
 use log::info;
 
@@ -267,7 +268,6 @@ impl ComInterfaceManager {
     }
 
     /// Returns the com interface properties for a given UUID
-    /// The interface is returned as a dynamic trait object
     pub fn try_get_interface_properties_by_uuid(
         &self,
         uuid: &ComInterfaceUUID,
@@ -276,6 +276,14 @@ impl ComInterfaceManager {
         interfaces
             .get(uuid)
             .map(|InterfaceInfo { properties, .. }| properties.clone())
+    }
+
+    /// Returns the com interface info for a given UUID
+    pub fn try_get_interface_info_by_uuid(
+        &self,
+        uuid: &ComInterfaceUUID,
+    ) -> Option<Ref<InterfaceInfo>> {
+        Ref::filter_map(self.interfaces.borrow(), |interfaces| interfaces.get(uuid)).ok()
     }
 
     /// Returns the com interface  properties for a given UUID

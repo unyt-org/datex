@@ -511,15 +511,18 @@ impl ComHub {
             .cleanup_socket(&socket_properties.uuid());
 
         // only if interface still exists
-        if self.interfaces_manager.has_interface(&com_interface_uuid) {
-            // TODO #730: check if any other sockets are still registered for the interface, if not
-            // and if interface is no longer waiting for new socket connections (e.g. single socket interface), also remove the interface
-            if !self
+        if self.interfaces_manager.has_interface(&com_interface_uuid)
+            && !self
                 .interfaces_manager
-                .is_interface_waiting_for_socket_connections(
-                    &com_interface_uuid,
-                )
-            {
+                .is_interface_waiting_for_socket_connections(&com_interface_uuid)
+        {
+            // try to reconnect if single socket interface
+            if let Some(InterfaceInfo { is_waiting_for_socket_connections: false, ..}) = &self.interfaces_manager.try_get_interface_info_by_uuid(&com_interface_uuid) {
+                info!("Closing interface {}", com_interface_uuid);
+                self.reconnect_interface_sender.borrow_mut().start_send(ComInterfaceReconnectRequest::new(com_interface_uuid.clone())).unwrap();
+            }
+            // this should normally not happen, but in case a multi socket ("server") interface is stopped here, just remove it
+            else {
                 self.interfaces_manager
                     .cleanup_interface(&com_interface_uuid)
                     .unwrap();
@@ -527,8 +530,8 @@ impl ComHub {
                     "Destroyed interface {} as it is no longer waiting for socket connections",
                     com_interface_uuid
                 );
-                // TODO #731: reconnect logic?
             }
+
         }
 
         if let Some(closed_sender) = closed_sender {
@@ -1647,7 +1650,6 @@ impl ComHub {
                             if let Some(ready_receiver) = ready_receiver {
                                 let _ = ready_receiver.await;
                             }
-                            info!("Successfully reconnected to \"{}\"", interface_properties.interface_type);
                             break;
                         }
                     }
