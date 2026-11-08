@@ -14,9 +14,9 @@ use crate::{
     libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
     prelude::*,
 };
-use erased_serde::__private::serde::ser::SerializeTuple;
 use num_traits::ToPrimitive;
 use serde::de::{SeqAccess, Visitor};
+use serde::ser::SerializeTuple;
 
 impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for Vec<T> {
     fn serialize_with_ctx<S: serde::Serializer>(

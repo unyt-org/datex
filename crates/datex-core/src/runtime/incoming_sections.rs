@@ -53,7 +53,7 @@ impl RuntimeInternal {
             // for embassy, run all sections in the same task to avoid spawning too many tasks
             #[cfg(feature = "embassy_runtime")]
             {
-                self.com_hub().clone().try_reconnect_interface(reconnect_request)
+                self.com_hub().clone().try_reconnect_interface(reconnect_request).await;
             }
             // otherwise, run each section in its own task
             #[cfg(not(feature = "embassy_runtime"))]

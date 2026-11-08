@@ -52,10 +52,13 @@ fn enum_struct_to_dif() {
     let json_value = serde_json::json!({
         "_": "t",
         "t": ["Struct"],
-        "v": {
-            "x": "test",
-            "y": [CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U16)), 24]
-        }
+        "v": [
+            CoreLibIdIndex::from(CoreLibBaseTypeId::Map),
+            {
+                "x": "test",
+                "y": [CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U16)), 24]
+            }
+        ]
     });
     println!("json_value: {json_value:#}");
     assert_eq!(serialized, json_value);
@@ -66,10 +69,13 @@ fn enum_struct_from_dif() {
     let json_value = serde_json::json!({
         "_": "t",
         "t": ["Struct"],
-        "v": {
-            "x": "test",
-            "y": [CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U16)), 24]
-        }
+        "v": [
+            CoreLibIdIndex::from(CoreLibBaseTypeId::Map),
+            {
+                "x": "test",
+                "y": [CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U16)), 24]
+            }
+        ]
     });
     let deserialized: ExampleEnum =
         deserialize_from_dif_default_ctx(&json_value);
@@ -93,10 +99,13 @@ fn enum_struct_roundtrip() {
     let json_value = serde_json::json!({
         "_": "t",
         "t": ["Struct"],
-        "v": {
-            "x": "test",
-            "y": [CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U16)), 24]
-        }
+        "v": [
+            CoreLibIdIndex::from(CoreLibBaseTypeId::Map),
+            {
+                "x": "test",
+                "y": [CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U16)), 24]
+            }
+        ]
     });
     println!("json_value: {json_value:#}");
     assert_eq!(serialized, json_value);
@@ -133,8 +142,11 @@ fn enum_tuple_multiple_roundtrip() {
         "_": "t",
         "t": ["TupleMultiple"],
         "v": [
-            [CoreLibIdIndex::from(CoreLibBaseTypeId::Endpoint), "@jonas"],
-            [CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)), 42]
+            CoreLibIdIndex::from(CoreLibBaseTypeId::List),
+            [
+                [CoreLibIdIndex::from(CoreLibBaseTypeId::Endpoint), "@jonas"],
+                [CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)), 42]
+            ]
         ]
     });
     println!("json_value: {json_value:#}");

@@ -172,7 +172,7 @@ fn generate_dif_serialize_for_fields(
         };
     }
 
-    let value = match fields {
+    let (inner_declarations, value) = match fields {
         Fields::Named(named_fields) => {
             let field_definitions = named_fields.iter().map(|field| {
                 let field_ident = field.normalized_ident();
@@ -215,33 +215,36 @@ fn generate_dif_serialize_for_fields(
 
             let len = named_fields.len();
 
-            quote! {{
-                struct __DatexFieldsMap<'a, 'ctx> {
-                    ctx: &'a SerdeContext<'ctx>,
-                    #(#field_definitions,)*
-                }
+            (
+                quote! {
+                    struct __DatexFieldsInner<'a, 'ctx> {
+                        ctx: &'a SerdeContext<'ctx>,
+                        #(#field_definitions,)*
+                    }
 
-                impl serde::Serialize for __DatexFieldsMap<'_, '_> {
-                    fn serialize<S>(
-                        &self,
-                        serializer: S,
-                    ) -> Result<S::Ok, S::Error>
-                    where
-                        S: serde::Serializer,
-                    {
-                        use serde::ser::SerializeMap;
+                    impl serde::Serialize for __DatexFieldsInner<'_, '_> {
+                        fn serialize<S>(
+                            &self,
+                            serializer: S,
+                        ) -> Result<S::Ok, S::Error>
+                        where
+                            S: serde::Serializer,
+                        {
+                            use serde::ser::SerializeMap;
 
-                        let mut map = serializer.serialize_map(Some(#len))?;
-                        #(#serialize_fields)*
-                        map.end()
+                            let mut map = serializer.serialize_map(Some(#len))?;
+                            #(#serialize_fields)*
+                            map.end()
+                        }
+                    }
+                },
+                quote! {
+                    __DatexFieldsInner {
+                        ctx,
+                        #(#field_initializers,)*
                     }
                 }
-
-                __DatexFieldsMap {
-                    ctx,
-                    #(#field_initializers,)*
-                }
-            }}
+            )
         }
 
         Fields::Unnamed(unnamed_fields) => {
@@ -279,13 +282,58 @@ fn generate_dif_serialize_for_fields(
 
             let len = unnamed_fields.len();
 
+            (
+                quote! {
+                    struct __DatexFieldsInner<'a, 'ctx> {
+                        ctx: &'a SerdeContext<'ctx>,
+                        #(#field_definitions,)*
+                    }
+
+                    impl serde::Serialize for __DatexFieldsInner<'_, '_> {
+                        fn serialize<S>(
+                            &self,
+                            serializer: S,
+                        ) -> Result<S::Ok, S::Error>
+                        where
+                            S: serde::Serializer,
+                        {
+                            use serde::ser::SerializeSeq;
+
+                            let mut seq = serializer.serialize_seq(Some(#len))?;
+                            #(#serialize_fields)*
+                            seq.end()
+                        }
+                    }
+                },
+                quote! {
+                    __DatexFieldsInner {
+                        ctx,
+                        #(#field_initializers,)*
+                    }
+                }
+            )
+        }
+        Fields::Unit => (quote! { }, quote! { () }),
+        Fields::Transparent(_) => unreachable!(),
+    };
+
+    // Serializes to [CoreLibId, [...]]
+    let wrapped_value = match fields {
+        Fields::Named(_) | Fields::Unnamed(_) => {
+            let core_lib_id = match fields {
+                Fields::Named(_)  => quote! {{ CoreLibBaseTypeId::Map }},
+                Fields::Unnamed(_)  => quote! {{ CoreLibBaseTypeId::List }},
+                _ => unreachable!()
+            };
+
             quote! {{
-                struct __DatexFieldsSeq<'a, 'ctx> {
-                    ctx: &'a SerdeContext<'ctx>,
-                    #(#field_definitions,)*
+                #inner_declarations
+
+                struct __DatexFieldsWrapper<'a, 'ctx> {
+                    inner: __DatexFieldsInner<'a, 'ctx>
                 }
 
-                impl serde::Serialize for __DatexFieldsSeq<'_, '_> {
+                impl serde::Serialize for __DatexFieldsWrapper<'_, '_> {
                     fn serialize<S>(
                         &self,
                         serializer: S,
@@ -293,22 +341,24 @@ fn generate_dif_serialize_for_fields(
                     where
                         S: serde::Serializer,
                     {
-                        use serde::ser::SerializeSeq;
+                        use serde::ser::SerializeTuple;
 
-                        let mut seq = serializer.serialize_seq(Some(#len))?;
-                        #(#serialize_fields)*
-                        seq.end()
+                        // [CoreLibBaseTypeId::List, list]
+                        let mut tuple = serializer.serialize_tuple(2)?;
+                        tuple.serialize_element(
+                            &CoreLibIdIndex::from(#core_lib_id),
+                        )?;
+                        tuple.serialize_element(&self.inner)?;
+                        tuple.end()
                     }
                 }
 
-                __DatexFieldsSeq {
-                    ctx,
-                    #(#field_initializers,)*
+                __DatexFieldsWrapper {
+                    inner: #value,
                 }
             }}
-        }
-        Fields::Unit => quote! { () },
-        Fields::Transparent(_) => unreachable!(),
+        },
+        Fields::Transparent(_) | Fields::Unit => value,
     };
 
     let empty_tag_value = matches!(fields, Fields::Unit);
@@ -343,7 +393,7 @@ fn generate_dif_serialize_for_fields(
                 }
             }
 
-            let value = #value;
+            let value = #wrapped_value;
             serde::Serialize::serialize(
                 &__DatexEnumValue {
                     tag: #tag,
@@ -353,29 +403,33 @@ fn generate_dif_serialize_for_fields(
             )
         }},
 
-        None => match fields {
-            Fields::Named(_) => quote! {{
-                let mut seq = serializer.serialize_seq(Some(2))?;
-                seq.serialize_element(
-                    &CoreLibIdIndex::from(CoreLibBaseTypeId::Map),
-                )?;
-                seq.serialize_element(&#value)?;
-                seq.end()
-            }},
+        None => quote! {{
+            serde::Serialize::serialize(&#wrapped_value, serializer)
+        }}
 
-            Fields::Unnamed(_) => quote! {{
-                let mut seq = serializer.serialize_seq(Some(2))?;
-                seq.serialize_element(
-                    &CoreLibIdIndex::from(CoreLibBaseTypeId::List),
-                )?;
-                seq.serialize_element(&#value)?;
-                seq.end()
-            }},
-
-            Fields::Transparent(_) | Fields::Unit => quote! {
-                serde::Serialize::serialize(&#value, serializer)
-            },
-        },
+        // None => match fields {
+        //     Fields::Named(_) => quote! {{
+        //         let mut seq = serializer.serialize_seq(Some(2))?;
+        //         seq.serialize_element(
+        //             &CoreLibIdIndex::from(CoreLibBaseTypeId::Map),
+        //         )?;
+        //         seq.serialize_element(&#value)?;
+        //         seq.end()
+        //     }},
+        //
+        //     Fields::Unnamed(_) => quote! {{
+        //         let mut seq = serializer.serialize_seq(Some(2))?;
+        //         seq.serialize_element(
+        //             &CoreLibIdIndex::from(CoreLibBaseTypeId::List),
+        //         )?;
+        //         seq.serialize_element(&#value)?;
+        //         seq.end()
+        //     }},
+        //
+        //     Fields::Transparent(_) | Fields::Unit => quote! {
+        //         serde::Serialize::serialize(&#value, serializer)
+        //     },
+        // },
     }
 }
 
@@ -407,6 +461,7 @@ fn generate_dif_deserialize_for_enum(
             Fields::Unit => {
                 quote! {
                     #tag => {
+                        let _: serde::de::IgnoredAny = map.next_value()?;
                         Ok(#ident::#variant_ident)
                     }
                 }
@@ -431,11 +486,30 @@ fn generate_dif_deserialize_for_enum(
                     &variant_wrapper_ident,
                 );
 
+                let variant_outer_collector_ident = Ident::new(
+                    &format!("{}VariantOuterCollector", variant_ident),
+                    Span::call_site(),
+                );
+                let variant_outer_wrapper_ident = Ident::new(
+                    &format!("{}VariantOuterWrapper", variant_ident),
+                    Span::call_site(),
+                );
+                let outer = generate_outer_wrapper(
+                    ident,
+                    fields,
+                    &variant_wrapper_ident,
+                    &variant_outer_collector_ident,
+                    &variant_outer_wrapper_ident,
+                );
+
                 quote! {
                     #tag => {
                         #deserialize
-
-                        let value: #ident = map.next_value_seed(#variant_wrapper_ident::new(self.__ctx))?;
+                        #outer
+            
+                        let value: #ident = map.next_value_seed(
+                            #variant_outer_wrapper_ident::new(self.__ctx)
+                        )?;
                         Ok(value)
                     }
                 }
@@ -773,6 +847,67 @@ fn generate_outer_visit_seq(
         }
     }
 }
+
+/// Generates an outer DeserializeSeed + Visitor that expects [CoreLibId, inner]
+/// and forwards the inner part to `inner_wrapper_ident`.
+fn generate_outer_wrapper(
+    ident: &Ident,
+    fields: &Fields,
+    inner_wrapper_ident: &Ident,
+    outer_collector_ident: &Ident,
+    outer_wrapper_ident: &Ident,
+) -> TokenStream {
+    let core_lib_name = match fields {
+        Fields::Named(_) => Ident::new("Map", Span::call_site()),
+        Fields::Unnamed(_) => Ident::new("List", Span::call_site()),
+        _ => unreachable!("outer wrapper only for named/unnamed fields"),
+    };
+    let outer_visit_seq = generate_outer_visit_seq(inner_wrapper_ident, &core_lib_name);
+
+    quote! {
+        struct #outer_collector_ident<'a, 'ctx> {
+            pub __ctx: &'a SerdeContext<'ctx>,
+        }
+
+        impl<'a, 'ctx> #outer_collector_ident<'a, 'ctx> {
+            fn new(ctx: &'a SerdeContext<'ctx>) -> Self {
+                #outer_collector_ident { __ctx: ctx }
+            }
+        }
+
+        impl<'de, 'a, 'ctx> Visitor<'de> for #outer_collector_ident<'a, 'ctx> {
+            type Value = #ident;
+
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str("the form [CoreLibId, Value]")
+            }
+
+            #outer_visit_seq
+        }
+
+        struct #outer_wrapper_ident<'a, 'ctx> {
+            pub __ctx: &'a SerdeContext<'ctx>,
+        }
+
+        impl<'a, 'ctx> #outer_wrapper_ident<'a, 'ctx> {
+            fn new(ctx: &'a SerdeContext<'ctx>) -> Self {
+                #outer_wrapper_ident { __ctx: ctx }
+            }
+        }
+
+        impl<'de, 'a, 'ctx> DeserializeSeed<'de> for #outer_wrapper_ident<'a, 'ctx> {
+            type Value = #ident;
+
+            fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                deserializer.deserialize_any(#outer_collector_ident::new(self.__ctx))
+            }
+        }
+    }
+}
+
 
 fn generate_inner_visitor_methods_for_unnamed_fields(
     fields: &[IndexedField],

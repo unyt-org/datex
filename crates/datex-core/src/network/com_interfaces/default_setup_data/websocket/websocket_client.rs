@@ -4,6 +4,7 @@ use crate::{
 };
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
+use crate::network::com_interfaces::com_interface::properties::ReconnectionConfig;
 
 #[derive(Datex, Clone, Debug, Serialize, Deserialize)]
 #[datex(structural)]
