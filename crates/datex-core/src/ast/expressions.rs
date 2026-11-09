@@ -185,7 +185,7 @@ pub enum DatexExpressionData {
     TypeExpression(TypeExpression),
 
     /// callable (function/procedure) declaration, e.g. function my_function() -> type ( ... )
-    CallableDeclaration(CallableDeclaration),
+    CallableDeclaration(Box<CallableDeclaration>),
 
     /// Create a new shared container
     CreateShared(CreateShared),
@@ -257,6 +257,12 @@ pub enum DatexExpressionData {
     VariantAccess(VariantAccess),
 
     EntityValue(EntityValueExpression),
+}
+
+impl DatexExpressionData {
+    pub fn callable_declaration(callable_declaration: CallableDeclaration) -> Self {
+        DatexExpressionData::CallableDeclaration(Box::new(callable_declaration))
+    }
 }
 
 impl Spanned for DatexExpressionData {

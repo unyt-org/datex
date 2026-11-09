@@ -729,7 +729,7 @@ pub fn ast_from_bytecode(
                                     unbounded: None,
                                 }).with_default_span();
 
-                                DatexExpressionData::CallableDeclaration(CallableDeclaration {
+                                DatexExpressionData::callable_declaration(CallableDeclaration {
                                     signature,
                                     body,
                                     injected_variable_count: Some(injected_values.len() as u32),
@@ -752,7 +752,7 @@ pub fn ast_from_bytecode(
                                     unbounded: None,
                                 }).with_default_span();
 
-                                DatexExpressionData::CallableDeclaration(CallableDeclaration {
+                                DatexExpressionData::callable_declaration(CallableDeclaration {
                                     signature,
                                     body,
                                     injected_variable_count: None,

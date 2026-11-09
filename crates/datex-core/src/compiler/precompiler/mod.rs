@@ -660,7 +660,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         match result {
             Ok(mut statements) => {
                 statements.push(
-                    DatexExpressionData::CallableDeclaration(
+                    DatexExpressionData::callable_declaration(
                         callable_declaration.clone(),
                     )
                     .with_span(span.clone()),
@@ -2210,7 +2210,7 @@ mod tests {
                         }
                     )
                     .with_default_span(),
-                    DatexExpressionData::CallableDeclaration(
+                    DatexExpressionData::callable_declaration(
                         CallableDeclaration {
                             signature: CallableSignature {
                                 name: Some("y".to_string()),
@@ -2262,7 +2262,7 @@ mod tests {
                         }
                     )
                         .with_default_span(),
-                    DatexExpressionData::CallableDeclaration(CallableDeclaration {
+                    DatexExpressionData::callable_declaration(CallableDeclaration {
                         signature: CallableSignature {
                             name: Some("y".to_string()),
                             kind: CallableKind::Function,

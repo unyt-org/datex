@@ -55,7 +55,7 @@ impl Parser {
         // parse function body
         let body = self.parse_parenthesized_statements()?;
         Ok(
-            DatexExpressionData::CallableDeclaration(CallableDeclaration {
+            DatexExpressionData::callable_declaration(CallableDeclaration {
                 signature: CallableSignature {
                     name,
                     kind,
@@ -123,8 +123,8 @@ mod tests {
         let expr = parse("function test() ()");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::CallableDeclaration(
-                (CallableDeclaration {
+            &DatexExpressionData::callable_declaration(
+                CallableDeclaration {
                     signature: CallableSignature {
                         name: Some(String::from("test")),
                         kind: CallableKind::Function,
@@ -142,7 +142,6 @@ mod tests {
                     .with_default_span()),
                     injected_variable_count: None,
                 })
-            )
         );
     }
 
@@ -151,7 +150,7 @@ mod tests {
         let expr = parse("function () ()");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::CallableDeclaration(
+            &DatexExpressionData::callable_declaration(
                 (CallableDeclaration {
                     signature: CallableSignature {
                         name: None,
@@ -179,7 +178,7 @@ mod tests {
         let expr = parse("procedure doSomething() ()");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::CallableDeclaration(CallableDeclaration {
+            &DatexExpressionData::callable_declaration(CallableDeclaration {
                 signature: CallableSignature {
                     name: Some(String::from("doSomething")),
                     kind: CallableKind::Procedure,
@@ -205,7 +204,7 @@ mod tests {
         let expr = parse("function add(a: integer, b: integer) -> integer ( )");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::CallableDeclaration(CallableDeclaration {
+            &DatexExpressionData::callable_declaration(CallableDeclaration {
                 signature: CallableSignature {
                     name: Some("add".to_string()),
                     kind: CallableKind::Function,
@@ -250,7 +249,7 @@ mod tests {
             parse("function greet(name: text) -> text ( \"Hello, \" + name )");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::CallableDeclaration(CallableDeclaration {
+            &DatexExpressionData::callable_declaration(CallableDeclaration {
                 signature: CallableSignature {
                     name: Some("greet".to_string()),
                     kind: CallableKind::Function,

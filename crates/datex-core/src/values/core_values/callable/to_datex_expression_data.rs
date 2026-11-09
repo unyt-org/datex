@@ -17,7 +17,7 @@ use crate::{
 
 impl ToDatexExpressionData for Callable {
     fn to_datex_expression_data(&self) -> DatexExpressionData {
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
+        DatexExpressionData::callable_declaration(CallableDeclaration {
             signature: CallableSignature {
                 name: self.name.clone(),
                 kind: self.signature.kind,

@@ -428,7 +428,7 @@ fn function_simple() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
+        DatexExpressionData::callable_declaration(CallableDeclaration {
             signature: CallableSignature {
                 name: Some("myFunction".to_string()),
                 kind: CallableKind::Function,
@@ -455,7 +455,7 @@ fn function_with_params() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
+        DatexExpressionData::callable_declaration(CallableDeclaration {
             signature: CallableSignature {
                 name: Some("myFunction".to_string()),
                 kind: CallableKind::Function,
@@ -483,7 +483,7 @@ fn function_with_params() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
+        DatexExpressionData::callable_declaration(CallableDeclaration {
             signature: CallableSignature {
                 name: Some("myFunction".into()),
                 kind: CallableKind::Function,
@@ -535,7 +535,7 @@ fn function_with_return_type() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
+        DatexExpressionData::callable_declaration(CallableDeclaration {
             signature: CallableSignature {
                 name: Some("myFunction".into()),
                 kind: CallableKind::Function,
