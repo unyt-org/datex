@@ -21,6 +21,7 @@ use core::{cell::RefCell, pin::Pin};
 use core::cell::Ref;
 use futures::channel::oneshot;
 use log::info;
+use crate::network::com_interfaces::com_interface::properties::ReconnectionConfig;
 
 type InterfaceMap = HashMap<ComInterfaceUUID, InterfaceInfo>;
 
@@ -78,6 +79,8 @@ pub struct ComInterfaceManager {
         HashMap<String, SyncOrAsyncComInterfaceImplementationFactoryFn>,
     >,
 
+    pub reconnect_configs: RefCell<HashMap<String, ReconnectionConfig>>,
+
     /// a list of all available interfaces, keyed by their UUID
     pub interfaces: RefCell<InterfaceMap>,
 }
@@ -91,8 +94,12 @@ impl ComInterfaceManager {
     pub fn register_sync_interface_factory<T: ComInterfaceSyncFactory>(&self) {
         let interface_type = T::get_default_properties().interface_type;
         self.interface_factories.borrow_mut().insert(
-            interface_type,
+            interface_type.clone(),
             SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(T::factory),
+        );
+        self.reconnect_configs.borrow_mut().insert(
+            interface_type,
+            T::get_reconnection_config(),
         );
     }
 
@@ -103,8 +110,12 @@ impl ComInterfaceManager {
     ) {
         let interface_type = T::get_default_properties().interface_type;
         self.interface_factories.borrow_mut().insert(
-            interface_type,
+            interface_type.clone(),
             SyncOrAsyncComInterfaceImplementationFactoryFn::Async(T::factory),
+        );
+        self.reconnect_configs.borrow_mut().insert(
+            interface_type,
+            T::get_reconnection_config(),
         );
     }
 
@@ -114,10 +125,15 @@ impl ComInterfaceManager {
         &self,
         interface_type: String,
         factory: DynInterfaceImplementationFactoryFn,
+        reconnection_config: ReconnectionConfig
     ) {
         self.interface_factories.borrow_mut().insert(
-            interface_type,
+            interface_type.clone(),
             SyncOrAsyncComInterfaceImplementationFactoryFn::Dyn(factory),
+        );
+        self.reconnect_configs.borrow_mut().insert(
+            interface_type,
+            reconnection_config
         );
     }
 
@@ -171,6 +187,17 @@ impl ComInterfaceManager {
                 interface_type.to_string(),
             ))
         }
+    }
+
+    /// Get the registered [ReconnectionConfig] for the given interface type
+    /// Defaults to [ReconnectionConfig::NoReconnect] if none is registered
+    pub fn get_reconnection_config(&self, interface_type: &str) -> ReconnectionConfig {
+        let reconnect_config = self
+            .reconnect_configs
+            .borrow()
+            .get(interface_type)
+            .cloned();
+        reconnect_config.unwrap_or(ReconnectionConfig::NoReconnect)
     }
 
     /// Creates a new interface instance using the registered sync factory
@@ -565,7 +592,7 @@ mod tests {
                 })
             });
         interface_manager
-            .register_dyn_interface_factory("mock".to_string(), dyn_factory);
+            .register_dyn_interface_factory("mock".to_string(), dyn_factory, ReconnectionConfig::NoReconnect);
         let setup_data = MockSetupData {
             name: "test-interface".to_string(),
         };

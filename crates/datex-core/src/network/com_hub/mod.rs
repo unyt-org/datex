@@ -95,6 +95,7 @@ use crate::channel::mpsc::{create_unbounded_channel, UnboundedReceiver};
 use crate::network::com_hub::managers::com_interface_manager::{InterfaceCloseInfo, InterfaceInfo};
 use crate::task::sleep;
 use crate::utils::maybe_async::MaybeAsyncResult;
+use crate::values::value::Value;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -104,13 +105,40 @@ pub type OutgoingBlockInterceptor =
 
 
 #[derive(Debug, Clone)]
-pub struct ComInterfaceReconnectRequest {
-    pub uuid: ComInterfaceUUID,
+pub enum ComInterfaceReconnectRequest {
+    /// Request removing a currently registered interface and trying to reconnect
+    RegisteredInterface {
+        uuid: ComInterfaceUUID
+    },
+    /// Request reconnection loop for a new interface
+    NewInterface {
+        interface_type: String,
+        setup_data: Value,
+        priority: InterfacePriority
+    }
 }
 impl ComInterfaceReconnectRequest {
-    fn new(uuid: ComInterfaceUUID) -> Self {
-        ComInterfaceReconnectRequest { uuid }
+    pub fn new(
+        interface_type: String,
+        setup_data: Value,
+        priority: InterfacePriority
+    ) -> Self {
+        ComInterfaceReconnectRequest::NewInterface {
+            interface_type,
+            setup_data,
+            priority,
+        }
     }
+    pub fn new_registered(uuid: ComInterfaceUUID) -> Self {
+        ComInterfaceReconnectRequest::RegisteredInterface { uuid }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InterfaceReconnectData {
+    interface_type: String,
+    priority: InterfacePriority,
+    setup_data: Option<Value>
 }
 
 pub struct ComHub {
@@ -128,10 +156,10 @@ pub struct ComHub {
     incoming_block_interceptors: RefCell<Vec<IncomingBlockInterceptor>>,
     outgoing_block_interceptors: RefCell<Vec<OutgoingBlockInterceptor>>,
     /// Sender that requests reconnect task to be spawned on this [ComHub] - requests are spawned externally with by calling [Self::try_reconnect_interface] with an [Rc<ComHub>]
-    reconnect_interface_sender: RefCell<UnboundedSender<ComInterfaceReconnectRequest>>,
+    pub reconnect_interface_sender: RefCell<UnboundedSender<ComInterfaceReconnectRequest>>,
 
     /// List of interfaces that are currently being reconnected, only used for debugging purposes
-    reconnecting_interfaces: RefCell<HashMap<ComInterfaceUUID, InterfaceInfo>>,
+    reconnecting_interfaces: RefCell<HashMap<ComInterfaceUUID, InterfaceReconnectData>>,
 
     pub task_manager: TaskManager,
 }
@@ -523,7 +551,7 @@ impl ComHub {
             // try to reconnect if single socket interface
             if let Some(InterfaceInfo { is_waiting_for_socket_connections: false, ..}) = &self.interfaces_manager.try_get_interface_info_by_uuid(&com_interface_uuid) {
                 info!("Closing interface {}", com_interface_uuid);
-                self.reconnect_interface_sender.borrow_mut().start_send(ComInterfaceReconnectRequest::new(com_interface_uuid.clone())).unwrap();
+                self.reconnect_interface_sender.borrow_mut().start_send(ComInterfaceReconnectRequest::new_registered(com_interface_uuid.clone())).unwrap();
             }
             // this should normally not happen, but in case a multi socket ("server") interface is stopped here, just remove it
             else {
@@ -1614,42 +1642,62 @@ impl ComHub {
     ) {
         if let Some(SocketData {interface_uuid, interface_has_single_socket: true, ..}) = &self.socket_manager.get_socket_by_uuid(socket_uuid) {
             info!("Closing interface {} because of send failure on single socket", interface_uuid);
-            self.reconnect_interface_sender.borrow_mut().start_send(ComInterfaceReconnectRequest::new(interface_uuid.clone())).unwrap();
+            self.reconnect_interface_sender.borrow_mut().start_send(ComInterfaceReconnectRequest::new_registered(interface_uuid.clone())).unwrap();
         }
     }
 
     /// Completely removes an existing interface and tries to reconnect
     pub async fn try_reconnect_interface(self: Rc<ComHub>, reconnect_request: ComInterfaceReconnectRequest) {
-        let info = self.remove_interface(&reconnect_request.uuid).await.unwrap();
-        let interface_properties = info.properties.clone();
-        let setup_data = info.original_setup_data.clone();
-        let priority = info.priority.clone();
-        
-        if let Some(reconnect_attempts) = interface_properties.reconnection_config.get_reconnect_attempts() {
+        let (interface_type, setup_data, priority) = match reconnect_request {
+            ComInterfaceReconnectRequest::RegisteredInterface { uuid} => {
+                let info = self.remove_interface(&uuid).await.unwrap();
+                (
+                    info.properties.interface_type.clone(),
+                    info.original_setup_data.clone(),
+                    info.priority.clone()
+                )
+            }
+            ComInterfaceReconnectRequest::NewInterface { interface_type, setup_data: config, priority } => (
+                interface_type,
+                Some(config),
+                priority
+            )
+        };
+
+        let reconnection_config = self.interfaces_manager.get_reconnection_config(&interface_type);
+
+        // generate new temp uuid
+        let temp_uuid = ComInterfaceUUID::new();
+
+        if let Some(reconnect_attempts) = reconnection_config.get_reconnect_attempts() {
             // only for debugging purposes: store in reconnecting_interfaces
-            self.reconnecting_interfaces.borrow_mut().insert(reconnect_request.uuid.clone(), info);
-            
+            self.reconnecting_interfaces.borrow_mut().insert(temp_uuid.clone(), InterfaceReconnectData {
+                interface_type: interface_type.clone(),
+                setup_data: setup_data.clone(),
+                priority: priority.clone(),
+            });
+
             let mut attempts = 0;
 
             if let Some(setup_data) = setup_data {
                 sleep(reconnect_attempts.interval).await;
-                info!("Trying to reconnect to {}", interface_properties.interface_type);
+                info!("Trying to reconnect to {}", interface_type);
                 loop {
                     // abort when max attempts reached
                     if let Some(max_reconnect_attempts) = reconnect_attempts.max_attempts && attempts > max_reconnect_attempts {
-                        warn!("Max reconnect attempts of {} reached for interface {}, aborting reconnect", max_reconnect_attempts, interface_properties.interface_type);
+                        warn!("Max reconnect attempts of {} reached for interface {}, aborting reconnect", max_reconnect_attempts, interface_type);
                         break;
                     }
 
                     let res = self.clone().create_interface(
-                        &interface_properties.interface_type,
+                        &interface_type,
                         setup_data.clone(),
                         priority
                     ).await;
                     match res {
                         Err(err) => {
                             error!(
-                                "Failed to reconnect to \"{}\": {}", interface_properties.interface_type, err
+                                "Failed to reconnect to \"{}\": {}", interface_type, err
                             );
                             attempts += 1;
                         }
@@ -1663,10 +1711,10 @@ impl ComHub {
                 }
             }
             else {
-                info!("Closed interface {}, cannot reconnect because of missing setup data", interface_properties.interface_type);;
+                info!("Closed interface {}, cannot reconnect because of missing setup data", interface_type);;
             }
-            
-            self.reconnecting_interfaces.borrow_mut().remove(&reconnect_request.uuid);
+
+            self.reconnecting_interfaces.borrow_mut().remove(&temp_uuid);
         }
     }
 

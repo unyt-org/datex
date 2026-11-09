@@ -77,11 +77,7 @@ pub struct ComInterfaceProperties {
     /// This might be an already encrypted channel such as WebRTC or a channel
     /// that is end-to-end and not interceptable by third parties
     pub is_secure_channel: bool,
-
-    // Defines the reconnection strategy for the interface
-    // If the interface is not able to reconnect, it will be destroyed
-    pub reconnection_config: ReconnectionConfig,
-
+    
     // If true, the interface sends Hello block identifications automatically
     // after socket connection establishment
     pub auto_identify: bool,
@@ -143,14 +139,7 @@ impl ComInterfaceProperties {
             InterfaceDirection::InOut => true,
         }
     }
-
-    pub fn shall_reconnect(&self) -> bool {
-        !core::matches!(
-            self.reconnection_config,
-            ReconnectionConfig::NoReconnect
-        )
-    }
-
+    
     pub fn can_receive(&self) -> bool {
         match self.direction {
             InterfaceDirection::In => true,
@@ -173,7 +162,6 @@ impl Default for ComInterfaceProperties {
             continuous_connection: false,
             allow_redirects: true,
             is_secure_channel: false,
-            reconnection_config: ReconnectionConfig::default(),
             connectable_interfaces: None,
         }
     }

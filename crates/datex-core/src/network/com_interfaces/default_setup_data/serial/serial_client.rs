@@ -18,10 +18,12 @@ impl SerialClientInterfaceSetupData {
         ComInterfaceProperties {
             interface_type: "serial".to_string(),
             channel: "serial".to_string(),
-            reconnection_config: ReconnectionConfig::reconnect(),
             round_trip_time: 40,
             max_bandwidth: 100,
             ..ComInterfaceProperties::default()
         }
+    }
+    pub fn get_reconnection_config() -> ReconnectionConfig {
+        ReconnectionConfig::reconnect()
     }
 }

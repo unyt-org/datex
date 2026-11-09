@@ -20,6 +20,7 @@ use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
 use futures::channel::oneshot::Sender;
 use futures_core::future::LocalBoxFuture;
 use futures_util::TryStreamExt;
+use crate::network::com_interfaces::com_interface::properties::ReconnectionConfig;
 
 pub type NewSocketsIterator = Pin<
     Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,
@@ -416,6 +417,10 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 ///             ..Default::default()
 ///         }
 ///     }
+///
+///     fn get_reconnection_config() -> ReconnectionConfig {
+///         ReconnectionConfig::reconnect()
+///     }
 /// }
 pub trait ComInterfaceSyncFactory
 where
@@ -442,6 +447,13 @@ where
 
     /// Get the default interface properties for the interface.
     fn get_default_properties() -> ComInterfaceProperties;
+
+    /// Defines the reconnection strategy for the interface
+    /// If the interface is not able to reconnect, it will be destroyed
+    /// The default implementation returns [ReconnectionConfig::NoReconnect]
+    fn get_reconnection_config() -> ReconnectionConfig {
+        ReconnectionConfig::NoReconnect
+    }
 }
 
 /// This trait can be implemented to provide a factory with an asynchronous setup process
@@ -454,7 +466,7 @@ where
 /// use datex_macros_internal::Datex;
 /// use datex_core::network::com_hub::errors::ComInterfaceCreateError;
 /// use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
-/// use datex_core::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
+/// use datex_core::network::com_interfaces::com_interface::properties::{ComInterfaceProperties, ReconnectionConfig};
 /// use datex_core::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;///
 ///
 /// #[derive(Datex, Clone)]
@@ -477,6 +489,10 @@ where
 ///             interface_type: "example".to_string(),
 ///             ..Default::default()
 ///         }
+///     }
+///
+///     fn get_reconnection_config() -> ReconnectionConfig {
+///         ReconnectionConfig::reconnect()
 ///     }
 /// }
 pub trait ComInterfaceAsyncFactory
@@ -502,4 +518,11 @@ where
 
     /// Get the default interface properties for the interface.
     fn get_default_properties() -> ComInterfaceProperties;
+
+    /// Defines the reconnection strategy for the interface
+    /// If the interface is not able to reconnect, it will be destroyed
+    /// The default implementation returns [ReconnectionConfig::NoReconnect]
+    fn get_reconnection_config() -> ReconnectionConfig {
+        ReconnectionConfig::NoReconnect
+    }
 }

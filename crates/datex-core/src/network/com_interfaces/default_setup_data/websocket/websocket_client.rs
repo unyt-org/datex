@@ -18,10 +18,12 @@ impl WebSocketClientInterfaceSetupData {
         ComInterfaceProperties {
             interface_type: "websocket-client".to_string(),
             channel: "websocket".to_string(),
-            reconnection_config: ReconnectionConfig::reconnect(),
             round_trip_time: 40,
             max_bandwidth: 1000,
             ..ComInterfaceProperties::default()
         }
+    }
+    pub fn get_reconnection_config() -> ReconnectionConfig {
+        ReconnectionConfig::reconnect()
     }
 }

@@ -336,7 +336,13 @@ impl RuntimeInternal {
                     Err(err) => {
                         error!(
                             "Failed to create interface \"{interface_type}\": {err}"
-                        )
+                        );
+                        // request reconnect attempts in background
+                        self.com_hub.reconnect_interface_sender.borrow_mut().start_send(ComInterfaceReconnectRequest::new(
+                            interface_type.clone(),
+                            config.clone(),
+                            priority.clone(),
+                        )).unwrap();
                     }
                     Ok((_, ready_receiver)) => {
                         if let Some(ready_receiver) = ready_receiver {

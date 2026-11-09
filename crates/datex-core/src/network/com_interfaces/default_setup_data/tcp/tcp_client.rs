@@ -17,10 +17,12 @@ impl TCPClientInterfaceSetupData {
         ComInterfaceProperties {
             interface_type: "tcp-client".to_string(),
             channel: "tcp".to_string(),
-            reconnection_config: ReconnectionConfig::reconnect(),
             round_trip_time: 20,
             max_bandwidth: 1000,
             ..ComInterfaceProperties::default()
         }
+    }
+    pub fn get_reconnection_config() -> ReconnectionConfig {
+        ReconnectionConfig::reconnect()
     }
 }
