@@ -37,7 +37,7 @@ pub async fn inspector_instantiation() {
                 .execute(
                     "@test_b.inspector.create(\"Test Inspector\")",
                     &[],
-                    None,
+                    None::<ExecutionContext>,
                 )
                 .await;
 

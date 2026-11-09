@@ -202,6 +202,7 @@ mod tests {
     use core::{future::join, time::Duration};
     use futures_util::future::select;
     use log::info;
+    use crate::network::block_handler::BlockHandler;
     use crate::network::com_hub::ComInterfaceReconnectRequest;
 
     fn get_metadata_sockets(
@@ -242,7 +243,7 @@ mod tests {
         let (reconnect_request_sender, _reconnect_request_receiver) =
             create_unbounded_channel::<ComInterfaceReconnectRequest>();
         let (com_hub, task_future) =
-            ComHub::create(Endpoint::default(), incoming_sections_sender, reconnect_request_sender);
+            ComHub::create(Endpoint::default(), incoming_sections_sender, reconnect_request_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
 
         // add interface
         com_hub
@@ -336,7 +337,7 @@ mod tests {
         let (reconnect_request_sender, _reconnect_request_receiver) =
             create_unbounded_channel::<ComInterfaceReconnectRequest>();
         let (com_hub, _task_future) =
-            ComHub::create(Endpoint::default(), incoming_sections_sender, reconnect_request_sender);
+            ComHub::create(Endpoint::default(), incoming_sections_sender, reconnect_request_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
 
         let result = com_hub.remove_interface(&ComInterfaceUUID::new()).await;
         assert!(result.is_err());

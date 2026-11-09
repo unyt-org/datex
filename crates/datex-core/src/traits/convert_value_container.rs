@@ -20,6 +20,7 @@ use crate::{
         },
     },
 };
+use crate::runtime::execution::context::ExecutionContext;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum DeserializationError {
@@ -107,8 +108,7 @@ pub trait ConvertValueContainer {
         let value = runtime.execute_dxb_sync(
             DXBWithSharedValues::new(dxb, vec![]),
             None,
-            None,
-            true,
+            None::<ExecutionContext>,
         )?;
         if let Some(value) = value {
             let config = Self::try_convert_from_value_container(value)
@@ -127,7 +127,7 @@ pub trait ConvertValueContainer {
     where
         Self: Sized + FromParts,
     {
-        let value = runtime.execute_sync(script, &[], None)?;
+        let value = runtime.execute_sync(script, &[], None::<ExecutionContext>)?;
 
         if let Some(value) = value {
             let config = Self::try_convert_from_value_container(value)

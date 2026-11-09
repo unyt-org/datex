@@ -65,7 +65,9 @@ use core::{
 use futures_util::future::join_all;
 use indexmap::IndexMap;
 use log::{debug, error, info};
+use crate::global::protocol_structures::block_header::FlagsAndTimestamp;
 use crate::network::com_hub::ComInterfaceReconnectRequest;
+use crate::runtime::execution::context::FinalOrPersistedExecutionContext;
 
 pub type RemoteExecutionResult = Result<Option<ValueContainer>, ExecutionError>;
 
@@ -104,23 +106,7 @@ pub struct RuntimeInternal {
     synced_value_data: RefCell<SyncedValueData>,
 }
 
-macro_rules! get_execution_context {
-    // take context and self_rc as parameters
-    ($self_rc:expr, $execution_context:expr) => {
-        match $execution_context {
-            Some(context) => {
-                // set current runtime in execution context if local execution context
-                if let &mut ExecutionContext::Local(ref mut local_context) = context {
-                    local_context.set_runtime_internal($self_rc.clone());
-                }
-                context
-            },
-            None => {
-               &mut ExecutionContext::local(ExecutionMode::Static, $self_rc.clone(), ExecutionCallerMetadata::local_default())
-            }
-        }
-    };
-}
+
 
 impl From<Rc<RuntimeInternal>> for Runtime {
     fn from(value: Rc<RuntimeInternal>) -> Self {
@@ -311,7 +297,7 @@ impl RuntimeInternal {
                 Endpoint::default(),
             ))),
             RuntimeConfig::default(),
-            ComHub::create(Endpoint::default(), incoming_block_sender, reconnect_request_sender).0,
+            ComHub::create(Endpoint::default(), incoming_block_sender, reconnect_request_sender, 0).0,
             TaskManager::create().0,
             incoming_block_receiver,
             reconnect_request_receiver
@@ -380,21 +366,21 @@ impl RuntimeInternal {
     }
 
     #[cfg(feature = "compiler")]
-    pub async fn execute(
+    pub async fn execute<'a>(
         self: Rc<RuntimeInternal>,
-        script: &str,
-        inserted_values: &[ValueContainer],
-        execution_context: Option<&mut ExecutionContext>,
+        script: &'a str,
+        inserted_values: &'a [ValueContainer],
+        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
-        let execution_context = get_execution_context!(
-            Runtime::from(self.clone()),
+        let mut execution_context = Runtime::from(self.clone()).get_or_create_execution_context(
             execution_context
         );
         let compile_start = Instant::now();
-        let dxb = execution_context.compile(
+        let execution_context_mut = execution_context.as_mut();
+        let dxb = execution_context_mut.compile(
             script,
             inserted_values,
-            execution_context.receivers(),
+            execution_context_mut.receivers(),
         )?;
         debug!(
             "[Compilation took {} ms]",
@@ -406,7 +392,6 @@ impl RuntimeInternal {
             dxb,
             None,
             Some(execution_context),
-            true,
         )
         .await
         .map_err(ScriptExecutionError::from);
@@ -418,21 +403,22 @@ impl RuntimeInternal {
     }
 
     #[cfg(feature = "compiler")]
-    pub fn execute_sync(
+    pub fn execute_sync<'a>(
         self: Rc<RuntimeInternal>,
-        script: &str,
-        inserted_values: &[ValueContainer],
-        execution_context: Option<&mut ExecutionContext>,
+        script: &'a str,
+        inserted_values: &'a [ValueContainer],
+        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
-        let execution_context = get_execution_context!(
-            Runtime::from(self.clone()),
+        let mut execution_context = Runtime::from(self.clone()).get_or_create_execution_context(
             execution_context
         );
+        let execution_context_mut = execution_context.as_mut();
+
         let compile_start = Instant::now();
-        let dxb = execution_context.compile(
+        let dxb = execution_context_mut.compile(
             script,
             inserted_values,
-            execution_context.receivers(),
+            execution_context_mut.receivers(),
         )?;
         debug!(
             "[Compilation took {} ms]",
@@ -444,7 +430,6 @@ impl RuntimeInternal {
             dxb,
             None,
             Some(execution_context),
-            true,
         )
         .map_err(ScriptExecutionError::from);
         debug!(
@@ -458,8 +443,7 @@ impl RuntimeInternal {
         self: Rc<RuntimeInternal>,
         input: DXBWithSharedValues,
         initial_stack_values: Option<Vec<ValueContainer>>,
-        execution_context: Option<&'a mut ExecutionContext>,
-        _end_execution: bool,
+        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>> + 'a>,
     ) -> Pin<
         Box<
             dyn Future<Output = Result<Option<ValueContainer>, ExecutionError>>
@@ -467,11 +451,13 @@ impl RuntimeInternal {
         >,
     > {
         Box::pin(async move {
-            let execution_context = get_execution_context!(
-                Runtime::from(self.clone()),
+            let mut execution_context = Runtime::from(self.clone()).get_or_create_execution_context(
                 execution_context
             );
-            match execution_context {
+            let is_end_of_context = execution_context.is_end_of_context();
+            let execution_context_mut = execution_context.as_mut();
+            
+            match execution_context_mut {
                 ExecutionContext::Remote(context) => {
                     // initial stack values are not (yet) supported for remote execution
                     if initial_stack_values.is_some() {
@@ -481,11 +467,12 @@ impl RuntimeInternal {
                         self,
                         &context.target,
                         input,
+                        is_end_of_context,
                     )
                     .await
                 }
                 ExecutionContext::Local(_) => {
-                    execution_context
+                    execution_context_mut
                         .execute_dxb(input, initial_stack_values)
                         .await
                 }
@@ -493,21 +480,25 @@ impl RuntimeInternal {
         })
     }
 
-    pub fn execute_dxb_sync(
+    pub fn execute_dxb_sync<'a>(
         self: Rc<RuntimeInternal>,
         dxb: DXBWithSharedValues,
         initial_stack_values: Option<Vec<ValueContainer>>,
-        execution_context: Option<&mut ExecutionContext>,
-        _end_execution: bool,
+        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let execution_context =
-            get_execution_context!(Runtime::from(self), execution_context);
-        match execution_context {
+        let mut execution_context = Runtime::from(self.clone()).get_or_create_execution_context(
+            execution_context
+        );
+        // TODO: pass is_end_of_context to local execution?
+        // let is_end_of_context = execution_context.is_end_of_context();
+        let execution_context_mut = execution_context.as_mut();
+        
+        match execution_context_mut {
             ExecutionContext::Remote(_) => {
                 Err(ExecutionError::RequiresAsyncExecution)
             }
             ExecutionContext::Local(_) => {
-                execution_context.execute_dxb_sync(dxb, initial_stack_values)
+                execution_context_mut.execute_dxb_sync(dxb, initial_stack_values)
             }
         }
     }
@@ -545,13 +536,14 @@ impl RuntimeInternal {
         self: Rc<RuntimeInternal>,
         remote_execution_target: &RemoteExecutionTarget,
         input: DXBWithSharedValues,
+        is_end_of_context: bool,
     ) -> RemoteExecutionResult {
         if remote_execution_target.endpoints().len() != 1 {
             panic!(
                 "execute_remote_single_receiver called with remote_execution_context that has more than one endpoint"
             );
         }
-        self.execute_remote(remote_execution_target, input)
+        self.execute_remote(remote_execution_target, input, is_end_of_context)
             .await?
             .remove(0)
             .0
@@ -563,6 +555,7 @@ impl RuntimeInternal {
         self: Rc<RuntimeInternal>,
         remote_execution_target: &RemoteExecutionTarget,
         input: DXBWithSharedValues,
+        is_end_of_context: bool
     ) -> Result<Vec<(RemoteExecutionResult, Endpoint)>, SubscriberError> {
         let routing_header: RoutingHeader = RoutingHeader::default()
             .with_sender(self.endpoint.clone())
@@ -581,6 +574,7 @@ impl RuntimeInternal {
         };
         let block_header = BlockHeader {
             context_id,
+            flags_and_timestamp: FlagsAndTimestamp::default().with_is_end_of_context(is_end_of_context),
             ..BlockHeader::default()
         };
         let encrypted_header = EncryptedHeader::default();
@@ -673,7 +667,7 @@ impl RuntimeInternal {
             ExecutionMode::Static,
             Runtime::from(self.clone()),
         );
-        self.execute_remote(&remote_execution_context.target, dxb)
+        self.execute_remote(&remote_execution_context.target, dxb, true)
             .await
     }
 
@@ -756,7 +750,7 @@ impl RuntimeInternal {
                 .borrow_mut()
                 .insert(section_context_id, context);
         }
-      
+
 
         (Ok(result), sender_endpoint, context_id)
     }
@@ -767,12 +761,13 @@ impl RuntimeInternal {
         execution_context: Option<&mut ExecutionContext>,
         shared_values: Option<Vec<SharedContainer>>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let execution_context = get_execution_context!(
-            Runtime::from(self.clone()),
+        let mut execution_context = Runtime::from(self.clone()).get_or_create_execution_context(
             execution_context
         );
+        let execution_context_mut = execution_context.as_mut();
+        
         // assert that the execution context is local
-        if !core::matches!(execution_context, ExecutionContext::Local(_)) {
+        if !core::matches!(execution_context_mut, ExecutionContext::Local(_)) {
             unreachable!(
                 "Execution context must be local for executing a DXB block"
             );
@@ -790,7 +785,6 @@ impl RuntimeInternal {
             DXBWithSharedValues::new(dxb, shared_values.unwrap_or_default()),
             None,
             Some(execution_context),
-            end_execution,
         )
         .await
     }

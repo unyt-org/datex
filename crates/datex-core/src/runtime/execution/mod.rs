@@ -297,6 +297,7 @@ pub async fn execute_dxb(
                         .execute_remote_single_receiver(
                             &remote_execution_context.target,
                             dxb_with_shared_values,
+                            true,
                         )
                         .await?;
                     interrupt_provider

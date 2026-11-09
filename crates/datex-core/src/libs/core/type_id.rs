@@ -16,8 +16,8 @@ use binrw::{
 use core::{fmt::Display, mem::variant_count, str::FromStr};
 use log::info;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use strum::{EnumIter, IntoEnumIterator};
-use strum_macros::{Display, EnumString};
+use strum::{EnumCount as GetEnumCount, EnumIter, IntoEnumIterator};
+use strum_macros::{Display, EnumCount, EnumString};
 
 #[derive(
     Debug,
@@ -32,6 +32,7 @@ use strum_macros::{Display, EnumString};
     EnumString,
     Display,
     Default,
+    EnumCount,
 )]
 #[repr(u16)]
 #[strum(serialize_all = "snake_case")]
@@ -95,8 +96,11 @@ impl CoreLibBaseTypeId {
     }
 }
 
-const INTEGER_VARIANT_COUNT: u16 = variant_count::<IntegerTypeVariant>() as u16;
-const DECIMAL_VARIANT_COUNT: u16 = variant_count::<DecimalTypeVariant>() as u16;
+pub const INTEGER_VARIANT_COUNT: u16 = variant_count::<IntegerTypeVariant>() as u16;
+pub const DECIMAL_VARIANT_COUNT: u16 = variant_count::<DecimalTypeVariant>() as u16;
+
+pub const TOTAL_TYPE_VARIANT_COUNT: u16 = INTEGER_VARIANT_COUNT + DECIMAL_VARIANT_COUNT;
+pub const TOTAL_CORE_LIB_TYPE_COUNT: u16 = CoreLibBaseTypeId::COUNT as u16 + TOTAL_TYPE_VARIANT_COUNT;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, EnumIter)]
 pub enum CoreLibVariantTypeId {

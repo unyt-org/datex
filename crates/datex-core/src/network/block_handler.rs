@@ -87,11 +87,13 @@ impl Debug for BlockHandler {
     }
 }
 
-const RING_MAP_CAPACITY: usize = 500;
 
 impl BlockHandler {
+    pub const DEFAULT_HISTORY_CAPACITY: usize = 200; // TODO: adjust for different targets;
+
     pub fn init(
         incoming_sections_sender: UnboundedSender<IncomingSection>,
+        history_capacity: usize,
     ) -> BlockHandler {
         BlockHandler {
             current_context_id: RefCell::new(0),
@@ -100,7 +102,7 @@ impl BlockHandler {
             section_observers: RefCell::new(HashMap::new()),
             incoming_blocks_history: RefCell::new(
                 RingMap::with_capacity_and_hasher(
-                    RING_MAP_CAPACITY,
+                    history_capacity,
                     RandomState::default(),
                 ),
             ),
@@ -458,7 +460,7 @@ mod tests {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender);
+        let block_handler = BlockHandler::init(incoming_sections_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
         let context_id = block_handler.get_new_context_id();
 
         // Create a single DXB block
@@ -501,7 +503,7 @@ mod tests {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender);
+        let block_handler = BlockHandler::init(incoming_sections_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
 
         let context_id = block_handler.get_new_context_id();
         let section_index = 42;
@@ -598,7 +600,7 @@ mod tests {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender);
+        let block_handler = BlockHandler::init(incoming_sections_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
 
         let context_id = block_handler.get_new_context_id();
         let section_index = 42;
@@ -684,7 +686,7 @@ mod tests {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender);
+        let block_handler = BlockHandler::init(incoming_sections_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
 
         let context_id = block_handler.get_new_context_id();
         let section_index_1 = 42;
@@ -865,7 +867,7 @@ mod tests {
         let (incoming_sections_sender, _incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender);
+        let block_handler = BlockHandler::init(incoming_sections_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
 
         let context_id = block_handler.get_new_context_id();
         let section_index = 42;

@@ -30,6 +30,53 @@ mod local;
 mod remote;
 mod script;
 
+/// Represents an execution context that can be either final (dropped after execution) or persisted (kept for future executions).
+/// Depending on this, the [is_end_of_context] flag is set to true or false on the DXB block
+pub enum FinalOrPersistedExecutionContext<'a> {
+    /// The execution is no longer used afterwards and will be dropped after the execution is finished
+    Final(ExecutionContext),
+    /// The execution context is only given as a reference and will be persisted after the execution is finished.
+    /// This allows reusing the same execution context for multiple executions.
+    Ongoing(&'a mut ExecutionContext),
+}
+
+impl FinalOrPersistedExecutionContext<'_> {
+    /// Returns true if the execution context is final and will be dropped after the execution is finished.
+    pub fn is_end_of_context(&self) -> bool {
+        matches!(self, FinalOrPersistedExecutionContext::Final(_))
+    }
+}
+
+impl AsRef<ExecutionContext> for FinalOrPersistedExecutionContext<'_> {
+    fn as_ref(&self) -> &ExecutionContext {
+        match self {
+            FinalOrPersistedExecutionContext::Final(context) => context,
+            FinalOrPersistedExecutionContext::Ongoing(context) => context,
+        }
+    }
+}
+
+impl AsMut<ExecutionContext> for FinalOrPersistedExecutionContext<'_> {
+    fn as_mut(&mut self) -> &mut ExecutionContext {
+        match self {
+            FinalOrPersistedExecutionContext::Final(context) => context,
+            FinalOrPersistedExecutionContext::Ongoing(context) => context,
+        }
+    }
+}
+
+impl From<ExecutionContext> for FinalOrPersistedExecutionContext<'_> {
+    fn from(context: ExecutionContext) -> Self {
+        FinalOrPersistedExecutionContext::Final(context)
+    }
+}
+
+impl<'a> From<&'a mut ExecutionContext> for FinalOrPersistedExecutionContext<'a> {
+    fn from(context: &'a mut ExecutionContext) -> Self {
+        FinalOrPersistedExecutionContext::Ongoing(context)
+    }
+}
+
 /// An execution context holds the persistent state for executing multiple scripts sequentially within the same context.
 /// This can be either a local context, which is used for executing scripts in the same process, or a remote context,
 /// which is used for executing scripts on a remote endpoint.

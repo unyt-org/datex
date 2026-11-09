@@ -232,11 +232,12 @@ impl ComHub {
     pub fn create(
         endpoint: impl Into<Endpoint>,
         incoming_sections_sender: UnboundedSender<IncomingSection>,
-        com_interface_reconnect_request_sender: UnboundedSender<ComInterfaceReconnectRequest>
+        com_interface_reconnect_request_sender: UnboundedSender<ComInterfaceReconnectRequest>,
+        block_history_capacity: usize,
     ) -> (Rc<ComHub>, impl Future<Output = ()>) {
         let (task_manager, task_future) = TaskManager::create();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender);
+        let block_handler = BlockHandler::init(incoming_sections_sender, block_history_capacity);
 
         let com_hub = Rc::new(ComHub {
             endpoint: endpoint.into(),
@@ -1808,6 +1809,7 @@ pub mod tests {
     use log::info;
     use serde::Deserialize;
     use tokio::task::yield_now;
+    use crate::network::block_handler::BlockHandler;
     use crate::network::com_hub::ComInterfaceReconnectRequest;
 
     /// Creates a mock ComHub for testing without a connected channel
@@ -1824,7 +1826,7 @@ pub mod tests {
         let (incoming_section_sender, incoming_section_receiver) = create_unbounded_channel();
         let (com_interface_reconnect_request_sender, com_interface_reconnect_request_receiver) = create_unbounded_channel();
         let (com_hub, com_hub_future) =
-            ComHub::create(TEST_ENDPOINT_A.clone(), incoming_section_sender, com_interface_reconnect_request_sender);
+            ComHub::create(TEST_ENDPOINT_A.clone(), incoming_section_sender, com_interface_reconnect_request_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
         select! {
             app_result = app_logic(com_hub, incoming_section_receiver, com_interface_reconnect_request_receiver).fuse() => app_result,
             _ = com_hub_future.fuse() => panic!("ComHub future should not complete during the test"),

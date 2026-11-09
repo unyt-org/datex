@@ -111,12 +111,11 @@ impl Apply for DatexBytecodeCallable {
             .execute_dxb_sync(
                 DXBWithSharedValues::new(self.body.clone(), vec![]), // TODO: no clone?
                 Some(stack_values),
-                Some(&mut ExecutionContext::Local(LocalExecutionContext::new(
+                Some(ExecutionContext::Local(LocalExecutionContext::new(
                     ExecutionMode::Static,
                     runtime.clone(),
                     ExecutionCallerMetadata::local_default(), // TODO caller
                 ))),
-                true,
             )
             .map_err(CallableError::from)?;
 
@@ -140,12 +139,11 @@ impl Apply for DatexBytecodeCallable {
             .execute_dxb(
                 DXBWithSharedValues::new(self.body.clone(), vec![]), // TODO: no clone?
                 Some(stack_values),
-                Some(&mut ExecutionContext::Local(LocalExecutionContext::new(
+                Some(ExecutionContext::Local(LocalExecutionContext::new(
                     ExecutionMode::Static,
                     runtime.clone(),
                     ExecutionCallerMetadata::local_default(), // TODO caller
                 ))),
-                true,
             )
             .await
             .map_err(CallableError::from)?;

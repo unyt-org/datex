@@ -104,7 +104,7 @@ pub async fn remote_execution_persistent_context() {
 
             // execute another script that uses the previous context
             let result = runtime_a
-                .execute("x + 5", &[], Some(&mut remote_execution_context))
+                .execute("x + 5", &[], Some(remote_execution_context))
                 .await;
             assert_eq!(
                 result.unwrap().unwrap(),
@@ -162,7 +162,7 @@ pub async fn remote_inline_implicit_context() {
         endpoint_b.clone(),
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
-            let result = runtime_a.execute("@test_b :: 1 + 2", &[], None).await;
+            let result = runtime_a.execute("@test_b :: 1 + 2", &[], None::<ExecutionContext>).await;
             assert_eq!(
                 result.unwrap().unwrap(),
                 ValueContainer::from(Integer::from(3i8))
@@ -188,7 +188,7 @@ pub async fn remote_shared_value_inject_move() {
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute("var x = shared 42; @test_b :: x + 1", &[], None)
+                .execute("var x = shared 42; @test_b :: x + 1", &[], None::<ExecutionContext>)
                 .await;
             assert_eq!(
                 result.unwrap().unwrap(),
@@ -218,7 +218,7 @@ pub async fn remote_shared_value_inject_ref() {
                 .execute(
                     "var x = shared 42; @test_b :: ['x + 1, 'x]",
                     &[],
-                    None,
+                    None::<ExecutionContext>,
                 )
                 .await
                 .unwrap()
@@ -279,7 +279,7 @@ pub async fn remote_shared_value_return(
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute(&format!("@test_b :: ({shared_string} 42)"), &[], None)
+                .execute(&format!("@test_b :: ({shared_string} 42)"), &[], None::<ExecutionContext>)
                 .await
                 .unwrap()
                 .unwrap();
@@ -337,7 +337,7 @@ pub async fn remote_shared_roundtrip_move(
                         "const x = {shared_string} 42; @test_b :: (print 'x; x)"
                     ),
                     &[],
-                    None,
+                    None::<ExecutionContext>,
                 )
                 .await
                 .unwrap()

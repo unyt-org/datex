@@ -179,7 +179,7 @@ impl RuntimeInternal {
         );
 
         self_clone
-            .execute_remote(&context.target, update_dxb)
+            .execute_remote(&context.target, update_dxb, true)
             .await
             .expect("Failed to execute remote update block");
     }
@@ -267,7 +267,7 @@ impl RuntimeInternal {
             };
 
             self_clone
-                .execute_remote(&target, update_dxb)
+                .execute_remote(&target, update_dxb, true)
                 .await
                 .expect("Failed to execute remote update block")
         };

@@ -31,6 +31,8 @@ use crate::{
 pub use config::*;
 pub use internal::*;
 pub use runner::*;
+use crate::runtime::execution::context::{ExecutionMode, FinalOrPersistedExecutionContext};
+use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 
 #[derive(Clone, Debug)]
 pub struct Runtime {
@@ -67,11 +69,11 @@ impl Runtime {
     }
 
     #[cfg(feature = "compiler")]
-    pub async fn execute(
-        &self,
-        script: &str,
-        inserted_values: &[ValueContainer],
-        execution_context: Option<&mut ExecutionContext>,
+    pub async fn execute<'a>(
+        &'a self,
+        script: &'a str,
+        inserted_values: &'a [ValueContainer],
+        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
         RuntimeInternal::execute(
             self.internal(),
@@ -83,11 +85,11 @@ impl Runtime {
     }
 
     #[cfg(feature = "compiler")]
-    pub fn execute_sync(
-        &self,
-        script: &str,
-        inserted_values: &[ValueContainer],
-        execution_context: Option<&mut ExecutionContext>,
+    pub fn execute_sync<'a>(
+        &'a self,
+        script: &'a str,
+        inserted_values: &'a [ValueContainer],
+        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
         RuntimeInternal::execute_sync(
             self.internal(),
@@ -101,44 +103,42 @@ impl Runtime {
         &'a self,
         input: DXBWithSharedValues,
         initial_stack_values: Option<Vec<ValueContainer>>,
-        execution_context: Option<&'a mut ExecutionContext>,
-        end_execution: bool,
+        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>> + 'a>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_dxb(
             self.internal(),
             input,
             initial_stack_values,
             execution_context,
-            end_execution,
         )
         .await
     }
 
-    pub fn execute_dxb_sync(
-        &self,
+    pub fn execute_dxb_sync<'a>(
+        &'a self,
         input: DXBWithSharedValues,
         initial_stack_values: Option<Vec<ValueContainer>>,
-        execution_context: Option<&mut ExecutionContext>,
-        end_execution: bool,
+        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_dxb_sync(
             self.internal(),
             input,
             initial_stack_values,
             execution_context,
-            end_execution,
         )
     }
 
     pub async fn execute_remote(
         &self,
-        remote_execution_target: &mut RemoteExecutionTarget,
+        remote_execution_target: &RemoteExecutionTarget,
         input: DXBWithSharedValues,
+        is_end_of_context: bool,
     ) -> Result<Vec<(RemoteExecutionResult, Endpoint)>, SubscriberError> {
         RuntimeInternal::execute_remote(
             self.internal(),
             remote_execution_target,
             input,
+            is_end_of_context
         )
         .await
     }
@@ -147,11 +147,13 @@ impl Runtime {
         &self,
         remote_execution_target: &RemoteExecutionTarget,
         input: DXBWithSharedValues,
+        is_end_of_context: bool,
     ) -> RemoteExecutionResult {
         RuntimeInternal::execute_remote_single_receiver(
             self.internal(),
             remote_execution_target,
             input,
+            is_end_of_context
         )
         .await
     }
@@ -180,5 +182,26 @@ impl Runtime {
             instructions_input,
         )
         .await
+    }
+
+    pub(crate) fn get_or_create_execution_context<'a>(
+        self: &Runtime, 
+        ctx: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>
+    ) -> FinalOrPersistedExecutionContext<'a> {
+        match ctx {
+            Some(context) => {
+                let mut context = context.into();
+                // set current runtime in execution context if local execution context
+                if let &mut ExecutionContext::Local(ref mut local_context) = context.as_mut() {
+                    local_context.set_runtime_internal(self.clone());
+                }
+                context
+            },
+            None => {
+                FinalOrPersistedExecutionContext::Final(
+                    ExecutionContext::local(ExecutionMode::Static, self.clone(), ExecutionCallerMetadata::local_default())
+                )
+            }
+        }
     }
 }

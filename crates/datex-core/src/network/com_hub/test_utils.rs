@@ -20,6 +20,7 @@ use alloc::{rc::Rc, sync::Arc};
 use core::{pin::Pin, str::FromStr};
 use futures_util::future::join;
 use tokio::task::{LocalSet, spawn_local, yield_now};
+use crate::network::block_handler::BlockHandler;
 use crate::network::com_hub::ComInterfaceReconnectRequest;
 use crate::network::com_interfaces::com_interface::factory::SendSuccess;
 
@@ -73,14 +74,14 @@ pub async fn get_coupled_com_hubs() -> (
     let (com_interface_reconnect_request_sender_a, com_interface_reconnect_request_receiver_a) =
         create_unbounded_channel::<ComInterfaceReconnectRequest>();
     let (com_hub_a, task_future_a) =
-        ComHub::create(TEST_ENDPOINT_A.clone(), incoming_sections_sender_a, com_interface_reconnect_request_sender_a);
+        ComHub::create(TEST_ENDPOINT_A.clone(), incoming_sections_sender_a, com_interface_reconnect_request_sender_a, BlockHandler::DEFAULT_HISTORY_CAPACITY);
 
     let (incoming_sections_sender_b, incoming_sections_receiver_b) =
         create_unbounded_channel::<IncomingSection>();
     let (com_interface_reconnect_request_sender_b, com_interface_reconnect_request_receiver_b) =
         create_unbounded_channel::<ComInterfaceReconnectRequest>();
     let (com_hub_b, task_future_b) =
-        ComHub::create(TEST_ENDPOINT_B.clone(), incoming_sections_sender_b, com_interface_reconnect_request_sender_b);
+        ComHub::create(TEST_ENDPOINT_B.clone(), incoming_sections_sender_b, com_interface_reconnect_request_sender_b, BlockHandler::DEFAULT_HISTORY_CAPACITY);
 
     let res = couple_com_hubs_internal(com_hub_a.clone(), com_hub_b.clone());
 

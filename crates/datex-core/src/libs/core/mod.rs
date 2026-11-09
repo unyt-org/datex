@@ -34,6 +34,7 @@ use crate::{
 };
 use indexmap::IndexMap;
 use strum::IntoEnumIterator;
+use crate::libs::core::type_id::TOTAL_CORE_LIB_TYPE_COUNT;
 
 #[derive(Debug)]
 pub struct CoreLibraryValues {
@@ -161,7 +162,9 @@ pub struct CoreLibraryTypes(IndexMap<CoreLibTypeId, Value, RandomState>);
 
 impl Default for CoreLibraryTypes {
     fn default() -> Self {
-        Self(Self::core_lib_types().collect())
+        let mut map = IndexMap::with_capacity(TOTAL_CORE_LIB_TYPE_COUNT as usize);
+        map.extend(Self::core_lib_types());
+        Self(map)
     }
 }
 
@@ -215,11 +218,10 @@ impl Default for CoreLibrary {
                     .iterate()
                     .map(|(id, value)| (CoreLibId::Type(id), value.clone())),
             )
-            .map(|(id, value)| (id.to_string(), ValueContainer::from(value)))
-            .collect::<Vec<_>>();
+            .map(|(id, value)| (id.to_string(), ValueContainer::from(value)));
 
         CoreLibrary {
-            map: Value::from(Map::from(entries)),
+            map: Value::from(Map::from_iter(entries)),
             types,
             values,
         }
