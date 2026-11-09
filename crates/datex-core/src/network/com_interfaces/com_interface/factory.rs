@@ -467,7 +467,7 @@ where
 /// use datex_core::network::com_hub::errors::ComInterfaceCreateError;
 /// use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
 /// use datex_core::network::com_interfaces::com_interface::properties::{ComInterfaceProperties, ReconnectionConfig};
-/// use datex_core::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult
+/// use datex_core::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 ///
 /// #[derive(Datex, Clone)]
 /// # #[datex(_force_datex_core_namespace)]

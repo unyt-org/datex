@@ -134,13 +134,6 @@ impl ComInterfaceReconnectRequest {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct InterfaceReconnectData {
-    interface_type: String,
-    priority: InterfacePriority,
-    setup_data: Option<Value>
-}
-
 pub struct ComHub {
     /// the runtime endpoint of the hub (@me)
     pub endpoint: Endpoint,
@@ -159,7 +152,7 @@ pub struct ComHub {
     pub reconnect_interface_sender: RefCell<UnboundedSender<ComInterfaceReconnectRequest>>,
 
     /// List of interfaces that are currently being reconnected, only used for debugging purposes
-    reconnecting_interfaces: RefCell<HashMap<ComInterfaceUUID, InterfaceReconnectData>>,
+    reconnecting_interfaces: RefCell<HashMap<ComInterfaceUUID, InterfaceInfo>>,
 
     pub task_manager: TaskManager,
 }
@@ -1648,34 +1641,34 @@ impl ComHub {
 
     /// Completely removes an existing interface and tries to reconnect
     pub async fn try_reconnect_interface(self: Rc<ComHub>, reconnect_request: ComInterfaceReconnectRequest) {
-        let (interface_type, setup_data, priority) = match reconnect_request {
+        let interface_info = match reconnect_request {
             ComInterfaceReconnectRequest::RegisteredInterface { uuid} => {
-                let info = self.remove_interface(&uuid).await.unwrap();
-                (
-                    info.properties.interface_type.clone(),
-                    info.original_setup_data.clone(),
-                    info.priority.clone()
-                )
+                self.remove_interface(&uuid).await.unwrap()
             }
-            ComInterfaceReconnectRequest::NewInterface { interface_type, setup_data: config, priority } => (
-                interface_type,
-                Some(config),
-                priority
-            )
+            ComInterfaceReconnectRequest::NewInterface { interface_type, setup_data, priority } => {
+                let default_properties = self.interfaces_manager.get_interface_default_properties(&interface_type).unwrap();
+                InterfaceInfo {
+                    properties: Rc::new(default_properties),
+                    priority,
+                    is_waiting_for_socket_connections: false,
+                    original_setup_data: Some(setup_data),
+                    close_sender: None,
+                }
+            }
         };
 
-        let reconnection_config = self.interfaces_manager.get_reconnection_config(&interface_type);
+        let reconnection_config = self.interfaces_manager.get_reconnection_config(&interface_info.properties.interface_type);
 
         // generate new temp uuid
         let temp_uuid = ComInterfaceUUID::new();
 
         if let Some(reconnect_attempts) = reconnection_config.get_reconnect_attempts() {
+            let setup_data = interface_info.original_setup_data.clone();
+            let interface_type = interface_info.properties.interface_type.clone();
+            let priority = interface_info.priority.clone();
+
             // only for debugging purposes: store in reconnecting_interfaces
-            self.reconnecting_interfaces.borrow_mut().insert(temp_uuid.clone(), InterfaceReconnectData {
-                interface_type: interface_type.clone(),
-                setup_data: setup_data.clone(),
-                priority: priority.clone(),
-            });
+            self.reconnecting_interfaces.borrow_mut().insert(temp_uuid.clone(), interface_info);
 
             let mut attempts = 0;
 

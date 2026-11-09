@@ -16,7 +16,7 @@ use crate::{
     prelude::*, values::value::Value,
 };
 use crate::network::com_hub::managers::com_interface_manager::InterfaceInfo;
-use crate::network::com_interfaces::com_interface::properties::ReconnectionConfig;
+use crate::network::com_interfaces::com_interface::properties::{ComInterfaceProperties, ReconnectionConfig};
 
 /// Interface management methods
 impl ComHub {
@@ -38,9 +38,10 @@ impl ComHub {
         interface_type: String,
         factory: DynInterfaceImplementationFactoryFn,
         reconnection_config: ReconnectionConfig,
+        get_default_properties: fn() -> ComInterfaceProperties,
     ) {
         self.interfaces_manager
-            .register_dyn_interface_factory(interface_type, factory, reconnection_config);
+            .register_dyn_interface_factory(interface_type, factory, reconnection_config, get_default_properties);
     }
 
     /// Adds a new interface to the ComHub based on the provided configuration

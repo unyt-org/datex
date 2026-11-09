@@ -25,7 +25,6 @@ use core::fmt::Display;
 use datex_macros_internal::Datex;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use crate::network::com_hub::InterfaceReconnectData;
 
 #[derive(Datex, Debug, Clone)]
 #[datex(structural)]
@@ -47,7 +46,7 @@ pub struct ComHubMetadataInterfaceSocketWithoutEndpoint {
 #[datex(structural)]
 pub struct ComHubMetadataInterface {
     pub uuid: String,
-    pub properties: Option<ComInterfaceProperties>,
+    pub properties: ComInterfaceProperties,
     pub sockets: Vec<ComHubMetadataInterfaceSocket>,
     pub is_waiting_for_socket_connections: bool,
 }
@@ -66,24 +65,22 @@ impl Display for ComHubMetadata {
 
         // print interfaces
         for interface in &self.interfaces {
-            let interface_type = interface.properties.as_ref().map(|properties| properties.interface_type.to_string()).unwrap_or("/".to_string());
-            let interface_channel = interface.properties.as_ref().map(|properties| properties.channel.to_string()).unwrap_or("/".to_string());
-            let interface_name = interface.properties.as_ref().map(|properties| &properties.name).unwrap_or(&None);
-
             writeln!(
                 f,
                 "  {}/{}{}{}:",
-                interface_type,
-                interface_channel,
+                interface.properties.interface_type,
+                interface.properties.channel,
                 if interface.is_waiting_for_socket_connections {
                     " [accepting connections]"
                 } else {
                     ""
                 },
-                interface_name
+                interface
+                    .properties
+                    .name
                     .clone()
                     .map(|n| format!(" ({n})"))
-                    .unwrap_or("/".to_string()),
+                    .unwrap_or("".to_string()),
             )?;
 
             // print sockets
@@ -201,17 +198,16 @@ impl ComHub {
         }
 
         for (uuid, info) in self.reconnecting_interfaces.borrow().iter() {
-            metadata.reconnecting_interfaces.push(ComHubMetadataInterface {
-                uuid: uuid.to_string(),
-                properties: None,
-                sockets: vec![],
-                is_waiting_for_socket_connections: false,
-            });
+            metadata.reconnecting_interfaces.push(interface_info_to_metadata(
+                uuid,
+                info,
+                &mut sockets_by_com_interface_uuid
+            ));
         }
 
         metadata
     }
-
+    
 
     /// Prints the ComHub metadata to the log.
     pub fn print_metadata(&self) {
@@ -236,7 +232,7 @@ fn interface_info_to_metadata(
 
     ComHubMetadataInterface {
         uuid: uuid.to_string(),
-        properties: Some(properties.as_ref().clone()),
+        properties: properties.as_ref().clone(),
         sockets: sockets_by_com_interface_uuid
             .remove(uuid)
             .unwrap_or_default(),
