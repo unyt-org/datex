@@ -71,7 +71,7 @@ impl DIFInterface {
 
     /// Registers a native callable function in the DIFInterface as a shared value and returns its pointer address.
     pub fn register_callable(
-        &mut self,
+        &self,
         callable: NativeCallable,
         name: Option<String>,
         signature: CallableTypeDefinition,
@@ -104,7 +104,7 @@ impl DIFInterface {
 
     /// Executes an async apply operation, applying the `value` to the `callee`.
     pub async fn apply_async(
-        &self,
+        self: Rc<Self>,
         runtime: &Runtime,
         callee: ValueContainer,
         args: Vec<ApplyArgument>,
@@ -127,7 +127,7 @@ impl DIFInterface {
 
     /// Calls an async method on a value
     pub async fn call_method_async(
-        &self,
+        self: Rc<Self>,
         runtime: &Runtime,
         callee: ValueContainer,
         method: String,
@@ -143,7 +143,7 @@ impl DIFInterface {
     /// Creates a new owned local pointer and stores it in memory.
     /// Returns the [SelfOwnedPointerAddress] of the newly created pointer.
     pub fn create_pointer(
-        &mut self,
+        &self,
         value: BaseSharedValueContainer,
     ) -> SelfOwnedPointerAddress {
         let container = OwnedSharedContainer::new_from_self_owned_container(
@@ -163,7 +163,7 @@ impl DIFInterface {
     /// Resolves a pointer address of a pointer that is currently in memory to its [SharedContainer].
     /// Returns an error if the pointer is not found in memory.
     pub fn resolve_pointer_address(
-        &mut self,
+        &self,
         address: PointerAddress,
     ) -> Result<SharedContainer, ValueNotFoundInCacheError> {
         self.cache
