@@ -174,7 +174,7 @@ pub fn datex_main_impl_with_config(
     let profiler = cfg_select! {
         feature = "debug_dhat" => {
             quote! {
-                let _profiler = dhat::Profiler::new_heap();
+                let _profiler = #core_namespace::dhat::Profiler::new_heap();
             }
         },
         _ => {

@@ -96,6 +96,9 @@ pub use serde;
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
 
+#[cfg(feature = "debug_dhat")]
+pub use dhat;
+
 /// HashMap and HashSet that work in both std and no_std environments.
 pub mod collections {
     cfg_if::cfg_if! {

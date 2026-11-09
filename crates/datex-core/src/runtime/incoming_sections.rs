@@ -81,19 +81,7 @@ impl RuntimeInternal {
             Ok(Some(result)) => self.log_info(format!(
                 "Successful Execution result (from {}): {}",
                 endpoint,
-                {
-                    #[cfg(feature = "decompiler")]
-                    {
-                        crate::decompiler::ast_to_source_code::value_to_source_code(
-                            result,
-                            crate::decompiler::DecompileOptions::colorized(),
-                        )
-                    }
-                    #[cfg(not(feature = "decompiler"))]
-                    {
-                        result
-                    }
-                }
+                result
             )),
             Ok(None) => self.log_info(format!(
                 "Successful Execution result (from {}): None",
