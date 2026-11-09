@@ -1673,9 +1673,9 @@ impl ComHub {
             let mut attempts = 0;
 
             if let Some(setup_data) = setup_data {
-                sleep(reconnect_attempts.interval).await;
                 info!("Trying to reconnect to {}", interface_type);
                 loop {
+                    sleep(reconnect_attempts.interval).await;
                     // abort when max attempts reached
                     if let Some(max_reconnect_attempts) = reconnect_attempts.max_attempts && attempts > max_reconnect_attempts {
                         warn!("Max reconnect attempts of {} reached for interface {}, aborting reconnect", max_reconnect_attempts, interface_type);
