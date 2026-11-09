@@ -515,7 +515,7 @@ impl RuntimeInternal {
     /// Returns the existing execution context for the given context_id,
     /// or creates a new one if it doesn't exist.
     /// To reuse the context later, the caller must store it back in the map after use.
-    fn take_execution_context(
+    fn take_or_create_execution_context(
         self: Rc<RuntimeInternal>,
         context_id: &IncomingEndpointContextSectionId,
         incoming_section: &IncomingSection,
@@ -703,7 +703,7 @@ impl RuntimeInternal {
     ) {
         let section_context_id =
             incoming_section.get_section_context_id().clone();
-        let mut context = Self::take_execution_context(
+        let mut context = Self::take_or_create_execution_context(
             self.clone(),
             &section_context_id,
             &incoming_section,
@@ -748,12 +748,15 @@ impl RuntimeInternal {
         let last_block = last_block.unwrap();
         let sender_endpoint = last_block.sender().clone();
         let context_id = last_block.block_header.context_id;
+        let is_end_of_context = last_block.block_header.flags_and_timestamp.is_end_of_context();
 
-        // insert the context back into the map for future use
-        // TODO #638: is this needed or can we drop the context after execution here?
-        self.execution_contexts
-            .borrow_mut()
-            .insert(section_context_id, context);
+        // insert the context back into the map for future use if not end of context
+        if !is_end_of_context {
+            self.execution_contexts
+                .borrow_mut()
+                .insert(section_context_id, context);
+        }
+      
 
         (Ok(result), sender_endpoint, context_id)
     }
