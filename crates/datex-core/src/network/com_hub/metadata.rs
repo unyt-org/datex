@@ -56,6 +56,7 @@ pub struct ComHubMetadataInterface {
 pub struct ComHubMetadata {
     pub endpoint: Endpoint,
     pub interfaces: Vec<ComHubMetadataInterface>,
+    pub reconnecting_interfaces: Vec<ComHubMetadataInterface>,
 }
 
 impl Display for ComHubMetadata {
@@ -129,6 +130,7 @@ impl ComHub {
         let mut metadata = ComHubMetadata {
             endpoint: self.endpoint.clone(),
             interfaces: Vec::new(),
+            reconnecting_interfaces: Vec::new(),
         };
 
         let mut sockets_by_com_interface_uuid: HashMap<
@@ -187,32 +189,53 @@ impl ComHub {
             }
         }
 
-        for (
-            uuid,
-            InterfaceInfo {
-                properties,
-                is_waiting_for_socket_connections,
-                ..
-            },
-        ) in self.interfaces_manager.interfaces.borrow().iter()
-        {
-            metadata.interfaces.push(ComHubMetadataInterface {
-                uuid: uuid.to_string(),
-                properties: properties.as_ref().clone(),
-                sockets: sockets_by_com_interface_uuid
-                    .remove(uuid)
-                    .unwrap_or_default(),
-                is_waiting_for_socket_connections:
-                    *is_waiting_for_socket_connections,
-            });
+        for (uuid, info) in self.interfaces_manager.interfaces.borrow().iter() {
+            metadata.interfaces.push(interface_to_metadata(
+                uuid,
+                info,
+                &mut sockets_by_com_interface_uuid
+            ));
+        }
+
+        for (uuid, info) in self.reconnecting_interfaces.borrow().iter() {
+            metadata.reconnecting_interfaces.push(interface_to_metadata(
+                uuid,
+                info,
+                &mut sockets_by_com_interface_uuid
+            ));
         }
 
         metadata
     }
+    
 
     /// Prints the ComHub metadata to the log.
     pub fn print_metadata(&self) {
         let metadata = self.get_metadata();
         info!("ComHub Metadata:\n{metadata}");
+    }
+}
+
+fn interface_to_metadata(
+    uuid: &ComInterfaceUUID,
+    info: &InterfaceInfo,
+    sockets_by_com_interface_uuid: &mut HashMap<
+        ComInterfaceUUID,
+        Vec<ComHubMetadataInterfaceSocket>,
+    >
+) -> ComHubMetadataInterface {
+    let InterfaceInfo {
+        properties,
+        is_waiting_for_socket_connections,
+        ..
+    } = info;
+
+    ComHubMetadataInterface {
+        uuid: uuid.to_string(),
+        properties: properties.as_ref().clone(),
+        sockets: sockets_by_com_interface_uuid
+            .remove(uuid)
+            .unwrap_or_default(),
+        is_waiting_for_socket_connections: *is_waiting_for_socket_connections,
     }
 }

@@ -17,6 +17,7 @@ mod datex_inspector {
         shared_wrappers::shared::{shared_ref::SharedRef, to_shared::ToShared},
         values::core_values::{channel::create_channel, receiver::Receiver},
     };
+    use crate::network::com_hub::metadata::ComHubMetadata;
 
     #[derive(Datex, Debug, Clone, PartialEq, Eq, Hash)]
     #[datex(no_deserialize, builtin = 0x000001)]
@@ -42,6 +43,14 @@ mod datex_inspector {
             let (sender, receiver) = create_channel(runtime);
             register_log_sender(sender);
             receiver
+        }
+
+        /// Returns the current metadata information (connected interfaces, sockets) of the endpoint's com hub.
+        pub fn com_hub_metadata(
+            &self,
+            #[runtime] runtime: &Runtime
+        ) -> ComHubMetadata {
+            runtime.com_hub().get_metadata()
         }
 
         /// Attempts to reboot the endpoint associated with the inspector.

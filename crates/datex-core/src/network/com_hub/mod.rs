@@ -130,6 +130,9 @@ pub struct ComHub {
     /// Sender that requests reconnect task to be spawned on this [ComHub] - requests are spawned externally with by calling [Self::try_reconnect_interface] with an [Rc<ComHub>]
     reconnect_interface_sender: RefCell<UnboundedSender<ComInterfaceReconnectRequest>>,
 
+    /// List of interfaces that are currently being reconnected, only used for debugging purposes
+    reconnecting_interfaces: RefCell<HashMap<ComInterfaceUUID, InterfaceInfo>>,
+
     pub task_manager: TaskManager,
 }
 
@@ -223,6 +226,7 @@ impl ComHub {
             incoming_block_interceptors: RefCell::new(Vec::new()),
             outgoing_block_interceptors: RefCell::new(Vec::new()),
             reconnect_interface_sender: RefCell::new(com_interface_reconnect_request_sender),
+            reconnecting_interfaces: RefCell::new(HashMap::new()),
             task_manager,
         });
 
@@ -1617,11 +1621,14 @@ impl ComHub {
     /// Completely removes an existing interface and tries to reconnect
     pub async fn try_reconnect_interface(self: Rc<ComHub>, reconnect_request: ComInterfaceReconnectRequest) {
         let info = self.remove_interface(&reconnect_request.uuid).await.unwrap();
-        let interface_properties = info.properties;
-        let setup_data = info.original_setup_data;
-        let priority = info.priority;
-
+        let interface_properties = info.properties.clone();
+        let setup_data = info.original_setup_data.clone();
+        let priority = info.priority.clone();
+        
         if let Some(reconnect_attempts) = interface_properties.reconnection_config.get_reconnect_attempts() {
+            // only for debugging purposes: store in reconnecting_interfaces
+            self.reconnecting_interfaces.borrow_mut().insert(reconnect_request.uuid.clone(), info);
+            
             let mut attempts = 0;
 
             if let Some(setup_data) = setup_data {
@@ -1656,9 +1663,10 @@ impl ComHub {
                 }
             }
             else {
-                info!("Closed interface {}, cannot reconnect because of missing setup data", interface_properties.interface_type);
-                return;
+                info!("Closed interface {}, cannot reconnect because of missing setup data", interface_properties.interface_type);;
             }
+            
+            self.reconnecting_interfaces.borrow_mut().remove(&reconnect_request.uuid);
         }
     }
 
