@@ -426,7 +426,7 @@ impl BlockHandler {
 
         // create observer callback for scope id + block index
         let observer = move |blocks: IncomingSection| {
-            tx.clone().borrow_mut().start_send(blocks).unwrap();
+            tx.clone().borrow_mut().start_send(blocks).unwrap(); // FIXME don't unwrap here
         };
 
         // add new scope observer
