@@ -23,6 +23,7 @@ use tokio::task::{LocalSet, spawn_local, yield_now};
 use crate::network::block_handler::{create_incoming_sections_channel, BlockHandler, IncomingSectionReceiver};
 use crate::network::com_hub::ComInterfaceReconnectRequest;
 use crate::network::com_interfaces::com_interface::factory::SendSuccess;
+use crate::runtime::Runtime;
 
 lazy_static::lazy_static! {
     pub static ref TEST_ENDPOINT_A: Endpoint = Endpoint::from_str("@test-a").unwrap();

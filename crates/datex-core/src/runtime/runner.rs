@@ -54,11 +54,14 @@ impl RuntimeRunner {
             memory,
             pointer_address_provider,
             config,
-            com_hub,
+            com_hub.clone(),
             task_manager,
             incoming_sections_receiver,
             com_interface_reconnect_request_receiver,
         ));
+
+        // link runtime to com hub (needed for network tracing)
+        *com_hub.runtime.borrow_mut() = Some(runtime.clone());
 
         let runtime_internal = runtime.internal.clone();
 

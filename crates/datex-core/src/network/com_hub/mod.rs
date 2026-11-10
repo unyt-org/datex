@@ -94,6 +94,7 @@ use crate::channel::mpsc;
 use crate::channel::mpsc::{create_unbounded_channel, UnboundedReceiver};
 use crate::network::block_handler::IncomingSectionSender;
 use crate::network::com_hub::managers::com_interface_manager::{InterfaceCloseInfo, InterfaceInfo};
+use crate::runtime::Runtime;
 use crate::task::sleep;
 use crate::utils::maybe_async::MaybeAsyncResult;
 use crate::values::value::Value;
@@ -156,6 +157,9 @@ pub struct ComHub {
     reconnecting_interfaces: RefCell<HashMap<ComInterfaceUUID, InterfaceInfo>>,
 
     pub task_manager: TaskManager,
+
+    /// Optional runtime for the ComHub, required for network tracing. TODO: find a better solution, comhub should not need to reference runtime
+    pub(crate) runtime: RefCell<Option<Runtime>>
 }
 
 impl Debug for ComHub {
@@ -251,6 +255,7 @@ impl ComHub {
             reconnect_interface_sender: RefCell::new(com_interface_reconnect_request_sender),
             reconnecting_interfaces: RefCell::new(HashMap::new()),
             task_manager,
+            runtime: RefCell::new(None),
         });
 
         (com_hub, task_future)

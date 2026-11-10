@@ -196,12 +196,18 @@ pub fn datex_main_impl_with_config(
 
             #setup
 
+            // first init runner with default config
+            let runner = RuntimeRunner::new(RuntimeConfig::default());
+
+            // resolve the actual config from bytes
             let config = match (#config_bytes) {
-                Some(bytes) => ConvertValueContainer::try_from_bytes(bytes, &Runtime::stub()).unwrap(),
+                Some(bytes) => ConvertValueContainer::try_from_bytes(bytes, &runner.runtime).unwrap(),
                 None => RuntimeConfig::default(),
             };
+            unsafe {
+                runner.runtime.set_config(config);
+            }
 
-            let runner = RuntimeRunner::new(config);
             #runtime_clone
             {
                 #init_scoped

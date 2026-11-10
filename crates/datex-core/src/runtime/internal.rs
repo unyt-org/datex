@@ -187,6 +187,16 @@ impl RuntimeInternal {
     pub fn config(&self) -> &RuntimeConfig {
         &self.config
     }
+
+    /// Updates the runtime config.
+    /// This might not have the expected effect when the runtime is already running.
+    /// 
+    /// # Safety
+    /// The caller should only call this on an uninitialized runtime.
+    pub unsafe fn set_config(&mut self, config: RuntimeConfig) {
+        self.config = config;
+    }
+
     pub fn com_hub(&self) -> Rc<ComHub> {
         self.com_hub.clone()
     }

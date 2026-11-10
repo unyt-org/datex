@@ -543,18 +543,27 @@ impl ComHub {
         trace_block
     }
 
+    /// Returns the linked runtime in the ComHub, or a stub runtime if none is linked.
+    fn get_runtime(&self) -> Runtime {
+        self.runtime
+            .borrow()
+            .as_ref()
+            .cloned()
+            .unwrap_or_else(|| Runtime::stub())
+    }
+    
     pub(crate) fn get_trace_data_from_block(
         &self,
         block: &DXBBlock,
     ) -> Option<Vec<NetworkTraceHop>> {
         // convert DATEX to hops
         let dxb = block.body.clone();
-        let runtime_stub = Runtime::stub(); // FIXME
+        let runtime = self.get_runtime();
         let exec_input = ExecutionInput::new(
             DXBWithSharedValues::new(dxb, vec![]),
             ExecutionCallerMetadata::local_default(),
             ExecutionOptions::default(),
-            runtime_stub,
+            runtime,
         );
         let hops_datex =
             execute_dxb_sync(exec_input).expect("Failed to execute DATEX");
