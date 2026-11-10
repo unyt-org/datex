@@ -162,7 +162,7 @@ pub struct CoreLibraryTypes(IndexMap<CoreLibTypeId, Value, RandomState>);
 
 impl Default for CoreLibraryTypes {
     fn default() -> Self {
-        let mut map = IndexMap::with_capacity(TOTAL_CORE_LIB_TYPE_COUNT as usize);
+        let mut map = IndexMap::with_capacity_and_hasher(TOTAL_CORE_LIB_TYPE_COUNT as usize, RandomState::default());
         map.extend(Self::core_lib_types());
         Self(map)
     }
