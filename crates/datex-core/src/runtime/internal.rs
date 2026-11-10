@@ -62,6 +62,7 @@ use core::{
     ops::DerefMut,
     pin::Pin,
 };
+use core::cell::UnsafeCell;
 use futures_util::future::join_all;
 use indexmap::IndexMap;
 use log::{debug, error, info};
@@ -82,7 +83,7 @@ pub struct RuntimeInternal {
     shared_references_cache: RefCell<SharedReferencesCache>,
     pointer_address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
     com_hub: Rc<ComHub>,
-    config: RuntimeConfig,
+    config: UnsafeCell<RuntimeConfig>,
 
     /// Public endpoint interface properties
     endpoint_properties: RefCell<IndexMap<String, ValueContainer, RandomState>>,
@@ -133,7 +134,7 @@ impl RuntimeInternal {
             endpoint,
             shared_references_cache,
             pointer_address_provider,
-            config,
+            config: UnsafeCell::new(config),
             com_hub,
             task_manager,
             endpoint_properties: RefCell::new(IndexMap::default()),
@@ -185,16 +186,18 @@ impl RuntimeInternal {
         &self.version
     }
     pub fn config(&self) -> &RuntimeConfig {
-        &self.config
+        unsafe { &*self.config.get() }
     }
 
     /// Updates the runtime config.
     /// This might not have the expected effect when the runtime is already running.
-    /// 
+    ///
     /// # Safety
     /// The caller should only call this on an uninitialized runtime.
-    pub unsafe fn set_config(&mut self, config: RuntimeConfig) {
-        self.config = config;
+    pub unsafe fn set_config(&self, config: RuntimeConfig) {
+        unsafe {
+            *self.config.get() = config;
+        }
     }
 
     pub fn com_hub(&self) -> Rc<ComHub> {
@@ -317,7 +320,7 @@ impl RuntimeInternal {
 
     /// Creates all interfaces configured in the runtime config
     async fn create_configured_interfaces(&self) {
-        if let Some(interfaces) = &self.config.interfaces {
+        if let Some(interfaces) = &self.config().interfaces {
             for RuntimeConfigInterface {
                 interface_type,
                 config,
@@ -861,12 +864,12 @@ impl RuntimeInternal {
     }
 
     pub fn get_env(&self) -> IndexMap<String, String, RandomState> {
-        self.config.env.clone().unwrap_or_default()
+        self.config().env.clone().unwrap_or_default()
     }
 
     /// Get the human-readable name of the endpoint (can be provided in config)
     pub fn get_name(&self) -> Option<String> {
-        self.config.name.clone()
+        self.config().name.clone()
     }
 
     /// Creates a new [DIFInterface] with a unique transceiver id and the runtime's pointer address provider
