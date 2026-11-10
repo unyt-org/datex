@@ -20,7 +20,7 @@ use futures_util::{
     join,
 };
 use log::info;
-use crate::network::block_handler::BlockHandler;
+use crate::network::block_handler::{create_incoming_sections_channel, BlockHandler};
 use crate::network::com_hub::ComInterfaceReconnectRequest;
 
 pub struct RuntimeRunner {
@@ -37,7 +37,7 @@ impl RuntimeRunner {
         let (task_manager, runtime_task_future) = TaskManager::create();
 
         let (incoming_sections_sender, incoming_sections_receiver) =
-            create_unbounded_channel::<IncomingSection>();
+            create_incoming_sections_channel();
 
         let (com_interface_reconnect_request_sender, com_interface_reconnect_request_receiver) =
             create_unbounded_channel::<ComInterfaceReconnectRequest>();

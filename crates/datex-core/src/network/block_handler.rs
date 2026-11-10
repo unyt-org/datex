@@ -17,6 +17,7 @@ use crate::{disassembler::print_disassembled, prelude::*};
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
 use log::info;
 use ringmap::RingMap;
+use crate::channel::mpsc::{create_bounded_channel, Receiver, Sender};
 
 // TODO #170: store scope memory
 #[derive(Debug)]
@@ -49,6 +50,24 @@ impl Default for ScopeContext {
 // fn that gets a scope context as callback
 type SectionObserver = Box<dyn FnMut(IncomingSection)>;
 
+// FIXME: handle backpressure for incoming sections in block handler with optional bounded senders/receivers
+
+// pub type IncomingSectionSender = Sender<IncomingSection>;
+// pub type IncomingSectionReceiver = Receiver<IncomingSection>;
+//
+// const INCOMING_SECTIONS_CHANNEL_CAPACITY: usize = 2;
+//
+// pub fn create_incoming_sections_channel() -> (IncomingSectionSender, IncomingSectionReceiver) {
+//     create_bounded_channel(INCOMING_SECTIONS_CHANNEL_CAPACITY)
+// }
+
+pub type IncomingSectionSender = UnboundedSender<IncomingSection>;
+pub type IncomingSectionReceiver = UnboundedReceiver<IncomingSection>;
+pub fn create_incoming_sections_channel() -> (IncomingSectionSender, IncomingSectionReceiver) {
+    create_unbounded_channel()
+}
+
+
 #[derive(Clone, Debug)]
 pub struct BlockHistoryData {
     /// if block originated from local endpoint, the socket uuid is None,
@@ -64,7 +83,7 @@ pub struct BlockHandler {
 
     /// a queue of incoming request scopes
     /// the scopes can be retrieved from the request_scopes map
-    pub incoming_sections_sender: RefCell<UnboundedSender<IncomingSection>>,
+    pub incoming_sections_sender: RefCell<IncomingSectionSender>,
 
     /// a map of observers for incoming response blocks (by context_id + block_index)
     /// contains an observer callback and an optional queue of blocks if the response block is a multi-block stream
@@ -92,7 +111,7 @@ impl BlockHandler {
     pub const DEFAULT_HISTORY_CAPACITY: usize = 200; // TODO: adjust for different targets;
 
     pub fn init(
-        incoming_sections_sender: UnboundedSender<IncomingSection>,
+        incoming_sections_sender: IncomingSectionSender,
         history_capacity: usize,
     ) -> BlockHandler {
         BlockHandler {
@@ -401,8 +420,8 @@ impl BlockHandler {
         &self,
         context_id: OutgoingContextId,
         section_index: OutgoingSectionIndex,
-    ) -> UnboundedReceiver<IncomingSection> {
-        let (tx, rx) = create_unbounded_channel::<IncomingSection>();
+    ) -> IncomingSectionReceiver {
+        let (tx, rx) = create_incoming_sections_channel();
         let tx = Rc::new(RefCell::new(tx));
 
         // create observer callback for scope id + block index
@@ -458,7 +477,7 @@ mod tests {
     #[tokio::test]
     async fn receive_single_block() {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
-            create_unbounded_channel::<IncomingSection>();
+            create_incoming_sections_channel();
 
         let block_handler = BlockHandler::init(incoming_sections_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
         let context_id = block_handler.get_new_context_id();
@@ -501,7 +520,7 @@ mod tests {
     #[tokio::test]
     async fn receive_multiple_blocks() {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
-            create_unbounded_channel::<IncomingSection>();
+            create_incoming_sections_channel();
 
         let block_handler = BlockHandler::init(incoming_sections_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
 
@@ -684,7 +703,7 @@ mod tests {
     #[tokio::test]
     async fn receive_multiple_sections() {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
-            create_unbounded_channel::<IncomingSection>();
+            create_incoming_sections_channel();
 
         let block_handler = BlockHandler::init(incoming_sections_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
 
@@ -865,7 +884,7 @@ mod tests {
     #[cfg(feature = "std")]
     async fn await_response_block() {
         let (incoming_sections_sender, _incoming_sections_receiver) =
-            create_unbounded_channel::<IncomingSection>();
+            create_incoming_sections_channel();
 
         let block_handler = BlockHandler::init(incoming_sections_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
 

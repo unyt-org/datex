@@ -66,6 +66,7 @@ use futures_util::future::join_all;
 use indexmap::IndexMap;
 use log::{debug, error, info};
 use crate::global::protocol_structures::block_header::FlagsAndTimestamp;
+use crate::network::block_handler::{create_incoming_sections_channel, IncomingSectionReceiver};
 use crate::network::com_hub::ComInterfaceReconnectRequest;
 use crate::runtime::execution::context::FinalOrPersistedExecutionContext;
 
@@ -92,7 +93,7 @@ pub struct RuntimeInternal {
     task_manager: TaskManager,
 
     /// receiver for incoming sections from com hub
-    incoming_sections_receiver: RefCell<UnboundedReceiver<IncomingSection>>,
+    incoming_sections_receiver: RefCell<IncomingSectionReceiver>,
 
     /// receiver for incoming interface reconnect requests from com hub
     com_interface_reconnect_request_receiver: RefCell<UnboundedReceiver<ComInterfaceReconnectRequest>>,
@@ -122,7 +123,7 @@ impl RuntimeInternal {
         config: RuntimeConfig,
         com_hub: Rc<ComHub>,
         task_manager: TaskManager,
-        incoming_sections_receiver: UnboundedReceiver<IncomingSection>,
+        incoming_sections_receiver: IncomingSectionReceiver,
         com_interface_reconnect_request_receiver: UnboundedReceiver<ComInterfaceReconnectRequest>,
     ) -> RuntimeInternal {
         let pointer_availability_lookup =
@@ -274,7 +275,7 @@ impl RuntimeInternal {
     }
     pub fn incoming_sections_receiver_mut(
         &self,
-    ) -> RefMut<'_, UnboundedReceiver<IncomingSection>> {
+    ) -> RefMut<'_, IncomingSectionReceiver> {
         self.incoming_sections_receiver.borrow_mut()
     }
     pub fn com_interface_reconnect_request_receiver_mut(
@@ -287,7 +288,7 @@ impl RuntimeInternal {
     }
 
     pub fn stub() -> RuntimeInternal {
-        let (incoming_block_sender, incoming_block_receiver) = create_unbounded_channel();
+        let (incoming_sections_sender, incoming_sections_receiver) = create_incoming_sections_channel();
         let (reconnect_request_sender, reconnect_request_receiver) = create_unbounded_channel();
 
         RuntimeInternal::new(
@@ -297,9 +298,9 @@ impl RuntimeInternal {
                 Endpoint::default(),
             ))),
             RuntimeConfig::default(),
-            ComHub::create(Endpoint::default(), incoming_block_sender, reconnect_request_sender, 0).0,
+            ComHub::create(Endpoint::default(), incoming_sections_sender, reconnect_request_sender, 0).0,
             TaskManager::create().0,
-            incoming_block_receiver,
+            incoming_sections_receiver,
             reconnect_request_receiver
         )
     }

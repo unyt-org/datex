@@ -202,7 +202,7 @@ mod tests {
     use core::{future::join, time::Duration};
     use futures_util::future::select;
     use log::info;
-    use crate::network::block_handler::BlockHandler;
+    use crate::network::block_handler::{create_incoming_sections_channel, BlockHandler};
     use crate::network::com_hub::ComInterfaceReconnectRequest;
 
     fn get_metadata_sockets(
@@ -239,7 +239,7 @@ mod tests {
         let properties = configuration.properties.clone();
 
         let (incoming_sections_sender, _incoming_sections_receiver) =
-            create_unbounded_channel::<IncomingSection>();
+            create_incoming_sections_channel();
         let (reconnect_request_sender, _reconnect_request_receiver) =
             create_unbounded_channel::<ComInterfaceReconnectRequest>();
         let (com_hub, task_future) =
@@ -333,7 +333,7 @@ mod tests {
     #[tokio::test]
     async fn remove_nonexistent_interface() {
         let (incoming_sections_sender, _incoming_sections_receiver) =
-            create_unbounded_channel::<IncomingSection>();
+            create_incoming_sections_channel();
         let (reconnect_request_sender, _reconnect_request_receiver) =
             create_unbounded_channel::<ComInterfaceReconnectRequest>();
         let (com_hub, _task_future) =

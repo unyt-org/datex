@@ -20,7 +20,7 @@ use alloc::{rc::Rc, sync::Arc};
 use core::{pin::Pin, str::FromStr};
 use futures_util::future::join;
 use tokio::task::{LocalSet, spawn_local, yield_now};
-use crate::network::block_handler::BlockHandler;
+use crate::network::block_handler::{create_incoming_sections_channel, BlockHandler, IncomingSectionReceiver};
 use crate::network::com_hub::ComInterfaceReconnectRequest;
 use crate::network::com_interfaces::com_interface::factory::SendSuccess;
 
@@ -34,7 +34,7 @@ lazy_static::lazy_static! {
 pub struct ComHubPeerWithFuture {
     pub com_hub: Rc<ComHub>,
     pub task_future: Pin<Box<dyn Future<Output = ()>>>,
-    pub incoming_sections_receiver: UnboundedReceiver<IncomingSection>,
+    pub incoming_sections_receiver: IncomingSectionReceiver,
     pub com_interface_reconnect_request_receiver: UnboundedReceiver<ComInterfaceReconnectRequest>,
     pub com_interface_uuid: ComInterfaceUUID,
     pub com_interface_properties: Rc<ComInterfaceProperties>,
@@ -42,7 +42,7 @@ pub struct ComHubPeerWithFuture {
 
 pub struct ComHubPeer {
     pub com_hub: Rc<ComHub>,
-    pub incoming_sections_receiver: UnboundedReceiver<IncomingSection>,
+    pub incoming_sections_receiver: IncomingSectionReceiver,
     pub com_interface_reconnect_request_receiver: UnboundedReceiver<ComInterfaceReconnectRequest>,
     pub com_interface_uuid: ComInterfaceUUID,
     pub com_interface_properties: Rc<ComInterfaceProperties>,
@@ -70,14 +70,14 @@ pub async fn get_coupled_com_hubs() -> (
     impl Future<Output = ()>,
 ) {
     let (incoming_sections_sender_a, incoming_sections_receiver_a) =
-        create_unbounded_channel::<IncomingSection>();
+        create_incoming_sections_channel();
     let (com_interface_reconnect_request_sender_a, com_interface_reconnect_request_receiver_a) =
         create_unbounded_channel::<ComInterfaceReconnectRequest>();
     let (com_hub_a, task_future_a) =
         ComHub::create(TEST_ENDPOINT_A.clone(), incoming_sections_sender_a, com_interface_reconnect_request_sender_a, BlockHandler::DEFAULT_HISTORY_CAPACITY);
 
     let (incoming_sections_sender_b, incoming_sections_receiver_b) =
-        create_unbounded_channel::<IncomingSection>();
+        create_incoming_sections_channel();
     let (com_interface_reconnect_request_sender_b, com_interface_reconnect_request_receiver_b) =
         create_unbounded_channel::<ComInterfaceReconnectRequest>();
     let (com_hub_b, task_future_b) =

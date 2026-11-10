@@ -92,6 +92,7 @@ use futures::channel::{oneshot, oneshot::Sender};
 use futures_util::FutureExt;
 use crate::channel::mpsc;
 use crate::channel::mpsc::{create_unbounded_channel, UnboundedReceiver};
+use crate::network::block_handler::IncomingSectionSender;
 use crate::network::com_hub::managers::com_interface_manager::{InterfaceCloseInfo, InterfaceInfo};
 use crate::task::sleep;
 use crate::utils::maybe_async::MaybeAsyncResult;
@@ -231,7 +232,7 @@ pub type ReceiveBlockResult =
 impl ComHub {
     pub fn create(
         endpoint: impl Into<Endpoint>,
-        incoming_sections_sender: UnboundedSender<IncomingSection>,
+        incoming_sections_sender: IncomingSectionSender,
         com_interface_reconnect_request_sender: UnboundedSender<ComInterfaceReconnectRequest>,
         block_history_capacity: usize,
     ) -> (Rc<ComHub>, impl Future<Output = ()>) {
@@ -1809,21 +1810,21 @@ pub mod tests {
     use log::info;
     use serde::Deserialize;
     use tokio::task::yield_now;
-    use crate::network::block_handler::BlockHandler;
+    use crate::network::block_handler::{create_incoming_sections_channel, BlockHandler, IncomingSectionReceiver};
     use crate::network::com_hub::ComInterfaceReconnectRequest;
 
     /// Creates a mock ComHub for testing without a connected channel
     async fn run_with_com_hub<AppReturn, AppFuture>(
         app_logic: impl FnOnce(
             Rc<ComHub>,
-            UnboundedReceiver<IncomingSection>,
+            IncomingSectionReceiver,
             UnboundedReceiver<ComInterfaceReconnectRequest>
         ) -> AppFuture,
     ) -> AppReturn
     where
         AppFuture: Future<Output = AppReturn>,
     {
-        let (incoming_section_sender, incoming_section_receiver) = create_unbounded_channel();
+        let (incoming_section_sender, incoming_section_receiver) = create_incoming_sections_channel();
         let (com_interface_reconnect_request_sender, com_interface_reconnect_request_receiver) = create_unbounded_channel();
         let (com_hub, com_hub_future) =
             ComHub::create(TEST_ENDPOINT_A.clone(), incoming_section_sender, com_interface_reconnect_request_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
@@ -1893,7 +1894,7 @@ pub mod tests {
             Rc<ComHub>,
             UnboundedSender<Vec<u8>>,
             UnboundedReceiver<DXBBlock>,
-            UnboundedReceiver<IncomingSection>,
+            IncomingSectionReceiver,
             UnboundedReceiver<ComInterfaceReconnectRequest>,
         ) -> AppFuture,
     ) -> AppReturn
@@ -1964,7 +1965,7 @@ pub mod tests {
     }
 
     pub async fn get_collected_received_blocks_from_receiver(
-        sections_receiver: &mut UnboundedReceiver<IncomingSection>,
+        sections_receiver: &mut IncomingSectionReceiver,
         collected_type: CollectedBlockType,
         count: usize,
     ) -> Vec<DXBBlock> {
