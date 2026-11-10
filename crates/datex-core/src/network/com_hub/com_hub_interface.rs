@@ -373,7 +373,7 @@ mod tests {
             // create block to send from A to B
             let block_a_to_b_body = [1, 2, 3];
             let mut block_a_to_b = DXBBlock::new_with_body(&block_a_to_b_body);
-            block_a_to_b.set_receivers(vec![peer_b.com_hub.endpoint.clone()]);
+            block_a_to_b.set_receivers(vec![peer_b.com_hub.endpoint().clone()]);
             block_a_to_b
                 .routing_header
                 .flags

@@ -349,7 +349,7 @@ impl ComHub {
                     let hops = self.get_trace_data_from_block(block);
                     if let Some(hops) = hops {
                         let result = NetworkTraceResult {
-                            sender: self.endpoint.clone(),
+                            sender: self.endpoint().clone(),
                             receiver: sender.clone(),
                             hops,
                             round_trip_time,
@@ -411,7 +411,7 @@ impl ComHub {
 
         // add incoming socket hop
         hops.push(NetworkTraceHop {
-            endpoint: self.endpoint.clone(),
+            endpoint: self.endpoint().clone(),
             distance: block.routing_header.distance,
             socket: NetworkTraceHopSocket::new(
                 &socket_data.interface_properties,
@@ -459,7 +459,7 @@ impl ComHub {
         self.add_hop_to_block_trace_data(
             &mut block,
             NetworkTraceHop {
-                endpoint: self.endpoint.clone(),
+                endpoint: self.endpoint().clone(),
                 distance,
                 socket: NetworkTraceHopSocket::new(
                     &socket_data.interface_properties,
@@ -500,7 +500,7 @@ impl ComHub {
         self.add_hop_to_block_trace_data(
             &mut block,
             NetworkTraceHop {
-                endpoint: self.endpoint.clone(),
+                endpoint: self.endpoint().clone(),
                 distance,
                 socket: NetworkTraceHopSocket::new(
                     &socket_data.interface_properties,
@@ -551,7 +551,7 @@ impl ComHub {
             .cloned()
             .unwrap_or_else(|| Runtime::stub())
     }
-    
+
     pub(crate) fn get_trace_data_from_block(
         &self,
         block: &DXBBlock,

@@ -39,6 +39,7 @@ use core::{
     pin::Pin,
     result::Result,
 };
+use core::cell::UnsafeCell;
 use itertools::Itertools;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
@@ -138,7 +139,7 @@ impl ComInterfaceReconnectRequest {
 
 pub struct ComHub {
     /// the runtime endpoint of the hub (@me)
-    pub endpoint: Endpoint,
+    pub endpoint: UnsafeCell<Endpoint>,
 
     /// ComHub configuration options
     pub options: ComHubOptions,
@@ -245,7 +246,7 @@ impl ComHub {
         let block_handler = BlockHandler::init(incoming_sections_sender, block_history_capacity);
 
         let com_hub = Rc::new(ComHub {
-            endpoint: endpoint.into(),
+            endpoint: UnsafeCell::new(endpoint.into()),
             options: ComHubOptions::default(),
             block_handler,
             socket_manager: ComInterfaceSocketManager::new(),
@@ -284,6 +285,10 @@ impl ComHub {
                 socket_ready_senders,
             ));
         socket_ready_fut
+    }
+
+    pub fn endpoint(&self) -> &Endpoint {
+        unsafe { &*self.endpoint.get() }
     }
 
     /// Sets up two oneshot receivers:
@@ -600,7 +605,7 @@ impl ComHub {
 
     /// Checks if the given endpoint is the local endpoint, matching instances as well
     pub fn is_local_endpoint_exact(&self, endpoint: &Endpoint) -> bool {
-        endpoint.is_local_or_equals_endpoint(&self.endpoint)
+        endpoint.is_local_or_equals_endpoint(self.endpoint())
     }
 
     /// Register an incoming block interceptor
@@ -703,7 +708,7 @@ impl ComHub {
         socket_uuid: &ComInterfaceSocketUUID,
         block: DXBBlock,
     ) -> ReceiveBlockPreprocessResult {
-        info!("{} received block: {}", self.endpoint, block);
+        info!("{} received block: {}", self.endpoint(), block);
 
         for interceptor in self.incoming_block_interceptors.borrow().iter() {
             interceptor(&block, socket_uuid);
@@ -737,7 +742,7 @@ impl ComHub {
                 // handle blocks for own endpoint
                 let own_received_block =
                     if is_for_own && block_type != BlockType::Hello {
-                        info!("Block is for this endpoint ({})", self.endpoint);
+                        info!("Block is for this endpoint ({})", self.endpoint());
 
                         Some(block.clone()) // FIXME #733: no clone
                     } else {
@@ -916,7 +921,7 @@ impl ComHub {
                 if !self.is_local_endpoint_exact(receiver) {
                     info!(
                         "{}: Adding socket {} to blacklist for receiver {}",
-                        self.endpoint, incoming_socket, receiver
+                        self.endpoint(), incoming_socket, receiver
                     );
                     self.socket_manager.add_to_endpoint_blocklist(
                         receiver.clone(),
@@ -988,7 +993,7 @@ impl ComHub {
                 {
                     warn!(
                         "{}: Tried to send bounce back block back to incoming socket, but this is not allowed",
-                        self.endpoint
+                        self.endpoint()
                     );
                     Ok(())
                 } else if let Some(socket) =
@@ -1010,7 +1015,7 @@ impl ComHub {
                     .map_or(Ok(()), |e| {
                         error!(
                             "{}: Failed to send bounce back block to socket: {:?}",
-                            self.endpoint, e
+                            self.endpoint(), e
                         );
                         Err(unreachable_endpoints)
                     })
@@ -1028,7 +1033,7 @@ impl ComHub {
                 self.send_block_async(block, vec![], forked).await.map_or(Ok(()), |e| {
                     error!(
                         "{}: Failed to send bounce back block to socket: {:?}",
-                        self.endpoint, e
+                        self.endpoint(), e
                     );
                     Err(unreachable_endpoints)
                 })
@@ -1074,12 +1079,12 @@ impl ComHub {
         match block.routing_header.flags.signature_type() {
             // SignatureType::None can be handled synchronously
             SignatureType::None => MaybeAsyncResult::Sync(
-                update_sender_and_timestamp(block, self.endpoint.clone()),
+                update_sender_and_timestamp(block, self.endpoint().clone()),
             ),
 
             // SignatureType::Unencrypted and SignatureType::Encrypted require async signing
             sig_ty => {
-                let endpoint = self.endpoint.clone();
+                let endpoint = self.endpoint().clone();
 
                 MaybeAsyncResult::Async(Box::pin(async move {
                     let (pub_key, pri_key) = CryptoImpl::gen_ed25519()
@@ -1407,7 +1412,7 @@ impl ComHub {
     > {
         let outbound_receiver_groups =
             self.socket_manager.get_outbound_receiver_groups(
-                &self.endpoint,
+                self.endpoint(),
                 &block.receiver_endpoints(),
                 exclude_sockets,
             );
@@ -1449,7 +1454,7 @@ impl ComHub {
             } else {
                 error!(
                     "{}: cannot send block, no receiver sockets found for endpoints {:?}",
-                    self.endpoint,
+                    self.endpoint(),
                     endpoints.iter().map(|e| e.to_string()).collect::<Vec<_>>()
                 );
                 unreachable_endpoints.extend(endpoints);
@@ -1569,7 +1574,7 @@ impl ComHub {
                 self.add_hop_to_block_trace_data(
                     &mut block,
                     NetworkTraceHop {
-                        endpoint: self.endpoint.clone(),
+                        endpoint: self.endpoint().clone(),
                         distance,
                         socket: NetworkTraceHopSocket::new(
                             &socket_data.interface_properties,

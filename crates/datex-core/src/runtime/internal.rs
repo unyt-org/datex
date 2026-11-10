@@ -76,7 +76,7 @@ pub type RemoteExecutionResult = Result<Option<ValueContainer>, ExecutionError>;
 #[derive(Debug)]
 pub struct RuntimeInternal {
     version: String,
-    endpoint: Endpoint,
+    endpoint: UnsafeCell<Endpoint>,
 
     core_library: CoreLibrary,
 
@@ -131,7 +131,7 @@ impl RuntimeInternal {
             PointerAvailabilityLookup::new(endpoint.clone());
         let internal = RuntimeInternal {
             version: env!("CARGO_PKG_VERSION").to_string(),
-            endpoint,
+            endpoint: UnsafeCell::new(endpoint),
             shared_references_cache,
             pointer_address_provider,
             config: UnsafeCell::new(config),
@@ -198,13 +198,18 @@ impl RuntimeInternal {
         unsafe {
             *self.config.get() = config;
         }
+        // also update endpoint
+        unsafe {
+            *self.endpoint.get() = self.config().endpoint.clone();
+            *self.com_hub.endpoint.get() = self.config().endpoint.clone();
+        }
     }
 
     pub fn com_hub(&self) -> Rc<ComHub> {
         self.com_hub.clone()
     }
     pub fn endpoint(&self) -> &Endpoint {
-        &self.endpoint
+        unsafe { &*self.endpoint.get() }
     }
     pub fn endpoint_properties(
         &self,
@@ -572,7 +577,7 @@ impl RuntimeInternal {
         is_end_of_context: bool
     ) -> Result<Vec<(RemoteExecutionResult, Endpoint)>, SubscriberError> {
         let routing_header: RoutingHeader = RoutingHeader::default()
-            .with_sender(self.endpoint.clone())
+            .with_sender(self.endpoint().clone())
             .to_owned();
 
         // get existing context_id for context, or create a new one
@@ -787,7 +792,7 @@ impl RuntimeInternal {
             );
         }
         let dxb = block.body;
-        info!("executing on {}:\n", self.endpoint,);
+        info!("executing on {}:\n", self.endpoint());
 
         print_disassembled_with_options(&dxb, DisassemblerOptions::default());
 

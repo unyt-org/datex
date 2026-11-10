@@ -128,7 +128,7 @@ impl ComHub {
     /// Generates metadata about the ComHub, its interfaces and sockets.
     pub fn get_metadata(&self) -> ComHubMetadata {
         let mut metadata = ComHubMetadata {
-            endpoint: self.endpoint.clone(),
+            endpoint: self.endpoint().clone(),
             interfaces: Vec::new(),
             reconnecting_interfaces: Vec::new(),
         };
