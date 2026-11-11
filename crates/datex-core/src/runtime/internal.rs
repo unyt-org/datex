@@ -105,8 +105,8 @@ pub struct RuntimeInfo {
 
 #[derive(Debug, Clone, Default)]
 pub struct CustomRuntimeInfo {
-    device_type: Option<String>,
-    other_versions: IndexMap<String, String, RandomState>,
+    pub device_type: Option<String>,
+    pub other_versions: IndexMap<String, String, RandomState>,
 }
 
 

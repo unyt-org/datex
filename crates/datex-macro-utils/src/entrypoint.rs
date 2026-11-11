@@ -184,7 +184,7 @@ pub fn datex_main_impl_with_config(
     };
     
     let custom_runtime_info = input.custom_runtime_info.unwrap_or_else(|| {
-        quote! { #core_namespace::runtime::CustomRuntimeInfo::default() }
+        quote! { CustomRuntimeInfo::default() }
     });
 
     quote! {
@@ -195,7 +195,7 @@ pub fn datex_main_impl_with_config(
             #profiler
             
             use #core_namespace::{
-                runtime::{RuntimeRunner, RuntimeConfig, Runtime},
+                runtime::{RuntimeRunner, RuntimeConfig, Runtime, CustomRuntimeInfo},
                 traits::convert_value_container::ConvertValueContainer,
             };
 
