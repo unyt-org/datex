@@ -103,6 +103,7 @@ pub struct DatexMainInput<'a> {
     pub custom_main_inputs: Vec<FnArg>,
     /// Whether to enforce that the main function is named `main`
     pub enforce_main_name: bool,
+    pub custom_runtime_info: Option<TokenStream>,
 }
 
 /// Main implementation function for the datex_main macro
@@ -181,6 +182,10 @@ pub fn datex_main_impl_with_config(
             quote! {}
         }
     };
+    
+    let custom_runtime_info = input.custom_runtime_info.unwrap_or_else(|| {
+        quote! { #core_namespace::runtime::CustomRuntimeInfo::default() }
+    });
 
     quote! {
         #(#additional_attributes)*
@@ -197,7 +202,7 @@ pub fn datex_main_impl_with_config(
             #setup
 
             // first init runner with default config
-            let mut runner = RuntimeRunner::new(RuntimeConfig::default());
+            let mut runner = RuntimeRunner::new(RuntimeConfig::default(), #custom_runtime_info);
 
             // resolve the actual config from bytes
             let config = match (#config_bytes) {

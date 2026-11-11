@@ -30,6 +30,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tokio::task::{spawn_local, yield_now};
+use datex_core::runtime::CustomRuntimeInfo;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MockupInterfaceSetupData {
@@ -543,6 +544,7 @@ impl Network {
             info!("creating runtime for endpoint {}", node.endpoint);
             let runtime_runner = RuntimeRunner::new(
                 RuntimeConfig::new_with_endpoint(node.endpoint.clone()),
+                CustomRuntimeInfo::default(),
             );
 
             let runtime = runtime_runner.runtime.clone();

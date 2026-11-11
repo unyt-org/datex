@@ -7,6 +7,7 @@ use crate::{
     traits::get_datex_type::GetDatexType,
     utils::logger::{LogMessage, register_log_sender},
     values::value_container::ValueContainer,
+    random::RandomState
 };
 use datex_macros_internal::{Datex, datex};
 
@@ -18,15 +19,18 @@ mod datex_inspector {
         values::core_values::{channel::create_channel, receiver::Receiver},
     };
     use crate::network::com_hub::metadata::ComHubMetadata;
-    use crate::runtime::RuntimeStats;
+    use crate::runtime::{RuntimeInfo, RuntimeStats};
+    
 
-    #[derive(Datex, Debug, Clone, PartialEq, Eq, Hash)]
+    #[derive(Datex, Debug, Clone)]
     #[datex(no_deserialize, builtin = 0x000001)]
     /// The Inspector is a built-in debug helper that provides access to the DATEX runtime and its properties.
     /// It is currently publicly accessible, but will be restricted with permission rules in the future.
     pub struct Inspector {
         // TODO: #[datex(readonly)]
-        pub name: String, // TODO: distinguish between pub and private entity properties
+        // TODO: distinguish between pub and private entity properties
+        pub name: String,
+        pub info: RuntimeInfo,
     }
 
     #[datex]
@@ -80,7 +84,7 @@ mod datex_inspector {
         name: String,
         #[runtime] runtime: &Runtime,
     ) -> SharedRef<Inspector> {
-        Inspector { name }.shared_ref(runtime)
+        Inspector { name, info: runtime.info().clone() }.shared_ref(runtime)
     }
 
     // pub async fn async_test(a: String) -> String {

@@ -22,6 +22,7 @@ use futures_util::{
 use log::info;
 use crate::network::block_handler::{create_incoming_sections_channel, BlockHandler};
 use crate::network::com_hub::ComInterfaceReconnectRequest;
+use crate::runtime::CustomRuntimeInfo;
 
 pub struct RuntimeRunner {
     pub runtime: Runtime,
@@ -31,7 +32,7 @@ pub struct RuntimeRunner {
 impl RuntimeRunner {
     /// Creates a new runtime instance with the given configuration and global context.
     /// Note: If the endpoint is not specified in the config, a random endpoint will be generated.
-    pub fn new(config: RuntimeConfig) -> RuntimeRunner {
+    pub fn new(config: RuntimeConfig, info: CustomRuntimeInfo) -> RuntimeRunner {
         let endpoint = config.endpoint.clone();
 
         let (task_manager, runtime_task_future) = TaskManager::create();
@@ -58,6 +59,7 @@ impl RuntimeRunner {
             task_manager,
             incoming_sections_receiver,
             com_interface_reconnect_request_receiver,
+            info,
         ));
 
         // link runtime to com hub (needed for network tracing)
@@ -168,7 +170,7 @@ mod tests {
 
     #[tokio::test]
     async fn runtime_runner() {
-        let runner = RuntimeRunner::new(RuntimeConfig::default());
+        let runner = RuntimeRunner::new(RuntimeConfig::default(), CustomRuntimeInfo::default());
         let mut runtime = None;
         runner
             .run(async |runtime_inner| {

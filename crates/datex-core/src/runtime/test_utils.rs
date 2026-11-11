@@ -5,6 +5,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::Cell;
+use crate::runtime::CustomRuntimeInfo;
 
 /// Helper function to set up two connected runtimes with the provided endpoints and run the provided application logic
 pub async fn use_mock_setup_with_two_connected_runtimes<AppReturn, AppFuture>(
@@ -16,10 +17,10 @@ pub async fn use_mock_setup_with_two_connected_runtimes<AppReturn, AppFuture>(
 {
     let runner_a = RuntimeRunner::new(RuntimeConfig::new_with_endpoint(
         endpoint_a.clone(),
-    ));
+    ), CustomRuntimeInfo::default());
     let runner_b = RuntimeRunner::new(RuntimeConfig::new_with_endpoint(
         endpoint_b.clone(),
-    ));
+    ), CustomRuntimeInfo::default());
 
     let end_reached = Rc::new(Cell::new(false));
     let end_reached_clone = end_reached.clone();

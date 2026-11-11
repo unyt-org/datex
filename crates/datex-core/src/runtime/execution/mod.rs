@@ -477,6 +477,7 @@ mod tests {
     use core::assert_matches;
     use indexmap::IndexMap;
     use log::{debug, info};
+    use crate::runtime::CustomRuntimeInfo;
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -591,7 +592,7 @@ mod tests {
         config: RuntimeConfig,
         datex_script: &str,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        RuntimeRunner::new(config)
+        RuntimeRunner::new(config, CustomRuntimeInfo::default())
             .run(async |runtime| {
                 let (dxb, _) = compile_script(
                     datex_script,

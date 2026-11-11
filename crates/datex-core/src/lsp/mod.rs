@@ -445,6 +445,7 @@ mod tests {
         task::LocalSet,
         time::{Duration, timeout},
     };
+    use crate::runtime::{CustomRuntimeInfo};
 
     #[tokio::test(flavor = "current_thread")]
     async fn lsp_initialization() {
@@ -452,7 +453,7 @@ mod tests {
             .run_until(async move {
                 RuntimeRunner::new(RuntimeConfig::new_with_endpoint(
                     Endpoint::from_str("@lspler").unwrap(),
-                ))
+                ), CustomRuntimeInfo::default())
                 .run(async |runtime| {
                     let (tx_to_lsp, rx_from_client) =
                         mpsc::unbounded::<Vec<u8>>();

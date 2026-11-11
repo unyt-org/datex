@@ -71,6 +71,7 @@ use crate::global::protocol_structures::block_header::FlagsAndTimestamp;
 use crate::network::block_handler::{create_incoming_sections_channel, IncomingSectionReceiver};
 use crate::network::com_hub::ComInterfaceReconnectRequest;
 use crate::runtime::execution::context::FinalOrPersistedExecutionContext;
+use crate::time::now_ms;
 
 pub type RemoteExecutionResult = Result<Option<ValueContainer>, ExecutionError>;
 
@@ -78,8 +79,11 @@ pub type RemoteExecutionResult = Result<Option<ValueContainer>, ExecutionError>;
 #[derive(Datex, Debug, Clone, PartialEq, Eq, Hash)]
 #[datex(structural)]
 pub struct HeapStats {
+    /// Total heap size
     pub total: usize,
+    /// Currently used heap size
     pub used: usize,
+    /// Maximum used heap size since startup
     pub max_used: usize,
 }
 
@@ -89,11 +93,27 @@ pub struct RuntimeStats {
     pub heap: Option<HeapStats>,
 }
 
+#[derive(Datex, Debug, Clone)]
+#[datex(structural)]
+/// General static information about the runtime, e.g. version numbers.
+pub struct RuntimeInfo {
+    device_type: Option<String>,
+    other_versions: IndexMap<String, String, RandomState>,
+    datex_version: String,
+    running_since: u64,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct CustomRuntimeInfo {
+    device_type: Option<String>,
+    other_versions: IndexMap<String, String, RandomState>,
+}
+
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
-    version: String,
     endpoint: UnsafeCell<Endpoint>,
+    info: RuntimeInfo,
 
     core_library: CoreLibrary,
 
@@ -145,11 +165,17 @@ impl RuntimeInternal {
         task_manager: TaskManager,
         incoming_sections_receiver: IncomingSectionReceiver,
         com_interface_reconnect_request_receiver: UnboundedReceiver<ComInterfaceReconnectRequest>,
+        info: CustomRuntimeInfo,
     ) -> RuntimeInternal {
         let pointer_availability_lookup =
             PointerAvailabilityLookup::new(endpoint.clone());
         let internal = RuntimeInternal {
-            version: env!("CARGO_PKG_VERSION").to_string(),
+            info: RuntimeInfo {
+                device_type: info.device_type,
+                other_versions: info.other_versions,
+                datex_version: env!("CARGO_PKG_VERSION").to_string(),
+                running_since: now_ms(),
+            },
             endpoint: UnsafeCell::new(endpoint),
             shared_references_cache,
             pointer_address_provider,
@@ -203,8 +229,13 @@ impl RuntimeInternal {
     }
 
     pub fn version(&self) -> &str {
-        &self.version
+        &self.info.datex_version
     }
+
+    pub fn info(&self) -> &RuntimeInfo {
+        &self.info
+    }
+
     pub fn config(&self) -> &RuntimeConfig {
         unsafe { &*self.config.get() }
     }
@@ -348,7 +379,8 @@ impl RuntimeInternal {
             ComHub::create(Endpoint::default(), incoming_sections_sender, reconnect_request_sender, 0).0,
             TaskManager::create().0,
             incoming_sections_receiver,
-            reconnect_request_receiver
+            reconnect_request_receiver,
+            CustomRuntimeInfo::default(),
         )
     }
 
