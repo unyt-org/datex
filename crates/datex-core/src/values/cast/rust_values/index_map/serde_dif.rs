@@ -12,14 +12,36 @@ use crate::{
     random::RandomState,
 };
 use core::{fmt, hash::Hash};
+use erased_serde::__private::serde::ser::SerializeTuple;
 use indexmap::IndexMap;
 use serde::{
     de,
     de::{MapAccess, SeqAccess, Visitor},
     ser::SerializeSeq,
 };
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::libs::core::core_lib_id::CoreLibIdIndex;
+use crate::libs::core::type_id::CoreLibBaseTypeId;
 
-impl<'ctx, K: SerializeWithSerdeContextDyn, V: SerializeWithSerdeContextDyn>
+pub struct InnerIndexMap<'a, K, V>(&'a IndexMap<K, V, RandomState>);
+impl<K: SerializeWithSerdeContextDyn, V: SerializeWithSerdeContextDyn>
+SerializeWithSerdeContext for InnerIndexMap<'_ ,K, V>
+{
+    fn serialize_with_ctx<S: serde::Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
+        for (key, value) in self.0 {
+            seq.serialize_element(&(key.with_ctx(ctx), value.with_ctx(ctx)))?;
+        }
+        seq.end()
+    }
+}
+
+
+impl<K: SerializeWithSerdeContextDyn, V: SerializeWithSerdeContextDyn>
     SerializeWithSerdeContext for IndexMap<K, V, RandomState>
 {
     fn serialize_with_ctx<S: serde::Serializer>(
@@ -27,17 +49,20 @@ impl<'ctx, K: SerializeWithSerdeContextDyn, V: SerializeWithSerdeContextDyn>
         ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let mut seq = serializer.serialize_seq(Some(self.len()))?;
-        for (key, value) in self {
-            seq.serialize_element(&(key.with_ctx(ctx), value.with_ctx(ctx)))?;
-        }
-        seq.end()
+        let mut tuple = serializer.serialize_tuple(2)?;
+        tuple.serialize_element(
+            &CoreLibIdIndex::from(CoreLibBaseTypeId::Map),
+        )?;
+        tuple.serialize_element(&ValueWithSerdeContext::new(
+            &InnerIndexMap(self),
+            ctx,
+        ))?;
+        tuple.end()
     }
 }
 
 impl<
     'de,
-    'ctx,
     K: DeserializeWithSerdeContextDyn + Eq + Hash,
     V: DeserializeWithSerdeContextDyn,
 > DeserializeWithSerdeContext<'de> for IndexMap<K, V, RandomState>
