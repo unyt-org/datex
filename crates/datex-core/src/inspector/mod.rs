@@ -18,6 +18,7 @@ mod datex_inspector {
         values::core_values::{channel::create_channel, receiver::Receiver},
     };
     use crate::network::com_hub::metadata::ComHubMetadata;
+    use crate::runtime::RuntimeStats;
 
     #[derive(Datex, Debug, Clone, PartialEq, Eq, Hash)]
     #[datex(no_deserialize, builtin = 0x000001)]
@@ -51,6 +52,14 @@ mod datex_inspector {
             #[runtime] runtime: &Runtime
         ) -> ComHubMetadata {
             runtime.com_hub().get_metadata()
+        }
+
+        /// Returns the current runtime statistics of the endpoint.
+        pub fn stats(
+            &self,
+            #[runtime] runtime: &Runtime,
+        ) -> RuntimeStats {
+            runtime.get_stats()
         }
 
         /// Attempts to reboot the endpoint associated with the inspector.

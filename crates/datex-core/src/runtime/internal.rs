@@ -66,12 +66,29 @@ use core::cell::UnsafeCell;
 use futures_util::future::join_all;
 use indexmap::IndexMap;
 use log::{debug, error, info};
+use datex_macros_internal::Datex;
 use crate::global::protocol_structures::block_header::FlagsAndTimestamp;
 use crate::network::block_handler::{create_incoming_sections_channel, IncomingSectionReceiver};
 use crate::network::com_hub::ComInterfaceReconnectRequest;
 use crate::runtime::execution::context::FinalOrPersistedExecutionContext;
 
 pub type RemoteExecutionResult = Result<Option<ValueContainer>, ExecutionError>;
+
+
+#[derive(Datex, Debug, Clone, PartialEq, Eq, Hash)]
+#[datex(structural)]
+pub struct HeapStats {
+    pub total: usize,
+    pub used: usize,
+    pub max_used: usize,
+}
+
+#[derive(Datex, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[datex(structural)]
+pub struct RuntimeStats {
+    pub heap: Option<HeapStats>,
+}
+
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -106,6 +123,8 @@ pub struct RuntimeInternal {
     pointer_availability_lookup: RefCell<PointerAvailabilityLookup>,
 
     synced_value_data: RefCell<SyncedValueData>,
+
+    stats_provider: RefCell<fn() -> RuntimeStats>
 }
 
 
@@ -151,6 +170,7 @@ impl RuntimeInternal {
             pointer_availability_lookup: RefCell::new(
                 pointer_availability_lookup,
             ),
+            stats_provider: RefCell::new(RuntimeStats::default)
         };
 
         internal.register_static_data();
@@ -203,6 +223,15 @@ impl RuntimeInternal {
             *self.endpoint.get() = self.config().endpoint.clone();
             *self.com_hub.endpoint.get() = self.config().endpoint.clone();
         }
+    }
+
+    /// Registers a new callback that provides [RuntimeStats]
+    pub fn set_stats_provider(&self, stats_provider: fn () -> RuntimeStats) {
+        *self.stats_provider.borrow_mut() = stats_provider;
+    }
+
+    pub fn get_stats(&self) -> RuntimeStats {
+        self.stats_provider.borrow()()
     }
 
     pub fn com_hub(&self) -> Rc<ComHub> {
