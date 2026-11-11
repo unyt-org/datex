@@ -113,7 +113,7 @@ pub struct CustomRuntimeInfo {
 #[derive(Debug)]
 pub struct RuntimeInternal {
     endpoint: UnsafeCell<Endpoint>,
-    info: RuntimeInfo,
+    info: RefCell<RuntimeInfo>,
 
     core_library: CoreLibrary,
 
@@ -170,12 +170,12 @@ impl RuntimeInternal {
         let pointer_availability_lookup =
             PointerAvailabilityLookup::new(endpoint.clone());
         let internal = RuntimeInternal {
-            info: RuntimeInfo {
+            info: RefCell::new(RuntimeInfo {
                 device_type: info.device_type,
                 other_versions: info.other_versions,
                 datex_version: env!("CARGO_PKG_VERSION").to_string(),
                 running_since: now_ms(),
-            },
+            }),
             endpoint: UnsafeCell::new(endpoint),
             shared_references_cache,
             pointer_address_provider,
@@ -228,12 +228,12 @@ impl RuntimeInternal {
         }
     }
 
-    pub fn version(&self) -> &str {
-        &self.info.datex_version
+    pub fn version(&self) -> Ref<'_, String> {
+        Ref::map(self.info.borrow(), |info| &info.datex_version)
     }
 
-    pub fn info(&self) -> &RuntimeInfo {
-        &self.info
+    pub fn info(&self) -> Ref<'_, RuntimeInfo> {
+        self.info.borrow()
     }
 
     pub fn config(&self) -> &RuntimeConfig {
@@ -254,6 +254,11 @@ impl RuntimeInternal {
             *self.endpoint.get() = self.config().endpoint.clone();
             *self.com_hub.endpoint.get() = self.config().endpoint.clone();
         }
+    }
+
+    /// Updates the running_since timestamp in the runtime info to the current time.
+    pub fn reset_running_since(&self) {
+        self.info.borrow_mut().running_since = now_ms();
     }
 
     /// Registers a new callback that provides [RuntimeStats]

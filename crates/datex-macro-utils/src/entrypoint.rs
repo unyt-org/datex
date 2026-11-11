@@ -218,6 +218,10 @@ pub fn datex_main_impl_with_config(
                 #init_scoped
             }
             #init_unscoped
+
+            // make sure actual system time is used after init
+            runner.runtime.reset_running_since();
+
             runner.run(async move |#runtime_arg_ident: #runtime_arg_type| {
                 #pre_body
                 {
