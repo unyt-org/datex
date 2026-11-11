@@ -20,7 +20,7 @@ mod datex_inspector {
     };
     use crate::network::com_hub::metadata::ComHubMetadata;
     use crate::runtime::{RuntimeInfo, RuntimeStats};
-    
+
 
     #[derive(Datex, Debug, Clone)]
     #[datex(no_deserialize, builtin = 0x000001)]
@@ -35,11 +35,6 @@ mod datex_inspector {
 
     #[datex]
     impl Inspector {
-        /// Returns the name of the inspector.
-        pub fn name(&self) -> String {
-            self.name.clone()
-        }
-
         /// Returns a stream of all global log messages of the endpoint.
         pub fn logs(
             &self,
