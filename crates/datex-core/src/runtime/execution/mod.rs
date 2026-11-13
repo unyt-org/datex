@@ -431,7 +431,7 @@ mod tests {
         collections::HashMap,
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
         core_compiler::core_compilation_context::DXBWithSharedValues,
-        disassembler::{disassemble_body, print_disassembled},
+        disassembler::print_disassembled,
         global::protocol_structures::serializable::Serializable,
         instruction::Instruction,
         libs::core::type_id::CoreLibBaseTypeId,
