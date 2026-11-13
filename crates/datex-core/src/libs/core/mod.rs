@@ -15,7 +15,7 @@ use crate::{
             callable::{CallableBody, error::CallableError},
             map::Map,
         },
-        value::Value,
+        value::{Value, value_classification::ValueClassification},
         value_container::ValueContainer,
     },
 };
@@ -26,6 +26,7 @@ mod type_match;
 pub mod value_id;
 
 use crate::{
+    libs::core::type_id::TOTAL_CORE_LIB_TYPE_COUNT,
     runtime::Runtime,
     traits::apply::{ApplyArgument, get_borrowed_apply_argument_values},
     types::{r#type::Type, type_definition::callable::CallableKind},
@@ -34,19 +35,21 @@ use crate::{
 };
 use indexmap::IndexMap;
 use strum::IntoEnumIterator;
-use crate::libs::core::type_id::TOTAL_CORE_LIB_TYPE_COUNT;
+
+use core::pin::Pin;
 
 #[derive(Debug)]
 pub struct CoreLibraryValues {
-    print: Value,
+    write_line: Value,
     panic: Value,
+    read_line: Value,
 }
 
 impl Default for CoreLibraryValues {
     fn default() -> Self {
         CoreLibraryValues {
-            print: Value::callable(
-                Some("print".to_string()),
+            write_line: Value::callable(
+                Some("write_line".to_string()),
                 CallableTypeDefinition {
                     kind: CallableKind::Function,
                     requires_async: false,
@@ -58,7 +61,7 @@ impl Default for CoreLibraryValues {
                     return_type: None,
                     yeet_type: None,
                 },
-                CallableBody::native_sync(Self::print_impl),
+                CallableBody::native_sync(Self::write_line_impl),
                 Endpoint::LOCAL,
             ),
             panic: Value::callable(
@@ -77,6 +80,21 @@ impl Default for CoreLibraryValues {
                 CallableBody::CoreStub(CoreStub::Panic),
                 Endpoint::LOCAL,
             ),
+            read_line: Value::callable(
+                Some("read_line".to_string()),
+                CallableTypeDefinition {
+                    kind: CallableKind::Function,
+                    requires_async: true,
+                    parameters: vec![],
+                    rest_parameter: None,
+                    return_type: Some(Box::new(Type::core(
+                        CoreLibBaseTypeId::Text,
+                    ))),
+                    yeet_type: None,
+                },
+                CallableBody::native_async(Self::read_line_impl),
+                Endpoint::LOCAL,
+            ),
         }
     }
 }
@@ -85,8 +103,9 @@ impl CoreLibraryValues {
     /// Resolve a core library value by its id.
     pub fn get_by_id(&self, id: &CoreLibValueId) -> &Value {
         match id {
-            CoreLibValueId::Print => &self.print,
+            CoreLibValueId::WriteLine => &self.write_line,
             CoreLibValueId::Panic => &self.panic,
+            CoreLibValueId::ReadLine => &self.read_line,
         }
     }
 
@@ -105,7 +124,7 @@ impl CoreLibraryValues {
         );
     }
 
-    fn print_impl(
+    fn write_line_impl(
         mut args: Vec<ApplyArgument>,
         _runtime: &Runtime,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>
@@ -155,6 +174,36 @@ impl CoreLibraryValues {
         // return all borrowed args
         Ok((None, get_borrowed_apply_argument_values(args)))
     }
+
+    fn read_line_impl(
+        _args: Vec<ApplyArgument>,
+        _runtime: &Runtime,
+    ) -> Pin<
+        Box<
+            dyn Future<
+                Output = Result<
+                    (Option<ValueContainer>, Vec<ValueContainer>),
+                    CallableError,
+                >,
+            >,
+        >,
+    > {
+        // placeholder mirroring print
+        Box::pin(async move {
+            // placeholder mirroring print
+            Ok((
+                Some(ValueContainer::Local(Value::Core(
+                    CoreValueWithClassification {
+                        inner: CoreValue::Text(
+                            crate::values::core_values::text::Text::from(""),
+                        ),
+                        classification: ValueClassification::new_unclassified(),
+                    },
+                ))),
+                vec![],
+            ))
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -162,7 +211,10 @@ pub struct CoreLibraryTypes(IndexMap<CoreLibTypeId, Value, RandomState>);
 
 impl Default for CoreLibraryTypes {
     fn default() -> Self {
-        let mut map = IndexMap::with_capacity_and_hasher(TOTAL_CORE_LIB_TYPE_COUNT as usize, RandomState::default());
+        let mut map = IndexMap::with_capacity_and_hasher(
+            TOTAL_CORE_LIB_TYPE_COUNT as usize,
+            RandomState::default(),
+        );
         map.extend(Self::core_lib_types());
         Self(map)
     }
