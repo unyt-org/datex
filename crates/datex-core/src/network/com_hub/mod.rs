@@ -59,6 +59,7 @@ pub mod com_hub_interface;
 mod com_hub_socket;
 #[cfg(test)]
 pub mod test_utils;
+use strum_macros::Display;
 
 use crate::{
     collections::HashSet,
@@ -98,13 +99,52 @@ use crate::network::com_hub::managers::com_interface_manager::{InterfaceCloseInf
 use crate::runtime::Runtime;
 use crate::task::sleep;
 use crate::utils::maybe_async::MaybeAsyncResult;
+use crate::utils::uuid::UUID;
 use crate::values::value::Value;
 
-pub type IncomingBlockInterceptor =
-    Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
+/// Represents the direction of a block, either incoming or outgoing, used in the block interceptor callback.
+#[derive(Datex, Debug, Clone, Copy, Display)]
+#[datex(structural)]
+pub enum BlockDirection {
+    Incoming,
+    Outgoing
+}
 
-pub type OutgoingBlockInterceptor =
-    Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID, &[Endpoint]) + 'static>;
+/// Represents a captured block along with its associated socket UUID and direction (incoming or outgoing).
+pub struct CapturedBlock<'a> {
+    pub block: &'a DXBBlock,
+    pub socket_uuid: &'a ComInterfaceSocketUUID,
+    pub direction: BlockDirection,
+}
+
+pub struct BlockInterceptor {
+    callback: Box<RefCell<dyn FnMut(CapturedBlock) + 'static>> ,
+    include_debug_blocks: bool,
+}
+
+impl BlockInterceptor {
+    pub fn new<F>(callback: F, include_debug_blocks: bool) -> Self
+    where
+        F: FnMut(CapturedBlock) + 'static,
+    {
+        BlockInterceptor {
+            callback: Box::new(RefCell::new(callback)),
+            include_debug_blocks,
+        }
+    }
+
+    /// Captures a block and invokes the interceptor's callback if the block is not a debug block or if debug blocks are included.
+    pub fn capture_block(&self, block: &DXBBlock, socket_uuid: &ComInterfaceSocketUUID, direction: BlockDirection) {
+        if !self.include_debug_blocks && block.block_header.flags_and_timestamp.is_debug_block() {
+            return;
+        }
+        (self.callback.borrow_mut())(CapturedBlock {
+            block,
+            socket_uuid,
+            direction,
+        });
+    }
+}
 
 
 #[derive(Debug, Clone)]
@@ -116,7 +156,7 @@ pub enum ComInterfaceReconnectRequest {
     /// Request reconnection loop for a new interface
     NewInterface {
         interface_type: String,
-        setup_data: Value,
+        setup_data: Box<Value>,
         priority: InterfacePriority
     }
 }
@@ -128,7 +168,7 @@ impl ComInterfaceReconnectRequest {
     ) -> Self {
         ComInterfaceReconnectRequest::NewInterface {
             interface_type,
-            setup_data,
+            setup_data: Box::new(setup_data),
             priority,
         }
     }
@@ -149,8 +189,7 @@ pub struct ComHub {
 
     pub block_handler: BlockHandler,
 
-    incoming_block_interceptors: RefCell<Vec<IncomingBlockInterceptor>>,
-    outgoing_block_interceptors: RefCell<Vec<OutgoingBlockInterceptor>>,
+    block_interceptors: RefCell<HashMap<UUID, BlockInterceptor>>,
     /// Sender that requests reconnect task to be spawned on this [ComHub] - requests are spawned externally with by calling [Self::try_reconnect_interface] with an [Rc<ComHub>]
     pub reconnect_interface_sender: RefCell<UnboundedSender<ComInterfaceReconnectRequest>>,
 
@@ -251,8 +290,7 @@ impl ComHub {
             block_handler,
             socket_manager: ComInterfaceSocketManager::new(),
             interfaces_manager: ComInterfaceManager::default(),
-            incoming_block_interceptors: RefCell::new(Vec::new()),
-            outgoing_block_interceptors: RefCell::new(Vec::new()),
+            block_interceptors: RefCell::new(HashMap::new()),
             reconnect_interface_sender: RefCell::new(com_interface_reconnect_request_sender),
             reconnecting_interfaces: RefCell::new(HashMap::new()),
             task_manager,
@@ -608,24 +646,20 @@ impl ComHub {
         endpoint.is_local_or_equals_endpoint(self.endpoint())
     }
 
-    /// Register an incoming block interceptor
-    pub fn register_incoming_block_interceptor<F>(&self, interceptor: F)
-    where
-        F: Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static,
+    /// Register a block interceptor for incoming and outgoing blocks.
+    /// Returns the UUID of the registered interceptor, which can be used to unregister it later.
+    pub fn register_block_interceptor(&self, interceptor: BlockInterceptor) -> UUID
     {
-        self.incoming_block_interceptors
+        let uuid = UUID::new();
+        self.block_interceptors
             .borrow_mut()
-            .push(Box::new(interceptor));
+            .insert(uuid.clone(), interceptor);
+        uuid
     }
 
-    /// Register an outgoing block interceptor
-    pub fn register_outgoing_block_interceptor<F>(&self, interceptor: F)
-    where
-        F: Fn(&DXBBlock, &ComInterfaceSocketUUID, &[Endpoint]) + 'static,
-    {
-        self.outgoing_block_interceptors
-            .borrow_mut()
-            .push(Box::new(interceptor));
+    /// Unregisters a block interceptor by its UUID, returning the removed interceptor if it existed
+    pub fn unregister_block_interceptor(&self, uuid: &UUID) -> Option<BlockInterceptor> {
+        self.block_interceptors.borrow_mut().remove(uuid)
     }
 
     /// Receives a block from a socket and handles it accordingly
@@ -710,8 +744,8 @@ impl ComHub {
     ) -> ReceiveBlockPreprocessResult {
         info!("{} received block: {}", self.endpoint(), block);
 
-        for interceptor in self.incoming_block_interceptors.borrow().iter() {
-            interceptor(&block, socket_uuid);
+        for (_, interceptor) in self.block_interceptors.borrow().iter() {
+            interceptor.capture_block(&block, socket_uuid, BlockDirection::Incoming);
         }
 
         let block_type = block.block_header.flags_and_timestamp.block_type();
@@ -1601,8 +1635,8 @@ impl ComHub {
         {
             return MaybeAsyncResult::Sync(Ok(None));
         }
-        for interceptor in self.outgoing_block_interceptors.borrow().iter() {
-            interceptor(&block, &socket_uuid, &endpoints);
+        for (_, interceptor) in self.block_interceptors.borrow().iter() {
+            interceptor.capture_block(&block, &socket_uuid, BlockDirection::Outgoing);
         }
         info!(
             "Sending block to socket {} ({})",
@@ -1663,7 +1697,7 @@ impl ComHub {
                     properties: Rc::new(default_properties),
                     priority,
                     is_waiting_for_socket_connections: false,
-                    original_setup_data: Some(setup_data),
+                    original_setup_data: Some(*setup_data),
                     close_sender: None,
                 }
             }

@@ -13,14 +13,24 @@ use datex_macros_internal::{Datex, datex};
 
 #[datex(name = "inspector")]
 mod datex_inspector {
+    use core::cell::RefCell;
+    use log::info;
     use super::*;
     use crate::{
         shared_wrappers::shared::{shared_ref::SharedRef, to_shared::ToShared},
         values::core_values::{channel::create_channel, receiver::Receiver},
     };
+    use crate::network::com_hub::{BlockDirection, BlockInterceptor};
     use crate::network::com_hub::metadata::ComHubMetadata;
     use crate::runtime::{RuntimeInfo, RuntimeStats};
 
+    #[derive(Datex, Debug, Clone)]
+    #[datex(structural)]
+    pub struct CapturedBlockData {
+        block: Vec<u8>,
+        socket_uuid: String,
+        direction: BlockDirection,
+    }
 
     #[derive(Datex, Debug, Clone)]
     #[datex(no_deserialize, builtin = 0x000001)]
@@ -44,6 +54,37 @@ mod datex_inspector {
             register_log_sender(sender);
             receiver
         }
+
+        /// Returns a stream of all incoming and outgoing blocks on the endpoint (excluding debug blocks).
+        pub fn blocks(
+            &self,
+            #[runtime] runtime: &Runtime,
+        ) -> SharedRef<Receiver<CapturedBlockData>> {
+            let (mut sender, receiver) = create_channel(runtime);
+
+            let uuid = Rc::new(RefCell::new(None));
+            let uuid_clone = uuid.clone();
+            let runtime_clone = runtime.clone();
+
+            *uuid.borrow_mut() = Some(runtime.com_hub().register_block_interceptor(BlockInterceptor::new(
+                move |block| {
+                    let captured_block = CapturedBlockData {
+                        block: block.block.to_bytes(),
+                        socket_uuid: block.socket_uuid.to_string(),
+                        direction: block.direction,
+                    };
+                    if sender.send(captured_block).is_err() {
+                        info!("Inspector blocks stream closed, unregistering block interceptor");
+                        // remove interceptor
+                        runtime_clone.com_hub().unregister_block_interceptor(uuid_clone.borrow().as_ref().unwrap());
+                    }
+                },
+                false, // exclude debug blocks
+            )));
+
+            receiver
+        }
+
 
         /// Returns the current metadata information (connected interfaces, sockets) of the endpoint's com hub.
         pub fn com_hub_metadata(

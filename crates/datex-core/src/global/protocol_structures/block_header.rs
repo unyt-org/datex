@@ -42,21 +42,30 @@ impl BlockType {
 #[br(map = Self::from_bytes)]
 #[brw(little)]
 pub struct FlagsAndTimestamp {
+    /// The base type of the block, e.g. request, response, hello, ...
     pub block_type: BlockType,
+    /// Indicates if the block can have side effects that change external state.
     pub has_side_effects: bool,
+    /// Indicates if the block only contains data and no executable instructions.
     pub has_only_data: bool,
+    /// Indicates if the block is the last block of a section.
     pub is_end_of_section: bool,
+    /// Indicates if the block is the last block of a context. Any cached state of the context can be discarded after this block.
     pub is_end_of_context: bool,
+    /// Indicates if the block has a lifetime field. If set, the block will be discarded after the lifetime expires.
     pub has_lifetime: bool,
+    /// Indicates if the block has a represented_by field. If set, the block is represented by another endpoint.
     pub has_represented_by: bool,
+    /// Indicates if the block has an initialization vector (IV) for encryption.
     pub has_iv: bool,
+    /// Indicates if the block is compressed. If set, the block body is compressed and needs to be decompressed before processing.
     pub is_compressed: bool,
+    /// Indicates if the block has a signature in the last subblock. If set, the block does not have a signature in the header, but in the last subblock of the current section.
     pub is_signature_in_last_subblock: bool,
-
-    #[allow(unused)]
+    /// Indicates if the block has a skip_after_block field.
     pub has_skip_after_block: bool,
-    #[allow(unused)]
-    unused_1: bool,
+    /// Indicates if the block is a debug block. Debug blocks should be hidden e.g. in the Inspector
+    pub is_debug_block: bool,
     #[allow(unused)]
     unused_2: bool,
     #[allow(unused)]
