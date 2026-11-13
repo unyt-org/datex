@@ -44,7 +44,6 @@ impl ValueVisitor for PreambleContext {
             // not self referencing
             None => {
                 // placeholder, will be later replaced via setter
-                // TODO Make to yield
                 Box::new(append_shared_container(
                     self,
                     cache,

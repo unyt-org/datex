@@ -80,7 +80,7 @@ pub trait AstNodeToInstructions {
         for (operand_pos, base_label, target_label) in fixes {
             let base = match base_label {
                 Label(_) if !labels.contains_key(&base_label) => {
-                    operand_pos + 4 // FIXME 32 vs 64 arch??
+                    operand_pos + 4
                 }
                 _ => *labels
                     .get(&base_label)

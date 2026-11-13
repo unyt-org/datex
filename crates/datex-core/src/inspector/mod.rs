@@ -127,10 +127,6 @@ mod datex_inspector {
         inspector.mark_debug(true);
         inspector
     }
-
-    // pub async fn async_test(a: String) -> String {
-    //     format!("a = {}", a)
-    // }
 }
 
 /// Registers the `inspector` namespace in the runtime, allowing users to create Inspector instances.
