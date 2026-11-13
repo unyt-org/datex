@@ -1005,7 +1005,7 @@ dependencies = [
 
 [[package]]
 name = "datex-macro-utils"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "datex-core",
  "proc-macro2",
@@ -1015,7 +1015,7 @@ dependencies = [
 
 [[package]]
 name = "datex-macros-internal"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "deluxe",
  "pathdiff",
