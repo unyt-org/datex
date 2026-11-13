@@ -703,7 +703,7 @@ impl AstNodeToInstructions for RemoteExecution {
             .into());
 
             // insert compiled caller expression
-            yield_all!(caller.ast_node_to_instructions_inner(
+            yield_all!(caller.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -845,7 +845,7 @@ impl AstNodeToInstructions for VariableAssignment {
                     );
                     let inner = ctx_metadata.inner();
                     // compile expression
-                    yield_all!(expression.ast_node_to_instructions_inner(
+                    yield_all!(expression.ast_node_to_instructions(
                         compilation_context,
                         cache,
                         ast_metadata,
@@ -883,7 +883,7 @@ impl AstNodeToInstructions for VariableAssignment {
                         yield Ok(instruction.into());
 
                         // compile expression
-                        yield_all!(expression.ast_node_to_instructions_inner(
+                        yield_all!(expression.ast_node_to_instructions(
                             compilation_context,
                             cache,
                             ast_metadata,
@@ -931,7 +931,7 @@ impl AstNodeToInstructions for VariableDeclaration {
             yield Ok(RegularInstruction::push_to_stack().into());
 
             // compile expression
-            yield_all!(value.ast_node_to_instructions_inner(
+            yield_all!(value.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -988,7 +988,7 @@ impl AstNodeToInstructions for Statements {
             // if single statement and not terminated, just compile the expression
             // (not for unbounded execution mode)
             if unbounded.is_none() && statements.len() == 1 && !is_terminated {
-                yield_all!(statements[0].ast_node_to_instructions_inner(
+                yield_all!(statements[0].ast_node_to_instructions(
                     compilation_context,
                     cache,
                     ast_metadata,
@@ -1023,7 +1023,7 @@ impl AstNodeToInstructions for Statements {
                 }
 
                 for statement in statements {
-                    yield_all!(statement.ast_node_to_instructions_inner(
+                    yield_all!(statement.ast_node_to_instructions(
                         compilation_context,
                         cache,
                         ast_metadata,
@@ -1134,7 +1134,7 @@ impl AstNodeToInstructions for CallableDeclaration {
 
             // add parameter types
             for (_, param) in &signature.parameters {
-                yield_all!(param.ast_node_to_instructions_inner(
+                yield_all!(param.ast_node_to_instructions(
                     compilation_context,
                     cache,
                     ast_metadata,
@@ -1143,7 +1143,7 @@ impl AstNodeToInstructions for CallableDeclaration {
             }
             // add rest parameter type
             if let Some((_, param)) = &signature.rest_parameter {
-                yield_all!(param.ast_node_to_instructions_inner(
+                yield_all!(param.ast_node_to_instructions(
                     compilation_context,
                     cache,
                     ast_metadata,
@@ -1152,7 +1152,7 @@ impl AstNodeToInstructions for CallableDeclaration {
             }
             // add return type
             if let Some(ty) = &signature.return_type {
-                yield_all!(ty.ast_node_to_instructions_inner(
+                yield_all!(ty.ast_node_to_instructions(
                     compilation_context,
                     cache,
                     ast_metadata,
@@ -1161,7 +1161,7 @@ impl AstNodeToInstructions for CallableDeclaration {
             }
             // add yield type
             if let Some(ty) = &signature.yeet_type {
-                yield_all!(ty.ast_node_to_instructions_inner(
+                yield_all!(ty.ast_node_to_instructions(
                     compilation_context,
                     cache,
                     ast_metadata,
@@ -1186,13 +1186,13 @@ impl AstNodeToInstructions for RangeDeclaration {
     > {
         Box::new(gen move {
             yield Ok(RegularInstruction::range().into());
-            yield_all!(self.start.ast_node_to_instructions_inner(
+            yield_all!(self.start.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
                 ctx_metadata.inner()
             ));
-            yield_all!(self.end.ast_node_to_instructions_inner(
+            yield_all!(self.end.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -1220,13 +1220,13 @@ impl AstNodeToInstructions for ComparisonOperation {
             yield Ok(
                 RegularInstruction::comparison_operation(self.operator).into()
             );
-            yield_all!(self.left.ast_node_to_instructions_inner(
+            yield_all!(self.left.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
                 ctx_metadata.inner()
             ));
-            yield_all!(self.right.ast_node_to_instructions_inner(
+            yield_all!(self.right.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -1270,7 +1270,7 @@ impl AstNodeToInstructions for UnboxAssignment {
 
             // compile assigned expression
             yield_all!(
-                self.assigned_expression.ast_node_to_instructions_inner(
+                self.assigned_expression.ast_node_to_instructions(
                     compilation_context,
                     cache,
                     ast_metadata,
@@ -1279,7 +1279,7 @@ impl AstNodeToInstructions for UnboxAssignment {
             );
 
             // compile unbox expression
-            yield_all!(self.unbox_expression.ast_node_to_instructions_inner(
+            yield_all!(self.unbox_expression.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -1330,7 +1330,7 @@ impl AstNodeToInstructions for PropertyAssignment {
 
                 _ => {
                     yield Ok(RegularInstruction::set_entry_dynamic().into());
-                    yield_all!(property.ast_node_to_instructions_inner(
+                    yield_all!(property.ast_node_to_instructions(
                         compilation_context,
                         cache,
                         ast_metadata,
@@ -1339,7 +1339,7 @@ impl AstNodeToInstructions for PropertyAssignment {
                 }
             }
             // compile assigned expression
-            yield_all!(assigned_expression.ast_node_to_instructions_inner(
+            yield_all!(assigned_expression.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -1347,7 +1347,7 @@ impl AstNodeToInstructions for PropertyAssignment {
             ));
 
             // compile base expression
-            yield_all!(base.ast_node_to_instructions_inner(
+            yield_all!(base.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -1373,7 +1373,7 @@ impl AstNodeToInstructions for UnaryOperation {
             compilation_context.mark_has_non_static_value();
 
             yield Ok(RegularInstruction::unary_operation(self.operator).into());
-            yield_all!(self.expression.ast_node_to_instructions_inner(
+            yield_all!(self.expression.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -1407,7 +1407,7 @@ impl AstNodeToInstructions for Apply {
             yield Ok(RegularInstruction::apply(len as u8).into());
             // compile arguments
             for argument in &self.arguments {
-                yield_all!(argument.ast_node_to_instructions_inner(
+                yield_all!(argument.ast_node_to_instructions(
                     compilation_context,
                     cache,
                     ast_metadata,
@@ -1415,7 +1415,7 @@ impl AstNodeToInstructions for Apply {
                 ));
             }
             // compile function expression
-            yield_all!(self.base.ast_node_to_instructions_inner(
+            yield_all!(self.base.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -1455,7 +1455,7 @@ impl AstNodeToInstructions for InterfaceMethodCall {
                     yield Ok(RegularInstruction::append_entry().into());
 
                     for argument in &self.arguments {
-                        yield_all!(argument.ast_node_to_instructions_inner(
+                        yield_all!(argument.ast_node_to_instructions(
                             compilation_context,
                             cache,
                             ast_metadata,
@@ -1490,7 +1490,7 @@ impl AstNodeToInstructions for InterfaceMethodCall {
                     yield Ok(RegularInstruction::splice_dynamic().into());
 
                     for argument in &self.arguments {
-                        yield_all!(argument.ast_node_to_instructions_inner(
+                        yield_all!(argument.ast_node_to_instructions(
                             compilation_context,
                             cache,
                             ast_metadata,
@@ -1509,7 +1509,7 @@ impl AstNodeToInstructions for InterfaceMethodCall {
                     .into());
 
                     for argument in &self.arguments {
-                        yield_all!(argument.ast_node_to_instructions_inner(
+                        yield_all!(argument.ast_node_to_instructions(
                             compilation_context,
                             cache,
                             ast_metadata,
@@ -1520,7 +1520,7 @@ impl AstNodeToInstructions for InterfaceMethodCall {
             }
 
             // compile target expression
-            yield_all!(self.target.ast_node_to_instructions_inner(
+            yield_all!(self.target.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -1562,7 +1562,7 @@ impl AstNodeToInstructions for PropertyAccess {
                 }
                 _ => {
                     yield Ok(RegularInstruction::get_entry_dynamic().into());
-                    yield_all!(self.property.ast_node_to_instructions_inner(
+                    yield_all!(self.property.ast_node_to_instructions(
                         compilation_context,
                         cache,
                         ast_metadata,
@@ -1572,7 +1572,7 @@ impl AstNodeToInstructions for PropertyAccess {
             }
 
             // compile base expression
-            yield_all!(self.base.ast_node_to_instructions_inner(
+            yield_all!(self.base.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -1638,7 +1638,7 @@ impl AstNodeToInstructions for List {
         Box::new(gen move {
             yield Ok(RegularInstruction::list(self.items.len() as u32).into());
             for item in &self.items {
-                yield_all!(item.ast_node_to_instructions_inner(
+                yield_all!(item.ast_node_to_instructions(
                     compilation_context,
                     cache,
                     ast_metadata,
@@ -1693,7 +1693,7 @@ impl AstNodeToInstructions for Map {
                     // other -> insert key as dynamic
                     _ => {
                         yield Ok(RegularInstruction::key_value_dynamic().into());
-                        yield_all!(key.ast_node_to_instructions_inner(
+                        yield_all!(key.ast_node_to_instructions(
                             compilation_context,
                             cache,
                             ast_metadata,
@@ -1703,7 +1703,7 @@ impl AstNodeToInstructions for Map {
                 };
 
                 // value
-                yield_all!(value.ast_node_to_instructions_inner(
+                yield_all!(value.ast_node_to_instructions(
                     compilation_context,
                     cache,
                     ast_metadata,
@@ -1735,7 +1735,7 @@ impl AstNodeToInstructions for TagExpression {
             )
             .into());
             if let Some(expression) = &self.expression {
-                yield_all!(expression.ast_node_to_instructions_inner(
+                yield_all!(expression.ast_node_to_instructions(
                     compilation_context,
                     cache,
                     ast_metadata,
@@ -1787,7 +1787,7 @@ impl AstNodeToInstructions for Unbox {
     > {
         Box::new(gen move {
             yield Ok(RegularInstruction::unbox().into());
-            yield_all!(self.expression.ast_node_to_instructions_inner(
+            yield_all!(self.expression.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -1814,7 +1814,7 @@ impl AstNodeToInstructions for DeriveRef {
         Box::new(gen move {
             compilation_context.mark_has_non_static_value();
 
-            yield_all!(self.expression.ast_node_to_instructions_inner(
+            yield_all!(self.expression.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -1848,7 +1848,7 @@ impl AstNodeToInstructions for CreateShared {
                 }
             }
 
-            yield_all!(self.expression.ast_node_to_instructions_inner(
+            yield_all!(self.expression.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -1883,7 +1883,7 @@ impl AstNodeToInstructions for DeriveSharedRef {
                 }
             }
 
-            yield_all!(self.expression.ast_node_to_instructions_inner(
+            yield_all!(self.expression.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -1908,13 +1908,13 @@ impl AstNodeToInstructions for BinaryOperation {
         Box::new(gen move {
             compilation_context.mark_has_non_static_value();
             yield Ok(RegularInstruction::binary_operation(self.operator).into());
-            yield_all!(self.left.ast_node_to_instructions_inner(
+            yield_all!(self.left.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
                 ctx_metadata.inner()
             ));
-            yield_all!(self.right.ast_node_to_instructions_inner(
+            yield_all!(self.right.ast_node_to_instructions(
                 compilation_context,
                 cache,
                 ast_metadata,
@@ -1959,7 +1959,7 @@ impl AstNodeToInstructions for TypeExpression {
                 TypeExpressionData::Range(range) => {
                     yield Ok(TypeInstruction::Range.into());
                     yield_all!(
-                        range.start.deref().ast_node_to_instructions_inner(
+                        range.start.deref().ast_node_to_instructions(
                             compilation_context,
                             cache,
                             ast_metadata,
@@ -1967,7 +1967,7 @@ impl AstNodeToInstructions for TypeExpression {
                         )
                     );
                     yield_all!(
-                        range.end.deref().ast_node_to_instructions_inner(
+                        range.end.deref().ast_node_to_instructions(
                             compilation_context,
                             cache,
                             ast_metadata,

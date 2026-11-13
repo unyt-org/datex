@@ -22,24 +22,7 @@ pub trait AstNodeToInstructions {
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a>;
-
-    /// Calls [ast_node_to_instructions] with default [CompileContextMetadata].
-    /// This should be called on child nodes, but not on the root node
-    fn ast_node_to_instructions_inner<'a>(
-        &'a self,
-        compilation_context: &'a mut CompilationContext,
-        cache: &'a mut SharedReferencesCache,
-        ast_metadata: &'a mut AstMetadata,
-        ctx_metadata: CompileContextMetadata,
-    ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a>
-    {
-        self.ast_node_to_instructions(
-            compilation_context,
-            cache,
-            ast_metadata,
-            ctx_metadata,
-        )
-    }
+    
 
     /// Compiles a given AST node to a DXB byte buffer, using the provided compilation context, metadata, and scope.
     fn try_compile_to_dxb(
