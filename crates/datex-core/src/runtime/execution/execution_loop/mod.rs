@@ -1892,6 +1892,7 @@ fn create_new_reference_from_value(
     let memory = &mut runtime.shared_references_cache_refcell().borrow_mut();
 
     if let Some(reference) = memory.get_reference(pointer_address) {
+        reference.mark_debug(is_debug);
         return Ok(reference.clone());
     }
     match pointer_address {

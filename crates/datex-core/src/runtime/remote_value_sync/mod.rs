@@ -205,9 +205,6 @@ impl RuntimeInternal {
             let source_endpoint = Endpoint::from(update.source_id().clone())
                 .as_local_if_endpoint(self.endpoint());
 
-            info!("SENDING UPDATE TO SUBSCRIBERS: {:?}", subscribers
-                .endpoints().collect::<Vec<_>>());
-
             let endpoints = subscribers
                 .endpoints()
                 .filter_map(|endpoint| {
@@ -221,9 +218,7 @@ impl RuntimeInternal {
                     }
                 })
                 .collect::<Vec<_>>();
-
-            info!("subscribers: {:?}", endpoints);
-
+            
             if !endpoints.is_empty() {
                 self.task_manager().register_task(
                     self.clone().send_update_block_to_subscribers(
