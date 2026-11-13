@@ -6,7 +6,9 @@ use crate::{
         com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
             ComInterfaceUUID,
-            properties::{ComInterfaceProperties, InterfaceDirection},
+            properties::{
+                ComInterfaceProperties, InterfaceDirection, ReconnectionConfig,
+            },
             socket::ComInterfaceSocketUUID,
         },
     },
@@ -20,7 +22,6 @@ use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
 use futures::channel::oneshot::Sender;
 use futures_core::future::LocalBoxFuture;
 use futures_util::TryStreamExt;
-use crate::network::com_interfaces::com_interface::properties::ReconnectionConfig;
 
 pub type NewSocketsIterator = Pin<
     Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,
@@ -184,7 +185,10 @@ impl SocketConfiguration {
     pub fn new_combined<I>(
         socket_configuration: SocketProperties,
         generator_initializer: impl FnOnce(
-            UnboundedReceiver<(DXBBlock, Sender<Result<SendSuccess, SendFailure>>)>,
+            UnboundedReceiver<(
+                DXBBlock,
+                Sender<Result<SendSuccess, SendFailure>>,
+            )>,
         ) -> I,
     ) -> Self
     where
@@ -290,7 +294,8 @@ impl SendCallback {
     pub fn new_async<F, Fut>(f: F) -> Self
     where
         F: Fn(DXBBlock) -> Fut + 'static,
-        Fut: core::future::Future<Output = Result<SendSuccess, SendFailure>> + 'static,
+        Fut: core::future::Future<Output = Result<SendSuccess, SendFailure>>
+            + 'static,
     {
         SendCallback::Async(AsyncCallback::new(f))
     }

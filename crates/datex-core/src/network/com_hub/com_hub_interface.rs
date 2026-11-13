@@ -12,11 +12,16 @@ use crate::network::{
 use log::info;
 
 use crate::{
-    network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory,
-    prelude::*, values::value::Value,
+    network::{
+        com_hub::managers::com_interface_manager::InterfaceInfo,
+        com_interfaces::com_interface::{
+            factory::ComInterfaceAsyncFactory,
+            properties::{ComInterfaceProperties, ReconnectionConfig},
+        },
+    },
+    prelude::*,
+    values::value::Value,
 };
-use crate::network::com_hub::managers::com_interface_manager::InterfaceInfo;
-use crate::network::com_interfaces::com_interface::properties::{ComInterfaceProperties, ReconnectionConfig};
 
 /// Interface management methods
 impl ComHub {
@@ -40,8 +45,12 @@ impl ComHub {
         reconnection_config: ReconnectionConfig,
         get_default_properties: fn() -> ComInterfaceProperties,
     ) {
-        self.interfaces_manager
-            .register_dyn_interface_factory(interface_type, factory, reconnection_config, get_default_properties);
+        self.interfaces_manager.register_dyn_interface_factory(
+            interface_type,
+            factory,
+            reconnection_config,
+            get_default_properties,
+        );
     }
 
     /// Adds a new interface to the ComHub based on the provided configuration
@@ -143,7 +152,7 @@ impl ComHub {
         let remove_future = if interface_loop_active {
             Some(
                 self.interfaces_manager
-                    .trigger_remove_interface(&interface_uuid),
+                    .trigger_remove_interface(interface_uuid),
             )
         } else {
             None
@@ -184,7 +193,11 @@ mod tests {
             protocol_structures::routing_header::SignatureType,
         },
         network::{
-            com_hub::{ComHub, InterfacePriority, metadata::ComHubMetadata},
+            block_handler::{BlockHandler, create_incoming_sections_channel},
+            com_hub::{
+                ComHub, ComInterfaceReconnectRequest, InterfacePriority,
+                metadata::ComHubMetadata,
+            },
             com_interfaces::com_interface::{
                 ComInterfaceUUID,
                 factory::{
@@ -202,8 +215,6 @@ mod tests {
     use core::{future::join, time::Duration};
     use futures_util::future::select;
     use log::info;
-    use crate::network::block_handler::{create_incoming_sections_channel, BlockHandler};
-    use crate::network::com_hub::ComInterfaceReconnectRequest;
 
     fn get_metadata_sockets(
         com_hub_metadata: ComHubMetadata,
@@ -242,8 +253,12 @@ mod tests {
             create_incoming_sections_channel();
         let (reconnect_request_sender, _reconnect_request_receiver) =
             create_unbounded_channel::<ComInterfaceReconnectRequest>();
-        let (com_hub, task_future) =
-            ComHub::create(Endpoint::default(), incoming_sections_sender, reconnect_request_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
+        let (com_hub, task_future) = ComHub::create(
+            Endpoint::default(),
+            incoming_sections_sender,
+            reconnect_request_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
 
         // add interface
         com_hub
@@ -281,10 +296,7 @@ mod tests {
         // remove interface before the com interface is fully initialized
         select(
             Box::pin(async {
-                com_hub
-                    .remove_interface(&interface_uuid)
-                    .await
-                    .unwrap();
+                com_hub.remove_interface(&interface_uuid).await.unwrap();
             }),
             Box::pin(task_future),
         )
@@ -313,10 +325,7 @@ mod tests {
                         .socket_manager
                         .are_sockets_registered_for_interface(&interface_uuid)
                 );
-                com_hub
-                    .remove_interface(&interface_uuid)
-                    .await
-                    .unwrap();
+                com_hub.remove_interface(&interface_uuid).await.unwrap();
             }),
             Box::pin(task_future),
         )
@@ -336,8 +345,12 @@ mod tests {
             create_incoming_sections_channel();
         let (reconnect_request_sender, _reconnect_request_receiver) =
             create_unbounded_channel::<ComInterfaceReconnectRequest>();
-        let (com_hub, _task_future) =
-            ComHub::create(Endpoint::default(), incoming_sections_sender, reconnect_request_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
+        let (com_hub, _task_future) = ComHub::create(
+            Endpoint::default(),
+            incoming_sections_sender,
+            reconnect_request_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
 
         let result = com_hub.remove_interface(&ComInterfaceUUID::new()).await;
         assert!(result.is_err());

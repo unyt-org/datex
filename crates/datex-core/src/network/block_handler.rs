@@ -1,4 +1,3 @@
-use alloc::rc::Weak;
 use crate::{
     channel::mpsc::{
         UnboundedReceiver, UnboundedSender, create_unbounded_channel,
@@ -13,12 +12,12 @@ use crate::{
     network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID,
     random::RandomState,
 };
+use alloc::rc::Weak;
 
 use crate::{disassembler::print_disassembled, prelude::*};
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
 use log::{info, warn};
 use ringmap::RingMap;
-use crate::channel::mpsc::{create_bounded_channel, Receiver, Sender};
 
 // TODO #170: store scope memory
 #[derive(Debug)]
@@ -64,7 +63,8 @@ type SectionObserver = Box<dyn FnMut(IncomingSection)>;
 
 pub type IncomingSectionSender = UnboundedSender<IncomingSection>;
 pub type IncomingSectionReceiver = UnboundedReceiver<IncomingSection>;
-pub fn create_incoming_sections_channel() -> (IncomingSectionSender, IncomingSectionReceiver) {
+pub fn create_incoming_sections_channel()
+-> (IncomingSectionSender, IncomingSectionReceiver) {
     create_unbounded_channel()
 }
 
@@ -72,7 +72,14 @@ pub fn create_incoming_sections_channel() -> (IncomingSectionSender, IncomingSec
 pub struct IncomingSectionReceiverWrapper {
     rx: IncomingSectionReceiver,
     key: (OutgoingContextId, OutgoingSectionIndex),
-    observers: Weak<RefCell<HashMap<(OutgoingContextId, OutgoingSectionIndex), Box<dyn FnMut(IncomingSection)>>>>,
+    observers: Weak<
+        RefCell<
+            HashMap<
+                (OutgoingContextId, OutgoingSectionIndex),
+                Box<dyn FnMut(IncomingSection)>,
+            >,
+        >,
+    >,
 }
 
 impl IncomingSectionReceiverWrapper {
@@ -88,8 +95,6 @@ impl Drop for IncomingSectionReceiverWrapper {
         }
     }
 }
-
-
 
 #[derive(Clone, Debug)]
 pub struct BlockHistoryData {
@@ -110,7 +115,11 @@ pub struct BlockHandler {
 
     /// a map of observers for incoming response blocks (by context_id + block_index)
     /// contains an observer callback and an optional queue of blocks if the response block is a multi-block stream
-    pub section_observers: Rc<RefCell<HashMap<(IncomingContextId, IncomingSectionIndex), SectionObserver>>>,
+    pub section_observers: Rc<
+        RefCell<
+            HashMap<(IncomingContextId, IncomingSectionIndex), SectionObserver>,
+        >,
+    >,
 
     /// history of all incoming blocks
     pub incoming_blocks_history:
@@ -126,7 +135,6 @@ impl Debug for BlockHandler {
             .finish()
     }
 }
-
 
 impl BlockHandler {
     pub const DEFAULT_HISTORY_CAPACITY: usize = 200; // TODO: adjust for different targets;
@@ -447,11 +455,13 @@ impl BlockHandler {
 
         // create observer callback for scope id + block index
         let observer = move |blocks: IncomingSection| {
-            if let Err(e) = tx.borrow_mut().start_send(blocks) {
-                warn!("Failed to send incoming section to observer, receiver was dropped");
+            if let Err(_e) = tx.borrow_mut().start_send(blocks) {
+                warn!(
+                    "Failed to send incoming section to observer, receiver was dropped"
+                );
             }
         };
-        
+
         // TODO: are multiple observers allowed?
         if self
             .section_observers
@@ -517,7 +527,10 @@ mod tests {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
             create_incoming_sections_channel();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
+        let block_handler = BlockHandler::init(
+            incoming_sections_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
         let context_id = block_handler.get_new_context_id();
 
         // Create a single DXB block
@@ -560,7 +573,10 @@ mod tests {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
             create_incoming_sections_channel();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
+        let block_handler = BlockHandler::init(
+            incoming_sections_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
 
         let context_id = block_handler.get_new_context_id();
         let section_index = 42;
@@ -657,7 +673,10 @@ mod tests {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
+        let block_handler = BlockHandler::init(
+            incoming_sections_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
 
         let context_id = block_handler.get_new_context_id();
         let section_index = 42;
@@ -743,7 +762,10 @@ mod tests {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
             create_incoming_sections_channel();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
+        let block_handler = BlockHandler::init(
+            incoming_sections_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
 
         let context_id = block_handler.get_new_context_id();
         let section_index_1 = 42;
@@ -924,7 +946,10 @@ mod tests {
         let (incoming_sections_sender, _incoming_sections_receiver) =
             create_incoming_sections_channel();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
+        let block_handler = BlockHandler::init(
+            incoming_sections_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
 
         let context_id = block_handler.get_new_context_id();
         let section_index = 42;

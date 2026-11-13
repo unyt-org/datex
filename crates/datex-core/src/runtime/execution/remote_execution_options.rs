@@ -6,6 +6,9 @@ pub struct RemoteExecutionOptions {
 
 impl RemoteExecutionOptions {
     pub fn new_with_end_of_context(is_end_of_context: bool) -> Self {
-        RemoteExecutionOptions { is_end_of_context, mark_as_debug: false }
+        RemoteExecutionOptions {
+            is_end_of_context,
+            mark_as_debug: false,
+        }
     }
 }

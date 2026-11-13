@@ -26,7 +26,6 @@ impl<'a> ToDatexExpressionData for BorrowedCoreValueWithClassificationMut<'a> {
     }
 }
 
-
 fn classification_expression(
     mut expression: DatexExpressionData,
     classification: &ValueClassification,

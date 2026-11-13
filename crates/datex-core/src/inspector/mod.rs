@@ -7,22 +7,22 @@ use crate::{
     traits::get_datex_type::GetDatexType,
     utils::logger::{LogMessage, register_log_sender},
     values::value_container::ValueContainer,
-    random::RandomState
 };
 use datex_macros_internal::{Datex, datex};
 
 #[datex(name = "inspector")]
 mod datex_inspector {
-    use core::cell::RefCell;
-    use log::info;
     use super::*;
     use crate::{
+        network::com_hub::{
+            BlockDirection, BlockInterceptor, metadata::ComHubMetadata,
+        },
+        runtime::{RuntimeInfo, RuntimeStats},
         shared_wrappers::shared::{shared_ref::SharedRef, to_shared::ToShared},
         values::core_values::{channel::create_channel, receiver::Receiver},
     };
-    use crate::network::com_hub::{BlockDirection, BlockInterceptor};
-    use crate::network::com_hub::metadata::ComHubMetadata;
-    use crate::runtime::{RuntimeInfo, RuntimeStats};
+    use core::cell::RefCell;
+    use log::info;
 
     #[derive(Datex, Debug, Clone)]
     #[datex(structural)]
@@ -88,20 +88,16 @@ mod datex_inspector {
             receiver
         }
 
-
         /// Returns the current metadata information (connected interfaces, sockets) of the endpoint's com hub.
         pub fn com_hub_metadata(
             &self,
-            #[runtime] runtime: &Runtime
+            #[runtime] runtime: &Runtime,
         ) -> ComHubMetadata {
             runtime.com_hub().get_metadata()
         }
 
         /// Returns the current runtime statistics of the endpoint.
-        pub fn stats(
-            &self,
-            #[runtime] runtime: &Runtime,
-        ) -> RuntimeStats {
+        pub fn stats(&self, #[runtime] runtime: &Runtime) -> RuntimeStats {
             runtime.get_stats()
         }
 
@@ -123,7 +119,11 @@ mod datex_inspector {
         name: String,
         #[runtime] runtime: &Runtime,
     ) -> SharedRef<Inspector> {
-        let inspector = Inspector { name, info: runtime.info().clone() }.shared_ref(runtime);
+        let inspector = Inspector {
+            name,
+            info: runtime.info().clone(),
+        }
+        .shared_ref(runtime);
         inspector.mark_debug(true);
         inspector
     }

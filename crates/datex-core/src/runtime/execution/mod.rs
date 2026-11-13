@@ -14,6 +14,7 @@ use crate::{
                 internal_slots::get_root_property,
                 interrupts::{ExternalExecutionInterrupt, InterruptResult},
             },
+            remote_execution_options::RemoteExecutionOptions,
         },
     },
     shared_values::{
@@ -29,7 +30,6 @@ use core::{result::Result, str::FromStr, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
-use crate::runtime::execution::remote_execution_options::RemoteExecutionOptions;
 
 pub mod context;
 mod errors;
@@ -38,9 +38,9 @@ pub mod execution_loop;
 pub mod macros;
 mod stack_dump;
 
+pub mod remote_execution_options;
 #[cfg(all(test, feature = "std"))]
 mod test_remote_execution;
-pub mod remote_execution_options;
 
 pub fn execute_dxb_sync(
     input: ExecutionInput,
@@ -299,7 +299,9 @@ pub async fn execute_dxb(
                         .execute_remote_single_receiver(
                             &remote_execution_context.target,
                             dxb_with_shared_values,
-                            RemoteExecutionOptions::new_with_end_of_context(true),
+                            RemoteExecutionOptions::new_with_end_of_context(
+                                true,
+                            ),
                         )
                         .await?;
                     interrupt_provider
@@ -435,7 +437,7 @@ mod tests {
         libs::core::type_id::CoreLibBaseTypeId,
         prelude::*,
         runtime::{
-            Runtime, RuntimeConfig, RuntimeRunner,
+            CustomRuntimeInfo, Runtime, RuntimeConfig, RuntimeRunner,
             cache::shared_references_cache::SharedReferencesCache,
             execution::{
                 context::{ExecutionContext, LocalExecutionContext},
@@ -481,7 +483,6 @@ mod tests {
     use core::assert_matches;
     use indexmap::IndexMap;
     use log::{debug, info};
-    use crate::runtime::CustomRuntimeInfo;
 
     fn execute_datex_script_debug(
         datex_script: &str,

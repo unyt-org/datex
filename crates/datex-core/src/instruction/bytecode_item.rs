@@ -1,10 +1,8 @@
 //! The [ByteCode] item is the parent of the Instruction and hold special handle for labels and jumps as well as instructions.
 
-use crate::{
-    instruction::{
-        Instruction, regular_instruction::RegularInstruction,
-        type_instruction::TypeInstruction,
-    },
+use crate::instruction::{
+    Instruction, regular_instruction::RegularInstruction,
+    type_instruction::TypeInstruction,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

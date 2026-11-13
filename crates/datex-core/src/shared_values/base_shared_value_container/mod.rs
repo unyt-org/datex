@@ -115,7 +115,7 @@ impl BaseSharedValueContainer {
     pub fn mark_debug(&mut self, is_debug: bool) {
         self.is_debug = is_debug;
     }
-    
+
     pub fn is_debug(&self) -> bool {
         self.is_debug
     }

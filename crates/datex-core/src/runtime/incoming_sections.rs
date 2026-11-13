@@ -43,7 +43,7 @@ impl RuntimeInternal {
             }
         }
     }
-    
+
     pub(crate) async fn handle_reconnect_requests_task(
         self: Rc<RuntimeInternal>,
     ) {
@@ -53,19 +53,24 @@ impl RuntimeInternal {
             // for embassy, run all sections in the same task to avoid spawning too many tasks
             #[cfg(feature = "embassy_runtime")]
             {
-                self.com_hub().clone().try_reconnect_interface(reconnect_request).await;
+                self.com_hub()
+                    .clone()
+                    .try_reconnect_interface(reconnect_request)
+                    .await;
             }
             // otherwise, run each section in its own task
             #[cfg(not(feature = "embassy_runtime"))]
             {
                 // TODO #741: task
                 self.task_manager().register_task(
-                    self.com_hub().clone().try_reconnect_interface(reconnect_request)
+                    self.com_hub()
+                        .clone()
+                        .try_reconnect_interface(reconnect_request),
                 );
             }
         }
     }
-    
+
     async fn handle_incoming_section_task(
         self: Rc<RuntimeInternal>,
         section: IncomingSection,
@@ -80,8 +85,7 @@ impl RuntimeInternal {
         match &result {
             Ok(Some(result)) => self.log_info(format!(
                 "Successful Execution result (from {}): {}",
-                endpoint,
-                result
+                endpoint, result
             )),
             Ok(None) => self.log_info(format!(
                 "Successful Execution result (from {}): None",

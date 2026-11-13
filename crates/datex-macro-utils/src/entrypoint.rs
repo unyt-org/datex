@@ -171,18 +171,18 @@ pub fn datex_main_impl_with_config(
     } else {
         quote! {}
     };
-    
+
     let profiler = cfg_select! {
         feature = "debug_dhat" => {
             quote! {
                 let _profiler = #core_namespace::dhat::Profiler::new_heap();
             }
-        },
+        }
         _ => {
             quote! {}
         }
     };
-    
+
     let custom_runtime_info = input.custom_runtime_info.unwrap_or_else(|| {
         quote! { CustomRuntimeInfo::default() }
     });
@@ -191,9 +191,9 @@ pub fn datex_main_impl_with_config(
         #(#additional_attributes)*
         #(#attrs)*
         #vis #sig {
-            
+
             #profiler
-            
+
             use #core_namespace::{
                 runtime::{RuntimeRunner, RuntimeConfig, Runtime, CustomRuntimeInfo},
                 traits::convert_value_container::ConvertValueContainer,

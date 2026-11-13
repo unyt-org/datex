@@ -8,7 +8,12 @@ use crate::{
     prelude::*,
     runtime::{
         RuntimeInternal,
-        execution::context::{ExecutionMode, RemoteExecutionContext},
+        execution::{
+            context::{
+                ExecutionMode, RemoteExecutionContext, RemoteExecutionTarget,
+            },
+            remote_execution_options::RemoteExecutionOptions,
+        },
     },
     shared_values::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
@@ -23,9 +28,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{assert_matches, fmt::Display, ops::Deref};
-use log::{info, warn};
-use crate::runtime::execution::context::RemoteExecutionTarget;
-use crate::runtime::execution::remote_execution_options::RemoteExecutionOptions;
+use log::warn;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum SubscriberError {
@@ -183,10 +186,14 @@ impl RuntimeInternal {
         );
 
         self_clone
-            .execute_remote(&context.target, update_dxb, RemoteExecutionOptions {
-                is_end_of_context: true,
-                mark_as_debug,
-            })
+            .execute_remote(
+                &context.target,
+                update_dxb,
+                RemoteExecutionOptions {
+                    is_end_of_context: true,
+                    mark_as_debug,
+                },
+            )
             .await
             .expect("Failed to execute remote update block");
     }
@@ -218,7 +225,7 @@ impl RuntimeInternal {
                     }
                 })
                 .collect::<Vec<_>>();
-            
+
             if !endpoints.is_empty() {
                 self.task_manager().register_task(
                     self.clone().send_update_block_to_subscribers(
@@ -228,13 +235,17 @@ impl RuntimeInternal {
                         endpoints,
                     ),
                 );
+            } else {
+                warn!(
+                    "No endpoints to send update to for container: {:?}",
+                    container.pointer_address()
+                );
             }
-            else {
-                warn!("No endpoints to send update to for container: {:?}", container.pointer_address());
-            }
-        }
-        else {
-            warn!("No subscribers found for container: {:?}", container.pointer_address());
+        } else {
+            warn!(
+                "No subscribers found for container: {:?}",
+                container.pointer_address()
+            );
         }
     }
 
@@ -266,12 +277,16 @@ impl RuntimeInternal {
 
         let responses = {
             let target = RemoteExecutionTarget::new(receiver_endpoints);
-            
+
             self_clone
-                .execute_remote(&target, update_dxb, RemoteExecutionOptions {
-                    is_end_of_context: true,
-                    mark_as_debug,
-                })
+                .execute_remote(
+                    &target,
+                    update_dxb,
+                    RemoteExecutionOptions {
+                        is_end_of_context: true,
+                        mark_as_debug,
+                    },
+                )
                 .await
                 .expect("Failed to execute remote update block")
         };
@@ -285,7 +300,10 @@ impl RuntimeInternal {
                     subscriptions.get_subscribers_mut(&container)
             {
                 // remove subscriber
-                warn!("Got error response {:?} from endpoint {:?}, removing from subscribers", response, endpoint);
+                warn!(
+                    "Got error response {:?} from endpoint {:?}, removing from subscribers",
+                    response, endpoint
+                );
                 subscriber.remove_subscriber(&endpoint);
             }
         }

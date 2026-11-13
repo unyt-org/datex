@@ -8,7 +8,9 @@ use crate::{
         serialize_with_serde_context::{
             SerializeWithSerdeContext, SerializeWithSerdeContextDyn,
         },
+        value_with_serde_context::ValueWithSerdeContext,
     },
+    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
     random::RandomState,
 };
 use core::{fmt, hash::Hash};
@@ -19,13 +21,10 @@ use serde::{
     de::{MapAccess, SeqAccess, Visitor},
     ser::SerializeSeq,
 };
-use crate::dif::value_with_serde_context::ValueWithSerdeContext;
-use crate::libs::core::core_lib_id::CoreLibIdIndex;
-use crate::libs::core::type_id::CoreLibBaseTypeId;
 
 pub struct InnerIndexMap<'a, K, V>(&'a IndexMap<K, V, RandomState>);
 impl<K: SerializeWithSerdeContextDyn, V: SerializeWithSerdeContextDyn>
-SerializeWithSerdeContext for InnerIndexMap<'_ ,K, V>
+    SerializeWithSerdeContext for InnerIndexMap<'_, K, V>
 {
     fn serialize_with_ctx<S: serde::Serializer>(
         &self,
@@ -40,7 +39,6 @@ SerializeWithSerdeContext for InnerIndexMap<'_ ,K, V>
     }
 }
 
-
 impl<K: SerializeWithSerdeContextDyn, V: SerializeWithSerdeContextDyn>
     SerializeWithSerdeContext for IndexMap<K, V, RandomState>
 {
@@ -50,9 +48,8 @@ impl<K: SerializeWithSerdeContextDyn, V: SerializeWithSerdeContextDyn>
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut tuple = serializer.serialize_tuple(2)?;
-        tuple.serialize_element(
-            &CoreLibIdIndex::from(CoreLibBaseTypeId::Map),
-        )?;
+        tuple
+            .serialize_element(&CoreLibIdIndex::from(CoreLibBaseTypeId::Map))?;
         tuple.serialize_element(&ValueWithSerdeContext::new(
             &InnerIndexMap(self),
             ctx,

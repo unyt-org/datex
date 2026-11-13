@@ -1,9 +1,10 @@
 use crate::{
     ast::expressions::DatexExpressionData,
     traits::to_datex_expression_data::ToDatexExpressionData,
-    values::core_value::borrowed_core_value::BorrowedCoreValue,
+    values::core_value::borrowed_core_value::{
+        BorrowedCoreValue, BorrowedCoreValueMut,
+    },
 };
-use crate::values::core_value::borrowed_core_value::BorrowedCoreValueMut;
 
 impl<'a> ToDatexExpressionData for BorrowedCoreValue<'a> {
     fn to_datex_expression_data(&self) -> DatexExpressionData {
@@ -78,7 +79,9 @@ impl<'a> ToDatexExpressionData for BorrowedCoreValueMut<'a> {
             BorrowedCoreValueMut::Text(text) => {
                 text.as_ref().to_datex_expression_data()
             }
-            BorrowedCoreValueMut::Range(range) => range.to_datex_expression_data(),
+            BorrowedCoreValueMut::Range(range) => {
+                range.to_datex_expression_data()
+            }
             BorrowedCoreValueMut::Endpoint(endpoint) => {
                 endpoint.to_datex_expression_data()
             }
@@ -91,11 +94,13 @@ impl<'a> ToDatexExpressionData for BorrowedCoreValueMut<'a> {
             BorrowedCoreValueMut::Callable(callable) => {
                 callable.to_datex_expression_data()
             }
-            BorrowedCoreValueMut::EntityTypeDefinition(entity_type_definition) => {
-                entity_type_definition.to_datex_expression_data()
-            }
+            BorrowedCoreValueMut::EntityTypeDefinition(
+                entity_type_definition,
+            ) => entity_type_definition.to_datex_expression_data(),
             BorrowedCoreValueMut::Uninitialized => todo!(),
-            BorrowedCoreValueMut::Box(inner) => inner.to_datex_expression_data(),
+            BorrowedCoreValueMut::Box(inner) => {
+                inner.to_datex_expression_data()
+            }
             BorrowedCoreValueMut::Instant(instant) => {
                 instant.to_datex_expression_data()
             }
@@ -108,4 +113,3 @@ impl<'a> ToDatexExpressionData for BorrowedCoreValueMut<'a> {
         }
     }
 }
-

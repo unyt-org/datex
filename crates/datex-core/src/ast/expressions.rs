@@ -260,7 +260,9 @@ pub enum DatexExpressionData {
 }
 
 impl DatexExpressionData {
-    pub fn callable_declaration(callable_declaration: CallableDeclaration) -> Self {
+    pub fn callable_declaration(
+        callable_declaration: CallableDeclaration,
+    ) -> Self {
         DatexExpressionData::CallableDeclaration(Box::new(callable_declaration))
     }
 }

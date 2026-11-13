@@ -53,7 +53,12 @@ pub async fn basic_remote_execution() {
 
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute("1 + 2", &[], Some(&mut remote_execution_context), false)
+                .execute(
+                    "1 + 2",
+                    &[],
+                    Some(&mut remote_execution_context),
+                    false,
+                )
                 .await;
             assert_eq!(
                 result.unwrap().unwrap(),
@@ -61,7 +66,12 @@ pub async fn basic_remote_execution() {
             );
 
             let result = runtime_a
-                .execute("2 + 3", &[], Some(&mut remote_execution_context), false)
+                .execute(
+                    "2 + 3",
+                    &[],
+                    Some(&mut remote_execution_context),
+                    false,
+                )
                 .await;
             assert_eq!(
                 result.unwrap().unwrap(),
@@ -138,7 +148,12 @@ pub async fn remote_inline() {
 
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute("@test_b :: 1 + 2", &[], Some(&mut execution_context), false)
+                .execute(
+                    "@test_b :: 1 + 2",
+                    &[],
+                    Some(&mut execution_context),
+                    false,
+                )
                 .await;
             assert_eq!(
                 result.unwrap().unwrap(),
@@ -163,7 +178,14 @@ pub async fn remote_inline_implicit_context() {
         endpoint_b.clone(),
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
-            let result = runtime_a.execute("@test_b :: 1 + 2", &[], None::<ExecutionContext>, false).await;
+            let result = runtime_a
+                .execute(
+                    "@test_b :: 1 + 2",
+                    &[],
+                    None::<ExecutionContext>,
+                    false,
+                )
+                .await;
             assert_eq!(
                 result.unwrap().unwrap(),
                 ValueContainer::from(Integer::from(3i8))
@@ -189,7 +211,12 @@ pub async fn remote_shared_value_inject_move() {
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute("var x = shared 42; @test_b :: x + 1", &[], None::<ExecutionContext>, false)
+                .execute(
+                    "var x = shared 42; @test_b :: x + 1",
+                    &[],
+                    None::<ExecutionContext>,
+                    false,
+                )
                 .await;
             assert_eq!(
                 result.unwrap().unwrap(),
@@ -281,7 +308,12 @@ pub async fn remote_shared_value_return(
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute(&format!("@test_b :: ({shared_string} 42)"), &[], None::<ExecutionContext>, false)
+                .execute(
+                    &format!("@test_b :: ({shared_string} 42)"),
+                    &[],
+                    None::<ExecutionContext>,
+                    false,
+                )
                 .await
                 .unwrap()
                 .unwrap();
@@ -485,7 +517,12 @@ pub async fn test_remote_endpoint_property() {
 
             // get property
             let result = runtime_a
-                .execute("@test_b.example", &[], Some(&mut execution_context), false)
+                .execute(
+                    "@test_b.example",
+                    &[],
+                    Some(&mut execution_context),
+                    false,
+                )
                 .await
                 .unwrap()
                 .unwrap();

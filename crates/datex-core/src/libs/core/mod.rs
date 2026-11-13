@@ -26,6 +26,7 @@ mod type_match;
 pub mod value_id;
 
 use crate::{
+    libs::core::type_id::TOTAL_CORE_LIB_TYPE_COUNT,
     runtime::Runtime,
     traits::apply::{ApplyArgument, get_borrowed_apply_argument_values},
     types::{r#type::Type, type_definition::callable::CallableKind},
@@ -34,7 +35,6 @@ use crate::{
 };
 use indexmap::IndexMap;
 use strum::IntoEnumIterator;
-use crate::libs::core::type_id::TOTAL_CORE_LIB_TYPE_COUNT;
 
 #[derive(Debug)]
 pub struct CoreLibraryValues {
@@ -162,7 +162,10 @@ pub struct CoreLibraryTypes(IndexMap<CoreLibTypeId, Value, RandomState>);
 
 impl Default for CoreLibraryTypes {
     fn default() -> Self {
-        let mut map = IndexMap::with_capacity_and_hasher(TOTAL_CORE_LIB_TYPE_COUNT as usize, RandomState::default());
+        let mut map = IndexMap::with_capacity_and_hasher(
+            TOTAL_CORE_LIB_TYPE_COUNT as usize,
+            RandomState::default(),
+        );
         map.extend(Self::core_lib_types());
         Self(map)
     }

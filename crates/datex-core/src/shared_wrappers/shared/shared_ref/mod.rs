@@ -46,7 +46,7 @@ impl<T: DatexNative> SharedRef<T> {
             T::try_borrow_mut_from_value_container(value_container).unwrap()
         })
     }
-    
+
     pub fn mark_debug(&self, is_debug: bool) {
         self.container.mark_debug(is_debug);
     }

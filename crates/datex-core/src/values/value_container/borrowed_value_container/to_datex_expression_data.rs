@@ -5,9 +5,10 @@ use crate::{
     },
     shared_values::SharedContainer,
     traits::to_datex_expression_data::ToDatexExpressionData,
-    values::value_container::borrowed_value_container::BorrowedValueContainer,
+    values::value_container::borrowed_value_container::{
+        BorrowedValueContainer, BorrowedValueContainerMut,
+    },
 };
-use crate::values::value_container::borrowed_value_container::BorrowedValueContainerMut;
 
 impl<'a> ToDatexExpressionData for BorrowedValueContainer<'a> {
     fn to_datex_expression_data(&self) -> DatexExpressionData {

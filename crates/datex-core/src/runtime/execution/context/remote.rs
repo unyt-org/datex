@@ -26,7 +26,6 @@ pub struct RemoteExecutionTarget {
     pub context_id: Rc<RefCell<Option<OutgoingContextId>>>,
 }
 
-
 impl RemoteExecutionTarget {
     pub fn new(endpoints: Vec<Endpoint>) -> Self {
         RemoteExecutionTarget {

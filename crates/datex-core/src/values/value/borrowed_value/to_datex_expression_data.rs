@@ -1,9 +1,8 @@
 use crate::{
     ast::expressions::DatexExpressionData,
     traits::to_datex_expression_data::ToDatexExpressionData,
-    values::value::borrowed_value::BorrowedValue,
+    values::value::borrowed_value::{BorrowedValue, BorrowedValueMut},
 };
-use crate::values::value::borrowed_value::BorrowedValueMut;
 
 impl ToDatexExpressionData for BorrowedValue<'_> {
     fn to_datex_expression_data(&self) -> DatexExpressionData {

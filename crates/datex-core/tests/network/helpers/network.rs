@@ -18,7 +18,7 @@ use datex_core::{
             properties::{ComInterfaceProperties, InterfaceDirection},
         },
     },
-    runtime::{Runtime, RuntimeConfig, RuntimeRunner},
+    runtime::{CustomRuntimeInfo, Runtime, RuntimeConfig, RuntimeRunner},
     values::core_values::endpoint::Endpoint,
 };
 use log::info;
@@ -30,7 +30,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tokio::task::{spawn_local, yield_now};
-use datex_core::runtime::CustomRuntimeInfo;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MockupInterfaceSetupData {

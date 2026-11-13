@@ -11,11 +11,10 @@ pub struct AsyncCallback<In, Out> {
 impl<In, Out> Clone for AsyncCallback<In, Out> {
     fn clone(&self) -> Self {
         Self {
-            inner: self.inner.clone()
+            inner: self.inner.clone(),
         }
     }
 }
-
 
 impl<In, Out> AsyncCallback<In, Out> {
     /// Create a new AsyncCallback from an async function or closure.
