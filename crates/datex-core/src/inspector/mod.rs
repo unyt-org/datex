@@ -52,6 +52,7 @@ mod datex_inspector {
         ) -> SharedRef<Receiver<LogMessage>> {
             let (sender, receiver) = create_channel(runtime);
             register_log_sender(sender);
+            receiver.mark_debug(true);
             receiver
         }
 
