@@ -280,6 +280,14 @@ impl ReferencedSharedContainer {
     pub(crate) fn unset_uninitialized(&mut self) {
         self.is_uninitialized = false;
     }
+
+    pub fn mark_debug(&self, is_debug: bool) {
+        self.base_shared_container_mut().mark_debug(is_debug);
+    }
+    
+    pub fn is_debug(&self) -> bool {
+        self.base_shared_container().is_debug()
+    }
 }
 
 impl_display_for_datex_value!(

@@ -424,6 +424,7 @@ gen fn append_referenced_shared_container(
                 ref_mutability: referenced_container.reference_mutability(),
                 container_mutability: referenced_container
                     .container_mutability(),
+                is_debug: referenced_container.is_debug(),
             })
             .into();
         }
@@ -433,6 +434,7 @@ gen fn append_referenced_shared_container(
                 ref_mutability: referenced_container.reference_mutability(),
                 container_mutability: referenced_container
                     .container_mutability(),
+                is_debug: referenced_container.is_debug(),
             })
             .into();
         }
@@ -454,6 +456,7 @@ gen fn append_referenced_shared_container_with_value(
                     ref_mutability: referenced_container.reference_mutability(),
                     container_mutability: referenced_container
                         .container_mutability(),
+                    is_debug: referenced_container.is_debug(),
                 },
             )
             .into();
@@ -476,6 +479,7 @@ gen fn append_referenced_shared_container_with_value(
                 ref_mutability: referenced_container.reference_mutability(),
                 container_mutability: referenced_container
                     .container_mutability(),
+                is_debug: referenced_container.is_debug(),
             })
             .into();
         }
@@ -663,6 +667,7 @@ mod tests {
                                         ReferenceMutability::Immutable,
                                     container_mutability:
                                         SharedContainerMutability::Immutable,
+                                    is_debug: false,
                                 }
                             ),
                             RegularInstruction::Int32(Int32Data(42)),
@@ -958,6 +963,7 @@ mod tests {
                                     address: address_c.clone(),
                                     container_mutability:
                                         SharedContainerMutability::Mutable,
+                                    is_debug: false,
                                 }
                             )
                             .with_children(
@@ -974,6 +980,7 @@ mod tests {
                                     address: address_b.clone(),
                                     container_mutability:
                                         SharedContainerMutability::Mutable,
+                                    is_debug: false,
                                 }
                             )
                             .with_children(

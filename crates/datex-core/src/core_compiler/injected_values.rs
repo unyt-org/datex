@@ -282,7 +282,8 @@ mod tests {
                                 RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                                     address: owned_address,
                                     ref_mutability: ReferenceMutability::Immutable,
-                                    container_mutability: SharedContainerMutability::Immutable
+                                    container_mutability: SharedContainerMutability::Immutable,
+                                    is_debug: false,
                                 }),
                                 RegularInstruction::Int32(Int32Data(42)),
                                 RegularInstruction::list_with_children(instructions!(
@@ -372,14 +373,16 @@ mod tests {
                             RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                                 address: owned_address_1,
                                 ref_mutability: ReferenceMutability::Immutable,
-                                container_mutability: SharedContainerMutability::Immutable
+                                container_mutability: SharedContainerMutability::Immutable,
+                                is_debug: false,
                             }),
                             RegularInstruction::Int32(Int32Data(42)),
                             RegularInstruction::PushToStack,
                             RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                                 address: owned_address_2,
                                 ref_mutability: ReferenceMutability::Mutable,
-                                container_mutability: SharedContainerMutability::Mutable
+                                container_mutability: SharedContainerMutability::Mutable,
+                                is_debug: false,
                             }),
                             RegularInstruction::Int32(Int32Data(100)),
                             RegularInstruction::list_with_children(instructions!(
@@ -565,7 +568,8 @@ mod tests {
                             RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                                 address: shared_value2_address,
                                 ref_mutability: ReferenceMutability::Immutable,
-                                container_mutability: SharedContainerMutability::Immutable
+                                container_mutability: SharedContainerMutability::Immutable,
+                                is_debug: false
                             }),
                             RegularInstruction::Int32(Int32Data(100)),
 

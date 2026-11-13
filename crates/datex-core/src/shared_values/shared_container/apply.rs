@@ -77,11 +77,14 @@ impl SharedContainer {
 
         // FIXME: restore borrowed stack values across remote execution.
         // For now, local borrows are not supported cross endpoint
+        
+        let is_debug = self.is_debug();
 
         let res = runtime
             .execute_instructions_remote_single_receiver(
                 self.pointer_address().endpoint(),
                 instructions,
+                is_debug,
             )
             .await
             .map_err(|e| {

@@ -49,6 +49,7 @@ impl ToInstructions for (&SharedContainer, &[&UpdateData]) {
                 address: container.pointer_address(),
                 ref_mutability: ReferenceMutability::Mutable, // can always be upgraded to mutable since the executing endpoint is the owner
                 container_mutability: SharedContainerMutability::Mutable, // must be mutable for updates
+                is_debug: container.is_debug(),
             })
             .into();
 
@@ -126,6 +127,7 @@ mod tests {
                                 ref_mutability: ReferenceMutability::Mutable,
                                 container_mutability:
                                     SharedContainerMutability::Mutable,
+                                is_debug: false,
                             }
                         ),)
                     ),
@@ -174,6 +176,7 @@ mod tests {
                                 ref_mutability: ReferenceMutability::Mutable,
                                 container_mutability:
                                     SharedContainerMutability::Mutable,
+                                is_debug: false,
                             }
                         ),)
                     ),

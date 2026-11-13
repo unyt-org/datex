@@ -70,7 +70,7 @@ impl RuntimeInternal {
         self: Rc<RuntimeInternal>,
         section: IncomingSection,
     ) {
-        let (result, endpoint, context_id) =
+        let (result, endpoint, context_id, mark_debug) =
             RuntimeInternal::execute_incoming_section(
                 self.clone(),
                 section,
@@ -97,6 +97,7 @@ impl RuntimeInternal {
             result,
             endpoint,
             context_id,
+            mark_debug,
         )
         .await;
         // TODO #231: handle errors in sending response
@@ -107,6 +108,7 @@ impl RuntimeInternal {
         result: Result<Option<ValueContainer>, ExecutionError>,
         receiver_endpoint: Endpoint,
         context_id: OutgoingContextId,
+        mark_debug: bool,
     ) -> Result<(), Vec<Endpoint>> {
         let routing_header: RoutingHeader = RoutingHeader::default()
             .with_sender(self.endpoint().clone())
@@ -116,7 +118,8 @@ impl RuntimeInternal {
             flags_and_timestamp: FlagsAndTimestamp::new()
                 .with_block_type(BlockType::Response)
                 .with_is_end_of_section(true)
-                .with_is_end_of_context(true),
+                .with_is_end_of_context(true)
+                .with_is_debug_block(mark_debug),
             ..BlockHeader::default()
         };
         let encrypted_header = EncryptedHeader::default();

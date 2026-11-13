@@ -68,6 +68,7 @@ mod datex_inspector {
 
             *uuid.borrow_mut() = Some(runtime.com_hub().register_block_interceptor(BlockInterceptor::new(
                 move |block| {
+                    info!("Inspector captured block: {:?}", block);
                     let captured_block = CapturedBlockData {
                         block: block.block.to_bytes(),
                         socket_uuid: block.socket_uuid.to_string(),
@@ -81,6 +82,8 @@ mod datex_inspector {
                 },
                 false, // exclude debug blocks
             )));
+
+            receiver.mark_debug(true);
 
             receiver
         }
@@ -120,7 +123,9 @@ mod datex_inspector {
         name: String,
         #[runtime] runtime: &Runtime,
     ) -> SharedRef<Inspector> {
-        Inspector { name, info: runtime.info().clone() }.shared_ref(runtime)
+        let inspector = Inspector { name, info: runtime.info().clone() }.shared_ref(runtime);
+        inspector.mark_debug(true);
+        inspector
     }
 
     // pub async fn async_test(a: String) -> String {

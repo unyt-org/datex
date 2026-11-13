@@ -29,6 +29,7 @@ use core::{result::Result, str::FromStr, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
+use crate::runtime::execution::remote_execution_options::RemoteExecutionOptions;
 
 pub mod context;
 mod errors;
@@ -39,6 +40,7 @@ mod stack_dump;
 
 #[cfg(all(test, feature = "std"))]
 mod test_remote_execution;
+pub mod remote_execution_options;
 
 pub fn execute_dxb_sync(
     input: ExecutionInput,
@@ -297,7 +299,7 @@ pub async fn execute_dxb(
                         .execute_remote_single_receiver(
                             &remote_execution_context.target,
                             dxb_with_shared_values,
-                            true,
+                            RemoteExecutionOptions::new_with_end_of_context(true),
                         )
                         .await?;
                     interrupt_provider
@@ -344,6 +346,7 @@ async fn set_remote_endpoint_property(
                 InstructionInput::ValueContainer(value),
                 RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
             ],
+            false,
         )
         .await
 }
@@ -360,6 +363,7 @@ async fn get_remote_endpoint_property(
                 RegularInstruction::get_entry_text(property_name).into(),
                 RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
             ],
+            false,
         )
         .await
 }

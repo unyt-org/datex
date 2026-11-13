@@ -33,6 +33,7 @@ pub use internal::*;
 pub use runner::*;
 use crate::runtime::execution::context::{ExecutionMode, FinalOrPersistedExecutionContext};
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
+use crate::runtime::execution::remote_execution_options::RemoteExecutionOptions;
 
 #[derive(Clone, Debug)]
 pub struct Runtime {
@@ -75,12 +76,14 @@ impl Runtime {
         script: &'a str,
         inserted_values: &'a [ValueContainer],
         execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>,
+        mark_as_debug: bool,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
         RuntimeInternal::execute(
             self.internal(),
             script,
             inserted_values,
             execution_context,
+            mark_as_debug,
         )
         .await
     }
@@ -105,12 +108,14 @@ impl Runtime {
         input: DXBWithSharedValues,
         initial_stack_values: Option<Vec<ValueContainer>>,
         execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>> + 'a>,
+        mark_as_debug: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_dxb(
             self.internal(),
             input,
             initial_stack_values,
             execution_context,
+            mark_as_debug,
         )
         .await
     }
@@ -133,13 +138,13 @@ impl Runtime {
         &self,
         remote_execution_target: &RemoteExecutionTarget,
         input: DXBWithSharedValues,
-        is_end_of_context: bool,
+        options: RemoteExecutionOptions,
     ) -> Result<Vec<(RemoteExecutionResult, Endpoint)>, SubscriberError> {
         RuntimeInternal::execute_remote(
             self.internal(),
             remote_execution_target,
             input,
-            is_end_of_context
+            options
         )
         .await
     }
@@ -148,13 +153,13 @@ impl Runtime {
         &self,
         remote_execution_target: &RemoteExecutionTarget,
         input: DXBWithSharedValues,
-        is_end_of_context: bool,
+        options: RemoteExecutionOptions,
     ) -> RemoteExecutionResult {
         RuntimeInternal::execute_remote_single_receiver(
             self.internal(),
             remote_execution_target,
             input,
-            is_end_of_context
+            options
         )
         .await
     }
@@ -168,6 +173,7 @@ impl Runtime {
             self.internal(),
             endpoints,
             instructions_input,
+            false,
         )
         .await
     }
@@ -176,11 +182,13 @@ impl Runtime {
         &self,
         endpoint: Endpoint,
         instructions_input: Vec<InstructionInput>,
+        mark_as_debug: bool,
     ) -> RemoteExecutionResult {
         RuntimeInternal::execute_instructions_remote_single_receiver(
             self.internal(),
             endpoint,
             instructions_input,
+            mark_as_debug
         )
         .await
     }

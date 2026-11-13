@@ -148,6 +148,7 @@ impl ApplyArgument {
             .execute_instructions_remote_single_receiver(
                 owner_endpoint,
                 instructions,
+                false,
             )
             .await?;
 

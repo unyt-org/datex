@@ -451,6 +451,17 @@ impl BlockHandler {
                 warn!("Failed to send incoming section to observer, receiver was dropped");
             }
         };
+        
+        // TODO: are multiple observers allowed?
+        if self
+            .section_observers
+            .borrow()
+            .contains_key(&(context_id, section_index))
+        {
+            core::panic!(
+                "Observer for incoming response block (scope={context_id}, block={section_index}) already exists"
+            );
+        }
 
         // add new scope observer
         self.section_observers

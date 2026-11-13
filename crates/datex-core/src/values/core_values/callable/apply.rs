@@ -144,6 +144,7 @@ impl Apply for DatexBytecodeCallable {
                     runtime.clone(),
                     ExecutionCallerMetadata::local_default(), // TODO caller
                 ))),
+                false,
             )
             .await
             .map_err(CallableError::from)?;

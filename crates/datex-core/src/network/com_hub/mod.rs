@@ -111,6 +111,7 @@ pub enum BlockDirection {
 }
 
 /// Represents a captured block along with its associated socket UUID and direction (incoming or outgoing).
+#[derive(Debug, Clone)]
 pub struct CapturedBlock<'a> {
     pub block: &'a DXBBlock,
     pub socket_uuid: &'a ComInterfaceSocketUUID,
@@ -744,7 +745,7 @@ impl ComHub {
     ) -> ReceiveBlockPreprocessResult {
         info!("{} received block: {}", self.endpoint(), block);
 
-        for (_, interceptor) in self.block_interceptors.borrow().iter() {
+        for interceptor in self.block_interceptors.borrow().values() {
             interceptor.capture_block(&block, socket_uuid, BlockDirection::Incoming);
         }
 
@@ -1635,7 +1636,7 @@ impl ComHub {
         {
             return MaybeAsyncResult::Sync(Ok(None));
         }
-        for (_, interceptor) in self.block_interceptors.borrow().iter() {
+        for interceptor in self.block_interceptors.borrow().values() {
             interceptor.capture_block(&block, &socket_uuid, BlockDirection::Outgoing);
         }
         info!(
