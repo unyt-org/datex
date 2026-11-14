@@ -46,11 +46,11 @@ impl SerializeWithSerdeContext for MapCollectionTypeDefinition {
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(2))?;
         seq.serialize_element(&ValueWithSerdeContext::new(
-            &self.key_type as &Type,
+            &*self.key_type,
             ctx,
         ))?;
         seq.serialize_element(&ValueWithSerdeContext::new(
-            &self.value_type as &Type,
+            &*self.value_type,
             ctx,
         ))?;
         seq.end()

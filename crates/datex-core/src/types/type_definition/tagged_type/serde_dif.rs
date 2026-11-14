@@ -25,7 +25,7 @@ impl SerializeWithSerdeContext for TaggedTypeDefinition {
         match &self.ty {
             Some(ty) => {
                 seq.serialize_element(&ValueWithSerdeContext::new(
-                    ty.as_ref(),
+                    &**ty,
                     ctx,
                 ))?;
             }

@@ -54,7 +54,7 @@ impl SerializeWithSerdeContext for CallableTypeDefinition {
         match &self.return_type {
             Some(return_type) => {
                 obj.serialize_value(&ValueWithSerdeContext::new(
-                    return_type.deref(),
+                    &**return_type,
                     ctx,
                 ))?;
             }
@@ -67,7 +67,7 @@ impl SerializeWithSerdeContext for CallableTypeDefinition {
         match &self.yeet_type {
             Some(yeet_type) => {
                 obj.serialize_value(&ValueWithSerdeContext::new(
-                    yeet_type.deref(),
+                    &**yeet_type,
                     ctx,
                 ))?;
             }

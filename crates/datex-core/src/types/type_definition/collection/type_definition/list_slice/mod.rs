@@ -36,7 +36,7 @@ impl SerializeWithSerdeContext for ListSliceCollectionTypeDefinition {
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(2))?;
         seq.serialize_element(&ValueWithSerdeContext::new(
-            &self.item_type as &Type,
+            &*self.item_type,
             ctx,
         ))?;
         seq.serialize_element(&self.size)?;

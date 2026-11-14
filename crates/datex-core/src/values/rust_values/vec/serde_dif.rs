@@ -48,8 +48,8 @@ impl SerializeWithSerdeContext for Vec<u8> {
         ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        // [null, integer/u8, addr]
-        let mut tuple = serializer.serialize_tuple(3)?;
+        // [null, integer/u8, element count, addr]
+        let mut tuple = serializer.serialize_tuple(4)?;
         tuple.serialize_element(&None::<()>)?;
         tuple.serialize_element(
             &CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(
@@ -57,6 +57,7 @@ impl SerializeWithSerdeContext for Vec<u8> {
             ))
             .to_u16(),
         )?;
+        tuple.serialize_element(&self.len())?;
         let addr = ctx.shared_values_cache.borrow_mut().store_vec(self.clone());
         tuple.serialize_element(&addr)?;
         tuple.end()

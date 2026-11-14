@@ -72,7 +72,7 @@ impl SerializeWithSerdeContext for TypeDefinition {
                         ctx,
                     ))?,
                     TypeDefinition::Box(nested) => outer.serialize_value(
-                        &ValueWithSerdeContext::new(nested as &Type, ctx),
+                        &ValueWithSerdeContext::new(&**nested, ctx),
                     )?,
                     TypeDefinition::Callable(callable_signature) => outer
                         .serialize_value(&ValueWithSerdeContext::new(
