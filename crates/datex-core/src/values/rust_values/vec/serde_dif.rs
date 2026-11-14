@@ -19,9 +19,11 @@ use serde::{
     de::{SeqAccess, Visitor},
     ser::SerializeTuple,
 };
+use crate::libs::core::type_id::CoreLibVariantTypeId;
+use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
 
 impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for Vec<T> {
-    fn serialize_with_ctx<S: serde::Serializer>(
+    default fn serialize_with_ctx<S: serde::Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -35,6 +37,28 @@ impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for Vec<T> {
             &DIFVec(self),
             ctx,
         ))?;
+        tuple.end()
+    }
+}
+
+// TODO: also implement deserialize, and implement for other integer variants
+impl SerializeWithSerdeContext for Vec<u8> {
+    fn serialize_with_ctx<S: serde::Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        // [null, integer/u8, addr]
+        let mut tuple = serializer.serialize_tuple(3)?;
+        tuple.serialize_element(&None::<()>)?;
+        tuple.serialize_element(
+            &CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(
+                IntegerTypeVariant::U8,
+            ))
+            .to_u16(),
+        )?;
+        let addr = ctx.shared_values_cache.borrow_mut().store_vec(self.clone());
+        tuple.serialize_element(&addr)?;
         tuple.end()
     }
 }

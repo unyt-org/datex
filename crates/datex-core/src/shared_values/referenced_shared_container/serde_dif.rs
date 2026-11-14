@@ -22,7 +22,7 @@ impl<'de> DeserializeWithSerdeContext<'de> for ReferencedSharedContainer {
         match ownership {
             // must be owned
             SharedContainerOwnership::Referenced(mutability) => ctx
-                .shared_container_cache
+                .shared_values_cache
                 .borrow_mut()
                 .try_get_shared_container_reference(&address, mutability)
                 .map_err(|e| {

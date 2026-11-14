@@ -18,12 +18,14 @@ use core::{
     fmt::Display,
     hash::{Hash, Hasher},
 };
+use std::collections::LinkedList;
 
 /// Cache layer that stores references or owned and referenced shared containers
 #[derive(Debug, Default)]
 pub struct SharedValuesCache {
     values: HashMap<PointerAddress, SharedContainer>,
     callables: HashMap<u64, Callable>,
+    vecs: HashMap<usize, Box<dyn std::any::Any>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,6 +92,7 @@ impl SharedValuesCache {
                 .map(|container| (container.pointer_address(), container))
                 .collect(),
             callables: HashMap::new(),
+            vecs: HashMap::new(),
         }
     }
 
@@ -112,6 +115,21 @@ impl SharedValuesCache {
         let hash = hasher.finish();
         self.callables.insert(hash, callable);
         hash
+    }
+
+    /// Returns a raw address to the memory location of the stored vector
+    pub fn store_vec<T: 'static>(&mut self, vec: Vec<T>) -> usize {
+        let boxed = Box::new(vec);
+        let address = (&*boxed) as *const Vec<T> as usize;
+
+        self.vecs.insert(address, boxed);
+
+        address
+    }
+
+    /// Removes a stored vector from the cache based on its raw address.
+    pub fn remove_stored_vec(&mut self, address: usize) {
+        self.vecs.remove(&address);
     }
 
     /// Retrieves a callable from the cache based on its hash value.

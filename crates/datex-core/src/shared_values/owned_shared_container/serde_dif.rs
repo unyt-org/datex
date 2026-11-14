@@ -23,7 +23,7 @@ impl<'de> DeserializeWithSerdeContext<'de> for OwnedSharedContainer {
         match ownership {
             // must be owned
             SharedContainerOwnership::Owned => ctx
-                .shared_container_cache
+                .shared_values_cache
                 .borrow_mut()
                 .try_take_owned_shared_container(&address)
                 .map_err(|e| {

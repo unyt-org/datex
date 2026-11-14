@@ -11,7 +11,7 @@ use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 #[derive(Debug)]
 pub struct SerdeContext<'ctx> {
-    pub shared_container_cache: &'ctx RefCell<SharedValuesCache>,
+    pub shared_values_cache: &'ctx RefCell<SharedValuesCache>,
     pub shared_references_cache: &'ctx RefCell<SharedReferencesCache>,
 }
 
@@ -21,7 +21,7 @@ impl<'ctx> SerdeContext<'ctx> {
         shared_references_cache: &'ctx RefCell<SharedReferencesCache>,
     ) -> Self {
         Self {
-            shared_container_cache,
+            shared_values_cache: shared_container_cache,
             shared_references_cache,
         }
     }

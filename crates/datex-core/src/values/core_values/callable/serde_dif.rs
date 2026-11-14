@@ -28,7 +28,7 @@ impl SerializeWithSerdeContext for InnerCallable<'_> {
     ) -> Result<S::Ok, S::Error> {
         // put callable into cache
         let hash = ctx
-            .shared_container_cache
+            .shared_values_cache
             .borrow_mut()
             .store_callable(self.0.clone());
         let mut data = serializer.serialize_tuple(3)?;
@@ -103,7 +103,7 @@ impl<'de, 'a, 'ctx> Visitor<'de>
 
         let callable = self
             .ctx
-            .shared_container_cache
+            .shared_values_cache
             .borrow_mut()
             .get_callable(hash_u64)
             .ok_or_else(|| {

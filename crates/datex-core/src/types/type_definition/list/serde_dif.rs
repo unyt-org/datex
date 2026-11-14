@@ -17,7 +17,7 @@ impl SerializeWithSerdeContext for ListTypeDefinition {
         ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        ctx.shared_container_cache
+        ctx.shared_values_cache
             .borrow_mut()
             .remove_callable_with_hash(45);
         let mut seq = serializer.serialize_seq(Some(self.len()))?;

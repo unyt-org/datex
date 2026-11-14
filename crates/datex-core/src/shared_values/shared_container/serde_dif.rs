@@ -23,7 +23,7 @@ impl SharedContainer {
     ) -> Result<Self, CacheValueRetrievalError> {
         let PointerAddressWithOwnership { address, ownership } =
             pointer_address_with_ownership;
-        ctx.shared_container_cache
+        ctx.shared_values_cache
             .borrow_mut()
             .try_get_shared_container_with_ownership(&address, ownership)
     }
@@ -51,7 +51,7 @@ impl<'de> DeserializeWithSerdeContext<'de> for SharedContainer {
 impl<'ctx> SerdeContext<'ctx> {
     pub unsafe fn pointer_string(&self, value: &SharedContainer) -> String {
         unsafe {
-            self.shared_container_cache
+            self.shared_values_cache
                 .borrow_mut()
                 .store_shared_container(value.clone_unsafe());
         }
