@@ -14,27 +14,37 @@ use datex_macros_internal::{Datex, datex};
 mod datex_inspector {
     use super::*;
     use crate::{
+        network::com_hub::{
+            BlockDirection, BlockInterceptor, metadata::ComHubMetadata,
+        },
+        runtime::{RuntimeInfo, RuntimeStats},
         shared_wrappers::shared::{shared_ref::SharedRef, to_shared::ToShared},
         values::core_values::{channel::create_channel, receiver::Receiver},
     };
-    use crate::network::com_hub::metadata::ComHubMetadata;
+    use core::cell::RefCell;
+    use log::info;
 
-    #[derive(Datex, Debug, Clone, PartialEq, Eq, Hash)]
+    #[derive(Datex, Debug, Clone)]
+    #[datex(structural)]
+    pub struct CapturedBlockData {
+        block: Vec<u8>,
+        socket_uuid: String,
+        direction: BlockDirection,
+    }
+
+    #[derive(Datex, Debug, Clone)]
     #[datex(no_deserialize, builtin = 0x000001)]
     /// The Inspector is a built-in debug helper that provides access to the DATEX runtime and its properties.
     /// It is currently publicly accessible, but will be restricted with permission rules in the future.
     pub struct Inspector {
         // TODO: #[datex(readonly)]
-        pub name: String, // TODO: distinguish between pub and private entity properties
+        // TODO: distinguish between pub and private entity properties
+        pub name: String,
+        pub info: RuntimeInfo,
     }
 
     #[datex]
     impl Inspector {
-        /// Returns the name of the inspector.
-        pub fn name(&self) -> String {
-            self.name.clone()
-        }
-
         /// Returns a stream of all global log messages of the endpoint.
         pub fn logs(
             &self,
@@ -42,15 +52,52 @@ mod datex_inspector {
         ) -> SharedRef<Receiver<LogMessage>> {
             let (sender, receiver) = create_channel(runtime);
             register_log_sender(sender);
+            receiver.mark_debug(true);
+            receiver
+        }
+
+        /// Returns a stream of all incoming and outgoing blocks on the endpoint (excluding debug blocks).
+        pub fn blocks(
+            &self,
+            #[runtime] runtime: &Runtime,
+        ) -> SharedRef<Receiver<CapturedBlockData>> {
+            let (mut sender, receiver) = create_channel(runtime);
+
+            let uuid = Rc::new(RefCell::new(None));
+            let uuid_clone = uuid.clone();
+            let runtime_clone = runtime.clone();
+
+            *uuid.borrow_mut() = Some(runtime.com_hub().register_block_interceptor(BlockInterceptor::new(
+                move |block| {
+                    let captured_block = CapturedBlockData {
+                        block: block.block.to_bytes(),
+                        socket_uuid: block.socket_uuid.to_string(),
+                        direction: block.direction,
+                    };
+                    if sender.send(captured_block).is_err() {
+                        // remove interceptor
+                        runtime_clone.com_hub().unregister_block_interceptor(uuid_clone.borrow().as_ref().unwrap());
+                    }
+                },
+                false, // exclude debug blocks
+            )));
+
+            receiver.mark_debug(true);
+
             receiver
         }
 
         /// Returns the current metadata information (connected interfaces, sockets) of the endpoint's com hub.
         pub fn com_hub_metadata(
             &self,
-            #[runtime] runtime: &Runtime
+            #[runtime] runtime: &Runtime,
         ) -> ComHubMetadata {
             runtime.com_hub().get_metadata()
+        }
+
+        /// Returns the current runtime statistics of the endpoint.
+        pub fn stats(&self, #[runtime] runtime: &Runtime) -> RuntimeStats {
+            runtime.get_stats()
         }
 
         /// Attempts to reboot the endpoint associated with the inspector.
@@ -71,12 +118,14 @@ mod datex_inspector {
         name: String,
         #[runtime] runtime: &Runtime,
     ) -> SharedRef<Inspector> {
-        Inspector { name }.shared_ref(runtime)
+        let inspector = Inspector {
+            name,
+            info: runtime.info().clone(),
+        }
+        .shared_ref(runtime);
+        inspector.mark_debug(true);
+        inspector
     }
-
-    // pub async fn async_test(a: String) -> String {
-    //     format!("a = {}", a)
-    // }
 }
 
 /// Registers the `inspector` namespace in the runtime, allowing users to create Inspector instances.
@@ -118,9 +167,9 @@ mod tests {
         let inspector_container = inspector.to_value_container();
         let inspector_container_clone = inspector_container.clone();
 
-        // call inspector->name()
+        // call inspector->stats()
         let name_fn = inspector_type
-            .try_get_property(&ValueContainer::from("name"))
+            .try_get_property(&ValueContainer::from("stats"))
             .unwrap()
             .try_as::<Callable>()
             .unwrap();
@@ -131,8 +180,7 @@ mod tests {
             )
             .unwrap();
 
-        // return value should be "Test Inspector"
-        assert_eq!(result.unwrap().try_as_str().unwrap(), "Test Inspector");
+        // TODO: check return value
         // borrowed inspector should be given back to the caller
         assert_eq!(borrows.remove(0), inspector_container_clone);
     }

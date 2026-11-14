@@ -27,6 +27,12 @@ pub struct RemoteExecutionTarget {
 }
 
 impl RemoteExecutionTarget {
+    pub fn new(endpoints: Vec<Endpoint>) -> Self {
+        RemoteExecutionTarget {
+            endpoints,
+            context_id: Rc::new(RefCell::new(None)),
+        }
+    }
     pub fn endpoints(&self) -> &[Endpoint] {
         &self.endpoints
     }
@@ -42,10 +48,7 @@ impl RemoteExecutionContext {
         RemoteExecutionContext {
             #[cfg(feature = "compiler")]
             compile_scope: CompilationScope::new(execution_mode),
-            target: RemoteExecutionTarget {
-                endpoints,
-                context_id: Rc::new(RefCell::new(None)),
-            },
+            target: RemoteExecutionTarget::new(endpoints),
             execution_mode,
             runtime,
         }

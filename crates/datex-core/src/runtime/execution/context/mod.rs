@@ -71,7 +71,9 @@ impl From<ExecutionContext> for FinalOrPersistedExecutionContext<'_> {
     }
 }
 
-impl<'a> From<&'a mut ExecutionContext> for FinalOrPersistedExecutionContext<'a> {
+impl<'a> From<&'a mut ExecutionContext>
+    for FinalOrPersistedExecutionContext<'a>
+{
     fn from(context: &'a mut ExecutionContext) -> Self {
         FinalOrPersistedExecutionContext::Ongoing(context)
     }

@@ -4,5 +4,6 @@ mod cast;
 pub mod core_value;
 pub mod core_value_with_classification;
 pub mod core_values;
+pub mod rust_values;
 pub mod value;
 pub mod value_container;

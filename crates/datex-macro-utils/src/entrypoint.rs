@@ -103,6 +103,7 @@ pub struct DatexMainInput<'a> {
     pub custom_main_inputs: Vec<FnArg>,
     /// Whether to enforce that the main function is named `main`
     pub enforce_main_name: bool,
+    pub custom_runtime_info: Option<TokenStream>,
 }
 
 /// Main implementation function for the datex_main macro
@@ -170,34 +171,38 @@ pub fn datex_main_impl_with_config(
     } else {
         quote! {}
     };
-    
+
     let profiler = cfg_select! {
         feature = "debug_dhat" => {
             quote! {
                 let _profiler = #core_namespace::dhat::Profiler::new_heap();
             }
-        },
+        }
         _ => {
             quote! {}
         }
     };
 
+    let custom_runtime_info = input.custom_runtime_info.unwrap_or_else(|| {
+        quote! { CustomRuntimeInfo::default() }
+    });
+
     quote! {
         #(#additional_attributes)*
         #(#attrs)*
         #vis #sig {
-            
+
             #profiler
-            
+
             use #core_namespace::{
-                runtime::{RuntimeRunner, RuntimeConfig, Runtime},
+                runtime::{RuntimeRunner, RuntimeConfig, Runtime, CustomRuntimeInfo},
                 traits::convert_value_container::ConvertValueContainer,
             };
 
             #setup
 
             // first init runner with default config
-            let mut runner = RuntimeRunner::new(RuntimeConfig::default());
+            let mut runner = RuntimeRunner::new(RuntimeConfig::default(), #custom_runtime_info);
 
             // resolve the actual config from bytes
             let config = match (#config_bytes) {
@@ -213,6 +218,10 @@ pub fn datex_main_impl_with_config(
                 #init_scoped
             }
             #init_unscoped
+
+            // make sure actual system time is used after init
+            runner.runtime.reset_running_since();
+
             runner.run(async move |#runtime_arg_ident: #runtime_arg_type| {
                 #pre_body
                 {

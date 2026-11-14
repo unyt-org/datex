@@ -63,6 +63,7 @@ pub fn datex_main(attr: TokenStream, item: TokenStream) -> TokenStream {
         additional_attributes: vec![parse_quote! {#[tokio::main]}],
         custom_main_inputs: vec![],
         enforce_main_name: false,
+        custom_runtime_info: None,
     })
     .into()
 }

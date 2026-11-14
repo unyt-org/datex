@@ -123,25 +123,24 @@ mod tests {
         let expr = parse("function test() ()");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::callable_declaration(
-                CallableDeclaration {
-                    signature: CallableSignature {
-                        name: Some(String::from("test")),
-                        kind: CallableKind::Function,
-                        requires_async: false,
-                        parameters: vec![],
-                        rest_parameter: None,
-                        return_type: None,
-                        yeet_type: None,
-                    },
-                    body: (DatexExpressionData::Statements(Statements {
-                        statements: vec![],
-                        is_terminated: false,
-                        unbounded: None,
-                    })
-                    .with_default_span()),
-                    injected_variable_count: None,
+            &DatexExpressionData::callable_declaration(CallableDeclaration {
+                signature: CallableSignature {
+                    name: Some(String::from("test")),
+                    kind: CallableKind::Function,
+                    requires_async: false,
+                    parameters: vec![],
+                    rest_parameter: None,
+                    return_type: None,
+                    yeet_type: None,
+                },
+                body: (DatexExpressionData::Statements(Statements {
+                    statements: vec![],
+                    is_terminated: false,
+                    unbounded: None,
                 })
+                .with_default_span()),
+                injected_variable_count: None,
+            })
         );
     }
 

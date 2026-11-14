@@ -1,7 +1,7 @@
 use core::cell::RefCell;
 
-use alloc::rc::Rc;
 use crate::instruction::Label;
+use alloc::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub struct CompileContextMetadata {

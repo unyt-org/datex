@@ -1,6 +1,6 @@
 use crate::runtime::RuntimeConfigInterface;
 
-use crate::{prelude::*, time::now_ms};
+use crate::prelude::*;
 use core::time::Duration;
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
@@ -77,7 +77,7 @@ pub struct ComInterfaceProperties {
     /// This might be an already encrypted channel such as WebRTC or a channel
     /// that is end-to-end and not interceptable by third parties
     pub is_secure_channel: bool,
-    
+
     // If true, the interface sends Hello block identifications automatically
     // after socket connection establishment
     pub auto_identify: bool,
@@ -109,11 +109,17 @@ impl ReconnectionConfig {
     const DEFAULT_RECONNECT_INTERVAL: Duration = Duration::from_secs(3);
 
     pub fn reconnect() -> Self {
-        ReconnectionConfig::Reconnect { attempts: None, interval: None}
+        ReconnectionConfig::Reconnect {
+            attempts: None,
+            interval: None,
+        }
     }
 
     pub fn reconnect_with_interval(interval: Duration) -> Self {
-        ReconnectionConfig::Reconnect { attempts: None, interval: Some(interval.as_millis() as u64)}
+        ReconnectionConfig::Reconnect {
+            attempts: None,
+            interval: Some(interval.as_millis() as u64),
+        }
     }
 
     /// Returns a [ReconnectAttempts] struct if configured.
@@ -121,12 +127,14 @@ impl ReconnectionConfig {
     pub fn get_reconnect_attempts(&self) -> Option<ReconnectAttempts> {
         match self {
             ReconnectionConfig::NoReconnect => None,
-            ReconnectionConfig::Reconnect {
-                attempts, interval
-            } => Some(ReconnectAttempts {
-                max_attempts: *attempts,
-                interval: interval.map(Duration::from_millis).unwrap_or(Self::DEFAULT_RECONNECT_INTERVAL),
-            }),
+            ReconnectionConfig::Reconnect { attempts, interval } => {
+                Some(ReconnectAttempts {
+                    max_attempts: *attempts,
+                    interval: interval
+                        .map(Duration::from_millis)
+                        .unwrap_or(Self::DEFAULT_RECONNECT_INTERVAL),
+                })
+            }
         }
     }
 }
@@ -139,7 +147,7 @@ impl ComInterfaceProperties {
             InterfaceDirection::InOut => true,
         }
     }
-    
+
     pub fn can_receive(&self) -> bool {
         match self.direction {
             InterfaceDirection::In => true,

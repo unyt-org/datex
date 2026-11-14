@@ -1291,17 +1291,18 @@ impl RegularInstruction {
             RegularInstruction::SharedRef(shared_ref) => {
                 write!(
                     string,
-                    "[ref_mutability: {:?}, address: {}]",
-                    shared_ref.ref_mutability, shared_ref.address.clone()
+                    "[ref_mutability: {:?}, address: {}, is_debug: {}]",
+                    shared_ref.ref_mutability, shared_ref.address.clone(), shared_ref.is_debug
                 )
             }
             RegularInstruction::SharedRefWithValue(shared_ref) => {
                 write!(
                     string,
-                    "[ref_mutability: {:?}, address: {}, container_mutability: {:?}]",
+                    "[ref_mutability: {:?}, address: {}, container_mutability: {:?}, is_debug: {}]",
                     shared_ref.ref_mutability,
                     PointerAddress::from(shared_ref.address.clone()),
-                    shared_ref.container_mutability
+                    shared_ref.container_mutability,
+                    shared_ref.is_debug
                 )
             }
             RegularInstruction::MoveWithValue(move_with_value) => {

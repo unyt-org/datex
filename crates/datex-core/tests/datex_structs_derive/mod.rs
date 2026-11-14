@@ -2,6 +2,8 @@ pub mod dif;
 mod impls;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
+
+#[cfg(feature = "disassembler")]
 mod to_instructions;
 
 use core::{

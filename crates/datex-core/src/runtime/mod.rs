@@ -26,13 +26,16 @@ pub mod test_utils;
 
 use crate::{
     core_compiler::instruction_input::InstructionInput,
+    runtime::execution::{
+        context::{ExecutionMode, FinalOrPersistedExecutionContext},
+        execution_input::ExecutionCallerMetadata,
+        remote_execution_options::RemoteExecutionOptions,
+    },
     values::core_values::endpoint::Endpoint,
 };
 pub use config::*;
 pub use internal::*;
 pub use runner::*;
-use crate::runtime::execution::context::{ExecutionMode, FinalOrPersistedExecutionContext};
-use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 
 #[derive(Clone, Debug)]
 pub struct Runtime {
@@ -46,7 +49,6 @@ impl Deref for Runtime {
         &self.internal
     }
 }
-
 
 /// publicly exposed wrapper impl for the Runtime
 /// around RuntimeInternal
@@ -74,13 +76,17 @@ impl Runtime {
         &'a self,
         script: &'a str,
         inserted_values: &'a [ValueContainer],
-        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>,
+        execution_context: Option<
+            impl Into<FinalOrPersistedExecutionContext<'a>>,
+        >,
+        mark_as_debug: bool,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
         RuntimeInternal::execute(
             self.internal(),
             script,
             inserted_values,
             execution_context,
+            mark_as_debug,
         )
         .await
     }
@@ -90,7 +96,9 @@ impl Runtime {
         &'a self,
         script: &'a str,
         inserted_values: &'a [ValueContainer],
-        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>,
+        execution_context: Option<
+            impl Into<FinalOrPersistedExecutionContext<'a>>,
+        >,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
         RuntimeInternal::execute_sync(
             self.internal(),
@@ -104,13 +112,17 @@ impl Runtime {
         &'a self,
         input: DXBWithSharedValues,
         initial_stack_values: Option<Vec<ValueContainer>>,
-        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>> + 'a>,
+        execution_context: Option<
+            impl Into<FinalOrPersistedExecutionContext<'a>> + 'a,
+        >,
+        mark_as_debug: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_dxb(
             self.internal(),
             input,
             initial_stack_values,
             execution_context,
+            mark_as_debug,
         )
         .await
     }
@@ -119,7 +131,9 @@ impl Runtime {
         &'a self,
         input: DXBWithSharedValues,
         initial_stack_values: Option<Vec<ValueContainer>>,
-        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>,
+        execution_context: Option<
+            impl Into<FinalOrPersistedExecutionContext<'a>>,
+        >,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_dxb_sync(
             self.internal(),
@@ -133,13 +147,13 @@ impl Runtime {
         &self,
         remote_execution_target: &RemoteExecutionTarget,
         input: DXBWithSharedValues,
-        is_end_of_context: bool,
+        options: RemoteExecutionOptions,
     ) -> Result<Vec<(RemoteExecutionResult, Endpoint)>, SubscriberError> {
         RuntimeInternal::execute_remote(
             self.internal(),
             remote_execution_target,
             input,
-            is_end_of_context
+            options,
         )
         .await
     }
@@ -148,13 +162,13 @@ impl Runtime {
         &self,
         remote_execution_target: &RemoteExecutionTarget,
         input: DXBWithSharedValues,
-        is_end_of_context: bool,
+        options: RemoteExecutionOptions,
     ) -> RemoteExecutionResult {
         RuntimeInternal::execute_remote_single_receiver(
             self.internal(),
             remote_execution_target,
             input,
-            is_end_of_context
+            options,
         )
         .await
     }
@@ -168,6 +182,7 @@ impl Runtime {
             self.internal(),
             endpoints,
             instructions_input,
+            false,
         )
         .await
     }
@@ -176,33 +191,39 @@ impl Runtime {
         &self,
         endpoint: Endpoint,
         instructions_input: Vec<InstructionInput>,
+        mark_as_debug: bool,
     ) -> RemoteExecutionResult {
         RuntimeInternal::execute_instructions_remote_single_receiver(
             self.internal(),
             endpoint,
             instructions_input,
+            mark_as_debug,
         )
         .await
     }
 
     pub(crate) fn get_or_create_execution_context<'a>(
-        self: &Runtime, 
-        ctx: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>
+        self: &Runtime,
+        ctx: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>,
     ) -> FinalOrPersistedExecutionContext<'a> {
         match ctx {
             Some(context) => {
                 let mut context = context.into();
                 // set current runtime in execution context if local execution context
-                if let &mut ExecutionContext::Local(ref mut local_context) = context.as_mut() {
+                if let &mut ExecutionContext::Local(ref mut local_context) =
+                    context.as_mut()
+                {
                     local_context.set_runtime_internal(self.clone());
                 }
                 context
-            },
-            None => {
-                FinalOrPersistedExecutionContext::Final(
-                    ExecutionContext::local(ExecutionMode::Static, self.clone(), ExecutionCallerMetadata::local_default())
-                )
             }
+            None => FinalOrPersistedExecutionContext::Final(
+                ExecutionContext::local(
+                    ExecutionMode::Static,
+                    self.clone(),
+                    ExecutionCallerMetadata::local_default(),
+                ),
+            ),
         }
     }
 }

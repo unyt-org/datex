@@ -193,21 +193,22 @@ impl ComHub {
             metadata.interfaces.push(interface_info_to_metadata(
                 uuid,
                 info,
-                &mut sockets_by_com_interface_uuid
+                &mut sockets_by_com_interface_uuid,
             ));
         }
 
         for (uuid, info) in self.reconnecting_interfaces.borrow().iter() {
-            metadata.reconnecting_interfaces.push(interface_info_to_metadata(
-                uuid,
-                info,
-                &mut sockets_by_com_interface_uuid
-            ));
+            metadata
+                .reconnecting_interfaces
+                .push(interface_info_to_metadata(
+                    uuid,
+                    info,
+                    &mut sockets_by_com_interface_uuid,
+                ));
         }
 
         metadata
     }
-    
 
     /// Prints the ComHub metadata to the log.
     pub fn print_metadata(&self) {
@@ -222,7 +223,7 @@ fn interface_info_to_metadata(
     sockets_by_com_interface_uuid: &mut HashMap<
         ComInterfaceUUID,
         Vec<ComHubMetadataInterfaceSocket>,
-    >
+    >,
 ) -> ComHubMetadataInterface {
     let InterfaceInfo {
         properties,

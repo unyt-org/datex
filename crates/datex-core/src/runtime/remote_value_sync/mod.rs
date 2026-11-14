@@ -8,7 +8,12 @@ use crate::{
     prelude::*,
     runtime::{
         RuntimeInternal,
-        execution::context::{ExecutionMode, RemoteExecutionContext},
+        execution::{
+            context::{
+                ExecutionMode, RemoteExecutionContext, RemoteExecutionTarget,
+            },
+            remote_execution_options::RemoteExecutionOptions,
+        },
     },
     shared_values::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
@@ -23,6 +28,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{assert_matches, fmt::Display, ops::Deref};
+use log::warn;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum SubscriberError {
@@ -156,6 +162,7 @@ impl RuntimeInternal {
         //
         // )
         let owner = container.pointer_address().endpoint();
+        let mark_as_debug = container.base_shared_container().is_debug();
 
         let update_dxb = {
             let lookup = self.pointer_availability_lookup();
@@ -179,7 +186,14 @@ impl RuntimeInternal {
         );
 
         self_clone
-            .execute_remote(&context.target, update_dxb, true)
+            .execute_remote(
+                &context.target,
+                update_dxb,
+                RemoteExecutionOptions {
+                    is_end_of_context: true,
+                    mark_as_debug,
+                },
+            )
             .await
             .expect("Failed to execute remote update block");
     }
@@ -192,6 +206,7 @@ impl RuntimeInternal {
     ) {
         let subscriber = self.synced_value_data();
         let subscribers = subscriber.get_subscribers(container);
+
         if let Some(subscribers) = subscribers {
             // TODO: don't send full update to source endpoint, but send update info with hash of the value
             let source_endpoint = Endpoint::from(update.source_id().clone())
@@ -220,7 +235,17 @@ impl RuntimeInternal {
                         endpoints,
                     ),
                 );
+            } else {
+                warn!(
+                    "No endpoints to send update to for container: {:?}",
+                    container.pointer_address()
+                );
             }
+        } else {
+            warn!(
+                "No subscribers found for container: {:?}",
+                container.pointer_address()
+            );
         }
     }
 
@@ -246,28 +271,22 @@ impl RuntimeInternal {
             compile_updates(&container, &[update.data()], input, &mut cache)
         };
 
+        let mark_as_debug = container.base_shared_container().is_debug();
+
         let self_clone = self.clone();
 
         let responses = {
-            let target = {
-                let mut subscriptions = self.synced_value_data_mut();
-                let context = subscriptions
-                    .remote_execution_context_mut(&container)
-                    .unwrap();
-
-                // Update the context's endpoints to the receiver endpoints for this update block.
-                // This ensures that the endpoint that triggered this update does not get the update sent again
-                // TODO: make sure that all endpoints that are skipped here get the number of skipped
-                // blocks in the next block header so that they dont wait for this block (set skip_after_block)
-                // SAFETY: send_update_block_to_subscribers is only called when receiver_endpoints is not empty
-                unsafe {
-                    context.set_endpoints(receiver_endpoints);
-                }
-                context.target.clone()
-            };
+            let target = RemoteExecutionTarget::new(receiver_endpoints);
 
             self_clone
-                .execute_remote(&target, update_dxb, true)
+                .execute_remote(
+                    &target,
+                    update_dxb,
+                    RemoteExecutionOptions {
+                        is_end_of_context: true,
+                        mark_as_debug,
+                    },
+                )
                 .await
                 .expect("Failed to execute remote update block")
         };
@@ -281,6 +300,10 @@ impl RuntimeInternal {
                     subscriptions.get_subscribers_mut(&container)
             {
                 // remove subscriber
+                warn!(
+                    "Got error response {:?} from endpoint {:?}, removing from subscribers",
+                    response, endpoint
+                );
                 subscriber.remove_subscriber(&endpoint);
             }
         }

@@ -43,7 +43,7 @@ impl RuntimeInternal {
             }
         }
     }
-    
+
     pub(crate) async fn handle_reconnect_requests_task(
         self: Rc<RuntimeInternal>,
     ) {
@@ -53,24 +53,29 @@ impl RuntimeInternal {
             // for embassy, run all sections in the same task to avoid spawning too many tasks
             #[cfg(feature = "embassy_runtime")]
             {
-                self.com_hub().clone().try_reconnect_interface(reconnect_request).await;
+                self.com_hub()
+                    .clone()
+                    .try_reconnect_interface(reconnect_request)
+                    .await;
             }
             // otherwise, run each section in its own task
             #[cfg(not(feature = "embassy_runtime"))]
             {
                 // TODO #741: task
                 self.task_manager().register_task(
-                    self.com_hub().clone().try_reconnect_interface(reconnect_request)
+                    self.com_hub()
+                        .clone()
+                        .try_reconnect_interface(reconnect_request),
                 );
             }
         }
     }
-    
+
     async fn handle_incoming_section_task(
         self: Rc<RuntimeInternal>,
         section: IncomingSection,
     ) {
-        let (result, endpoint, context_id) =
+        let (result, endpoint, context_id, mark_debug) =
             RuntimeInternal::execute_incoming_section(
                 self.clone(),
                 section,
@@ -80,8 +85,7 @@ impl RuntimeInternal {
         match &result {
             Ok(Some(result)) => self.log_info(format!(
                 "Successful Execution result (from {}): {}",
-                endpoint,
-                result
+                endpoint, result
             )),
             Ok(None) => self.log_info(format!(
                 "Successful Execution result (from {}): None",
@@ -97,6 +101,7 @@ impl RuntimeInternal {
             result,
             endpoint,
             context_id,
+            mark_debug,
         )
         .await;
         // TODO #231: handle errors in sending response
@@ -107,6 +112,7 @@ impl RuntimeInternal {
         result: Result<Option<ValueContainer>, ExecutionError>,
         receiver_endpoint: Endpoint,
         context_id: OutgoingContextId,
+        mark_debug: bool,
     ) -> Result<(), Vec<Endpoint>> {
         let routing_header: RoutingHeader = RoutingHeader::default()
             .with_sender(self.endpoint().clone())
@@ -116,7 +122,8 @@ impl RuntimeInternal {
             flags_and_timestamp: FlagsAndTimestamp::new()
                 .with_block_type(BlockType::Response)
                 .with_is_end_of_section(true)
-                .with_is_end_of_context(true),
+                .with_is_end_of_context(true)
+                .with_is_debug_block(mark_debug),
             ..BlockHeader::default()
         };
         let encrypted_header = EncryptedHeader::default();

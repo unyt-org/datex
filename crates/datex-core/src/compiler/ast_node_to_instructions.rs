@@ -1,20 +1,18 @@
 use crate::{
     compiler::{
-        context::CompilationContext,
-        error::CompilerError,
-        metadata::{CompileContextMetadata},
+        context::CompilationContext, error::CompilerError,
+        metadata::CompileContextMetadata,
         precompiler::precompiled_ast::AstMetadata,
     },
     core_compiler::core_compilation_context::ByteCursor,
     instruction::{
-        BytecodeItem, Instruction, instruction_data::JumpData,
+        BytecodeItem, Instruction, Label, instruction_data::JumpData,
         regular_instruction::RegularInstruction,
     },
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
 };
 use binrw::BinWrite;
-use crate::instruction::Label;
 
 pub trait AstNodeToInstructions {
     fn ast_node_to_instructions<'a>(
@@ -24,24 +22,7 @@ pub trait AstNodeToInstructions {
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a>;
-
-    /// Calls [ast_node_to_instructions] with default [CompileContextMetadata].
-    /// This should be called on child nodes, but not on the root node
-    fn ast_node_to_instructions_inner<'a>(
-        &'a self,
-        compilation_context: &'a mut CompilationContext,
-        cache: &'a mut SharedReferencesCache,
-        ast_metadata: &'a mut AstMetadata,
-        ctx_metadata: CompileContextMetadata,
-    ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a>
-    {
-        self.ast_node_to_instructions(
-            compilation_context,
-            cache,
-            ast_metadata,
-            ctx_metadata,
-        )
-    }
+    
 
     /// Compiles a given AST node to a DXB byte buffer, using the provided compilation context, metadata, and scope.
     fn try_compile_to_dxb(
@@ -99,7 +80,7 @@ pub trait AstNodeToInstructions {
         for (operand_pos, base_label, target_label) in fixes {
             let base = match base_label {
                 Label(_) if !labels.contains_key(&base_label) => {
-                    operand_pos + 4 // FIXME 32 vs 64 arch??
+                    operand_pos + 4
                 }
                 _ => *labels
                     .get(&base_label)

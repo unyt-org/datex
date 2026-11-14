@@ -488,6 +488,9 @@ pub struct SharedRef {
     pub address: PointerAddress,
     pub ref_mutability: ReferenceMutability,
     pub container_mutability: SharedContainerMutability,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub is_debug: bool,
     // TODO: hash
 }
 
@@ -497,6 +500,9 @@ pub struct SharedRefWithValue {
     pub address: SelfOwnedPointerAddress, // address of the caller
     pub ref_mutability: ReferenceMutability,
     pub container_mutability: SharedContainerMutability,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub is_debug: bool,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

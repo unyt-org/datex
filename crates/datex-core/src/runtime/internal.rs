@@ -16,14 +16,19 @@ use crate::{
             OutgoingContextId,
         },
         protocol_structures::{
-            block_header::BlockHeader, encrypted_header::EncryptedHeader,
+            block_header::{BlockHeader, FlagsAndTimestamp},
+            encrypted_header::EncryptedHeader,
             routing_header::RoutingHeader,
         },
     },
     libs::core::CoreLibrary,
     network::{
+        block_handler::{
+            IncomingSectionReceiver, create_incoming_sections_channel,
+        },
         com_hub::{
-            ComHub, InterfacePriority, network_response::ResponseOptions,
+            ComHub, ComInterfaceReconnectRequest, InterfacePriority,
+            network_response::ResponseOptions,
         },
         com_interfaces::local_loopback_interface::LocalLoopbackInterfaceSetupData,
     },
@@ -35,10 +40,12 @@ use crate::{
         execution::{
             ExecutionError,
             context::{
-                ExecutionContext, ExecutionMode, RemoteExecutionContext,
+                ExecutionContext, ExecutionMode,
+                FinalOrPersistedExecutionContext, RemoteExecutionContext,
                 RemoteExecutionTarget, ScriptExecutionError,
             },
             execution_input::ExecutionCallerMetadata,
+            remote_execution_options::RemoteExecutionOptions,
         },
         pointer_address_provider::SelfOwnedPointerAddressProvider,
         pointer_availability_lookup::PointerAvailabilityLookup,
@@ -49,7 +56,7 @@ use crate::{
     shared_values::{
         SharedContainer, base_shared_value_container::observers::TransceiverId,
     },
-    time::Instant,
+    time::{Instant, now_ms},
     types::r#type::Type,
     utils::task_manager::TaskManager,
     values::{
@@ -58,25 +65,54 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{
-    cell::{Ref, RefCell, RefMut},
+    cell::{Ref, RefCell, RefMut, UnsafeCell},
     ops::DerefMut,
     pin::Pin,
 };
-use core::cell::UnsafeCell;
+use datex_macros_internal::Datex;
 use futures_util::future::join_all;
 use indexmap::IndexMap;
 use log::{debug, error, info};
-use crate::global::protocol_structures::block_header::FlagsAndTimestamp;
-use crate::network::block_handler::{create_incoming_sections_channel, IncomingSectionReceiver};
-use crate::network::com_hub::ComInterfaceReconnectRequest;
-use crate::runtime::execution::context::FinalOrPersistedExecutionContext;
 
 pub type RemoteExecutionResult = Result<Option<ValueContainer>, ExecutionError>;
 
+#[derive(Datex, Debug, Clone, PartialEq, Eq, Hash)]
+#[datex(structural)]
+pub struct HeapStats {
+    /// Total heap size
+    pub total: usize,
+    /// Currently used heap size
+    pub used: usize,
+    /// Maximum used heap size since startup
+    pub max_used: usize,
+}
+
+#[derive(Datex, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[datex(structural)]
+pub struct RuntimeStats {
+    pub heap: Option<HeapStats>,
+}
+
+#[derive(Datex, Debug, Clone)]
+#[datex(structural)]
+/// General static information about the runtime, e.g. version numbers.
+pub struct RuntimeInfo {
+    device_type: Option<String>,
+    other_versions: IndexMap<String, String, RandomState>,
+    datex_version: String,
+    running_since: u64,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct CustomRuntimeInfo {
+    pub device_type: Option<String>,
+    pub other_versions: IndexMap<String, String, RandomState>,
+}
+
 #[derive(Debug)]
 pub struct RuntimeInternal {
-    version: String,
     endpoint: UnsafeCell<Endpoint>,
+    info: RefCell<RuntimeInfo>,
 
     core_library: CoreLibrary,
 
@@ -97,7 +133,8 @@ pub struct RuntimeInternal {
     incoming_sections_receiver: RefCell<IncomingSectionReceiver>,
 
     /// receiver for incoming interface reconnect requests from com hub
-    com_interface_reconnect_request_receiver: RefCell<UnboundedReceiver<ComInterfaceReconnectRequest>>,
+    com_interface_reconnect_request_receiver:
+        RefCell<UnboundedReceiver<ComInterfaceReconnectRequest>>,
 
     /// active execution contexts, stored by context_id
     execution_contexts:
@@ -106,9 +143,9 @@ pub struct RuntimeInternal {
     pointer_availability_lookup: RefCell<PointerAvailabilityLookup>,
 
     synced_value_data: RefCell<SyncedValueData>,
+
+    stats_provider: RefCell<fn() -> RuntimeStats>,
 }
-
-
 
 impl From<Rc<RuntimeInternal>> for Runtime {
     fn from(value: Rc<RuntimeInternal>) -> Self {
@@ -125,12 +162,20 @@ impl RuntimeInternal {
         com_hub: Rc<ComHub>,
         task_manager: TaskManager,
         incoming_sections_receiver: IncomingSectionReceiver,
-        com_interface_reconnect_request_receiver: UnboundedReceiver<ComInterfaceReconnectRequest>,
+        com_interface_reconnect_request_receiver: UnboundedReceiver<
+            ComInterfaceReconnectRequest,
+        >,
+        info: CustomRuntimeInfo,
     ) -> RuntimeInternal {
         let pointer_availability_lookup =
             PointerAvailabilityLookup::new(endpoint.clone());
         let internal = RuntimeInternal {
-            version: env!("CARGO_PKG_VERSION").to_string(),
+            info: RefCell::new(RuntimeInfo {
+                device_type: info.device_type,
+                other_versions: info.other_versions,
+                datex_version: env!("CARGO_PKG_VERSION").to_string(),
+                running_since: now_ms(),
+            }),
             endpoint: UnsafeCell::new(endpoint),
             shared_references_cache,
             pointer_address_provider,
@@ -143,7 +188,7 @@ impl RuntimeInternal {
                 incoming_sections_receiver,
             ),
             com_interface_reconnect_request_receiver: RefCell::new(
-                com_interface_reconnect_request_receiver
+                com_interface_reconnect_request_receiver,
             ),
             synced_value_data: RefCell::new(SyncedValueData::default()),
             execution_contexts: RefCell::new(HashMap::new()),
@@ -151,6 +196,7 @@ impl RuntimeInternal {
             pointer_availability_lookup: RefCell::new(
                 pointer_availability_lookup,
             ),
+            stats_provider: RefCell::new(RuntimeStats::default),
         };
 
         internal.register_static_data();
@@ -182,9 +228,14 @@ impl RuntimeInternal {
         }
     }
 
-    pub fn version(&self) -> &str {
-        &self.version
+    pub fn version(&self) -> Ref<'_, String> {
+        Ref::map(self.info.borrow(), |info| &info.datex_version)
     }
+
+    pub fn info(&self) -> Ref<'_, RuntimeInfo> {
+        self.info.borrow()
+    }
+
     pub fn config(&self) -> &RuntimeConfig {
         unsafe { &*self.config.get() }
     }
@@ -203,6 +254,20 @@ impl RuntimeInternal {
             *self.endpoint.get() = self.config().endpoint.clone();
             *self.com_hub.endpoint.get() = self.config().endpoint.clone();
         }
+    }
+
+    /// Updates the running_since timestamp in the runtime info to the current time.
+    pub fn reset_running_since(&self) {
+        self.info.borrow_mut().running_since = now_ms();
+    }
+
+    /// Registers a new callback that provides [RuntimeStats]
+    pub fn set_stats_provider(&self, stats_provider: fn() -> RuntimeStats) {
+        *self.stats_provider.borrow_mut() = stats_provider;
+    }
+
+    pub fn get_stats(&self) -> RuntimeStats {
+        self.stats_provider.borrow()()
     }
 
     pub fn com_hub(&self) -> Rc<ComHub> {
@@ -306,8 +371,10 @@ impl RuntimeInternal {
     }
 
     pub fn stub() -> RuntimeInternal {
-        let (incoming_sections_sender, incoming_sections_receiver) = create_incoming_sections_channel();
-        let (reconnect_request_sender, reconnect_request_receiver) = create_unbounded_channel();
+        let (incoming_sections_sender, incoming_sections_receiver) =
+            create_incoming_sections_channel();
+        let (reconnect_request_sender, reconnect_request_receiver) =
+            create_unbounded_channel();
 
         RuntimeInternal::new(
             Endpoint::default(),
@@ -316,10 +383,17 @@ impl RuntimeInternal {
                 Endpoint::default(),
             ))),
             RuntimeConfig::default(),
-            ComHub::create(Endpoint::default(), incoming_sections_sender, reconnect_request_sender, 0).0,
+            ComHub::create(
+                Endpoint::default(),
+                incoming_sections_sender,
+                reconnect_request_sender,
+                0,
+            )
+            .0,
             TaskManager::create().0,
             incoming_sections_receiver,
-            reconnect_request_receiver
+            reconnect_request_receiver,
+            CustomRuntimeInfo::default(),
         )
     }
 
@@ -343,11 +417,15 @@ impl RuntimeInternal {
                             "Failed to create interface \"{interface_type}\": {err}"
                         );
                         // request reconnect attempts in background
-                        self.com_hub.reconnect_interface_sender.borrow_mut().start_send(ComInterfaceReconnectRequest::new(
-                            interface_type.clone(),
-                            config.clone(),
-                            priority.clone(),
-                        )).unwrap();
+                        self.com_hub
+                            .reconnect_interface_sender
+                            .borrow_mut()
+                            .start_send(ComInterfaceReconnectRequest::new(
+                                interface_type.clone(),
+                                config.clone(),
+                                *priority,
+                            ))
+                            .unwrap();
                     }
                     Ok((_, ready_receiver)) => {
                         if let Some(ready_receiver) = ready_receiver {
@@ -389,11 +467,13 @@ impl RuntimeInternal {
         self: Rc<RuntimeInternal>,
         script: &'a str,
         inserted_values: &'a [ValueContainer],
-        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>,
+        execution_context: Option<
+            impl Into<FinalOrPersistedExecutionContext<'a>>,
+        >,
+        mark_as_debug: bool,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
-        let mut execution_context = Runtime::from(self.clone()).get_or_create_execution_context(
-            execution_context
-        );
+        let mut execution_context = Runtime::from(self.clone())
+            .get_or_create_execution_context(execution_context);
         let compile_start = Instant::now();
         let execution_context_mut = execution_context.as_mut();
         let dxb = execution_context_mut.compile(
@@ -411,6 +491,7 @@ impl RuntimeInternal {
             dxb,
             None,
             Some(execution_context),
+            mark_as_debug,
         )
         .await
         .map_err(ScriptExecutionError::from);
@@ -426,11 +507,12 @@ impl RuntimeInternal {
         self: Rc<RuntimeInternal>,
         script: &'a str,
         inserted_values: &'a [ValueContainer],
-        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>,
+        execution_context: Option<
+            impl Into<FinalOrPersistedExecutionContext<'a>>,
+        >,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
-        let mut execution_context = Runtime::from(self.clone()).get_or_create_execution_context(
-            execution_context
-        );
+        let mut execution_context = Runtime::from(self.clone())
+            .get_or_create_execution_context(execution_context);
         let execution_context_mut = execution_context.as_mut();
 
         let compile_start = Instant::now();
@@ -462,7 +544,10 @@ impl RuntimeInternal {
         self: Rc<RuntimeInternal>,
         input: DXBWithSharedValues,
         initial_stack_values: Option<Vec<ValueContainer>>,
-        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>> + 'a>,
+        execution_context: Option<
+            impl Into<FinalOrPersistedExecutionContext<'a>> + 'a,
+        >,
+        mark_as_debug: bool,
     ) -> Pin<
         Box<
             dyn Future<Output = Result<Option<ValueContainer>, ExecutionError>>
@@ -470,12 +555,11 @@ impl RuntimeInternal {
         >,
     > {
         Box::pin(async move {
-            let mut execution_context = Runtime::from(self.clone()).get_or_create_execution_context(
-                execution_context
-            );
+            let mut execution_context = Runtime::from(self.clone())
+                .get_or_create_execution_context(execution_context);
             let is_end_of_context = execution_context.is_end_of_context();
             let execution_context_mut = execution_context.as_mut();
-            
+
             match execution_context_mut {
                 ExecutionContext::Remote(context) => {
                     // initial stack values are not (yet) supported for remote execution
@@ -486,7 +570,10 @@ impl RuntimeInternal {
                         self,
                         &context.target,
                         input,
-                        is_end_of_context,
+                        RemoteExecutionOptions {
+                            is_end_of_context,
+                            mark_as_debug,
+                        },
                     )
                     .await
                 }
@@ -503,22 +590,22 @@ impl RuntimeInternal {
         self: Rc<RuntimeInternal>,
         dxb: DXBWithSharedValues,
         initial_stack_values: Option<Vec<ValueContainer>>,
-        execution_context: Option<impl Into<FinalOrPersistedExecutionContext<'a>>>,
+        execution_context: Option<
+            impl Into<FinalOrPersistedExecutionContext<'a>>,
+        >,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let mut execution_context = Runtime::from(self.clone()).get_or_create_execution_context(
-            execution_context
-        );
+        let mut execution_context = Runtime::from(self.clone())
+            .get_or_create_execution_context(execution_context);
         // TODO: pass is_end_of_context to local execution?
         // let is_end_of_context = execution_context.is_end_of_context();
         let execution_context_mut = execution_context.as_mut();
-        
+
         match execution_context_mut {
             ExecutionContext::Remote(_) => {
                 Err(ExecutionError::RequiresAsyncExecution)
             }
-            ExecutionContext::Local(_) => {
-                execution_context_mut.execute_dxb_sync(dxb, initial_stack_values)
-            }
+            ExecutionContext::Local(_) => execution_context_mut
+                .execute_dxb_sync(dxb, initial_stack_values),
         }
     }
 
@@ -555,14 +642,14 @@ impl RuntimeInternal {
         self: Rc<RuntimeInternal>,
         remote_execution_target: &RemoteExecutionTarget,
         input: DXBWithSharedValues,
-        is_end_of_context: bool,
+        options: RemoteExecutionOptions,
     ) -> RemoteExecutionResult {
         if remote_execution_target.endpoints().len() != 1 {
             panic!(
                 "execute_remote_single_receiver called with remote_execution_context that has more than one endpoint"
             );
         }
-        self.execute_remote(remote_execution_target, input, is_end_of_context)
+        self.execute_remote(remote_execution_target, input, options)
             .await?
             .remove(0)
             .0
@@ -574,7 +661,7 @@ impl RuntimeInternal {
         self: Rc<RuntimeInternal>,
         remote_execution_target: &RemoteExecutionTarget,
         input: DXBWithSharedValues,
-        is_end_of_context: bool
+        options: RemoteExecutionOptions,
     ) -> Result<Vec<(RemoteExecutionResult, Endpoint)>, SubscriberError> {
         let routing_header: RoutingHeader = RoutingHeader::default()
             .with_sender(self.endpoint().clone())
@@ -593,7 +680,9 @@ impl RuntimeInternal {
         };
         let block_header = BlockHeader {
             context_id,
-            flags_and_timestamp: FlagsAndTimestamp::default().with_is_end_of_context(is_end_of_context),
+            flags_and_timestamp: FlagsAndTimestamp::default()
+                .with_is_end_of_context(options.is_end_of_context)
+                .with_is_debug_block(options.mark_as_debug),
             ..BlockHeader::default()
         };
         let encrypted_header = EncryptedHeader::default();
@@ -673,6 +762,7 @@ impl RuntimeInternal {
         self: Rc<RuntimeInternal>,
         endpoints: Vec<Endpoint>,
         instructions_input: Vec<InstructionInput>,
+        mark_as_debug: bool,
     ) -> Result<Vec<(RemoteExecutionResult, Endpoint)>, SubscriberError> {
         let dxb = core_compile(
             &self.pointer_availability_lookup(),
@@ -686,19 +776,28 @@ impl RuntimeInternal {
             ExecutionMode::Static,
             Runtime::from(self.clone()),
         );
-        self.execute_remote(&remote_execution_context.target, dxb, true)
-            .await
+        self.execute_remote(
+            &remote_execution_context.target,
+            dxb,
+            RemoteExecutionOptions {
+                mark_as_debug,
+                is_end_of_context: true,
+            },
+        )
+        .await
     }
 
     pub async fn execute_instructions_remote_single_receiver(
         self: Rc<RuntimeInternal>,
         endpoint: Endpoint,
         instructions_input: Vec<InstructionInput>,
+        mark_as_debug: bool,
     ) -> RemoteExecutionResult {
         RuntimeInternal::execute_instructions_remote(
             self,
             vec![endpoint],
             instructions_input,
+            mark_as_debug,
         )
         .await?
         .remove(0)
@@ -713,6 +812,7 @@ impl RuntimeInternal {
         Result<Option<ValueContainer>, ExecutionError>,
         Endpoint,
         OutgoingContextId,
+        bool,
     ) {
         let section_context_id =
             incoming_section.get_section_context_id().clone();
@@ -746,6 +846,7 @@ impl RuntimeInternal {
                         Err(err),
                         block.sender().clone(),
                         block.block_header.context_id,
+                        block.block_header.flags_and_timestamp.is_debug_block(),
                     );
                 }
                 result = res.unwrap();
@@ -761,7 +862,12 @@ impl RuntimeInternal {
         let last_block = last_block.unwrap();
         let sender_endpoint = last_block.sender().clone();
         let context_id = last_block.block_header.context_id;
-        let is_end_of_context = last_block.block_header.flags_and_timestamp.is_end_of_context();
+        let is_end_of_context = last_block
+            .block_header
+            .flags_and_timestamp
+            .is_end_of_context();
+        let is_debug =
+            last_block.block_header.flags_and_timestamp.is_debug_block();
 
         // insert the context back into the map for future use if not end of context
         if !is_end_of_context {
@@ -770,8 +876,7 @@ impl RuntimeInternal {
                 .insert(section_context_id, context);
         }
 
-
-        (Ok(result), sender_endpoint, context_id)
+        (Ok(result), sender_endpoint, context_id, is_debug)
     }
 
     async fn execute_dxb_block_local(
@@ -780,11 +885,10 @@ impl RuntimeInternal {
         execution_context: Option<&mut ExecutionContext>,
         shared_values: Option<Vec<SharedContainer>>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let mut execution_context = Runtime::from(self.clone()).get_or_create_execution_context(
-            execution_context
-        );
+        let mut execution_context = Runtime::from(self.clone())
+            .get_or_create_execution_context(execution_context);
         let execution_context_mut = execution_context.as_mut();
-        
+
         // assert that the execution context is local
         if !core::matches!(execution_context_mut, ExecutionContext::Local(_)) {
             unreachable!(
@@ -796,7 +900,7 @@ impl RuntimeInternal {
 
         print_disassembled_with_options(&dxb, DisassemblerOptions::default());
 
-        let end_execution =
+        let _end_execution =
             block.block_header.flags_and_timestamp.is_end_of_section();
 
         RuntimeInternal::execute_dxb(
@@ -804,6 +908,7 @@ impl RuntimeInternal {
             DXBWithSharedValues::new(dxb, shared_values.unwrap_or_default()),
             None,
             Some(execution_context),
+            false,
         )
         .await
     }

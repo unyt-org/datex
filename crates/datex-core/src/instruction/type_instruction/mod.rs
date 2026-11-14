@@ -56,11 +56,11 @@ pub enum TypeInstruction {
     Boxed,
     #[brw(magic = 0xFu8)]
     Callable(CallableSignatureData),
-    #[brw(magic = 0x01u8)]
+    #[brw(magic = 0x11u8)]
     EntityType,
-    #[brw(magic = 0x02u8)]
+    #[brw(magic = 0x12u8)]
     Sender,
-    #[brw(magic = 0x03u8)]
+    #[brw(magic = 0x13u8)]
     Receiver,
 }
 

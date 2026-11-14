@@ -132,6 +132,17 @@ impl ApplyArgument {
         runtime: &Runtime,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError>
     {
+        let callee_shared = match args.last() {
+            Some(ApplyArgument {
+                value: ValueContainer::Shared(shared),
+                ..
+            }) => shared,
+            _ => {
+                return Err(ExecutionError::ExpectedSharedValue);
+            }
+        };
+        let mark_as_debug = callee_shared.is_debug();
+
         let mut instructions = vec![
             RegularInstruction::call_method(
                 name, // FIXME: don't use method name here
@@ -139,6 +150,7 @@ impl ApplyArgument {
             )
             .into(),
         ];
+
         instructions.extend(
             args.into_iter()
                 .map(|v| InstructionInput::ValueContainer(v.value)),
@@ -148,6 +160,7 @@ impl ApplyArgument {
             .execute_instructions_remote_single_receiver(
                 owner_endpoint,
                 instructions,
+                mark_as_debug,
             )
             .await?;
 

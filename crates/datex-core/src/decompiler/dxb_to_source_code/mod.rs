@@ -12,6 +12,9 @@ pub fn dxb_to_source_code(
     dxb_body: &[u8],
     options: DecompileOptions,
 ) -> Result<String, DXBParserError> {
+    if dxb_body.is_empty() {
+        return Ok(String::new());
+    }
     let ast = ast_from_bytecode(dxb_body)?;
     Ok(ast_to_source_code(ast, options))
 }

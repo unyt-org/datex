@@ -442,6 +442,7 @@ mod tests {
                                                 ReferenceMutability::Mutable,
                                             container_mutability:
                                                 SharedContainerMutability::Mutable,
+                                            is_debug: false,
                                         }
                                     ).with_children(instructions!(
                                         RegularInstruction::Int32(Int32Data(1))
@@ -626,6 +627,7 @@ mod tests {
                                         ReferenceMutability::Immutable,
                                     container_mutability:
                                         SharedContainerMutability::Immutable,
+                                    is_debug: false,
                                 }
                             ),
                             RegularInstruction::Int32(Int32Data(5)),

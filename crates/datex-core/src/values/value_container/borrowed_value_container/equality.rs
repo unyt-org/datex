@@ -71,7 +71,7 @@ impl StructuralEq for BorrowedValueContainerMut<'_> {
             ) => BorrowedValueMut::try_from(
                 b.collapsed_value_mut().borrow_mut().deref_mut(),
             )
-            .map_or(false, |val| &val == a),
+            .is_ok_and(|val| &val == a),
         }
     }
 }
@@ -127,7 +127,7 @@ impl ValueEq for BorrowedValueContainerMut<'_> {
                 ) {
                     return a.value_eq(&val);
                 }
-                return false;
+                false
             }
         }
     }

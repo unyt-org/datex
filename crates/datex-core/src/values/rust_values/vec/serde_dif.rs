@@ -15,8 +15,10 @@ use crate::{
     prelude::*,
 };
 use num_traits::ToPrimitive;
-use serde::de::{SeqAccess, Visitor};
-use serde::ser::SerializeTuple;
+use serde::{
+    de::{SeqAccess, Visitor},
+    ser::SerializeTuple,
+};
 
 impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for Vec<T> {
     fn serialize_with_ctx<S: serde::Serializer>(

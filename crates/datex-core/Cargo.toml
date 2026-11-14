@@ -31,7 +31,7 @@ strip = true
 lto = true
 codegen-units = 1
 panic = "abort"
-debug = 1 # only used for debug_dhat
+debug = 1         # only used for debug_dhat
 
 [dependencies]
 
@@ -39,6 +39,11 @@ debug = 1 # only used for debug_dhat
 chrono = { version = "0.4.38", default-features = false, features = ["alloc"] }
 
 # core dependencies
+erased-serde = {
+    version = "0.4.10",
+default-features = false,
+features = ["alloc"],
+}
 strum = { version = "0.27.1", default-features = false, features = ["derive"] }
 num = { version = "0.4.3", default-features = false, features = [
     "alloc",
@@ -83,11 +88,6 @@ serde_with = { version = "3.12.0", default-features = false, features = [
 serde_json = { version = "1.0.140", default-features = false, features = [
     "alloc",
 ] }
-erased-serde = {
-    version = "0.4.10",
-    default-features = false,
-    features = ["alloc"],
-}
 serde-val = { version = "0.1.0", git = "https://github.com/unyt-org/serde-value" }
 serde-big-array = { version = "0.5.1" }
 async-select = "0.3.0"
@@ -95,7 +95,7 @@ foldhash = { version = "0.2.0", default-features = false }
 cfg-if = "1.0.1"
 async-trait = "0.1.87"
 strum_macros = { version = "0.27.1" }
-datex-macros-internal = { path = "../datex-macros-internal", version = "0.0.2" }
+datex-macros-internal = { path = "../datex-macros-internal", version = "0.0.3" }
 
 # nostd-only dependencies (optional)
 hashbrown = { version = "0.16.0", features = ["serde"], optional = true }
@@ -169,7 +169,7 @@ twox-hash = { version = "2.1.3", default-features = false, features = [
 seq-macro = "0.3.6"
 linkme = "0.3.37"
 inventory = "0.3.25"
-dhat = {version = "0.3", optional = true}
+dhat = { version = "0.3", optional = true }
 
 ### dev dependencies (for benchmarks and tests)
 [dev-dependencies]

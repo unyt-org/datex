@@ -24,7 +24,6 @@ use crate::{
     },
     values::core_values::endpoint::{Endpoint, EndpointInstance},
 };
-use crate::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
 
 #[derive(Debug, Clone, Default)]
 pub struct EndpointIterateOptions<'a> {
@@ -126,7 +125,8 @@ impl ComInterfaceSocketManager {
         endpoint: &Endpoint,
         socket_uuid: &ComInterfaceSocketUUID,
     ) {
-        if let Some(list) = self.endpoint_sockets_blacklist
+        if let Some(list) = self
+            .endpoint_sockets_blacklist
             .borrow_mut()
             .get_mut(endpoint)
         {

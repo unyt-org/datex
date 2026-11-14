@@ -549,7 +549,7 @@ impl ComHub {
             .borrow()
             .as_ref()
             .cloned()
-            .unwrap_or_else(|| Runtime::stub())
+            .unwrap_or_else(Runtime::stub)
     }
 
     pub(crate) fn get_trace_data_from_block(

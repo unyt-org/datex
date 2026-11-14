@@ -14,6 +14,7 @@ use crate::{
                 internal_slots::get_root_property,
                 interrupts::{ExternalExecutionInterrupt, InterruptResult},
             },
+            remote_execution_options::RemoteExecutionOptions,
         },
     },
     shared_values::{
@@ -37,6 +38,7 @@ pub mod execution_loop;
 pub mod macros;
 mod stack_dump;
 
+pub mod remote_execution_options;
 #[cfg(all(test, feature = "std"))]
 mod test_remote_execution;
 
@@ -297,7 +299,9 @@ pub async fn execute_dxb(
                         .execute_remote_single_receiver(
                             &remote_execution_context.target,
                             dxb_with_shared_values,
-                            true,
+                            RemoteExecutionOptions::new_with_end_of_context(
+                                true,
+                            ),
                         )
                         .await?;
                     interrupt_provider
@@ -344,6 +348,7 @@ async fn set_remote_endpoint_property(
                 InstructionInput::ValueContainer(value),
                 RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
             ],
+            false,
         )
         .await
 }
@@ -360,6 +365,7 @@ async fn get_remote_endpoint_property(
                 RegularInstruction::get_entry_text(property_name).into(),
                 RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
             ],
+            false,
         )
         .await
 }
@@ -425,13 +431,13 @@ mod tests {
         collections::HashMap,
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
         core_compiler::core_compilation_context::DXBWithSharedValues,
-        disassembler::{disassemble_body, print_disassembled},
+        disassembler::print_disassembled,
         global::protocol_structures::serializable::Serializable,
         instruction::Instruction,
         libs::core::type_id::CoreLibBaseTypeId,
         prelude::*,
         runtime::{
-            Runtime, RuntimeConfig, RuntimeRunner,
+            CustomRuntimeInfo, Runtime, RuntimeConfig, RuntimeRunner,
             cache::shared_references_cache::SharedReferencesCache,
             execution::{
                 context::{ExecutionContext, LocalExecutionContext},
@@ -591,7 +597,7 @@ mod tests {
         config: RuntimeConfig,
         datex_script: &str,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        RuntimeRunner::new(config)
+        RuntimeRunner::new(config, CustomRuntimeInfo::default())
             .run(async |runtime| {
                 let (dxb, _) = compile_script(
                     datex_script,

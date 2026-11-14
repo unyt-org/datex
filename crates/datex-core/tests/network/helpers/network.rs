@@ -18,7 +18,7 @@ use datex_core::{
             properties::{ComInterfaceProperties, InterfaceDirection},
         },
     },
-    runtime::{Runtime, RuntimeConfig, RuntimeRunner},
+    runtime::{CustomRuntimeInfo, Runtime, RuntimeConfig, RuntimeRunner},
     values::core_values::endpoint::Endpoint,
 };
 use log::info;
@@ -543,6 +543,7 @@ impl Network {
             info!("creating runtime for endpoint {}", node.endpoint);
             let runtime_runner = RuntimeRunner::new(
                 RuntimeConfig::new_with_endpoint(node.endpoint.clone()),
+                CustomRuntimeInfo::default(),
             );
 
             let runtime = runtime_runner.runtime.clone();

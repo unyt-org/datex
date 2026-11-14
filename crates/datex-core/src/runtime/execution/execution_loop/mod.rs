@@ -1579,6 +1579,7 @@ pub gen fn inner_execution_loop(
                                                     value,
                                                     shared_ref.container_mutability,
                                                     shared_ref.ref_mutability,
+                                                    shared_ref.is_debug,
                                                 )?
                                             }
                                         }
@@ -1592,6 +1593,7 @@ pub gen fn inner_execution_loop(
                                             value,
                                             shared_ref.container_mutability,
                                             shared_ref.ref_mutability,
+                                            shared_ref.is_debug,
                                         )?
                                     };
 
@@ -1885,10 +1887,12 @@ fn create_new_reference_from_value(
     value: ValueContainer,
     container_mutability: SharedContainerMutability,
     ref_mutability: ReferenceMutability,
+    is_debug: bool,
 ) -> Result<ReferencedSharedContainer, ExecutionError> {
     let memory = &mut runtime.shared_references_cache_refcell().borrow_mut();
 
     if let Some(reference) = memory.get_reference(pointer_address) {
+        reference.mark_debug(is_debug);
         return Ok(reference.clone());
     }
     match pointer_address {
@@ -1923,6 +1927,8 @@ fn create_new_reference_from_value(
             runtime.internal().sync_value_with_owner(
                 &SharedContainer::Referenced(reference.clone()),
             )?;
+
+            reference.mark_debug(is_debug);
 
             Ok(reference)
         }

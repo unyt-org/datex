@@ -29,24 +29,3 @@ where
 // Tells the compiler that Box<T> does not implement ToRegularInstruction, even if T does.
 // This allows implementing impl<V> ToInstructions for Box<V> without conflicting.
 impl<T: ?Sized> !ToRegularInstruction for Box<T> {}
-
-// TODO: still needed?
-// #[macro_export]
-// macro_rules! impl_regular_to_instructions {
-//     ($($ty:ty),* $(,)?) => {
-//         $(
-//             impl $crate::core_compiler::traits::to_instructions::ToInstructions for $ty {
-//                 fn to_instructions<'a>(
-//                     &'a self,
-//                     _ctx: &'a mut dyn $crate::core_compiler::value_visitor::ValueVisitor,
-//                 ) -> alloc::boxed::Box<dyn Iterator<Item = $crate::instruction::Instruction> + 'a>
-//                 {
-//                     alloc::boxed::Box::new(core::iter::once(
-//                         self.into_regular_instruction().into()
-//                     ))
-//                 }
-//             }
-//         )*
-//     };
-// }
-// pub use impl_regular_to_instructions;

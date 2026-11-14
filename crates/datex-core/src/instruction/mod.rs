@@ -22,8 +22,7 @@ use binrw::{
 use core::{fmt::Display, prelude::rust_2024::*};
 use serde::Serialize;
 mod bytecode_item;
-pub use bytecode_item::BytecodeItem;
-pub use bytecode_item::Label;
+pub use bytecode_item::{BytecodeItem, Label};
 
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "disassembler", derive(Serialize))]

@@ -1,10 +1,12 @@
 use crate::{
     channel::mpsc::create_unbounded_channel,
-    global::dxb_block::IncomingSection,
-    network::com_hub::ComHub,
+    network::{
+        block_handler::{BlockHandler, create_incoming_sections_channel},
+        com_hub::{ComHub, ComInterfaceReconnectRequest},
+    },
     prelude::*,
     runtime::{
-        Runtime, RuntimeConfig, RuntimeInternal,
+        CustomRuntimeInfo, Runtime, RuntimeConfig, RuntimeInternal,
         cache::shared_references_cache::SharedReferencesCache,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
@@ -20,8 +22,6 @@ use futures_util::{
     join,
 };
 use log::info;
-use crate::network::block_handler::{create_incoming_sections_channel, BlockHandler};
-use crate::network::com_hub::ComInterfaceReconnectRequest;
 
 pub struct RuntimeRunner {
     pub runtime: Runtime,
@@ -31,7 +31,10 @@ pub struct RuntimeRunner {
 impl RuntimeRunner {
     /// Creates a new runtime instance with the given configuration and global context.
     /// Note: If the endpoint is not specified in the config, a random endpoint will be generated.
-    pub fn new(config: RuntimeConfig) -> RuntimeRunner {
+    pub fn new(
+        config: RuntimeConfig,
+        info: CustomRuntimeInfo,
+    ) -> RuntimeRunner {
         let endpoint = config.endpoint.clone();
 
         let (task_manager, runtime_task_future) = TaskManager::create();
@@ -39,11 +42,17 @@ impl RuntimeRunner {
         let (incoming_sections_sender, incoming_sections_receiver) =
             create_incoming_sections_channel();
 
-        let (com_interface_reconnect_request_sender, com_interface_reconnect_request_receiver) =
-            create_unbounded_channel::<ComInterfaceReconnectRequest>();
+        let (
+            com_interface_reconnect_request_sender,
+            com_interface_reconnect_request_receiver,
+        ) = create_unbounded_channel::<ComInterfaceReconnectRequest>();
 
-        let (com_hub, com_hub_task_future) =
-            ComHub::create(endpoint.clone(), incoming_sections_sender, com_interface_reconnect_request_sender, BlockHandler::DEFAULT_HISTORY_CAPACITY);
+        let (com_hub, com_hub_task_future) = ComHub::create(
+            endpoint.clone(),
+            incoming_sections_sender,
+            com_interface_reconnect_request_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
         let memory = RefCell::new(SharedReferencesCache::default());
         let pointer_address_provider = Rc::new(RefCell::new(
             SelfOwnedPointerAddressProvider::new(endpoint.clone()),
@@ -58,6 +67,7 @@ impl RuntimeRunner {
             task_manager,
             incoming_sections_receiver,
             com_interface_reconnect_request_receiver,
+            info,
         ));
 
         // link runtime to com hub (needed for network tracing)
@@ -168,7 +178,10 @@ mod tests {
 
     #[tokio::test]
     async fn runtime_runner() {
-        let runner = RuntimeRunner::new(RuntimeConfig::default());
+        let runner = RuntimeRunner::new(
+            RuntimeConfig::default(),
+            CustomRuntimeInfo::default(),
+        );
         let mut runtime = None;
         runner
             .run(async |runtime_inner| {

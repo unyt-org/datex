@@ -132,9 +132,7 @@ pub struct OkOptionFuture<SyncOkValue, AsyncOkValue, E, Fut> {
     _phantom: core::marker::PhantomData<(SyncOkValue, AsyncOkValue, E)>,
 }
 
-
-impl<SyncOkValue, E, F>
-    MaybeAsyncResult<SyncOkValue, E, F>
+impl<SyncOkValue, E, F> MaybeAsyncResult<SyncOkValue, E, F>
 where
     F: Future<Output = Result<SyncOkValue, E>>,
 {
@@ -170,12 +168,11 @@ where
         SyncOkValue: Into<SyncOkValue>,
     {
         match self {
-            MaybeAsyncResult::Sync(r) => Either::Left(ready(r.map(Into::into))),
+            MaybeAsyncResult::Sync(r) => Either::Left(ready(r)),
             MaybeAsyncResult::Async(fut) => Either::Right(fut),
         }
     }
 }
-
 
 pub struct FlattenFuture<OuterF, InnerF, T> {
     state: FlattenState<OuterF, InnerF, T>,
