@@ -1,6 +1,6 @@
 # DATEX Crypto Native
 > This crate provides native implementations of cryptographic functions for the
-> [DATEX Crypto Facade](https://github.com/unyt-org/datex/blob/main/crates/datex-crypto-facade) used in DATEX.
+> [DATEX Crypto Facade](https://github.com/unyt-org/datex/blob/main/crates/datex-facades) used in DATEX.
 
 [![](https://img.shields.io/crates/v/datex-crypto-native.svg)](https://crates.io/crates/datex-crypto-native) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
 

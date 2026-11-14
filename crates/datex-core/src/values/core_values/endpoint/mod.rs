@@ -13,7 +13,7 @@ use core::{
     str::FromStr,
 };
 pub mod equality;
-use datex_crypto_facade::crypto::Crypto;
+use datex_facades::crypto::Crypto;
 use hex::decode;
 mod classification;
 mod convert_parts;
