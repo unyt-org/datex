@@ -333,7 +333,7 @@ pub gen fn inner_execution_loop(
                                 RegularInstruction::CompactList(list_data) => {
                                     // u8 list can just be passed through
                                     if list_data.core_lib_type == CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)) {
-                                        Some(ValueContainer::from(list_data.element_count).into())
+                                        Some(ValueContainer::from(list_data.elements).into())
                                     }
                                     else {
                                         todo!()
