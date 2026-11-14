@@ -1,4 +1,4 @@
-use datex_crypto_facade::{
+use datex_facades::{
     crypto::{AsyncCryptoResult, Crypto},
     error::{
         AesCtrError, BackendError, Ed25519GenError, Ed25519SignError,
@@ -386,7 +386,7 @@ impl Crypto for CryptoNative {
 #[cfg(test)]
 mod tests {
     use super::CryptoNative;
-    use datex_crypto_facade::{
+    use datex_facades::{
         crypto::Crypto,
         error::{Ed25519VerifyError, KeyUnwrapError, X25519DeriveError},
     };

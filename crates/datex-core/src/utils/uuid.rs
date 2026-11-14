@@ -1,4 +1,4 @@
-use datex_crypto_facade::crypto::Crypto;
+use datex_facades::crypto::Crypto;
 
 use crate::prelude::*;
 use core::fmt::Display;

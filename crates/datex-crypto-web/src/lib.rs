@@ -1,4 +1,4 @@
-use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
+use datex_facades::crypto::{AsyncCryptoResult, Crypto};
 use wasm_bindgen::{JsCast, JsError, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
