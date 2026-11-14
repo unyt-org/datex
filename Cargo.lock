@@ -940,9 +940,9 @@ dependencies = [
  "chrono",
  "criterion",
  "datex-crypto-esp32",
- "datex-crypto-facade",
  "datex-crypto-native",
  "datex-crypto-web",
+ "datex-facades",
  "datex-macros-internal",
  "dhat",
  "dotenvy",
@@ -1007,13 +1007,14 @@ dependencies = [
 name = "datex-crypto-esp32"
 version = "0.0.4"
 dependencies = [
- "datex-crypto-facade",
+ "datex-facades",
  "esp-hal",
  "spin 0.12.3",
  "static_cell",
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "datex-crypto-facade"
 version = "0.0.4"
 dependencies = [
@@ -1021,10 +1022,12 @@ dependencies = [
 ]
 
 [[package]]
+=======
+>>>>>>> b54b0c283 (renamed datex-crypto-facade to datex-facades and added a datex-traits crate placeholder)
 name = "datex-crypto-native"
 version = "0.0.4"
 dependencies = [
- "datex-crypto-facade",
+ "datex-facades",
  "openssl",
  "rand 0.10.4",
  "tokio",
@@ -1035,10 +1038,17 @@ dependencies = [
 name = "datex-crypto-web"
 version = "0.0.4"
 dependencies = [
- "datex-crypto-facade",
+ "datex-facades",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+]
+
+[[package]]
+name = "datex-facades"
+version = "0.0.1"
+dependencies = [
+ "bs58",
 ]
 
 [[package]]
@@ -1062,6 +1072,10 @@ dependencies = [
  "quote",
  "syn 3.0.10",
 ]
+
+[[package]]
+name = "datex-traits"
+version = "0.0.1"
 
 [[package]]
 name = "datex_macros"
