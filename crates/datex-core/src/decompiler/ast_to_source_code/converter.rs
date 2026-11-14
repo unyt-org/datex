@@ -182,7 +182,7 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::Integer(i) => i.to_string(),
             DatexExpressionData::TypedInteger(ti) => {
                 if self.add_variant_suffix() {
-                    ti.to_string_with_suffix()
+                    ti.to_string_with_suffix_separated()
                 } else {
                     ti.to_string()
                 }
@@ -199,7 +199,7 @@ impl AstToSourceCodeConverter {
             TypeExpressionData::Integer(i) => i.to_string(),
             TypeExpressionData::TypedInteger(ti) => {
                 if self.add_variant_suffix() {
-                    ti.to_string_with_suffix()
+                    ti.to_string_with_suffix_separated()
                 } else {
                     ti.to_string()
                 }
@@ -260,14 +260,14 @@ impl AstToSourceCodeConverter {
             }
             TypeExpressionData::TypedInteger(typed_integer) => {
                 if self.add_variant_suffix() {
-                    typed_integer.to_string_with_suffix()
+                    typed_integer.to_string_with_suffix_separated()
                 } else {
                     typed_integer.to_string()
                 }
             }
             TypeExpressionData::TypedDecimal(typed_decimal) => {
                 if self.add_variant_suffix() {
-                    typed_decimal.to_string_with_suffix()
+                    typed_decimal.to_string_with_suffix_separated()
                 } else {
                     typed_decimal.to_string()
                 }
@@ -554,7 +554,7 @@ impl AstToSourceCodeConverter {
             }
             DatexExpressionData::TypedInteger(ti) => {
                 if self.add_variant_suffix() {
-                    ti.to_string_with_suffix()
+                    ti.to_string_with_suffix_separated()
                 } else {
                     ti.to_string()
                 }
@@ -562,7 +562,7 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::Decimal(d) => d.to_string(),
             DatexExpressionData::TypedDecimal(td) => {
                 if self.add_variant_suffix() {
-                    td.to_string_with_suffix()
+                    td.to_string_with_suffix_separated()
                 } else {
                     td.to_string()
                 }

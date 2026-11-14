@@ -49,11 +49,11 @@ contexts:
 
   numbers:
     # Floats, optionally with f32 / f64 / dbig suffix
-    - match: '\b(?:[0-9]+\.[0-9]+(?:[eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+)(?:f32|f64|dbig)?\b|\b[0-9]+(?:f32|f64|dbig)\b'
+    - match: '\b(?:[0-9]+\.[0-9]+(?:[eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+)(?:_?(?:f32|f64|dbig))?\b|\b[0-9]+_?(?:f32|f64|dbig)\b'
       scope: constant.numeric.float.datex
 
     # Integers (decimal, hex, binary), optionally with u8..u128 / ubig / i8..i128 / ibig suffix
-    - match: '\b(?:0x[0-9a-fA-F]+|0b[01]+|[0-9]+)(?:u8|u16|u32|u64|u128|ubig|i8|i16|i32|i64|i128|ibig)?\b'
+    - match: '\b(?:0x[0-9a-fA-F]+|0b[01]+|[0-9]+)(?:_?(?:u8|u16|u32|u64|u128|ubig|i8|i16|i32|i64|i128|ibig))?\b'
       scope: constant.numeric.integer.datex
 
   endpoints:

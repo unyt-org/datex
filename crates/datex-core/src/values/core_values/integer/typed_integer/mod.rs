@@ -584,6 +584,22 @@ impl TypedInteger {
             TypedInteger::IBig(v) => format!("{v}ibig"),
         }
     }
+
+    pub fn to_string_with_suffix_separated(&self) -> String {
+        match self {
+            TypedInteger::I8(v) => format!("{v}_i8"),
+            TypedInteger::I16(v) => format!("{v}_i16"),
+            TypedInteger::I32(v) => format!("{v}_i32"),
+            TypedInteger::I64(v) => format!("{v}_i64"),
+            TypedInteger::I128(v) => format!("{v}_i128"),
+            TypedInteger::U8(v) => format!("{v}_u8"),
+            TypedInteger::U16(v) => format!("{v}_u16"),
+            TypedInteger::U32(v) => format!("{v}_u32"),
+            TypedInteger::U64(v) => format!("{v}_u64"),
+            TypedInteger::U128(v) => format!("{v}_u128"),
+            TypedInteger::IBig(v) => format!("{v}_ibig"),
+        }
+    }
 }
 
 impl Display for TypedInteger {

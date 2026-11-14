@@ -18,7 +18,7 @@ impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for Box<T> {
         ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        (*self).with_ctx(ctx).serialize(serializer)
+        (**self).with_ctx(ctx).serialize(serializer)
     }
 }
 
