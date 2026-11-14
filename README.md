@@ -16,11 +16,10 @@ collaboration and development.
 - [crates/](./crates) - Contains all the Rust crates for the DATEX ecosystem
   - [datex-core/](./crates/datex-core) - The full DATEX library including networking,
   compiler and decompiler, written in Rust
-  - [datex-facades/](./crates/datex-facades) - A facade crate providing a unified interface for different DATEX Crypto implementations
-  - [datex-crypto-esp32/](./crates/datex-crypto-esp32) - An embedded implementation of the DATEX Crypto trait for ESP32 targets
-  - [datex-crypto-native/](./crates/datex-crypto-native) - A native
-  implementation of the DATEX Crypto trait
-  - [datex-crypto-web/](./crates/datex-crypto-web) - A web implementation of the DATEX Crypto trait using WebCrypto API
+  - [datex-facades/](./crates/datex-facades) - A facade crate providing a unified interface for DATEX
+  - [datex-esp-impls/](./crates/datex-esp-impls) - An embedded implementation of the DATEX facade for ESP32 targets
+  - [datex-nat-impls/](./crates/datex-nat-impls) - A native implementation of the DATEX facade
+  - [datex-web-impls/](./crates/datex-web-impls) - A web implementation of the DATEX facade using WebCrypto API
   - [datex-macros/](./crates/datex-macros) - Procedural macros used in DATEX applications
   - [datex-macros-utils](./crates/datex-macro-utils) - Shared helpers and utilities for the DATEX macros
   - [datex-macros-internal/](./crates/datex-macros-internal) - Procedural macros used in the internal implementation of the DATEX core crate
