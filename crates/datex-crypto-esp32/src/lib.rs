@@ -9,7 +9,7 @@ extern crate alloc;
 #[cfg(doctest)]
 pub struct ReadmeDoctests;
 use alloc::{format, string::String, vec, vec::Vec};
-use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
+use datex_facades::crypto::{AsyncCryptoResult, Crypto};
 
 #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
 mod hal {

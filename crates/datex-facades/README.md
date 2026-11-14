@@ -1,8 +1,7 @@
-# DATEX Crypto Facade
-> This crate provides the cryptographic facade used in DATEX, allowing for
-> pluggable cryptographic implementations.
+# DATEX Facade
+> This crate provides the facades used in DATEX, allowing for pluggable implementations.
 
-[![](https://img.shields.io/crates/v/datex-crypto-facade.svg)](https://crates.io/crates/datex-crypto-facade) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
+[![](https://img.shields.io/crates/v/datex-facades.svg)](https://crates.io/crates/datex-facades) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
 
 ## Contributing
 
