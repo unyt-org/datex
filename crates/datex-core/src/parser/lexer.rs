@@ -445,7 +445,7 @@ fn parse_typed_literal<T: TypeSuffix>(
         }
     }
     LiteralWithVariant {
-        value: number_part.to_string(),
+        value: number_part.replace('_', ""),
         variant,
     }
 }
