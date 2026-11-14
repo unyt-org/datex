@@ -1,7 +1,7 @@
 [package]
-name = "datex-crypto-web"
-version = "0.0.3"
-description = "Web implementation of the DATEX Crypto facade for WASM targets"
+name = "datex-web-impls"
+version = "0.0.1"
+description = "Web implementation of the DATEX facades for WASM targets"
 authors = [
     "Benedikt Strehle <benedikt@unyt.org>",
     "Jonas Strehle <jonas@unyt.org>",
@@ -14,7 +14,7 @@ license-file = "../../LICENSE"
 crate-type = ["rlib"]
 
 [dependencies]
-datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.3" }
+datex-facades = { path = "../datex-facades", version = "0.0.1" }
 wasm-bindgen = { version = "=0.2.123", features = [] }
 wasm-bindgen-futures = "0.4.61"
 [dependencies.web-sys]

@@ -133,11 +133,11 @@ pub mod std_sync {
 pub mod crypto {
     cfg_if::cfg_if! {
         if #[cfg(any(feature = "target_native", test))] {
-            pub use datex_crypto_native::CryptoNative as CryptoImpl;
+            pub use datex_nat_impls::CryptoNative as CryptoImpl;
         } else if #[cfg(feature = "target_esp_shared")] {
-            pub use datex_crypto_esp32::CryptoEsp32 as CryptoImpl;
+            pub use datex_esp_impls::CryptoEsp32 as CryptoImpl;
         } else if #[cfg(feature = "target_wasm")] {
-            pub use datex_crypto_web::CryptoWeb as CryptoImpl;
+            pub use datex_web_impls::CryptoWeb as CryptoImpl;
         } else {
             pub use crate::stub::crypto::CryptoStub as CryptoImpl;
         }

@@ -1,8 +1,8 @@
-# DATEX Crypto Facade
-> This crate provides the cryptographic facade used in DATEX, allowing for
-> pluggable cryptographic implementations.
+# DATEX Crypto Web
+> This crate provides WASM implementations of cryptographic functions for the
+> [DATEX Facades](https://github.com/unyt-org/datex/blob/main/crates/datex-facades) used in DATEX.
 
-[![](https://img.shields.io/crates/v/datex-crypto-facade.svg)](https://crates.io/crates/datex-crypto-facade) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
+[![](https://img.shields.io/crates/v/datex-crypto-web.svg)](https://crates.io/crates/datex-crypto-web) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
 
 ## Contributing
 

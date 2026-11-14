@@ -23,8 +23,9 @@ use strum_macros::{Display, EnumString};
 #[strum(serialize_all = "snake_case")]
 #[repr(u16)]
 pub enum CoreLibValueId {
-    Print, // #core.print
-    Panic, // #core.panic
+    WriteLine, // #core.write_line
+    Panic,     // #core.panic
+    ReadLine,  // #core.read_line
 }
 
 impl From<CoreLibValueId> for CoreLibIdIndex {

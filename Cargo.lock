@@ -901,11 +901,11 @@ dependencies = [
  "cfg-if",
  "chrono",
  "criterion",
- "datex-crypto-esp32",
- "datex-crypto-facade",
- "datex-crypto-native",
- "datex-crypto-web",
+ "datex-esp-impls",
+ "datex-facades",
  "datex-macros-internal",
+ "datex-nat-impls",
+ "datex-web-impls",
  "dhat",
  "dotenvy",
  "embassy-executor",
@@ -966,41 +966,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "datex-crypto-esp32"
-version = "0.0.3"
+name = "datex-esp-impls"
+version = "0.0.1"
 dependencies = [
- "datex-crypto-facade",
+ "datex-facades",
  "esp-hal",
  "spin 0.12.1",
  "static_cell",
 ]
 
 [[package]]
-name = "datex-crypto-facade"
-version = "0.0.3"
+name = "datex-facades"
+version = "0.0.1"
 dependencies = [
  "bs58",
-]
-
-[[package]]
-name = "datex-crypto-native"
-version = "0.0.3"
-dependencies = [
- "datex-crypto-facade",
- "openssl",
- "rand 0.10.2",
- "tokio",
- "uuid",
-]
-
-[[package]]
-name = "datex-crypto-web"
-version = "0.0.3"
-dependencies = [
- "datex-crypto-facade",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]
@@ -1023,6 +1002,31 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.4",
+]
+
+[[package]]
+name = "datex-nat-impls"
+version = "0.0.1"
+dependencies = [
+ "datex-facades",
+ "openssl",
+ "rand 0.10.2",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "datex-traits"
+version = "0.0.1"
+
+[[package]]
+name = "datex-web-impls"
+version = "0.0.1"
+dependencies = [
+ "datex-facades",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
 # DATEX Macro Utils
 > This crate provides utility functions used by various macros in different DATEX crates. It is not intended to be used directly by users of the DATEX ecosystem.
 
-[![](https://img.shields.io/crates/v/datex-crypto-facade.svg)](https://crates.io/crates/datex-macro-utils) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
+[![](https://img.shields.io/crates/v/datex-facades.svg)](https://crates.io/crates/datex-macro-utils) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
 
 ## Contributing
 

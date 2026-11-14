@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use core::sync::atomic::{AtomicU32, Ordering};
-use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
+use datex_facades::crypto::{AsyncCryptoResult, Crypto};
 
 pub struct CryptoStub;
 
