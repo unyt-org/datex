@@ -1,6 +1,7 @@
 //! This module contains the implementation of the execution engine which is responsible for executing compiled DATEX bytecode (DXB) and handling interrupts that can occur during execution, such as calling functions, loading pointers, and performing pointer updates.
 use crate::{
-    core_compiler::InstructionInput,
+    core_compiler::instruction_input::InstructionInput,
+    global::root_properties::RootProperty,
     instruction::regular_instruction::RegularInstruction,
     libs::core::core_lib_id::CoreLibId,
     prelude::*,
@@ -8,25 +9,24 @@ use crate::{
         Runtime,
         execution::{
             context::{ExecutionMode, RemoteExecutionContext},
-            execution_loop::interrupts::{
-                ExternalExecutionInterrupt, InterruptResult,
+            execution_input::ExecutionCallerMetadata,
+            execution_loop::{
+                internal_slots::get_root_property,
+                interrupts::{ExternalExecutionInterrupt, InterruptResult},
             },
+            remote_execution_options::RemoteExecutionOptions,
         },
     },
     shared_values::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
         RemotePointerAddress, SelfOwnedPointerAddress, SharedContainer,
     },
-    traits::apply::{Apply, ApplyArgument},
-    types::{
-        entities::entity_impls::EntityImplMethod, r#type::Type,
-        type_definition::TypeDefinition,
-    },
+    traits::apply::Apply,
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
-use core::{result::Result, unreachable};
+use core::{result::Result, str::FromStr, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
@@ -38,6 +38,7 @@ pub mod execution_loop;
 pub mod macros;
 mod stack_dump;
 
+pub mod remote_execution_options;
 #[cfg(all(test, feature = "std"))]
 mod test_remote_execution;
 
@@ -45,8 +46,10 @@ pub fn execute_dxb_sync(
     input: ExecutionInput,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     let runtime = input.runtime.clone();
-    let (interrupt_provider, execution_loop) = input.execution_loop();
+    let execution_options = input.options.clone();
+    let caller_metadata = input.caller_metadata.clone();
 
+    let (interrupt_provider, execution_loop) = input.execution_loop();
     for output in execution_loop {
         match output? {
             ExternalExecutionInterrupt::SetEndpointProperty {
@@ -71,13 +74,15 @@ pub fn execute_dxb_sync(
                 property_name,
             } => {
                 if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
-                    let value = runtime
-                        .endpoint_properties()
-                        .get(&property_name)
-                        .cloned();
                     interrupt_provider.provide_result(
                         InterruptResult::ResolvedValue(Some(
-                            ValueContainer::new_from_option(value),
+                            ValueContainer::new_from_option(
+                                get_local_endpoint_property(
+                                    &runtime,
+                                    &caller_metadata,
+                                    property_name,
+                                )?,
+                            ),
                         )),
                     );
                 } else {
@@ -128,30 +133,32 @@ pub fn execute_dxb_sync(
                 method_name,
                 args,
             ) => {
-                let entity_type =
-                    if let TypeDefinition::Box(Type::Entity(entity_type)) =
-                        callee.value.actual_type().as_ref()
-                    {
-                        Some(entity_type.clone())
-                    } else {
-                        None
-                    };
+                let res = callee.try_call_method_sync(
+                    &method_name,
+                    args,
+                    &runtime,
+                )?;
 
-                if let Some(entity_type) = entity_type
-                    && let Some(method) = entity_type
-                        .entity_definition()
-                        .try_get_method(&method_name)
-                {
-                    interrupt_provider.provide_result(
-                        InterruptResult::ResolvedValueAndBorrowedArgs(
-                            try_call_method_sync(
-                                callee, method, args, &runtime,
-                            )?,
-                        ),
-                    )
-                } else {
-                    return Err(ExecutionError::MethodNotFound(method_name));
-                }
+                interrupt_provider.provide_result(
+                    InterruptResult::ResolvedValueAndBorrowedArgs(res),
+                )
+            }
+            ExternalExecutionInterrupt::RemoteExecution {
+                input: dxb_with_shared_values,
+                receivers,
+            } if receivers.iter().all(|r: &Endpoint| {
+                r.is_local_or_equals_endpoint(runtime.endpoint())
+            }) =>
+            {
+                let local_input = ExecutionInput::new(
+                    dxb_with_shared_values,
+                    caller_metadata.clone(),
+                    execution_options.clone(),
+                    runtime.clone(),
+                );
+                let result = execute_dxb_sync(local_input)?;
+                interrupt_provider
+                    .provide_result(InterruptResult::ResolvedValue(result));
             }
             _ => return Err(ExecutionError::RequiresAsyncExecution),
         }
@@ -164,7 +171,8 @@ pub async fn execute_dxb(
     input: ExecutionInput,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     let runtime = input.runtime.clone();
-    let _caller_metadata = input.caller_metadata.clone();
+    let caller_metadata = input.caller_metadata.clone();
+    let execution_options = input.options.clone();
     let (interrupt_provider, execution_loop) = input.execution_loop();
 
     for output in execution_loop {
@@ -201,13 +209,15 @@ pub async fn execute_dxb(
                 property_name,
             } => {
                 if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
-                    let value = runtime
-                        .endpoint_properties()
-                        .get(&property_name)
-                        .cloned();
                     interrupt_provider.provide_result(
                         InterruptResult::ResolvedValue(Some(
-                            ValueContainer::new_from_option(value),
+                            ValueContainer::new_from_option(
+                                get_local_endpoint_property(
+                                    &runtime,
+                                    &caller_metadata,
+                                    property_name,
+                                )?,
+                            ),
                         )),
                     );
                 } else {
@@ -261,22 +271,42 @@ pub async fn execute_dxb(
                 );
             }
             ExternalExecutionInterrupt::RemoteExecution {
-                input,
+                input: dxb_with_shared_values,
                 receivers,
             } => {
                 // assert that receivers is a single endpoint
                 assert_eq!(receivers.len(), 1);
 
-                let mut remote_execution_context = RemoteExecutionContext::new(
-                    receivers,
-                    ExecutionMode::Static,
-                    runtime.clone(),
-                );
-                let res = runtime
-                    .execute_remote(&mut remote_execution_context, input)
-                    .await?;
-                interrupt_provider
-                    .provide_result(InterruptResult::ResolvedValue(res));
+                // local remote execution (triggered when running @@local :: 1)
+                if receivers[0].is_local_or_equals_endpoint(runtime.endpoint())
+                {
+                    let local_input = ExecutionInput::new(
+                        dxb_with_shared_values,
+                        caller_metadata.clone(),
+                        execution_options.clone(),
+                        runtime.clone(),
+                    );
+                    let result = execute_dxb_sync(local_input)?;
+                    interrupt_provider
+                        .provide_result(InterruptResult::ResolvedValue(result));
+                } else {
+                    let remote_execution_context = RemoteExecutionContext::new(
+                        receivers,
+                        ExecutionMode::Static,
+                        runtime.clone(),
+                    );
+                    let res = runtime
+                        .execute_remote_single_receiver(
+                            &remote_execution_context.target,
+                            dxb_with_shared_values,
+                            RemoteExecutionOptions::new_with_end_of_context(
+                                true,
+                            ),
+                        )
+                        .await?;
+                    interrupt_provider
+                        .provide_result(InterruptResult::ResolvedValue(res));
+                }
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
                 let res =
@@ -290,103 +320,18 @@ pub async fn execute_dxb(
                 method_name,
                 args,
             ) => {
-                let entity_type =
-                    if let TypeDefinition::Box(Type::Entity(entity_type)) =
-                        callee.value.actual_type().as_ref()
-                    {
-                        Some(entity_type.clone())
-                    } else {
-                        None
-                    };
+                let res = callee
+                    .try_call_method_async(&method_name, args, &runtime)
+                    .await?;
 
-                if let Some(entity_type) = entity_type
-                    && let Some(method) = entity_type
-                        .entity_definition()
-                        .try_get_method(&method_name)
-                {
-                    interrupt_provider.provide_result(
-                        InterruptResult::ResolvedValueAndBorrowedArgs(
-                            try_call_method_async(
-                                callee, method, args, &runtime,
-                            )
-                            .await?,
-                        ),
-                    )
-                } else {
-                    return Err(ExecutionError::MethodNotFound(method_name));
-                }
+                interrupt_provider.provide_result(
+                    InterruptResult::ResolvedValueAndBorrowedArgs(res),
+                )
             }
         }
     }
 
     unreachable!("Execution loop should always return a result");
-}
-
-fn try_call_method_sync(
-    callee: ApplyArgument,
-    method: &EntityImplMethod,
-    mut args: Vec<ApplyArgument>,
-    runtime: &Runtime,
-) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
-    let owner_endpoint = callee.value.owner();
-
-    // prepend callee to args
-    args.insert(0, callee);
-
-    // only local calls supported for sync execution
-    if !method.call_on_owner
-        || owner_endpoint.is_local_or_equals_endpoint(runtime.endpoint())
-    {
-        let res = method.callable.try_apply_sync_checked(runtime, args)?;
-        Ok(res)
-    } else {
-        Err(ExecutionError::RequiresAsyncExecution)
-    }
-}
-
-async fn try_call_method_async(
-    callee: ApplyArgument,
-    method: &EntityImplMethod,
-    mut args: Vec<ApplyArgument>,
-    runtime: &Runtime,
-) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
-    let owner_endpoint = callee.value.owner();
-
-    // prepend callee to args
-    args.insert(0, callee);
-
-    // call locally
-    if !method.call_on_owner
-        || owner_endpoint.is_local_or_equals_endpoint(runtime.endpoint())
-    {
-        let res = method
-            .callable
-            .try_apply_async_checked(runtime, args)
-            .await?;
-        Ok(res)
-    }
-    // call on owner endpoint
-    else {
-        let mut instructions = vec![
-            RegularInstruction::call_method(
-                method.name().unwrap().clone(), // FIXME: don't use method name here
-                args.len() as u8,
-            )
-            .into(),
-        ];
-        instructions.extend(
-            args.into_iter()
-                .map(|v| InstructionInput::ValueContainer(v.value)),
-        );
-
-        let res = runtime
-            .execute_instructions_remote(vec![owner_endpoint], instructions)
-            .await?;
-
-        // FIXME: restore borrowed stack values across remote execution.
-        // For now, local borrows are not supported cross endpoint
-        Ok((res, vec![]))
-    }
 }
 
 async fn set_remote_endpoint_property(
@@ -396,13 +341,14 @@ async fn set_remote_endpoint_property(
     value: ValueContainer,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     runtime
-        .execute_instructions_remote(
-            vec![endpoint],
+        .execute_instructions_remote_single_receiver(
+            endpoint,
             vec![
                 RegularInstruction::set_entry_text(property_name).into(),
                 InstructionInput::ValueContainer(value),
                 RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
             ],
+            false,
         )
         .await
 }
@@ -413,14 +359,36 @@ async fn get_remote_endpoint_property(
     property_name: String,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     runtime
-        .execute_instructions_remote(
-            vec![endpoint],
+        .execute_instructions_remote_single_receiver(
+            endpoint,
             vec![
                 RegularInstruction::get_entry_text(property_name).into(),
                 RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
             ],
+            false,
         )
         .await
+}
+
+/// Tries to get the endpoint property, either directly from endpoint properties, or from root properties ($.x), if not found
+fn get_local_endpoint_property(
+    runtime: &Runtime,
+    caller_metadata: &ExecutionCallerMetadata,
+    property_name: String,
+) -> Result<Option<ValueContainer>, ExecutionError> {
+    let value = runtime.endpoint_properties().get(&property_name).cloned();
+
+    if let Some(value) = value {
+        return Ok(Some(value));
+    } else if let Ok(root_property) = RootProperty::from_str(&property_name) {
+        return Ok(Some(get_root_property(
+            runtime,
+            caller_metadata,
+            root_property,
+        )?));
+    }
+
+    Ok(None)
 }
 
 fn get_remote_shared_container_reference(
@@ -462,15 +430,15 @@ mod tests {
     use crate::{
         collections::HashMap,
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
-        core_compiler::{
-            core_compilation_context::DXBWithSharedValues,
-            value_compiler::compile_instruction,
-        },
+        core_compiler::core_compilation_context::DXBWithSharedValues,
+        disassembler::print_disassembled,
+        global::protocol_structures::serializable::Serializable,
         instruction::Instruction,
         libs::core::type_id::CoreLibBaseTypeId,
         prelude::*,
         runtime::{
-            Runtime, RuntimeConfig, RuntimeRunner,
+            CustomRuntimeInfo, Runtime, RuntimeConfig, RuntimeRunner,
+            cache::shared_references_cache::SharedReferencesCache,
             execution::{
                 context::{ExecutionContext, LocalExecutionContext},
                 execution_input::{ExecutionCallerMetadata, ExecutionOptions},
@@ -483,6 +451,8 @@ mod tests {
             traits::SharedContainerCommon,
         },
         traits::{
+            classification::Classification,
+            convert_value_container::ConvertValueContainer,
             structural_eq::{StructuralEq, assert_structural_eq},
             value_eq::{ValueEq, assert_value_eq},
         },
@@ -504,10 +474,14 @@ mod tests {
                 list::{List, datex_list},
                 map::Map,
             },
-            value::Value,
+            value::{
+                Value,
+                value_classification::{ValueClassification, ValueTag},
+            },
         },
     };
     use core::assert_matches;
+    use indexmap::IndexMap;
     use log::{debug, info};
 
     fn execute_datex_script_debug(
@@ -520,6 +494,10 @@ mod tests {
             runtime.clone(),
         )
         .unwrap();
+
+        flexi_logger::init();
+        print_disassembled(&dxb);
+
         let context = ExecutionInput::new(
             DXBWithSharedValues::new(dxb, vec![]),
             ExecutionCallerMetadata::local_default(),
@@ -619,7 +597,7 @@ mod tests {
         config: RuntimeConfig,
         datex_script: &str,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        RuntimeRunner::new(config)
+        RuntimeRunner::new(config, CustomRuntimeInfo::default())
             .run(async |runtime| {
                 let (dxb, _) = compile_script(
                     datex_script,
@@ -723,26 +701,23 @@ mod tests {
         let result = execute_datex_script_debug_with_result("[]");
         let list: &List = result.try_as().unwrap();
         assert_eq!(list.len(), 0);
-        assert_eq!(result, Vec::<ValueContainer>::new().into());
-        assert_eq!(result, ValueContainer::from(Vec::<ValueContainer>::new()));
+        assert_eq!(
+            result,
+            List::new(Vec::<ValueContainer>::new()).to_value_container()
+        );
     }
 
     #[test]
     fn empty_tag() {
         let result = execute_datex_script_debug_with_result("#Example");
-        if let ValueContainer::Local(value) = result {
+        if let ValueContainer::Local(Value::Core(value)) = result {
             assert_eq!(&value.inner, &CoreValue::Null);
             assert_eq!(
-                &value.custom_type,
-                &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                    tag: "Example".to_string(),
-                    ty: Some(Box::new(Type::Definition(
-                        TypeDefinition::CoreType(
-                            CoreLibBaseTypeId::Unit.into()
-                        )
-                        .into()
-                    ))),
-                }))
+                value.classification,
+                ValueClassification::new_with_tag(ValueTag {
+                    name: "Example".to_string(),
+                    is_empty: true
+                })
             )
         } else {
             panic!("Result should be Local value");
@@ -753,20 +728,20 @@ mod tests {
     fn empty_with_map() {
         let result =
             execute_datex_script_debug_with_result("#Example {a: true}");
-        if let ValueContainer::Local(value) = result {
+        if let ValueContainer::Local(Value::Core(value)) = result {
             assert_eq!(
                 &value.inner,
-                &CoreValue::Map(Map::structural_with_string_keys(vec![(
-                    "a".to_string(),
+                &CoreValue::Map(Map::new_structural(vec![(
+                    "a".into(),
                     ValueContainer::from(true)
                 )]))
             );
             assert_eq!(
-                &value.custom_type,
-                &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                    tag: "Example".to_string(),
-                    ty: None,
-                }))
+                value.classification,
+                ValueClassification::new_with_tag(ValueTag {
+                    name: "Example".to_string(),
+                    is_empty: false
+                })
             )
         } else {
             panic!("Result should be Local value");
@@ -775,33 +750,41 @@ mod tests {
 
     #[test]
     fn list() {
-        let result = execute_datex_script_debug_with_result("[1, 2, 3]");
+        let result = execute_datex_script_debug_with_result("[1i8, 2i8, 3i8]");
         let list: &List = result.try_as().unwrap();
         let expected = datex_list![
-            Integer::from(1i8),
-            Integer::from(2i8),
-            Integer::from(3i8)
+            TypedInteger::from(1i8),
+            TypedInteger::from(2i8),
+            TypedInteger::from(3i8)
         ];
         assert_eq!(list.len(), 3);
         assert_eq!(result, expected.into());
-        assert_ne!(result, ValueContainer::from(vec![1, 2, 3]));
-        assert_structural_eq!(result, ValueContainer::from(vec![1, 2, 3]));
+        assert_eq!(result, List::new(vec![1i8, 2i8, 3i8]).to_value_container());
+        assert_structural_eq!(
+            result,
+            List::new(vec![1i8, 2i8, 3i8]).to_value_container()
+        );
     }
 
     #[test]
     fn list_with_nested_scope() {
         let result = execute_datex_script_debug_with_result("[1, (2 + 3), 4]");
-        let expected = datex_list![
-            Integer::from(1i8),
-            Integer::from(5i8),
-            Integer::from(4i8)
-        ];
+        let expected =
+            datex_list![Integer::from(1), Integer::from(5), Integer::from(4)];
 
         assert_eq!(result, expected.into());
-        assert_ne!(result, ValueContainer::from(vec![1_u8, 5_u8, 4_u8]));
+        assert_ne!(
+            result,
+            datex_list![
+                TypedInteger::from(1u8),
+                TypedInteger::from(5u8),
+                TypedInteger::from(4u8)
+            ]
+            .into()
+        );
         assert_structural_eq!(
             result,
-            ValueContainer::from(vec![1_u8, 5_u8, 4_u8])
+            List::new(vec![1_u8, 5_u8, 4_u8]).to_value_container()
         );
     }
 
@@ -896,8 +879,8 @@ mod tests {
     fn map() {
         let result =
             execute_datex_script_debug_with_result("{x: 1, y: 2, z: 42}");
-        let map: CoreValue = result.get_cloned_value().inner;
-        let map: Map = map.try_into().unwrap();
+        let map = result.get_cloned_value();
+        let map = map.try_into_value::<Map>().unwrap();
 
         // form and size
         assert_eq!(map.to_string(), "{\"x\": 1, \"y\": 2, \"z\": 42}");
@@ -906,9 +889,18 @@ mod tests {
         info!("Map: {:?}", map);
 
         // access by key
-        assert_eq!(map.try_get("x"), Ok(&Integer::from(1).into()));
-        assert_eq!(map.try_get("y"), Ok(&Integer::from(2).into()));
-        assert_eq!(map.try_get("z"), Ok(&Integer::from(42).into()));
+        assert_eq!(
+            map.try_get(&ValueContainer::from("x")),
+            Ok(&Integer::from(1).into())
+        );
+        assert_eq!(
+            map.try_get(&ValueContainer::from("y")),
+            Ok(&Integer::from(2).into())
+        );
+        assert_eq!(
+            map.try_get(&ValueContainer::from("z")),
+            Ok(&Integer::from(42).into())
+        );
 
         // structural equality checks
         let expected_se: Map = Map::from(vec![
@@ -933,8 +925,8 @@ mod tests {
     #[test]
     fn empty_map() {
         let result = execute_datex_script_debug_with_result("{}");
-        let map: CoreValue = result.clone().get_cloned_value().inner;
-        let map: Map = map.try_into().unwrap();
+        let map = result.clone().get_cloned_value();
+        let map = map.try_into_value::<Map>().unwrap();
 
         // form and size
         assert_eq!(map.to_string(), "{}");
@@ -970,11 +962,10 @@ mod tests {
                 body: CallableBody::DatexBytecode(DatexBytecodeCallable {
                     requires_async: false,
                     injected_values: vec![],
-                    body: compile_instruction(RegularInstruction::statements(
-                        0, false
-                    )),
+                    body: RegularInstruction::statements(0, false).to_bytes(),
                 }),
                 creator: Endpoint::LOCAL,
+                docs: None,
             }
         )
     }
@@ -1000,9 +991,10 @@ mod tests {
                 body: CallableBody::DatexBytecode(DatexBytecodeCallable {
                     requires_async: false,
                     injected_values: vec![],
-                    body: compile_instruction(RegularInstruction::Null),
+                    body: RegularInstruction::Null.to_bytes(),
                 }),
                 creator: Endpoint::LOCAL,
+                docs: None,
             }
         );
     }
@@ -1034,9 +1026,10 @@ mod tests {
                 body: CallableBody::DatexBytecode(DatexBytecodeCallable {
                     requires_async: false,
                     injected_values: vec![],
-                    body: compile_instruction(RegularInstruction::Null),
+                    body: RegularInstruction::Null.to_bytes(),
                 }),
                 creator: Endpoint::LOCAL,
+                docs: None,
             }
         );
     }
@@ -1124,7 +1117,7 @@ mod tests {
         let result =
             execute_datex_script_debug_with_result("const x = 'shared 42; x");
         assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(ref container)) if
-            container.container_mutability().clone() == SharedContainerMutability::Immutable &&
+            container.container_mutability() == SharedContainerMutability::Immutable &&
             container.reference_mutability() == ReferenceMutability::Immutable
         );
 
@@ -1136,7 +1129,7 @@ mod tests {
         let result =
             execute_datex_script_debug_with_result("const x = shared 42; x");
         assert_matches!(result, ValueContainer::Shared(SharedContainer::Owned(ref container)) if
-            container.container_mutability().clone() == SharedContainerMutability::Immutable
+            container.container_mutability() == SharedContainerMutability::Immutable
         );
 
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
@@ -1149,7 +1142,7 @@ mod tests {
         );
         assert_matches!(result, ValueContainer::Shared(SharedContainer::Owned(
             ref container @ OwnedSharedContainer { .. }
-        )) if container.container_mutability().clone() == SharedContainerMutability::Mutable);
+        )) if container.container_mutability() == SharedContainerMutability::Mutable);
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 
@@ -1203,10 +1196,11 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(feature = "std")]
     async fn env_slot() {
         let res = execute_datex_script_with_runtime(
             RuntimeConfig {
-                env: Some(HashMap::from([(
+                env: Some(IndexMap::from([(
                     "TEST_ENV_VAR".to_string(),
                     "test_value".to_string(),
                 )])),
@@ -1217,8 +1211,11 @@ mod tests {
         .await
         .unwrap();
         assert!(res.is_some());
-        let env = res.unwrap().try_into_value::<Map>().unwrap();
-        assert_eq!(env.try_get("TEST_ENV_VAR"), Ok(&"test_value".into()));
+        let env = res
+            .unwrap()
+            .try_into_value::<IndexMap<String, String>>()
+            .unwrap();
+        assert_eq!(env.get("TEST_ENV_VAR"), Some(&"test_value".into()));
     }
 
     #[test]

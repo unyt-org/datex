@@ -10,11 +10,13 @@ use crate::{
         SharedContainerMutability,
         base_shared_value_container::BaseSharedValueContainer,
     },
-    types::{
-        r#type::Type,
-        type_definition::{TypeDefinition, tagged_type::TaggedTypeDefinition},
+    values::{
+        value::{
+            Value,
+            value_classification::{ValueClassification, ValueTag},
+        },
+        value_container::ValueContainer,
     },
-    values::value_container::ValueContainer,
 };
 
 /// Creates a new [ValueContainer] with a tagged type definition based on the provided [ValueContainer] and tag.
@@ -24,14 +26,14 @@ pub fn create_tagged_value_container(
     tag: String,
 ) -> Result<ValueContainer, ExecutionError> {
     match value_container {
-        ValueContainer::Local(mut value) => {
+        ValueContainer::Local(Value::Core(mut value)) => {
             // add tag type to the value
-            value.custom_type =
-                Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                    tag,
-                    ty: value.custom_type.map(Type::from).map(Box::new),
-                }));
-            Ok(ValueContainer::Local(value))
+            value.classification =
+                ValueClassification::new_with_tag(ValueTag {
+                    name: tag,
+                    is_empty: false,
+                });
+            Ok(ValueContainer::Local(Value::Core(value)))
         }
         _ => Err(ExecutionError::ExpectedLocalValue),
     }

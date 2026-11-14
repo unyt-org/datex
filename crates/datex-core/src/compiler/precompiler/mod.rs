@@ -2,9 +2,9 @@
 //! The precompiler traverses the AST, resolves variable references and shared values.
 
 use crate::{
-    ast::expressions::InterfaceMethodCall, collections::HashSet,
+    ast::expressions::{ComparisonOperation, InterfaceMethodCall},
+    collections::HashSet,
     type_inference::infer_expression_type_detailed_errors,
-    types::shared_container_containing_entity_type::SharedContainerContainingEntityType,
     values::core_value::CoreValue,
 };
 
@@ -52,6 +52,7 @@ use crate::{
     },
     types::{
         entities::entity_type_definition::EntityTypeDefinition,
+        entity_type::EntityType,
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type, type_definition::TypeDefinition,
     },
@@ -318,7 +319,7 @@ impl<'a> Precompiler<'a> {
         // the inner value will be replaced, once the type declaration is fully visited in
         // during the type inference (visit_type_declaration in type_inference::type_inference_visitor)
         let type_def = Type::Entity(unsafe {
-            SharedContainerContainingEntityType::new_unchecked(
+            EntityType::new_unchecked(
                 SharedContainer::new_owned_with_inferred_allowed_type(
                     CoreValue::EntityTypeDefinition(EntityTypeDefinition::new(
                         TypeDefinition::core(CoreLibBaseTypeId::Any),
@@ -659,7 +660,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         match result {
             Ok(mut statements) => {
                 statements.push(
-                    DatexExpressionData::CallableDeclaration(
+                    DatexExpressionData::callable_declaration(
                         callable_declaration.clone(),
                     )
                     .with_span(span.clone()),
@@ -1157,7 +1158,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
 
     fn visit_comparison_operation(
         &mut self,
-        comparison_operation: &mut crate::ast::expressions::ComparisonOperation,
+        comparison_operation: &mut ComparisonOperation,
         _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         self.visit_datex_expression(&mut comparison_operation.left)?;
@@ -1201,19 +1202,19 @@ mod tests {
         ast::{
             expressions::{
                 BinaryOperation, CallableDeclaration, CallableSignature,
-                CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
-                DeriveSharedRef, EntityDeclarationExpression,
-                InterfaceMethodCall, Map, PropertyAccess, PropertyAssignment,
-                RemoteExecution, Statements, TypeDeclarationExpression, Unbox,
-                ValueAccessType, VariableAccess, VariableDeclaration,
-                VariableKind, VariantAccess,
+                ComparisonOperation, CreateShared, DatexExpression,
+                DatexExpressionData, DeriveRef, DeriveSharedRef,
+                EntityDeclarationExpression, InterfaceMethodCall, Map,
+                PropertyAccess, PropertyAssignment, RemoteExecution,
+                Statements, TypeDeclarationExpression, Unbox, ValueAccessType,
+                VariableAccess, VariableDeclaration, VariableKind,
+                VariantAccess,
             },
             resolved_variable::ResolvedVariable,
             spanned::Spanned,
             type_expressions::{StructuralMap, TypeExpressionData},
         },
         compiler::{
-            ComparisonOperation,
             error::{
                 CompilerError,
                 SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
@@ -2209,7 +2210,7 @@ mod tests {
                         }
                     )
                     .with_default_span(),
-                    DatexExpressionData::CallableDeclaration(
+                    DatexExpressionData::callable_declaration(
                         CallableDeclaration {
                             signature: CallableSignature {
                                 name: Some("y".to_string()),
@@ -2261,7 +2262,7 @@ mod tests {
                         }
                     )
                         .with_default_span(),
-                    DatexExpressionData::CallableDeclaration(CallableDeclaration {
+                    DatexExpressionData::callable_declaration(CallableDeclaration {
                         signature: CallableSignature {
                             name: Some("y".to_string()),
                             kind: CallableKind::Function,

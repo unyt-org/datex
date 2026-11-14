@@ -1,23 +1,28 @@
-use crate::utils::get_datex_core_crate_name;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{ExprClosure, ImplItemFn, ItemFn, Signature, Type, fold, fold::Fold};
+use syn::{
+    ExprClosure, FnArg, ImplItemFn, ItemFn, Signature, Type, fold, fold::Fold,
+};
+
+use crate::datex_proxy::helpers::parse_doc_comments;
 
 pub fn generate_native_callable_from_impl_fn(
-    function: &ImplItemFn,
+    function: &mut ImplItemFn,
     self_type: &Type,
 ) -> TokenStream {
     generate_native_callable(
         function.sig.asyncness.is_some(),
-        &function.sig,
+        &mut function.sig,
+        &function.attrs,
         Some(self_type),
     )
 }
 
-pub fn generate_native_callable_from_fn(function: &ItemFn) -> TokenStream {
+pub fn generate_native_callable_from_fn(function: &mut ItemFn) -> TokenStream {
     generate_native_callable(
         function.sig.asyncness.is_some(),
-        &function.sig,
+        &mut function.sig,
+        &function.attrs,
         None,
     )
 }
@@ -32,14 +37,24 @@ pub fn generate_native_callable_from_closure(
     // )
 }
 
+enum RuntimeParamType {
+    MutableRef,
+    ImmutableRef,
+    Owned,
+}
+
+enum FunctionArg {
+    Runtime(RuntimeParamType),
+    Arg(FnArg),
+}
+
 /// Generates the code that creates a [Callable] from a given rust function signature and optional self type.
 pub fn generate_native_callable(
     is_async: bool,
-    sig: &Signature,
+    sig: &mut Signature,
+    attrs: &[syn::Attribute],
     self_ty: Option<&Type>,
 ) -> TokenStream {
-    let datex_core_crate_name = get_datex_core_crate_name();
-
     let method_ident = &sig.ident;
     let method_name = method_ident.to_string();
 
@@ -60,58 +75,102 @@ pub fn generate_native_callable(
 
     let return_type_tokens = match return_type {
         Some(ref ty) => {
-            quote! { Some(Box::new(<#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache))) }
+            quote! { Some(Box::new(<#ty as GetDatexType>::datex_type(cache))) }
         }
         None => quote! { None },
     };
     let yeet_type_tokens = match yeet_type {
         Some(ref ty) => {
-            quote! { Some(Box::new(<#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache))) }
+            quote! { Some(Box::new(<#ty as GetDatexType>::datex_type(cache))) }
         }
         None => quote! { None },
     };
 
     let mut parameter_defs = Vec::new();
+    let mut has_runtime_param = false;
 
-    for param in &sig.inputs {
-        match param {
-            syn::FnArg::Receiver(_ty) => {
-                let ty =
-                    self_ty.expect("Self type must be provided for methods");
-                parameter_defs.push(quote! {
-                    (
-                        Some("self".to_string()),
-                        <#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache)
-                    )
-                });
-            }
-            syn::FnArg::Typed(pat_type) => {
-                let name = match &*pat_type.pat {
-                    syn::Pat::Ident(ident) => ident.ident.to_string(),
-                    _ => {
-                        panic!("Unsupported parameter pattern")
+    let actual_inputs: Vec<FunctionArg> = sig
+        .inputs
+        .iter_mut()
+        .map(|arg| {
+            match arg {
+                syn::FnArg::Receiver(_ty) => {
+                    let ty = self_ty
+                        .expect("Self type must be provided for methods");
+                    parameter_defs.push(quote! {
+                        (
+                            Some("self".to_string()),
+                            <#ty as GetDatexType>::datex_type(cache)
+                        )
+                    });
+                }
+                syn::FnArg::Typed(pat_type) => {
+                    let name = match &*pat_type.pat {
+                        syn::Pat::Ident(ident) => ident.ident.to_string(),
+                        _ => {
+                            panic!("Unsupported parameter pattern")
+                        }
+                    };
+                    // check if #[runtime] parameter exists
+                    let is_runtime_arg = pat_type
+                        .attrs
+                        .iter()
+                        .any(|a| a.path().is_ident("runtime"));
+                    // Strip #[runtime] so compiler never sees it
+                    pat_type.attrs.retain(|a| !a.path().is_ident("runtime"));
+
+                    if is_runtime_arg {
+                        if has_runtime_param {
+                            panic!("Only one #[runtime] parameter is allowed");
+                        }
+                        let runtime_param_type =
+                            if let Type::Reference(type_reference) =
+                                &*pat_type.ty
+                            {
+                                if type_reference.mutability.is_some() {
+                                    RuntimeParamType::MutableRef
+                                } else {
+                                    RuntimeParamType::ImmutableRef
+                                }
+                            } else {
+                                RuntimeParamType::Owned
+                            };
+                        has_runtime_param = true;
+                        return FunctionArg::Runtime(runtime_param_type);
+                    } else {
+                        // normalize type name (replace Self with the actual type name)
+                        let ty = replace_self_type(&pat_type.ty, self_ty);
+                        parameter_defs.push(quote! {
+                            (
+                                Some(#name.to_string()),
+                                <#ty as GetDatexType>::datex_type(cache)
+                            )
+                        });
                     }
-                };
-                // normalize type name (replace Self with the actual type name)
-                let ty = replace_self_type(&pat_type.ty, self_ty);
-                parameter_defs.push(quote! {
-                    (
-                        Some(#name.to_string()),
-                        <#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache)
-                    )
-                });
+                }
             }
-        }
-    }
 
-    let has_mutable_inputs = sig.inputs.iter().any(|param| match param {
-        syn::FnArg::Receiver(receiver) => receiver.mutability.is_some(),
-        syn::FnArg::Typed(pat_type) => {
+            FunctionArg::Arg(arg.clone())
+        })
+        .collect();
+
+    let has_mutable_inputs = actual_inputs.iter().any(|param| match param {
+        FunctionArg::Arg(syn::FnArg::Receiver(receiver)) => {
+            receiver.mutability.is_some()
+                || matches!(
+                    receiver.kind,
+                    syn::ReceiverKind::Reference(_, _, Some(_))
+                )
+        }
+        FunctionArg::Arg(syn::FnArg::Typed(pat_type)) => {
             if let Type::Reference(type_reference) = &*pat_type.ty {
                 type_reference.mutability.is_some()
             } else {
                 false
             }
+        }
+        FunctionArg::Runtime(_) => {
+            false // passing runtime is not considered a mutable input - to be discussed
         }
     });
 
@@ -120,72 +179,95 @@ pub fn generate_native_callable(
     let mut call_arguments = Vec::new();
     let mut call_argument_collections = Vec::new();
 
-    for (index, param) in sig.inputs.iter().enumerate() {
-        let ty = match param {
-            syn::FnArg::Receiver(_receiver) => self_ty.unwrap().clone(),
-            syn::FnArg::Typed(pat_type) => {
-                replace_self_type(&pat_type.ty, self_ty)
+    for (index, arg) in actual_inputs.iter().enumerate() {
+        match arg {
+            FunctionArg::Runtime(runtime_param_type) => {
+                call_arguments.push(match runtime_param_type {
+                    RuntimeParamType::MutableRef => {
+                        quote! { &mut runtime }
+                    }
+                    RuntimeParamType::ImmutableRef => {
+                        quote! { &runtime }
+                    }
+                    RuntimeParamType::Owned => {
+                        quote! { runtime.clone() }
+                    }
+                })
             }
-        };
-        let var_ident_container = syn::Ident::new(
-            &format!("arg_container_{}", index),
-            proc_macro2::Span::call_site(),
-        );
-        let var_ident = syn::Ident::new(
-            &format!("arg_{}", index),
-            proc_macro2::Span::call_site(),
-        );
-        let is_borrowed = match param {
-            syn::FnArg::Receiver(receiver) => receiver.reference.is_some(),
-            syn::FnArg::Typed(pat_type) => {
-                matches!(&*pat_type.ty, Type::Reference(_type_reference))
-            }
-        };
-        call_argument_inits.push(quote! {
-            let mut #var_ident_container = val_iter.next().unwrap();
-        });
+            FunctionArg::Arg(arg) => {
+                let ty = match arg {
+                    syn::FnArg::Receiver(_receiver) => self_ty.unwrap().clone(),
+                    syn::FnArg::Typed(pat_type) => {
+                        replace_self_type(&pat_type.ty, self_ty)
+                    }
+                };
+                let var_ident_container = syn::Ident::new(
+                    &format!("arg_container_{}", index),
+                    proc_macro2::Span::call_site(),
+                );
+                let var_ident = syn::Ident::new(
+                    &format!("arg_{}", index),
+                    proc_macro2::Span::call_site(),
+                );
+                let is_borrowed = match arg {
+                    syn::FnArg::Receiver(receiver) => {
+                        matches!(
+                            receiver.kind,
+                            syn::ReceiverKind::Reference(..)
+                        )
+                    }
+                    syn::FnArg::Typed(pat_type) => {
+                        matches!(&*pat_type.ty, Type::Reference(..))
+                    }
+                };
+                call_argument_inits.push(quote! {
+                    let mut #var_ident_container = val_iter.next().unwrap();
+                });
 
-        // distinguish between move, & and &mut
-        call_argument_accesses.push(
-            // handle & and &mut
-            if is_borrowed {
-                quote! {
-                    let mut value_sheep = (&mut #var_ident_container.value).value_container_mut(); // collapse potential Shared to inner ValueContainer
-                    // try to get stored native value from the value container
-                    let #var_ident = if let Some(mut inner) = <#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_borrow_native_from_value_container(core::ops::DerefMut::deref_mut(&mut value_sheep)) {
-                        inner
-                    } else {
-                        // fallback: convert from DATEX value to native value
-                        &mut (<#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_from_value_container(value_sheep.clone()).unwrap())
-                    };
-                }
-            }
-            // handle move
-            else {
-                quote! {
-                    // try to get stored native value from the value container
-                    let #var_ident = match <#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_native_from_value_container(#var_ident_container.value) {
-                        Ok(inner) => inner,
-                        Err(value) => {
-                            // fallback: convert from DATEX value to native value
-                            <#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_from_value_container((*value).clone()).unwrap()
+                // distinguish between move, & and &mut
+                call_argument_accesses.push(
+                    // handle & and &mut
+                    if is_borrowed {
+                        quote! {
+                            let mut value_sheep = (&mut #var_ident_container.value).value_container_mut(); // collapse potential Shared to inner ValueContainer
+                            // try to get stored native value from the value container
+                            let #var_ident = if let Ok(mut inner) = <#ty as ConvertValueContainer>::try_borrow_mut_from_value_container(core::ops::DerefMut::deref_mut(&mut value_sheep)) {
+                                inner
+                            } else {
+                                // fallback: handle serde conversion
+                                todo!()
+                                //&mut (<#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_from_value_container(value_sheep.clone()).unwrap())
+                            };
                         }
-                    };
-                }
-            }
-        );
-        call_arguments.push(quote! { #var_ident });
+                    }
+                    // handle move
+                    else {
+                        quote! {
+                        // try to get stored native value from the value container
+                        let #var_ident = match <#ty as ConvertValueContainer>::try_from_value_container(#var_ident_container.value) {
+                            Ok(inner) => inner,
+                            Err(value) => {
+                                // fallback: handle serde conversion
+                                todo!()
+                            }
+                        };
+                    }
+                    }
+                );
+                call_arguments.push(quote! { #var_ident });
 
-        call_argument_collections.push(
-            // borrowed values are collected and returned back
-            if is_borrowed {
-                quote! { if #var_ident_container.passed_as_ref { Some(#var_ident_container.value) } else { None } }
+                call_argument_collections.push(
+                    // borrowed values are collected and returned back
+                    if is_borrowed {
+                        quote! { if #var_ident_container.passed_as_ref { Some(#var_ident_container.value) } else { None } }
+                    }
+                    // moved values can no longer be accessed, so we return None
+                    else {
+                        quote! { None }
+                    }
+                );
             }
-            // moved values can no longer be accessed, so we return None
-            else {
-                quote! { None }
-            }
-        );
+        }
     }
 
     // reverse the call_arguments initialization, but keep usage in the original order
@@ -217,18 +299,10 @@ pub fn generate_native_callable(
 
             #(#call_argument_inits)*
 
-            let mut result_value = #datex_core_crate_name::datex_proxy::ToDatexNativeValueContainer::boxed_to_datex_native_value_container(
+            let mut result_value = ConvertValueContainer::to_value_container(
                 #method_call_body,
-                &mut #datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache::default(), // empty placeholder cache to satisfy the trait bound, FIXME: better solution
             );
 
-            // set the correct type for the result value container
-            match &mut result_value {
-                ValueContainer::Local(value) => {
-                   value.custom_type = Some(return_type.into())
-                }
-                ValueContainer::Shared(_) => {} // shared container must already have an assigned type since it already contained a full ValueContainer
-            }
             (Some(result_value), vec![#(#call_argument_collections),*].into_iter().filter_map(|v| v).collect())
         }}
     } else {
@@ -243,45 +317,39 @@ pub fn generate_native_callable(
     };
 
     let kind = if has_mutable_inputs {
-        quote! {  #datex_core_crate_name::types::type_definition::callable::CallableKind::Procedure }
+        quote! {  CallableKind::Procedure }
     } else {
-        quote! {  #datex_core_crate_name::types::type_definition::callable::CallableKind::Function }
-    };
-
-    let return_type_init = match return_type {
-        Some(ref ty) => {
-            quote! {
-                let return_type = <#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache);
-            }
-        }
-        None => quote! {
-            let return_type = ();
-        },
+        quote! {  CallableKind::Function }
     };
 
     let body = if is_async {
         quote! {
-            #datex_core_crate_name::values::core_values::callable::CallableBody::native_async(move |mut vals| {
-                let return_type = return_type.clone();
-                alloc::boxed::Box::pin(async move {Ok(#method_call_conversion)})
+            CallableBody::native_async(move |mut vals, mut runtime| {
+                let runtime = runtime.clone();
+                Box::pin(async move {Ok(#method_call_conversion)})
             })
         }
     } else {
         quote! {
-            #datex_core_crate_name::values::core_values::callable::CallableBody::native_sync(move |mut vals| {
-                let return_type = return_type.clone();
+            CallableBody::native_sync(move |mut vals, mut runtime| {
+                let runtime = runtime.clone();
                 Ok(#method_call_conversion)
             })
         }
     };
 
+    let docs = match parse_doc_comments(attrs) {
+        Some(docs) => quote! {
+            Some(#docs.to_string())
+        },
+        None => quote! {
+            None
+        },
+    };
     quote! {{
-
-        #return_type_init
-
-        #datex_core_crate_name::values::core_values::callable::Callable {
+        Callable {
             name: Some(#method_name.to_string()),
-            signature: #datex_core_crate_name::types::type_definition::callable::CallableTypeDefinition {
+            signature: CallableTypeDefinition {
                 kind: #kind,
                 requires_async: #is_async,
                 parameters: vec![#(#parameter_defs),*],
@@ -291,6 +359,7 @@ pub fn generate_native_callable(
             },
             body: #body,
             creator: Default::default(),
+            docs: #docs,
         }
     }}
 }

@@ -1,20 +1,48 @@
 use crate::{
-    dif::serde_context::SerdeContext,
-    utils::serde_serialize_seed::SerializeSeed,
-    values::core_values::native::NativeCoreValue,
+    dif::{
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
+    },
+    traits::classification::Classification,
+    values::{
+        core_value_with_classification::serde_dif::TagMarker,
+        core_values::native::NativeCoreValue,
+    },
 };
-use serde::Serializer;
+use core::ops::DerefMut;
+use serde::{Serialize, Serializer, ser::SerializeMap};
 
-/// Serialization for [NativeCoreValue].
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, NativeCoreValue> {
-    type Value = NativeCoreValue;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        _value: &Self::Value,
-        _serializer: S,
+impl SerializeWithSerdeContext for &NativeCoreValue {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
+        serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        todo!()
-        // self.cast::<_>().serialize(value.value.deref(), serializer)
+        // serialize as {_: "c", c: Classification, v: Value} if classification is present, otherwise just serialize the value
+        let classification = self.classification(
+            ctx.shared_references_cache.borrow_mut().deref_mut(),
+        );
+        if classification.is_unclassified() {
+            self.with_ctx(ctx).serialize(serializer)
+        } else {
+            let mut map_serializer = serializer.serialize_map(Some(3))?;
+            // "_" key to indicate that this is a classified value
+            map_serializer.serialize_entry(
+                TagMarker::Hint.as_ref(),
+                &TagMarker::Classification.as_ref(),
+            )?;
+            // "c" key for classification
+            map_serializer.serialize_entry(
+                TagMarker::Classification.as_ref(),
+                &ValueWithSerdeContext::new(&classification, ctx),
+            )?;
+            // "v" key for value
+            map_serializer.serialize_entry(
+                TagMarker::Value.as_ref(),
+                &self.with_ctx(ctx),
+            )?;
+            map_serializer.end()
+        }
     }
 }

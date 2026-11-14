@@ -1,32 +1,116 @@
 use crate::{
-    datex_proxy::ToDatexNativeValueContainer,
     prelude::*,
-    runtime::cache::shared_references_cache::SharedReferencesCache,
-    values::{value::Value, value_container::ValueContainer},
+    utils::goat_mut::GoatMut,
+    values::{
+        value::{Value, borrowed_value::BorrowedValueMut},
+        value_container::ValueContainer,
+    },
 };
 use core::{
-    any::Any,
+    any::{Any, TypeId},
     fmt::{Debug, Formatter},
-    ops::Deref,
+    ops::{Deref, DerefMut},
 };
+
+mod datex_native_ops;
+pub use datex_native_ops::*;
+pub mod classification;
 mod datex_native_trait;
-mod serde_dif;
-#[cfg(feature = "decompiler")]
-mod to_datex_expression_data;
-mod value_access;
+pub mod display;
+pub mod equality;
+mod get_datex_type;
+pub mod goat_helpers;
+mod ops;
+pub mod serde_dif;
 
 use crate::{
-    libs::core::type_id::CoreLibTypeId, traits::try_clone::TryClone,
-    values::core_value::CoreValue,
+    libs::core::type_id::CoreLibTypeId,
+    traits::{
+        classification::Classification, convert_parts::FromParts,
+        convert_value::ConvertValue,
+        convert_value_container::ConvertValueContainer, try_clone::TryClone,
+    },
+    utils::goat::Goat,
+    values::{
+        value::borrowed_value::BorrowedValue,
+        value_container::borrowed_value_container::{
+            BorrowedValueContainer, BorrowedValueContainerMut,
+        },
+    },
 };
 pub use datex_native_trait::*;
+pub use ops::*;
 
-impl<T: DatexNative> ToDatexNativeValueContainer for T {
-    fn boxed_to_datex_native_value_container(
-        self,
-        cache: &mut SharedReferencesCache,
-    ) -> ValueContainer {
-        ValueContainer::Local(Box::new(self).boxed_to_datex_native_value(cache))
+impl<T: DatexNative + ConvertValue + Classification> ConvertValueContainer
+    for T
+{
+    fn to_value_container(self) -> ValueContainer {
+        ValueContainer::Local(T::to_value(self))
+    }
+
+    fn as_borrowed_value_container(&self) -> BorrowedValueContainer<'_> {
+        BorrowedValueContainer::Local(BorrowedValue::Native(Goat::Borrowed(
+            self,
+        )))
+    }
+    fn as_borrowed_value_container_mut(
+        &mut self,
+    ) -> BorrowedValueContainerMut<'_> {
+        BorrowedValueContainerMut::Local(BorrowedValueMut::Native(
+            GoatMut::Borrowed(self),
+        ))
+    }
+
+    fn try_from_value_container(
+        value_container: ValueContainer,
+    ) -> Result<Self, ValueContainer>
+    where
+        Self: Sized,
+    {
+        match value_container {
+            ValueContainer::Local(value) => {
+                Self::try_from_value(value).map_err(ValueContainer::Local)
+            }
+            _ => Err(value_container),
+        }
+    }
+
+    fn try_convert_from_value_container(
+        value_container: ValueContainer,
+    ) -> Result<Self, ()>
+    where
+        Self: FromParts + Sized,
+    {
+        match value_container {
+            ValueContainer::Local(value) => Self::try_convert_from_value(value),
+            _ => Err(()),
+        }
+    }
+
+    fn try_borrow_from_value_container(
+        value_container: &ValueContainer,
+    ) -> Result<&Self, ()>
+    where
+        Self: Sized,
+    {
+        match value_container {
+            ValueContainer::Local(value) => Self::try_borrow_from_value(value),
+            _ => Err(()),
+        }
+    }
+
+    fn try_borrow_mut_from_value_container(
+        value_container: &mut ValueContainer,
+    ) -> Result<&mut Self, ()>
+    where
+        Self: Sized,
+    {
+        match value_container {
+            ValueContainer::Local(value) => {
+                Self::try_borrow_mut_from_value(value)
+            }
+            _ => Err(()),
+        }
     }
 }
 
@@ -34,8 +118,22 @@ pub struct NativeCoreValue {
     pub value: Box<dyn DatexNative + 'static>,
 }
 
+impl Deref for NativeCoreValue {
+    type Target = dyn DatexNative + 'static;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.value
+    }
+}
+
+impl DerefMut for NativeCoreValue {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut *self.value
+    }
+}
+
 impl TryClone for NativeCoreValue {
-    fn try_clone(&self) -> Result<CoreValue, ()> {
+    fn try_clone(&self) -> Result<Value, ()> {
         self.value.deref().try_clone()
     }
 }
@@ -60,13 +158,6 @@ impl NativeCoreValue {
         self.value
     }
 
-    pub fn to_datex_native_value(
-        self,
-        cache: &mut SharedReferencesCache,
-    ) -> Value {
-        self.value.boxed_to_datex_native_value(cache)
-    }
-
     pub fn core_lib_type_id(&self) -> CoreLibTypeId {
         self.value.core_lib_type_id()
     }
@@ -74,23 +165,69 @@ impl NativeCoreValue {
     /// Attempt to downcast the native value to a specific type.
     /// Returns `Some(&T)` if the downcast is successful, or `None` if it fails.
     pub fn try_as<T: 'static>(&self) -> Option<&T> {
-        self.value.as_any().downcast_ref::<T>()
+        let any = self.value.as_any();
+        if let Some(val) = any.downcast_ref::<T>() {
+            Some(val)
+        } else if let Some(val) = any.downcast_ref::<Box<T>>() {
+            Some(&**val)
+        } else if let Some(val) = any.downcast_ref::<Option<T>>() {
+            val.as_ref()
+        } else {
+            None
+        }
     }
 
     /// Attempt to downcast the native value to a specific type.
     /// Returns `Some(&mut T)` if the downcast is successful, or `None` if it fails.
-    pub fn try_into_value<T: 'static>(self) -> Option<T> {
-        match self.into_any().downcast::<T>() {
-            Ok(boxed) => Some(*boxed),
-            Err(_original) => None,
+    pub fn try_as_mut<T: 'static>(&mut self) -> Option<&mut T> {
+        let any_mut = self.value.as_any_mut();
+        let type_id = (*any_mut).type_id();
+
+        if type_id == TypeId::of::<T>() {
+            return any_mut.downcast_mut::<T>();
+        }
+
+        if type_id == TypeId::of::<Box<T>>() {
+            return any_mut.downcast_mut::<Box<T>>().map(|val| val.as_mut());
+        }
+
+        if type_id == TypeId::of::<Option<T>>() {
+            return any_mut
+                .downcast_mut::<Option<T>>()
+                .and_then(|val| val.as_mut());
+        }
+
+        None
+    }
+
+    /// Attempt to downcast the native value to a specific type.
+    /// Returns `Ok(T)` if the downcast is successful, or `Err(Self)` if it fails.
+    pub fn try_into_value<T: 'static>(self) -> Result<T, Self> {
+        let any = self.as_any();
+        if any.is::<T>() {
+            // SAFETY: we just verified the type
+            Ok(*self.into_any().downcast::<T>().unwrap())
+        } else if any.is::<Box<T>>() {
+            // SAFETY: we just verified the type
+            Ok(**self.into_any().downcast::<Box<T>>().unwrap())
+        } else if any.is::<Option<T>>() {
+            // SAFETY: we just verified the type
+            if self.as_any().downcast_ref::<Option<T>>().unwrap().is_some() {
+                Ok(self.into_any().downcast::<Option<T>>().unwrap().unwrap())
+            } else {
+                Err(self)
+            }
+        } else {
+            Err(self)
         }
     }
 }
 
+// FIXME: remove Clone for NativeCoreValue and other values, use try_clone everywhere
 impl Clone for NativeCoreValue {
     fn clone(&self) -> Self {
         match self.try_clone().unwrap() {
-            CoreValue::Native(n) => n,
+            Value::Native(n) => n,
             _ => unreachable!(),
         }
     }
@@ -98,32 +235,31 @@ impl Clone for NativeCoreValue {
 
 impl Debug for NativeCoreValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f, "[[ native value ]]")
+        write!(f, "{}", self)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        libs::core::type_id::CoreLibBaseTypeId,
         runtime::cache::shared_references_cache::SharedReferencesCache,
-        types::type_definition::TypeDefinition,
         values::{core_value::CoreValue, core_values::native::NativeCoreValue},
     };
 
-    use crate::prelude::*;
+    use crate::{
+        prelude::*,
+        values::value::{Value, value_classification::ValueClassification},
+    };
+
     #[test]
     fn serde() {
+        let cache = &mut SharedReferencesCache::default();
         let val = NativeCoreValue::new("xx".to_string());
-        let ser =
-            val.to_datex_native_value(&mut SharedReferencesCache::default());
+        let ser = Value::Native(val);
         assert_eq!(
-            ser.custom_type().expect("custom type should be present"),
-            &TypeDefinition::core(CoreLibBaseTypeId::Text),
+            ser.classification(cache),
+            ValueClassification::new_unclassified(),
         );
-        assert_eq!(
-            ser.inner,
-            CoreValue::Native(NativeCoreValue::new("xx".to_string()))
-        );
+        assert_eq!(ser, Value::Native(NativeCoreValue::new("xx".to_string())));
     }
 }

@@ -2,8 +2,8 @@ use crate::{
     libs::core::type_id::CoreLibTypeId,
     prelude::*,
     types::{
+        entity_type::EntityType,
         literal_type_definition::LiteralTypeDefinition,
-        shared_container_containing_entity_type::SharedContainerContainingEntityType,
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type,
         type_definition::{
@@ -12,18 +12,22 @@ use crate::{
             collection::{
                 CollectionTypeDefinition,
                 type_definition::{
-                    list::ListCollectionTypeDefinition,
-                    list_slice::ListSliceCollectionTypeDefinition,
-                    map::MapCollectionTypeDefinition,
+                    ListCollectionTypeDefinition,
+                    ListSliceCollectionTypeDefinition,
+                    MapCollectionTypeDefinition, ReceiverTypeDefinition,
+                    SenderTypeDefinition,
                 },
             },
-            impl_type::ImplTypeDefinition,
+            impl_type::ImplMarkers,
             intersection::IntersectionTypeDefinition,
             list::ListTypeDefinition,
             map::MapTypeDefinition,
             range::RangeTypeDefinition,
             tagged_type::TaggedTypeDefinition,
             union::UnionTypeDefinition,
+        },
+        type_definition_with_metadata::{
+            TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
 };
@@ -34,12 +38,12 @@ where
     F: TypeFolder,
 {
     match ty {
-        Type::Definition(alias) => {
-            let Some(name) = alias.reference_name() else {
-                return fold_definition(folder, &alias.definition);
+        Type::Definition(type_definition) => {
+            let Some(name) = type_definition.reference_name() else {
+                return fold_definition(folder, type_definition);
             };
             if folder.begin_named_alias(name)? {
-                let definition = fold_definition(folder, &alias.definition)?;
+                let definition = fold_definition(folder, type_definition)?;
                 folder.end_named_alias(name, definition)?;
             }
             folder.fold_named_alias_reference(name)
@@ -52,12 +56,12 @@ where
 /// Folds a type definition using the provided folder.
 pub fn fold_definition<F>(
     folder: &mut F,
-    definition: &TypeDefinition,
+    definition: &TypeDefinitionWithMetadata,
 ) -> Result<F::Output, F::Error>
 where
     F: TypeFolder,
 {
-    match definition {
+    let inner = match &definition.definition {
         TypeDefinition::Literal(literal) => folder.fold_literal(literal),
         TypeDefinition::List(list) => {
             let elements = list
@@ -152,6 +156,14 @@ where
                 let item = fold_type(folder, list.0.as_ref())?;
                 folder.fold_list_collection(list, item)
             }
+            CollectionTypeDefinition::Sender(sender) => {
+                let item = fold_type(folder, sender.0.as_ref())?;
+                folder.fold_sender(sender, item)
+            }
+            CollectionTypeDefinition::Receiver(receiver) => {
+                let item = fold_type(folder, receiver.0.as_ref())?;
+                folder.fold_receiver(receiver, item)
+            }
             CollectionTypeDefinition::ListSlice(
                 list_slice_collection_type_definition,
             ) => {
@@ -185,9 +197,8 @@ where
                 folder.fold_range(range_type_definition, start, end)
             }
         },
-        TypeDefinition::ImplType(impl_type) => {
-            let ty = fold_type(folder, &impl_type.inner_type)?;
-            folder.fold_impl_type(impl_type, ty)
+        TypeDefinition::ImplMarkers(impl_markers) => {
+            folder.fold_impl_markers(impl_markers)
         }
         TypeDefinition::TaggedType(tagged) => {
             let payload = tagged
@@ -197,7 +208,9 @@ where
                 .transpose()?;
             folder.fold_tagged_type(tagged, payload)
         }
-    }
+    }?;
+
+    folder.fold_type_definition_with_metadata(&definition.metadata, inner)
 }
 
 /// A trait for folding DATEX types. This is a generalization of the visitor pattern that allows the folder to produce an output value and return a result, which can be used for error handling.
@@ -215,6 +228,14 @@ pub trait TypeFolder {
         name: &str,
         definition: Self::Output,
     ) -> Result<(), Self::Error>;
+
+    fn fold_type_definition_with_metadata(
+        &mut self,
+        _metadata: &TypeMetadata,
+        inner: Self::Output,
+    ) -> Result<Self::Output, Self::Error> {
+        Ok(inner)
+    }
 
     /// Called when a reference to a named alias is encountered. This will be called regardless of whether begin_named_alias returns true or false.
     fn fold_named_alias_reference(
@@ -282,7 +303,7 @@ pub trait TypeFolder {
     /// Called when a reference to a shared container containing a entity type is encountered. The shared container is provided as an argument.
     fn fold_entity_reference(
         &mut self,
-        entity: &SharedContainerContainingEntityType,
+        entity: &EntityType,
     ) -> Result<Self::Output, Self::Error>;
 
     /// Called when a reference to a core type is encountered. The core type ID is provided as an argument.
@@ -307,10 +328,9 @@ pub trait TypeFolder {
     ) -> Result<Self::Output, Self::Error>;
 
     /// Called when an impl type definition is encountered. The folded inner type is provided as an argument.
-    fn fold_impl_type(
+    fn fold_impl_markers(
         &mut self,
-        source: &ImplTypeDefinition,
-        ty: Self::Output,
+        source: &ImplMarkers,
     ) -> Result<Self::Output, Self::Error>;
 
     /// Called when a list collection type definition is encountered. The folded item type is provided as an argument.
@@ -333,5 +353,19 @@ pub trait TypeFolder {
         source: &MapCollectionTypeDefinition,
         key: Self::Output,
         value: Self::Output,
+    ) -> Result<Self::Output, Self::Error>;
+
+    /// Called when a sender type definition is encountered. The folded item type is provided as an argument.
+    fn fold_sender(
+        &mut self,
+        source: &SenderTypeDefinition,
+        item: Self::Output,
+    ) -> Result<Self::Output, Self::Error>;
+
+    /// Called when a receiver type definition is encountered. The folded item type is provided as an argument.
+    fn fold_receiver(
+        &mut self,
+        source: &ReceiverTypeDefinition,
+        item: Self::Output,
     ) -> Result<Self::Output, Self::Error>;
 }

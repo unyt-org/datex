@@ -8,9 +8,7 @@ use crate::{
     prelude::*,
     random::RandomState,
     values::{
-        core_value::CoreValue,
-        value::Value,
-        value_container::{ValueContainer, value_key::BorrowedValueKey},
+        core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
 pub mod equality;
@@ -18,33 +16,90 @@ use crate::shared_values::errors::KeyNotFoundError;
 use core::{
     fmt::{self, Display},
     hash::{Hash, Hasher},
+    ops::Deref,
     result::Result,
 };
-mod child_iterator;
+
+pub mod classification;
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
+mod iter_parts;
 pub mod local_child_path_resolver;
 pub mod serde_dif;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod to_instructions;
+mod try_clone;
 pub mod updates;
 mod value_access;
 
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,
+    traits::convert_parts::{FromParts, IntoParts},
+    utils::impl_display_for_datex_value::impl_display_for_datex_value,
     value_updates::update_handler::{
         InternalMutabilityUpdateHandler, UpdateCallbackData,
     },
-    values::value_container::value_key::ValueKey,
+    values::core_value_with_classification::CoreValueWithClassification,
 };
 use indexmap::{IndexMap, map::MutableKeys};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum MapEntries {
     // most general case, allows all types of keys and values, and dynamic size
     Dynamic(IndexMap<ValueContainer, ValueContainer, RandomState>),
     // for fixed-size maps with known keys and values on construction
     Structural(Vec<(ValueContainer, ValueContainer)>),
-    // for maps with string keys
-    StructuralWithStringKeys(Vec<(String, ValueContainer)>), // for structural maps with string keys
+}
+
+impl MapEntries {
+    fn has_only_text_keys(&self) -> bool {
+        match self {
+            MapEntries::Dynamic(map) => {
+                map.keys().all(|k| k.try_as_str().is_some())
+            }
+            MapEntries::Structural(vec) => {
+                vec.iter().all(|(k, _)| k.try_as_str().is_some())
+            }
+        }
+    }
+}
+
+impl Eq for MapEntries {}
+impl PartialEq for MapEntries {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (MapEntries::Dynamic(map1), MapEntries::Dynamic(map2)) => {
+                map1 == map2
+            }
+            (MapEntries::Structural(vec1), MapEntries::Structural(vec2)) => {
+                vec1 == vec2
+            }
+            (MapEntries::Dynamic(map), MapEntries::Structural(vec))
+            | (MapEntries::Structural(vec), MapEntries::Dynamic(map)) => {
+                if map.len() != vec.len() {
+                    return false;
+                }
+                for (key, value) in vec {
+                    match map.get(key) {
+                        Some(other_value) => {
+                            if value != other_value {
+                                return false;
+                            }
+                        }
+                        None => {
+                            return false;
+                        }
+                    }
+                }
+                true
+            }
+        }
+    }
 }
 
 impl From<MapEntries> for Map {
@@ -52,6 +107,7 @@ impl From<MapEntries> for Map {
         Map {
             entries,
             update_callback_data: None,
+            allow_only_text_keys: false,
         }
     }
 }
@@ -60,6 +116,9 @@ impl From<MapEntries> for Map {
 pub struct Map {
     entries: MapEntries,
     update_callback_data: Option<UpdateCallbackData>,
+    /// Guarantees that all keys are text values.
+    /// If false, the map may contain non-text keys.
+    allow_only_text_keys: bool,
 }
 
 impl Clone for Map {
@@ -67,11 +126,12 @@ impl Clone for Map {
         Map {
             entries: self.entries.clone(),
             update_callback_data: None,
+            allow_only_text_keys: self.allow_only_text_keys,
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MapAccessError {
     KeyNotFound(KeyNotFoundError),
     Immutable,
@@ -108,46 +168,49 @@ impl Default for Map {
 }
 
 impl Map {
-    pub fn structural_with_string_keys(
-        entries: Vec<(String, ValueContainer)>,
-    ) -> Self {
-        MapEntries::StructuralWithStringKeys(entries).into()
+    pub fn try_new(
+        entries: impl Into<MapEntries>,
+        allow_only_text_keys: bool,
+    ) -> Result<Self, UnexpectedPropertyError> {
+        let entries = entries.into();
+        if allow_only_text_keys && !entries.has_only_text_keys() {
+            return Err(UnexpectedPropertyError {
+                key: "Non-text key found".to_string(),
+            });
+        }
+
+        Ok(Map {
+            entries,
+            update_callback_data: None,
+            allow_only_text_keys,
+        })
     }
 
-    pub fn structural(entries: Vec<(ValueContainer, ValueContainer)>) -> Self {
+    pub fn new_structural(
+        entries: Vec<(ValueContainer, ValueContainer)>,
+    ) -> Self {
         MapEntries::Structural(entries).into()
     }
 
-    pub fn dynamic(
+    pub fn new_dynamic(
         entries: IndexMap<ValueContainer, ValueContainer, RandomState>,
     ) -> Self {
         MapEntries::Dynamic(entries).into()
     }
 
-    pub fn new(
-        entries: IndexMap<ValueContainer, ValueContainer, RandomState>,
-    ) -> Self {
-        Self::dynamic(entries)
-    }
-
-    pub fn new_structural_with_string_keys(
-        entries: Vec<(String, ValueContainer)>,
-    ) -> Self {
-        MapEntries::StructuralWithStringKeys(entries).into()
+    // Tries to convert the map into a type that implements [FromParts].
+    pub fn try_convert_to<T: FromParts>(self) -> Result<T, ()> {
+        T::try_from_map_parts(self)
     }
 
     pub fn is_structural(&self) -> bool {
-        core::matches!(
-            &self.entries,
-            MapEntries::StructuralWithStringKeys(_) | MapEntries::Structural(_)
-        )
+        core::matches!(&self.entries, MapEntries::Structural(_))
     }
 
     pub fn size(&self) -> usize {
         match &self.entries {
             MapEntries::Dynamic(map) => map.len(),
             MapEntries::Structural(vec) => vec.len(),
-            MapEntries::StructuralWithStringKeys(vec) => vec.len(),
         }
     }
 
@@ -157,71 +220,37 @@ impl Map {
 
     /// Gets a value in the map by reference.
     /// Returns None if the key is not found.
-    pub fn try_get<'a>(
+    pub fn try_get(
         &self,
-        key: impl Into<BorrowedValueKey<'a>>,
+        key: &ValueContainer,
     ) -> Result<&ValueContainer, KeyNotFoundError> {
-        let key = key.into();
         match &self.entries {
-            MapEntries::Dynamic(map) => {
-                key.with_value_container(|key| map.get(key))
-            }
-            MapEntries::Structural(vec) => key.with_value_container(|key| {
+            MapEntries::Dynamic(map) => map.get(key),
+            MapEntries::Structural(vec) => {
                 vec.iter().find(|(k, _)| k == key).map(|(_, v)| v)
-            }),
-            MapEntries::StructuralWithStringKeys(vec) => {
-                // only works if key is a string
-                if let Some(string) = key.try_as_text() {
-                    vec.iter().find(|(k, _)| k == string).map(|(_, v)| v)
-                } else {
-                    None
-                }
             }
         }
-        .ok_or_else(|| KeyNotFoundError::new(key.into()))
+        .ok_or_else(|| KeyNotFoundError::new(key.clone()))
     }
 
-    pub fn try_get_mut<'a>(
+    pub fn try_get_mut(
         &mut self,
-        key: impl Into<BorrowedValueKey<'a>>,
+        key: &ValueContainer,
     ) -> Result<&mut ValueContainer, KeyNotFoundError> {
-        let key = key.into();
         match &mut self.entries {
-            MapEntries::Dynamic(map) => {
-                key.with_value_container(|key| map.get_mut(key))
-            }
-            MapEntries::Structural(vec) => key.with_value_container(|key| {
+            MapEntries::Dynamic(map) => map.get_mut(key),
+            MapEntries::Structural(vec) => {
                 vec.iter_mut().find(|(k, _)| k == key).map(|(_, v)| v)
-            }),
-            MapEntries::StructuralWithStringKeys(vec) => {
-                // only works if key is a string
-                if let Some(string) = key.try_as_text() {
-                    vec.iter_mut().find(|(k, _)| k == string).map(|(_, v)| v)
-                } else {
-                    None
-                }
             }
         }
-        .ok_or_else(|| KeyNotFoundError::new(key.into()))
+        .ok_or_else(|| KeyNotFoundError::new(key.clone()))
     }
 
     /// Checks if the map contains the given key.
-    pub fn has<'a>(&self, key: impl Into<BorrowedValueKey<'a>>) -> bool {
+    pub fn has(&self, key: &ValueContainer) -> bool {
         match &self.entries {
-            MapEntries::Dynamic(map) => {
-                key.into().with_value_container(|key| map.contains_key(key))
-            }
-            MapEntries::Structural(vec) => key
-                .into()
-                .with_value_container(|key| vec.iter().any(|(k, _)| k == key)),
-            MapEntries::StructuralWithStringKeys(vec) => {
-                // only works if key is a string
-                if let Some(string) = key.into().try_as_text() {
-                    vec.iter().any(|(k, _)| k == string)
-                } else {
-                    false
-                }
-            }
+            MapEntries::Dynamic(map) => map.contains_key(key),
+            MapEntries::Structural(vec) => vec.iter().any(|(k, _)| k == key),
         }
     }
 
@@ -234,43 +263,39 @@ impl Map {
         match &self.entries {
             MapEntries::Structural(_) => {
                 for (key, _) in self.iter() {
-                    if let BorrowedMapKey::Text(text) = key {
-                        if !allowed.contains(&text) {
+                    match key.try_as_str() {
+                        Some(string) => {
+                            if !allowed.contains(&string) {
+                                return Err(UnexpectedPropertyError {
+                                    key: string.to_string(),
+                                });
+                            }
+                        }
+                        None => {
                             return Err(UnexpectedPropertyError {
-                                key: text.to_string(),
+                                key: format!("{key}"),
                             });
                         }
-                    } else {
-                        return Err(UnexpectedPropertyError {
-                            key: format!("{key}"),
-                        });
                     }
                 }
             }
             MapEntries::Dynamic(entries) => {
                 for (key, _) in entries {
-                    if let ValueContainer::Local(Value {
-                        inner: CoreValue::Text(text),
-                        ..
-                    }) = key
+                    if let ValueContainer::Local(Value::Core(
+                        CoreValueWithClassification {
+                            inner: CoreValue::Text(text),
+                            ..
+                        },
+                    )) = key
                     {
-                        if !allowed.contains(&text.0.as_str()) {
+                        if !allowed.contains(&text.as_str()) {
                             return Err(UnexpectedPropertyError {
-                                key: text.0.clone(),
+                                key: text.as_string(),
                             });
                         }
                     } else {
                         return Err(UnexpectedPropertyError {
                             key: format!("{key}"),
-                        });
-                    }
-                }
-            }
-            MapEntries::StructuralWithStringKeys(vec) => {
-                for (key, _) in vec {
-                    if !allowed.contains(&key.as_str()) {
-                        return Err(UnexpectedPropertyError {
-                            key: key.clone(),
                         });
                     }
                 }
@@ -295,7 +320,7 @@ impl Map {
     /// skipping any children that have a [ValueContainer::Shared] value
     pub fn iter_local_values_mut(
         &mut self,
-    ) -> impl Iterator<Item = (BorrowedMutMapKey<'_>, &mut Value)> {
+    ) -> impl Iterator<Item = (&ValueContainer, &mut Value)> {
         self.iter_mut().filter_map(|(key, item)| {
             if let ValueContainer::Local(local_value) = item {
                 Some((key, local_value))
@@ -306,9 +331,9 @@ impl Map {
     }
 
     /// Sets a value in the map, panicking if it fails.
-    pub(crate) fn set_unchecked<'a>(
+    pub(crate) fn set_unchecked(
         &mut self,
-        key: impl Into<BorrowedValueKey<'a>>,
+        key: impl Into<ValueContainer>,
         value: impl Into<ValueContainer>,
     ) {
         self.try_set(key, value)
@@ -316,9 +341,9 @@ impl Map {
     }
 
     /// Removes a key from the map, returning the value if it existed.
-    pub fn try_delete<'a>(
+    pub fn try_delete(
         &mut self,
-        key: impl Into<BorrowedValueKey<'a>>,
+        key: &ValueContainer,
     ) -> Result<ValueContainer, MapAccessError> {
         self.try_delete_with_source(key, Some(TransceiverId::Local))
     }
@@ -327,9 +352,10 @@ impl Map {
     /// Also works for structural maps, but creates a map that no longer matches the assumed type.
     /// # Safety
     /// The map should no longer be used after this operation.
-    pub unsafe fn try_delete_unchecked<'a>(
+    /// FIXME: find a way to pass static str keys here
+    pub unsafe fn try_delete_unchecked(
         &mut self,
-        key: impl Into<BorrowedValueKey<'a>>,
+        key: &ValueContainer,
     ) -> Result<ValueContainer, KeyNotFoundError> {
         unsafe {
             self.try_delete_unchecked_with_source(
@@ -346,155 +372,12 @@ impl Map {
 
     /// Sets a value in the map, returning an error if it fails.
     /// This is the preferred way to set values in the map.
-    pub(crate) fn try_set<'a>(
+    pub(crate) fn try_set(
         &mut self,
-        key: impl Into<BorrowedValueKey<'a>>,
+        key: impl Into<ValueContainer>,
         value: impl Into<ValueContainer>,
     ) -> Result<Option<ValueContainer>, KeyNotFoundError> {
         self.try_set_with_source(key, value.into(), Some(TransceiverId::Local))
-    }
-}
-
-#[derive(Clone)]
-pub enum BorrowedMapKey<'a> {
-    Text(&'a str),
-    Value(&'a ValueContainer),
-}
-
-impl<'a> From<&'a MapKey> for BorrowedMapKey<'a> {
-    fn from(key: &'a MapKey) -> Self {
-        match key {
-            MapKey::Text(text) => BorrowedMapKey::Text(text),
-            MapKey::Value(value) => BorrowedMapKey::Value(value),
-        }
-    }
-}
-
-impl<'a> From<BorrowedMapKey<'a>> for ValueContainer {
-    fn from(key: BorrowedMapKey) -> Self {
-        match key {
-            BorrowedMapKey::Text(text) => {
-                ValueContainer::Local(Value::from(text))
-            }
-            BorrowedMapKey::Value(value) => value.clone(),
-        }
-    }
-}
-
-impl Hash for BorrowedMapKey<'_> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        match self {
-            BorrowedMapKey::Text(text) => text.hash(state),
-            BorrowedMapKey::Value(value) => value.hash(state),
-        }
-    }
-}
-
-impl Display for BorrowedMapKey<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            // TODO #331: escape string
-            BorrowedMapKey::Text(string) => core::write!(f, "\"{}\"", string),
-            BorrowedMapKey::Value(value) => core::write!(f, "{value}"),
-        }
-    }
-}
-
-pub enum BorrowedMutMapKey<'a> {
-    Text(&'a mut str),
-    Value(&'a mut ValueContainer),
-}
-
-impl<'a> From<&'a mut MapKey> for BorrowedMutMapKey<'a> {
-    fn from(key: &'a mut MapKey) -> Self {
-        match key {
-            MapKey::Text(text) => BorrowedMutMapKey::Text(text),
-            MapKey::Value(value) => BorrowedMutMapKey::Value(value),
-        }
-    }
-}
-impl<'a> From<BorrowedMutMapKey<'a>> for MapKey {
-    fn from(key: BorrowedMutMapKey<'a>) -> Self {
-        match key {
-            BorrowedMutMapKey::Text(text) => MapKey::Text(text.to_string()),
-            BorrowedMutMapKey::Value(value) => MapKey::Value(value.clone()),
-        }
-    }
-}
-
-impl<'a> From<BorrowedMutMapKey<'a>> for ValueContainer {
-    fn from(key: BorrowedMutMapKey) -> Self {
-        match key {
-            BorrowedMutMapKey::Text(text) => {
-                ValueContainer::Local(Value::from(text as &_))
-            }
-            BorrowedMutMapKey::Value(value) => value.clone(),
-        }
-    }
-}
-
-impl Hash for BorrowedMutMapKey<'_> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        match self {
-            BorrowedMutMapKey::Text(text) => text.hash(state),
-            BorrowedMutMapKey::Value(value) => value.hash(state),
-        }
-    }
-}
-
-impl Display for BorrowedMutMapKey<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            // TODO #331: escape string
-            BorrowedMutMapKey::Text(string) => {
-                core::write!(f, "\"{}\"", string)
-            }
-            BorrowedMutMapKey::Value(value) => core::write!(f, "{value}"),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub enum MapKey {
-    Text(String),
-    Value(ValueContainer),
-}
-
-impl From<MapKey> for ValueContainer {
-    fn from(key: MapKey) -> Self {
-        match key {
-            MapKey::Text(text) => ValueContainer::Local(Value::from(text)),
-            MapKey::Value(value) => value,
-        }
-    }
-}
-
-impl From<MapKey> for ValueKey {
-    fn from(key: MapKey) -> Self {
-        match key {
-            MapKey::Text(text) => ValueKey::Text(text),
-            MapKey::Value(value) => ValueKey::Value(value),
-        }
-    }
-}
-
-impl<'a> From<&'a MapKey> for BorrowedValueKey<'a> {
-    fn from(key: &'a MapKey) -> Self {
-        match key {
-            MapKey::Text(text) => BorrowedValueKey::Text(Cow::Borrowed(text)),
-            MapKey::Value(value) => {
-                BorrowedValueKey::Value(Cow::Borrowed(value))
-            }
-        }
-    }
-}
-
-impl Display for MapKey {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            MapKey::Text(text) => core::write!(f, "{text}"),
-            MapKey::Value(value) => core::write!(f, "{value}"),
-        }
     }
 }
 
@@ -504,45 +387,20 @@ pub struct MapIterator<'a> {
 }
 
 impl<'a> Iterator for MapIterator<'a> {
-    type Item = (BorrowedMapKey<'a>, &'a ValueContainer);
+    type Item = (&'a ValueContainer, &'a ValueContainer);
 
     fn next(&mut self) -> Option<Self::Item> {
         match &self.map.entries {
             MapEntries::Dynamic(map) => {
                 let item = map.iter().nth(self.index);
                 self.index += 1;
-                item.map(|(k, v)| {
-                    let key = match k {
-                        ValueContainer::Local(Value {
-                            inner: CoreValue::Text(text),
-                            ..
-                        }) => BorrowedMapKey::Text(&text.0),
-                        _ => BorrowedMapKey::Value(k),
-                    };
-                    (key, v)
-                })
+                item.map(|(k, v)| (k, v))
             }
             MapEntries::Structural(vec) => {
                 if self.index < vec.len() {
                     let item = &vec[self.index];
                     self.index += 1;
-                    let key = match &item.0 {
-                        ValueContainer::Local(Value {
-                            inner: CoreValue::Text(text),
-                            ..
-                        }) => BorrowedMapKey::Text(&text.0),
-                        _ => BorrowedMapKey::Value(&item.0),
-                    };
-                    Some((key, &item.1))
-                } else {
-                    None
-                }
-            }
-            MapEntries::StructuralWithStringKeys(vec) => {
-                if self.index < vec.len() {
-                    let item = &vec[self.index];
-                    self.index += 1;
-                    Some((BorrowedMapKey::Text(&item.0), &item.1))
+                    Some((&item.0, (&item.1)))
                 } else {
                     None
                 }
@@ -553,37 +411,19 @@ impl<'a> Iterator for MapIterator<'a> {
 
 pub enum MapMutIterator<'a> {
     Dynamic(indexmap::map::IterMut2<'a, ValueContainer, ValueContainer>),
-    Fixed(core::slice::IterMut<'a, (ValueContainer, ValueContainer)>),
-    Structural(core::slice::IterMut<'a, (String, ValueContainer)>),
+    Structural(core::slice::IterMut<'a, (ValueContainer, ValueContainer)>),
 }
 
 impl<'a> Iterator for MapMutIterator<'a> {
-    type Item = (BorrowedMutMapKey<'a>, &'a mut ValueContainer);
+    type Item = (&'a ValueContainer, &'a mut ValueContainer);
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            MapMutIterator::Dynamic(iter) => iter.next().map(|(k, v)| {
-                let key = match k {
-                    ValueContainer::Local(Value {
-                        inner: CoreValue::Text(text),
-                        ..
-                    }) => BorrowedMutMapKey::Text(&mut text.0),
-                    _ => BorrowedMutMapKey::Value(k),
-                };
-                (key, v)
-            }),
-            MapMutIterator::Fixed(iter) => iter.next().map(|(k, v)| {
-                let key = match k {
-                    ValueContainer::Local(Value {
-                        inner: CoreValue::Text(text),
-                        ..
-                    }) => BorrowedMutMapKey::Text(&mut text.0),
-                    _ => BorrowedMutMapKey::Value(k),
-                };
-                (key, v)
-            }),
+            MapMutIterator::Dynamic(iter) => {
+                iter.next().map(|(k, v)| (k as &ValueContainer, v))
+            }
             MapMutIterator::Structural(iter) => {
-                iter.next().map(|(k, v)| (BorrowedMutMapKey::Text(k), v))
+                iter.next().map(|(k, v)| (k as &ValueContainer, v))
             }
         }
     }
@@ -591,54 +431,35 @@ impl<'a> Iterator for MapMutIterator<'a> {
 
 pub enum IntoMapIterator {
     Dynamic(indexmap::map::IntoIter<ValueContainer, ValueContainer>),
-    Fixed(vec::IntoIter<(ValueContainer, ValueContainer)>),
-    Structural(vec::IntoIter<(String, ValueContainer)>),
+    Structural(vec::IntoIter<(ValueContainer, ValueContainer)>),
 }
 
 impl Iterator for IntoMapIterator {
-    type Item = (MapKey, ValueContainer);
+    type Item = (ValueContainer, ValueContainer);
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            IntoMapIterator::Dynamic(iter) => iter.next().map(|(k, v)| {
-                let key = match k {
-                    ValueContainer::Local(Value {
-                        inner: CoreValue::Text(text),
-                        ..
-                    }) => MapKey::Text(text.0),
-                    _ => MapKey::Value(k),
-                };
-                (key, v)
-            }),
-            IntoMapIterator::Fixed(iter) => iter.next().map(|(k, v)| {
-                let key = match k {
-                    ValueContainer::Local(Value {
-                        inner: CoreValue::Text(text),
-                        ..
-                    }) => MapKey::Text(text.0),
-                    _ => MapKey::Value(k),
-                };
-                (key, v)
-            }),
-            IntoMapIterator::Structural(iter) => {
-                iter.next().map(|(k, v)| (MapKey::Text(k), v))
-            }
+            IntoMapIterator::Dynamic(iter) => iter.next(),
+            IntoMapIterator::Structural(iter) => iter.next(),
         }
     }
 }
 
-impl Display for Map {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        core::write!(f, "{{")?;
-        for (i, (key, value)) in self.iter().enumerate() {
-            if i > 0 {
-                core::write!(f, ", ")?;
+impl_display_for_datex_value!(
+    Map,
+    impl core::fmt::Display for Map {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result  {
+            core::write!(f, "{{")?;
+            for (i, (key, value)) in self.iter().enumerate() {
+                if i > 0 {
+                    core::write!(f, ", ")?;
+                }
+                core::write!(f, "{key}: {value}")?;
             }
-            core::write!(f, "{key}: {value}")?;
+            core::write!(f, "}}")
         }
-        core::write!(f, "}}")
     }
-}
+);
 
 impl<K, V> From<HashMap<K, V>> for Map
 where
@@ -646,12 +467,14 @@ where
     V: Into<ValueContainer>,
 {
     fn from(map: HashMap<K, V>) -> Self {
-        Map::new(map.into_iter().map(|(k, v)| (k.into(), v.into())).collect())
+        Map::new_dynamic(
+            map.into_iter().map(|(k, v)| (k.into(), v.into())).collect(),
+        )
     }
 }
 
 impl IntoIterator for Map {
-    type Item = (MapKey, ValueContainer);
+    type Item = (ValueContainer, ValueContainer);
     type IntoIter = IntoMapIterator;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -660,9 +483,6 @@ impl IntoIterator for Map {
                 IntoMapIterator::Dynamic(map.into_iter())
             }
             MapEntries::Structural(vec) => {
-                IntoMapIterator::Fixed(vec.into_iter())
-            }
-            MapEntries::StructuralWithStringKeys(vec) => {
                 IntoMapIterator::Structural(vec.into_iter())
             }
         }
@@ -670,7 +490,7 @@ impl IntoIterator for Map {
 }
 
 impl<'a> IntoIterator for &'a mut Map {
-    type Item = (BorrowedMutMapKey<'a>, &'a mut ValueContainer);
+    type Item = (&'a ValueContainer, &'a mut ValueContainer);
     type IntoIter = MapMutIterator<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -679,9 +499,6 @@ impl<'a> IntoIterator for &'a mut Map {
                 MapMutIterator::Dynamic(map.iter_mut2())
             }
             MapEntries::Structural(vec) => {
-                MapMutIterator::Fixed(vec.iter_mut())
-            }
-            MapEntries::StructuralWithStringKeys(vec) => {
                 MapMutIterator::Structural(vec.iter_mut())
             }
         }
@@ -691,14 +508,21 @@ impl<'a> IntoIterator for &'a mut Map {
 impl From<Vec<(ValueContainer, ValueContainer)>> for Map {
     /// Create a dynamic map from a vector of value containers.
     fn from(vec: Vec<(ValueContainer, ValueContainer)>) -> Self {
-        Map::new(vec.into_iter().collect())
+        Map::new_dynamic(vec.into_iter().collect())
+    }
+}
+
+impl From<Vec<(ValueContainer, ValueContainer)>> for MapEntries {
+    /// Create a dynamic map from a vector of value containers.
+    fn from(vec: Vec<(ValueContainer, ValueContainer)>) -> Self {
+        MapEntries::Dynamic(vec.into_iter().collect())
     }
 }
 
 impl From<Vec<(String, ValueContainer)>> for Map {
     /// Create a dynamic map from a vector of string keys and value containers.
     fn from(vec: Vec<(String, ValueContainer)>) -> Self {
-        Map::new(
+        Map::new_dynamic(
             vec.into_iter()
                 .map(|(k, v)| (k.into(), v))
                 .collect::<IndexMap<ValueContainer, ValueContainer, RandomState>>(),
@@ -706,47 +530,14 @@ impl From<Vec<(String, ValueContainer)>> for Map {
     }
 }
 
-impl From<Vec<(MapKey, ValueContainer)>> for Map {
-    fn from(vec: Vec<(MapKey, ValueContainer)>) -> Self {
-        let has_only_text_keys = vec.iter().all(|(k, _)| {
-            matches!(k, MapKey::Text(_))
-                || matches!(
-                    k,
-                    MapKey::Value(ValueContainer::Local(Value {
-                        inner: CoreValue::Text(_),
-                        ..
-                    }))
-                )
-        });
-        if has_only_text_keys {
-            let mut entries: Vec<(String, ValueContainer)> =
-                Vec::with_capacity(vec.len());
-            for (k, v) in vec {
-                match k {
-                    MapKey::Text(text) => {
-                        entries.push((text, v));
-                    }
-                    MapKey::Value(value) => {
-                        if let ValueContainer::Local(Value {
-                            inner: CoreValue::Text(text),
-                            ..
-                        }) = value
-                        {
-                            entries.push((text.0, v));
-                        } else {
-                            unreachable!(); // already checked above
-                        }
-                    }
-                }
-            }
-            MapEntries::StructuralWithStringKeys(entries).into()
-        } else {
-            let mut map = Map::default();
-            for (k, v) in vec {
-                map.set_unchecked(&k, v);
-            }
-            map
-        }
+impl From<Vec<(&'static str, ValueContainer)>> for Map {
+    /// Create a dynamic map from a vector of string keys and value containers.
+    fn from(vec: Vec<(&'static str, ValueContainer)>) -> Self {
+        Map::new_dynamic(
+            vec.into_iter()
+                .map(|(k, v)| (k.into(), v))
+                .collect::<IndexMap<ValueContainer, ValueContainer, RandomState>>(),
+        )
     }
 }
 
@@ -771,7 +562,7 @@ where
     V: Into<ValueContainer>,
 {
     fn from(map: IndexMap<K, V, RandomState>) -> Self {
-        Map::new(
+        Map::new_dynamic(
             map.into_iter()
                 .map(|(k, v)| (k.into(), v.into()))
                 .collect::<IndexMap<ValueContainer, ValueContainer, RandomState>>(),
@@ -783,14 +574,10 @@ where
 mod tests {
     use crate::{
         prelude::*,
-        runtime::{
-            cache::shared_references_cache::SharedReferencesCache,
-            pointer_address_provider::SelfOwnedPointerAddressProvider,
-        },
+        runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
             SelfOwnedPointerAddress, SelfOwnedSharedContainer, SharedContainer,
             SharedContainerMutability,
-            base_shared_value_container::BaseSharedValueContainer,
         },
         values::{
             core_values::{
@@ -805,20 +592,34 @@ mod tests {
     fn map() {
         let mut map = Map::default();
         map.set_unchecked("key1", 42);
-        map.set_unchecked("key2", "value2");
+        map.set_unchecked("key2", "value2".to_string());
         assert_eq!(map.size(), 2);
-        assert_eq!(map.try_get("key1").unwrap().to_string(), "42");
-        assert_eq!(map.try_get("key2").unwrap().to_string(), "\"value2\"");
-        assert_eq!(map.to_string(), r#"{"key1": 42, "key2": "value2"}"#);
+        assert_eq!(
+            map.try_get(&ValueContainer::from("key1"))
+                .unwrap()
+                .to_string(),
+            "42"
+        );
+        assert_eq!(
+            map.try_get(&ValueContainer::from("key2"))
+                .unwrap()
+                .to_string(),
+            "\"value2\""
+        );
     }
 
     #[test]
     fn duplicate_keys() {
         let mut map = Map::default();
         map.set_unchecked("key1", 42);
-        map.set_unchecked("key1", "new_value");
+        map.set_unchecked("key1", "new_value".to_string());
         assert_eq!(map.size(), 1);
-        assert_eq!(map.try_get("key1").unwrap().to_string(), "\"new_value\"");
+        assert_eq!(
+            map.try_get(&ValueContainer::from("key1"))
+                .unwrap()
+                .to_string(),
+            "\"new_value\""
+        );
     }
 
     #[test]
@@ -834,7 +635,7 @@ mod tests {
             ),
         );
 
-        map.set_unchecked(key.clone(), "value");
+        map.set_unchecked(key.clone(), "value".to_string());
         // same reference should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&key));
@@ -856,7 +657,7 @@ mod tests {
     fn decimal_nan_value_key() {
         let mut map = Map::default();
         let nan_value = ValueContainer::from(Decimal::Nan);
-        map.set_unchecked(&nan_value, "value");
+        map.set_unchecked(nan_value.clone(), "value".to_string());
         // same NaN value should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&nan_value));
@@ -866,7 +667,7 @@ mod tests {
         assert!(map.has(&new_nan_value));
 
         // adding new_nan_value should not increase size
-        map.set_unchecked(&new_nan_value, "new_value");
+        map.set_unchecked(new_nan_value, "new_value".to_string());
         assert_eq!(map.size(), 1);
     }
 
@@ -874,7 +675,7 @@ mod tests {
     fn float_nan_value_key() {
         let mut map = Map::default();
         let nan_value = ValueContainer::from(f64::NAN);
-        map.set_unchecked(&nan_value, "value");
+        map.set_unchecked(nan_value.clone(), "value".to_string());
         // same NaN value should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&nan_value));
@@ -888,7 +689,7 @@ mod tests {
         assert!(!map.has(&float32_nan_value));
 
         // adding new_nan_value should not increase size
-        map.set_unchecked(&new_nan_value, "new_value");
+        map.set_unchecked(new_nan_value, "new_value".to_string());
         assert_eq!(map.size(), 1);
     }
 
@@ -896,7 +697,7 @@ mod tests {
     fn decimal_zero_value_key() {
         let mut map = Map::default();
         let zero_value = ValueContainer::from(Decimal::Zero);
-        map.set_unchecked(&zero_value, "value");
+        map.set_unchecked(zero_value.clone(), "value".to_string());
         // same Zero value should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&zero_value));
@@ -910,7 +711,7 @@ mod tests {
         assert!(map.has(&neg_zero_value));
 
         // adding neg_zero_value should not increase size
-        map.set_unchecked(&neg_zero_value, "new_value");
+        map.set_unchecked(neg_zero_value, "new_value".to_string());
         assert_eq!(map.size(), 1);
     }
 
@@ -918,7 +719,7 @@ mod tests {
     fn float_zero_value_key() {
         let mut map = Map::default();
         let zero_value = ValueContainer::from(0.0f64);
-        map.set_unchecked(&zero_value, "value");
+        map.set_unchecked(zero_value.clone(), "value".to_string());
         // same 0.0 value should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&zero_value));
@@ -930,7 +731,7 @@ mod tests {
         assert!(map.has(&neg_zero_value));
 
         // adding neg_zero_value should not increase size
-        map.set_unchecked(&neg_zero_value, "new_value");
+        map.set_unchecked(neg_zero_value, "new_value".to_string());
         assert_eq!(map.size(), 1);
 
         // new 0.0f32 value should not be found
@@ -943,7 +744,7 @@ mod tests {
         let mut map = Map::default();
         let zero_big_decimal =
             ValueContainer::from(TypedDecimal::Decimal(Decimal::Zero));
-        map.set_unchecked(&zero_big_decimal, "value");
+        map.set_unchecked(zero_big_decimal.clone(), "value".to_string());
         // same Zero value should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&zero_big_decimal));
@@ -957,7 +758,7 @@ mod tests {
         assert!(map.has(&neg_zero_big_decimal));
 
         // adding neg_zero_big_decimal should not increase size
-        map.set_unchecked(&neg_zero_big_decimal, "new_value");
+        map.set_unchecked(neg_zero_big_decimal, "new_value".to_string());
         assert_eq!(map.size(), 1);
     }
 }

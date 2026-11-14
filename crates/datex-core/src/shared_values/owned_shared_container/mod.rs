@@ -1,12 +1,19 @@
 mod clone_unsafe;
 mod common;
-pub mod datex_proxy;
-#[cfg(feature = "decompiler")]
+pub mod convert_parts;
+mod convert_value_container;
+pub mod get_datex_type;
+pub mod serde_dif;
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod to_instructions;
 
 use crate::{
     prelude::*,
-    runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+    runtime::{
+        cache::shared_references_cache::SharedReferencesCache,
+        pointer_address_provider::SelfOwnedPointerAddressProvider,
+    },
     shared_values::{
         ReferencedSharedContainer, RemotePointerAddress,
         SelfOwnedPointerAddress, SelfOwnedSharedContainer,
@@ -20,7 +27,10 @@ use crate::{
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
-    values::value_container::ValueContainer,
+    utils::impl_display_for_datex_value::impl_display_for_datex_value,
+    values::{
+        core_values::native::DatexNative, value_container::ValueContainer,
+    },
 };
 use alloc::rc::Rc;
 use core::{
@@ -47,6 +57,10 @@ pub struct OwnedSharedContainer {
     container_mutability: SharedContainerMutability,
     /// Observer data (e.g. observer list) for this shared container. Can be borrowed separately from the [SharedContainerInner]
     observer_data: Rc<RefCell<ObserverData>>,
+    /// Flag indicating that the inner value is uninitialized. This must get reset to false when the inner value is updated.
+    /// When set to true, an update to the value is allowed even if the reference is immutable, since the value is not yet initialized.
+    /// TODO: better way to handle uninitialized values, maybe don't store on top level, but this is more efficient since we don't have to deref the inner value
+    pub(super) is_uninitialized: bool,
 }
 
 impl OwnedSharedContainer {
@@ -61,6 +75,7 @@ impl OwnedSharedContainer {
             ))),
             container_mutability,
             observer_data: Rc::new(RefCell::new(ObserverData::default())),
+            is_uninitialized: false,
         }
     }
 
@@ -83,6 +98,34 @@ impl OwnedSharedContainer {
         }
     }
 
+    /// Creates a new [OwnedSharedContainer] containing an initial [DatexNative] value.
+    /// The allowed type is the type of the [DatexNative].
+    pub fn new_native<T: DatexNative>(
+        value: T,
+        mutability: SharedContainerMutability,
+        address_provider: &mut SelfOwnedPointerAddressProvider,
+        cache: &mut SharedReferencesCache,
+    ) -> Self {
+        let ty = value.allowed_type(cache);
+
+        let value_container = value.to_value_container();
+        let is_uninitialized = value_container.is_uninitialized();
+
+        // SAFETY: address provider guarantees new unique address
+        unsafe {
+            Self::new_from_base_shared_container_unsafe(
+                BaseSharedValueContainer::try_new(
+                    value_container,
+                    ty,
+                    mutability,
+                )
+                .unwrap(), // the unwrap is safe since the type of the native value is guaranteed to match the value
+                address_provider.get_new_self_owned_address(),
+                is_uninitialized,
+            )
+        }
+    }
+
     /// Creates a new [OwnedSharedContainer] with an initial [ValueContainer],
     /// a [SharedContainerMutability], and an [SelfOwnedPointerAddress].
     ///
@@ -94,15 +137,40 @@ impl OwnedSharedContainer {
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress,
     ) -> Self {
-        OwnedSharedContainer::new_from_self_owned_container(unsafe {
-            SelfOwnedSharedContainer::new_with_address(
+        let is_uninitialized = value_container.is_uninitialized();
+        unsafe {
+            Self::new_from_base_shared_container_unsafe(
                 BaseSharedValueContainer::new_with_inferred_allowed_type(
                     value_container,
                     mutability,
                 ),
                 address,
+                is_uninitialized,
             )
-        })
+        }
+    }
+
+    /// Creates a new [OwnedSharedContainer] from a [BaseSharedValueContainer] and a [SelfOwnedPointerAddress].
+    /// # Safety
+    /// The caller must ensure that the address is not used anywhere else.
+    unsafe fn new_from_base_shared_container_unsafe(
+        base_shared_container: BaseSharedValueContainer,
+        address: SelfOwnedPointerAddress,
+        is_uninitialized: bool,
+    ) -> Self {
+        let mut container =
+            OwnedSharedContainer::new_from_self_owned_container(unsafe {
+                SelfOwnedSharedContainer::new_with_address(
+                    base_shared_container,
+                    address,
+                )
+            });
+
+        if is_uninitialized {
+            container.mark_uninitialized();
+        }
+
+        container
     }
 
     /// Creates a new [OwnedSharedContainer] from parts.
@@ -119,6 +187,7 @@ impl OwnedSharedContainer {
             inner,
             container_mutability,
             observer_data,
+            is_uninitialized: false,
         }
     }
 
@@ -233,13 +302,26 @@ impl OwnedSharedContainer {
     pub fn to_string_omit_content(&self) -> String {
         "(...)".to_string()
     }
-}
 
-impl Display for OwnedSharedContainer {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.as_self_owned_shared_container().value())
+    /// Marks the shared container as uninitialized.
+    pub(crate) fn mark_uninitialized(&mut self) {
+        self.is_uninitialized = true;
+    }
+
+    /// Unmarks the shared container as uninitialized.
+    pub(crate) fn unset_uninitialized(&mut self) {
+        self.is_uninitialized = false;
     }
 }
+
+impl_display_for_datex_value!(
+    OwnedSharedContainer,
+    impl core::fmt::Display for OwnedSharedContainer {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            write!(f, "{}", self.as_self_owned_shared_container().value())
+        }
+    }
+);
 
 impl _ExposeRcInternal for OwnedSharedContainer {
     type Shared = SharedContainerInner;
@@ -287,5 +369,11 @@ impl ValueEq for OwnedSharedContainer {
             .base_shared_container()
             .value_container()
             .value_eq(other.inner().base_shared_container().value_container())
+    }
+}
+
+impl From<SelfOwnedSharedContainer> for OwnedSharedContainer {
+    fn from(container: SelfOwnedSharedContainer) -> Self {
+        OwnedSharedContainer::new_from_self_owned_container(container)
     }
 }

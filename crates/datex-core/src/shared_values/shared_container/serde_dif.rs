@@ -1,45 +1,58 @@
 use crate::{
     dif::{
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
         pointer_address::PointerAddressWithOwnership,
         serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
     },
     prelude::*,
+    runtime::cache::shared_values_cache::CacheValueRetrievalError,
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerOwnership,
         traits::SharedContainerCommon,
     },
     traits::clone_unsafe::CloneUnsafe,
-    utils::serde_serialize_seed::SerializeSeed,
 };
 use alloc::format;
-use serde::{
-    Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
-};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, SharedContainer> {
-    type Value = SharedContainer;
-    fn deserialize<D: Deserializer<'de>>(
-        self,
-        d: D,
-    ) -> Result<SharedContainer, D::Error> {
+impl SharedContainer {
+    pub fn resolve_with_serde_context(
+        pointer_address_with_ownership: PointerAddressWithOwnership,
+        ctx: &SerdeContext<'_>,
+    ) -> Result<Self, CacheValueRetrievalError> {
         let PointerAddressWithOwnership { address, ownership } =
-            PointerAddressWithOwnership::deserialize(d)?;
-        let reference = self
-            .shared_container_cache
+            pointer_address_with_ownership;
+        ctx.shared_values_cache
+            .borrow_mut()
             .try_get_shared_container_with_ownership(&address, ownership)
-            .map_err(|e| {
-                serde::de::Error::custom(format!(
-                    "Failed to retrieve shared container from cache: {}",
-                    e
-                ))
-            })?;
-        Ok(reference)
     }
 }
-impl<'ctx> SerdeContext<'ctx, SharedContainer> {
-    pub fn pointer_string(&mut self, value: &SharedContainer) -> String {
+
+impl<'de> DeserializeWithSerdeContext<'de> for SharedContainer {
+    fn deserialize_with_ctx<D: Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
+        d: D,
+    ) -> Result<SharedContainer, D::Error> {
+        let pointer_address_with_ownership =
+            PointerAddressWithOwnership::deserialize(d)?;
+        SharedContainer::resolve_with_serde_context(
+            pointer_address_with_ownership,
+            ctx,
+        )
+        .map_err(|e| {
+            serde::de::Error::custom(format!(
+                "Failed to retrieve shared container from cache: {}",
+                e
+            ))
+        })
+    }
+}
+impl<'ctx> SerdeContext<'ctx> {
+    pub unsafe fn pointer_string(&self, value: &SharedContainer) -> String {
         unsafe {
-            self.shared_container_cache
+            self.shared_values_cache
+                .borrow_mut()
                 .store_shared_container(value.clone_unsafe());
         }
 
@@ -58,24 +71,22 @@ impl<'ctx> SerdeContext<'ctx, SharedContainer> {
         format!("{}{}", ownership, value.pointer_address())
     }
 }
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, SharedContainer> {
-    type Value = SharedContainer;
-
+impl SerializeWithSerdeContext for SharedContainer {
     /// SAFETY:
     /// The caller of the `serialize` method must either
     /// * guarantee that no direct value (accessible without borrow) is an owned shared value
-    ///   (this can be guaranteed by calling clone on the top level value before passing it to [SerializeSeed])
+    ///   (this can be guaranteed by calling clone on the top level value before passing it to [SerializeWithSerdeContext])
     /// * or guarantee that the value is dropped after calling `serialize`, so that the owned shared value
     ///   is not leaked after serialization.
-    fn serialize<S>(
-        &mut self,
-        value: &Self::Value,
+    fn serialize_with_ctx<S>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        self.pointer_string(value).serialize(serializer)
+        unsafe { ctx.pointer_string(self).serialize(serializer) }
     }
 }
 
@@ -96,6 +107,12 @@ mod tests {
 
     #[test]
     fn serialize_shared_container_reference() {
+        let shared_values_cache = RefCell::new(SharedValuesCache::default());
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
+
         let owned_shared_container =
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 ValueContainer::from(42),
@@ -105,17 +122,19 @@ mod tests {
             .derive_immutable_reference();
         let address = owned_shared_container.pointer_address();
 
-        let serialized = SerdeContext::<SharedContainer>::new(
-            &mut SharedValuesCache::default(),
-        )
-        .serialize_to_json(&SharedContainer::Referenced(
-            owned_shared_container,
-        ));
+        let serialized = context.serialize_to_json(
+            &SharedContainer::Referenced(owned_shared_container),
+        );
         assert_eq!(serialized, format!(r#""'{}""#, address.to_string()));
     }
 
     #[test]
     fn serialize_shared_owned_container() {
+        let shared_values_cache = RefCell::new(SharedValuesCache::default());
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
         let owned_container =
@@ -125,10 +144,7 @@ mod tests {
                 address_provider,
             );
 
-        let serialized = SerdeContext::<SharedContainer>::new(
-            &mut SharedValuesCache::default(),
-        )
-        .serialize_to_json(&owned_container);
+        let serialized = context.serialize_to_json(&owned_container);
         assert_eq!(
             serialized,
             format!(r#""{}""#, owned_container.pointer_address().to_string())
@@ -144,11 +160,15 @@ mod tests {
             },
         },
     };
-    use core::assert_matches;
+    use core::{assert_matches, cell::RefCell};
 
     #[test]
     fn deserialize_owned_pointer_address_to_shared_container() {
-        let cache = &mut SharedValuesCache::default();
+        let shared_values_cache = RefCell::new(SharedValuesCache::default());
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         let owned_shared_container =
             OwnedSharedContainer::new_with_inferred_allowed_type(
@@ -157,11 +177,11 @@ mod tests {
                 &mut SelfOwnedPointerAddressProvider::default(),
             );
         let pointer_address = owned_shared_container.pointer_address().clone();
-        cache.store_shared_container(SharedContainer::Owned(
-            owned_shared_container,
-        ));
+        shared_values_cache.borrow_mut().store_shared_container(
+            SharedContainer::Owned(owned_shared_container),
+        );
 
-        let outer = SerdeContext::<SharedContainer>::new(cache)
+        let outer = context
             .try_deserialize_from_json(
                 format!(r#""{}""#, pointer_address).as_str(),
             )
@@ -176,7 +196,11 @@ mod tests {
     #[test]
     fn deserialize_pointer_address_to_shared_container() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
-        let cache = &mut SharedValuesCache::default();
+        let shared_values_cache = RefCell::new(SharedValuesCache::default());
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         let owned_container =
             SharedContainer::new_owned_with_inferred_allowed_type(
@@ -187,9 +211,11 @@ mod tests {
         let ptr_address = owned_container.pointer_address();
         let ptr_address_hex = ptr_address.to_string();
 
-        cache.store_shared_container(owned_container);
+        shared_values_cache
+            .borrow_mut()
+            .store_shared_container(owned_container);
 
-        let outer_ref = SerdeContext::<SharedContainer>::new(cache)
+        let outer_ref = context
             .try_deserialize_from_json(&format!(r#""'{}""#, ptr_address_hex))
             .unwrap();
 
@@ -200,7 +226,7 @@ mod tests {
                 reference.pointer_address() == ptr_address
         );
 
-        let outer_ref_mut = SerdeContext::<SharedContainer>::new(cache)
+        let outer_ref_mut = context
             .try_deserialize_from_json(&format!(r#""'mut{}""#, ptr_address_hex))
             .unwrap();
 
@@ -211,7 +237,7 @@ mod tests {
                 reference.pointer_address() == ptr_address
         );
 
-        let outer_owned = SerdeContext::<SharedContainer>::new(cache)
+        let outer_owned = context
             .try_deserialize_from_json(&format!(r#""{}""#, ptr_address_hex))
             .unwrap();
 
@@ -223,7 +249,9 @@ mod tests {
 
         // should no longer exist in memory as owned container should have been taken from cache
         assert_matches!(
-            cache.try_take_owned_shared_container(&ptr_address),
+            shared_values_cache
+                .borrow_mut()
+                .try_take_owned_shared_container(&ptr_address),
             Err(
                 CacheValueRetrievalError::UnexpectedSharedContainerOwnership(
                     UnexpectedSharedContainerOwnershipError {
@@ -237,10 +265,14 @@ mod tests {
         );
 
         // should no longer exist in memory at all after explicitly removing the shared container from cache
-        cache.remove_shared_container(&ptr_address);
+        shared_values_cache
+            .borrow_mut()
+            .remove_shared_container(&ptr_address);
 
         assert_matches!(
-            cache.try_take_owned_shared_container(&ptr_address),
+            shared_values_cache
+                .borrow_mut()
+                .try_take_owned_shared_container(&ptr_address),
             Err(CacheValueRetrievalError::ValueNotFoundInCache(_))
         );
     }

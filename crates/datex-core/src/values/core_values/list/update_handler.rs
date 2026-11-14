@@ -1,10 +1,8 @@
 use crate::{
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::AccessError,
-    values::{
-        core_values::list::List,
-        value_container::{ValueContainer, value_key::BorrowedValueKey},
-    },
+    values::{core_values::list::List, value_container::ValueContainer},
 };
 
 use crate::value_updates::{
@@ -18,7 +16,7 @@ use crate::value_updates::{
         UpdateCallbackDataAccess, UpdateHandlerImpl,
     },
 };
-use core::result::Result;
+use core::{cell::RefCell, result::Result};
 
 impl InternalMutabilityUpdateHandler for List {
     fn set_update_callback_data(
@@ -43,16 +41,16 @@ impl UpdateCallbackDataAccess for List {
         self.update_callback_data.as_ref()
     }
 }
-
 impl UpdateHandlerImpl for List {
     fn try_set_entry(
         &mut self,
         data: SetEntryUpdateData,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<Option<ValueContainer>, UpdateError> {
-        let key = BorrowedValueKey::from(data.key).try_as_index().ok_or_else(
-            || UpdateError::access_error(AccessError::InvalidIndexKey),
-        )?;
-        self.try_set_with_source(key, data.value, None)
+        let key = data.key.try_as::<u32>().ok_or_else(|| {
+            UpdateError::access_error(AccessError::InvalidIndexKey)
+        })?;
+        self.try_set_with_source(*key, data.value, None)
             .map(Some)
             .map_err(UpdateError::access_error)
     }
@@ -60,24 +58,28 @@ impl UpdateHandlerImpl for List {
     fn try_delete_entry(
         &mut self,
         data: DeleteEntryUpdateData,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
-        let key = BorrowedValueKey::from(data.key).try_as_index().ok_or_else(
-            || UpdateError::access_error(AccessError::InvalidIndexKey),
-        )?;
-        self.try_delete_with_source(key, None)
+        _cache: &RefCell<SharedReferencesCache>,
+    ) -> Result<ValueContainer, UpdateError> {
+        let key = data.key.try_as::<u32>().ok_or_else(|| {
+            UpdateError::access_error(AccessError::InvalidIndexKey)
+        })?;
+        self.try_delete_with_source(*key, None)
             .map_err(UpdateError::access_error)
-            .map(Some)
     }
 
     fn try_append_entry(
         &mut self,
         data: AppendEntryUpdateData,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<(), UpdateError> {
         self.push_with_source(data.value, None);
         Ok(())
     }
 
-    fn try_clear(&mut self) -> Result<ValueContainer, UpdateError> {
+    fn try_clear(
+        &mut self,
+        _cache: &RefCell<SharedReferencesCache>,
+    ) -> Result<ValueContainer, UpdateError> {
         let previous = core::mem::take(self);
         Ok(ValueContainer::Local(previous.into()))
     }
@@ -85,6 +87,7 @@ impl UpdateHandlerImpl for List {
     fn try_list_splice(
         &mut self,
         data: ListSpliceUpdateData,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
         Ok(self.splice_with_source(
             data.start..(data.start + data.delete_count),

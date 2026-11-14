@@ -9,7 +9,10 @@ use crate::{
 };
 mod to_instructions;
 
-use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
+use crate::{
+    libs::core::type_id::CoreLibTypeId,
+    traits::get_core_lib_type_id::GetCoreLibTypeId,
+};
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, hash::Hash, num::ParseFloatError, result::Result};
 use num::ToPrimitive;
@@ -19,10 +22,20 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
+
+mod classification;
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
 pub mod equality;
+mod get_core_lib_type_id;
+mod get_datex_type;
 pub mod primitive;
-#[cfg(feature = "decompiler")]
+mod serde_dif;
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod try_clone;
 pub mod update_handler;
 mod value_access;
 
@@ -127,7 +140,7 @@ impl Hash for TypedDecimal {
 
 impl From<&TypedDecimal> for CoreLibTypeId {
     fn from(value: &TypedDecimal) -> Self {
-        CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(value.variant()))
+        value.core_lib_type_id()
     }
 }
 

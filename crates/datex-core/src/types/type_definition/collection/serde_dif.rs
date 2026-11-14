@@ -1,77 +1,83 @@
+use core::str::FromStr;
+
 use crate::{
-    dif::serde_context::SerdeContext,
+    dif::{
+        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
+    },
     prelude::*,
     types::type_definition::{
         collection::{
-            CollectionTypeDefinition,
+            CollectionTypeDefinition, CollectionTypeDefinitionKind,
             type_definition::{
-                list::ListCollectionTypeDefinition,
-                list_slice::ListSliceCollectionTypeDefinition,
-                map::MapCollectionTypeDefinition,
+                ListCollectionTypeDefinition,
+                ListSliceCollectionTypeDefinition, MapCollectionTypeDefinition,
+                ReceiverTypeDefinition, SenderTypeDefinition,
             },
         },
         range::RangeTypeDefinition,
     },
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
 };
 use serde::{
     Deserializer, Serializer,
-    de::{self, DeserializeSeed, Visitor},
+    de::{self, Visitor},
     ser::{SerializeMap, SerializeSeq},
 };
+use strum::VariantNames;
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, CollectionTypeDefinition> {
-    type Value = CollectionTypeDefinition;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
+impl SerializeWithSerdeContext for CollectionTypeDefinition {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut obj = serializer.serialize_map(Some(1))?;
-        obj.serialize_key(value.as_ref())?;
-        match value {
-            CollectionTypeDefinition::List(iten) => {
-                obj.serialize_value(&ValueWithSeed::new(
-                    iten,
-                    self.cast::<ListCollectionTypeDefinition>(),
-                ))?
+        obj.serialize_key(self.as_ref())?;
+        match self {
+            CollectionTypeDefinition::List(item) => {
+                obj.serialize_value(&ValueWithSerdeContext::new(item, ctx))?
             }
             CollectionTypeDefinition::ListSlice(item) => {
-                obj.serialize_value(&ValueWithSeed::new(
-                    item,
-                    self.cast::<ListSliceCollectionTypeDefinition>(),
-                ))?
+                obj.serialize_value(&ValueWithSerdeContext::new(item, ctx))?
             }
             CollectionTypeDefinition::Map(map) => {
-                obj.serialize_value(&ValueWithSeed::new(
-                    map,
-                    self.cast::<MapCollectionTypeDefinition>(),
-                ))?
+                obj.serialize_value(&ValueWithSerdeContext::new(map, ctx))?
             }
-            CollectionTypeDefinition::Range(range) => obj.serialize_value(
-                &ValueWithSeed::new(range, self.cast::<RangeTypeDefinition>()),
-            )?,
+            CollectionTypeDefinition::Range(range) => {
+                obj.serialize_value(&ValueWithSerdeContext::new(range, ctx))?
+            }
+            CollectionTypeDefinition::Sender(ty) => {
+                obj.serialize_value(&ValueWithSerdeContext::new(ty, ctx))?
+            }
+            CollectionTypeDefinition::Receiver(ty) => {
+                obj.serialize_value(&ValueWithSerdeContext::new(ty, ctx))?
+            }
         }
         obj.end()
     }
 }
 
 /// Deserialization implementations for [CollectionTypeDefinition].
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, CollectionTypeDefinition>
-{
-    type Value = CollectionTypeDefinition;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+impl<'de> DeserializeWithSerdeContext<'de> for CollectionTypeDefinition {
+    fn deserialize_with_ctx<D>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_map(self)
+        deserializer.deserialize_map(DeserializeSerdeContext::<
+            CollectionTypeDefinition,
+        >::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, CollectionTypeDefinition> {
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, CollectionTypeDefinition>
+{
     type Value = CollectionTypeDefinition;
 
     fn expecting(
@@ -83,35 +89,53 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, CollectionTypeDefinition> {
         )
     }
 
-    fn visit_map<A>(mut self, mut map: A) -> Result<Self::Value, A::Error>
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
     where
         A: serde::de::MapAccess<'de>,
     {
-        let key = map.next_key::<String>()?.ok_or_else(|| {
+        let kind = map.next_key::<String>()?.ok_or_else(|| {
             de::Error::custom(
                 "expected a single key for collection type definition",
             )
         })?;
-        match key.as_str() {
-            "List" => Ok(CollectionTypeDefinition::List(map.next_value_seed(
-                self.cast::<ListCollectionTypeDefinition>(),
-            )?)),
-            "ListSlice" => {
+        match CollectionTypeDefinitionKind::from_str(kind.as_str()).map_err(
+            |_| {
+                de::Error::unknown_variant(
+                    kind.as_str(),
+                    CollectionTypeDefinitionKind::VARIANTS,
+                )
+            },
+        )? {
+            CollectionTypeDefinitionKind::List => {
+                Ok(CollectionTypeDefinition::List(map.next_value_seed(
+                    self.cast::<ListCollectionTypeDefinition>(),
+                )?))
+            }
+            CollectionTypeDefinitionKind::ListSlice => {
                 Ok(CollectionTypeDefinition::ListSlice(map.next_value_seed(
                     self.cast::<ListSliceCollectionTypeDefinition>(),
                 )?))
             }
-            "Map" => Ok(CollectionTypeDefinition::Map(map.next_value_seed(
-                self.cast::<MapCollectionTypeDefinition>(),
-            )?)),
-            "Range" => Ok(CollectionTypeDefinition::Range(
-                map.next_value_seed(self.cast::<RangeTypeDefinition>())?,
-            )),
-
-            _ => Err(de::Error::unknown_variant(
-                &key,
-                &["List", "ListSlice", "Map", "Range"],
-            )),
+            CollectionTypeDefinitionKind::Map => {
+                Ok(CollectionTypeDefinition::Map(map.next_value_seed(
+                    self.cast::<MapCollectionTypeDefinition>(),
+                )?))
+            }
+            CollectionTypeDefinitionKind::Range => {
+                Ok(CollectionTypeDefinition::Range(
+                    map.next_value_seed(self.cast::<RangeTypeDefinition>())?,
+                ))
+            }
+            CollectionTypeDefinitionKind::Sender => {
+                Ok(CollectionTypeDefinition::Sender(
+                    map.next_value_seed(self.cast::<SenderTypeDefinition>())?,
+                ))
+            }
+            CollectionTypeDefinitionKind::Receiver => {
+                Ok(CollectionTypeDefinition::Receiver(
+                    map.next_value_seed(self.cast::<ReceiverTypeDefinition>())?,
+                ))
+            }
         }
     }
 }

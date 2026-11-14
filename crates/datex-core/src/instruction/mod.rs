@@ -2,6 +2,7 @@
 pub mod instruction_codes;
 pub mod instruction_data;
 pub mod regular_instruction;
+pub mod traits;
 pub mod type_instruction;
 pub mod type_instruction_codes;
 
@@ -12,8 +13,16 @@ use crate::{
     },
     prelude::*,
 };
+mod serializeable;
+use binrw::{
+    BinResult, BinWrite, Endian,
+    io::{Seek, Write},
+    meta::{EndianKind, WriteEndian},
+};
 use core::{fmt::Display, prelude::rust_2024::*};
 use serde::Serialize;
+mod bytecode_item;
+pub use bytecode_item::{BytecodeItem, Label};
 
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "disassembler", derive(Serialize))]
@@ -41,6 +50,28 @@ impl Instruction {
             Instruction::Type(instr) => instr.metadata_string(),
         }
     }
+}
+
+impl BinWrite for Instruction {
+    type Args<'a> = ();
+
+    fn write_options<W: Write + Seek>(
+        &self,
+        writer: &mut W,
+        endian: Endian,
+        _: Self::Args<'_>,
+    ) -> BinResult<()> {
+        match self {
+            Instruction::Regular(instr) => {
+                instr.write_options(writer, endian, ())
+            }
+            Instruction::Type(instr) => instr.write_options(writer, endian, ()),
+        }
+    }
+}
+
+impl WriteEndian for Instruction {
+    const ENDIAN: EndianKind = EndianKind::Endian(Endian::Little);
 }
 
 impl Display for Instruction {

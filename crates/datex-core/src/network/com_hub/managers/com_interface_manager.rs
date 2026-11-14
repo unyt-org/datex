@@ -11,13 +11,18 @@ use crate::{
                 ComInterfaceAsyncFactory, ComInterfaceConfiguration,
                 ComInterfaceSyncFactory,
             },
-            properties::{ComInterfaceProperties, InterfaceDirection},
+            properties::{
+                ComInterfaceProperties, InterfaceDirection, ReconnectionConfig,
+            },
         },
     },
     prelude::*,
     values::value::Value,
 };
-use core::{cell::RefCell, pin::Pin};
+use core::{
+    cell::{Ref, RefCell},
+    pin::Pin,
+};
 use futures::channel::oneshot;
 use log::info;
 
@@ -52,14 +57,21 @@ pub enum SyncOrAsyncComInterfaceImplementationFactoryFn {
     Dyn(DynInterfaceImplementationFactoryFn),
 }
 
-pub type InterfaceCloseReceiver = oneshot::Receiver<oneshot::Sender<()>>;
+#[derive(Debug)]
+pub struct InterfaceCloseInfo {
+    pub closed_sender: oneshot::Sender<()>,
+}
+
+pub type InterfaceCloseReceiver = oneshot::Receiver<InterfaceCloseInfo>;
 
 #[derive(Debug)]
 pub struct InterfaceInfo {
     pub properties: Rc<ComInterfaceProperties>,
     pub priority: InterfacePriority,
     pub is_waiting_for_socket_connections: bool,
-    pub close_sender: Option<oneshot::Sender<oneshot::Sender<()>>>,
+    /// Original setup data that was used to create this interface, needed for reconnect
+    pub original_setup_data: Option<Value>,
+    pub close_sender: Option<oneshot::Sender<InterfaceCloseInfo>>,
 }
 
 #[derive(Default)]
@@ -68,6 +80,13 @@ pub struct ComInterfaceManager {
     pub interface_factories: RefCell<
         HashMap<String, SyncOrAsyncComInterfaceImplementationFactoryFn>,
     >,
+
+    /// a mapping of interface type -> stored reconnect config
+    pub reconnect_configs: RefCell<HashMap<String, ReconnectionConfig>>,
+
+    /// a mapping of interface type -> fn that generates the default com interface properties
+    pub interface_default_property_factories:
+        RefCell<HashMap<String, fn() -> ComInterfaceProperties>>,
 
     /// a list of all available interfaces, keyed by their UUID
     pub interfaces: RefCell<InterfaceMap>,
@@ -82,9 +101,15 @@ impl ComInterfaceManager {
     pub fn register_sync_interface_factory<T: ComInterfaceSyncFactory>(&self) {
         let interface_type = T::get_default_properties().interface_type;
         self.interface_factories.borrow_mut().insert(
-            interface_type,
+            interface_type.clone(),
             SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(T::factory),
         );
+        self.reconnect_configs
+            .borrow_mut()
+            .insert(interface_type.clone(), T::get_reconnection_config());
+        self.interface_default_property_factories
+            .borrow_mut()
+            .insert(interface_type, T::get_default_properties);
     }
 
     /// Registers a new async interface factory for a specific interface implementation.
@@ -94,9 +119,15 @@ impl ComInterfaceManager {
     ) {
         let interface_type = T::get_default_properties().interface_type;
         self.interface_factories.borrow_mut().insert(
-            interface_type,
+            interface_type.clone(),
             SyncOrAsyncComInterfaceImplementationFactoryFn::Async(T::factory),
         );
+        self.reconnect_configs
+            .borrow_mut()
+            .insert(interface_type.clone(), T::get_reconnection_config());
+        self.interface_default_property_factories
+            .borrow_mut()
+            .insert(interface_type, T::get_default_properties);
     }
 
     /// Registers a new custom async interface factory for a specific interface type.
@@ -105,11 +136,19 @@ impl ComInterfaceManager {
         &self,
         interface_type: String,
         factory: DynInterfaceImplementationFactoryFn,
+        reconnection_config: ReconnectionConfig,
+        get_default_properties: fn() -> ComInterfaceProperties,
     ) {
         self.interface_factories.borrow_mut().insert(
-            interface_type,
+            interface_type.clone(),
             SyncOrAsyncComInterfaceImplementationFactoryFn::Dyn(factory),
         );
+        self.reconnect_configs
+            .borrow_mut()
+            .insert(interface_type.clone(), reconnection_config);
+        self.interface_default_property_factories
+            .borrow_mut()
+            .insert(interface_type, get_default_properties);
     }
 
     /// Creates a new interface instance using the registered factory
@@ -142,13 +181,15 @@ impl ComInterfaceManager {
                 | SyncOrAsyncComInterfaceImplementationFactoryFn::Dyn(_) => {
                     let com_interface_configuration =
                         Self::create_interface_from_async_factory_fn(
-                            &factory, setup_data,
+                            &factory,
+                            setup_data.clone(),
                         )
                         .await?;
                     self.add_interface(
                         com_interface_configuration.uuid(),
                         com_interface_configuration.properties.clone(),
                         priority,
+                        Some(setup_data),
                     )
                     .map_err(|e| e.into())
                     .map(|close_receiver| {
@@ -161,6 +202,28 @@ impl ComInterfaceManager {
                 interface_type.to_string(),
             ))
         }
+    }
+
+    /// Get the registered [ReconnectionConfig] for the given interface type
+    /// Defaults to [ReconnectionConfig::NoReconnect] if none is registered
+    pub fn get_reconnection_config(
+        &self,
+        interface_type: &str,
+    ) -> ReconnectionConfig {
+        let reconnect_config =
+            self.reconnect_configs.borrow().get(interface_type).cloned();
+        reconnect_config.unwrap_or(ReconnectionConfig::NoReconnect)
+    }
+
+    /// Get the default [ComInterfaceProperties] for the given interface type if found
+    pub fn get_interface_default_properties(
+        &self,
+        interface_type: &str,
+    ) -> Option<ComInterfaceProperties> {
+        self.interface_default_property_factories
+            .borrow()
+            .get(interface_type)
+            .map(|factory| factory())
     }
 
     /// Creates a new interface instance using the registered sync factory
@@ -187,9 +250,9 @@ impl ComInterfaceManager {
                     let com_interface_configuration =
                         Self::create_interface_from_sync_factory_fn(
                             sync_factory,
-                            setup_data,
+                            setup_data.clone(),
                         )?;
-                    self.add_interface(com_interface_configuration.uuid(), com_interface_configuration.properties.clone(), priority)
+                    self.add_interface(com_interface_configuration.uuid(), com_interface_configuration.properties.clone(), priority, Some(setup_data))
                         .map_err(|e| e.into())
                         .map(|close_receiver| (com_interface_configuration, close_receiver))
                 }
@@ -258,7 +321,6 @@ impl ComInterfaceManager {
     }
 
     /// Returns the com interface properties for a given UUID
-    /// The interface is returned as a dynamic trait object
     pub fn try_get_interface_properties_by_uuid(
         &self,
         uuid: &ComInterfaceUUID,
@@ -267,6 +329,17 @@ impl ComInterfaceManager {
         interfaces
             .get(uuid)
             .map(|InterfaceInfo { properties, .. }| properties.clone())
+    }
+
+    /// Returns the com interface info for a given UUID
+    pub fn try_get_interface_info_by_uuid(
+        &self,
+        uuid: &ComInterfaceUUID,
+    ) -> Option<Ref<'_, InterfaceInfo>> {
+        Ref::filter_map(self.interfaces.borrow(), |interfaces| {
+            interfaces.get(uuid)
+        })
+        .ok()
     }
 
     /// Returns the com interface  properties for a given UUID
@@ -317,6 +390,7 @@ impl ComInterfaceManager {
         uuid: ComInterfaceUUID,
         properties: Rc<ComInterfaceProperties>,
         priority: InterfacePriority,
+        original_setup_data: Option<Value>,
     ) -> Result<InterfaceCloseReceiver, InterfaceAddError> {
         if self.interfaces.borrow().contains_key(&uuid) {
             return Err(InterfaceAddError::InterfaceAlreadyExists);
@@ -338,6 +412,7 @@ impl ComInterfaceManager {
             InterfaceInfo {
                 properties,
                 priority,
+                original_setup_data,
                 is_waiting_for_socket_connections: true,
                 close_sender: Some(close_sender),
             },
@@ -366,7 +441,9 @@ impl ComInterfaceManager {
             .close_sender
             .take()
             .unwrap();
-        close_sender.send(closed_sender).unwrap();
+        close_sender
+            .send(InterfaceCloseInfo { closed_sender })
+            .unwrap();
         closed_receiver
     }
 
@@ -375,12 +452,11 @@ impl ComInterfaceManager {
     pub(crate) fn cleanup_interface(
         &self,
         interface_uuid: &ComInterfaceUUID,
-    ) -> Result<(), ()> {
+    ) -> Result<InterfaceInfo, ()> {
         self.interfaces
             .borrow_mut()
             .remove(interface_uuid)
             .ok_or(())
-            .map(|_| ())
     }
 }
 
@@ -388,17 +464,17 @@ impl ComInterfaceManager {
 mod tests {
     use super::*;
     use crate::{
-        datex_proxy::DatexValueProxyInfallibleSerialize,
         network::com_interfaces::com_interface::factory::{
             SendCallback, SendSuccess, SocketConfiguration, SocketProperties,
         },
         prelude::*,
+        runtime::cache::shared_references_cache::SharedReferencesCache,
         values::value::Value,
     };
     use datex_macros_internal::Datex;
 
-    #[derive(Datex)]
-    #[datex(structural_recursive)]
+    #[derive(Datex, Clone)]
+    #[datex(structural)]
     struct MockSetupData {
         name: String,
     }
@@ -469,7 +545,7 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface_sync(
                 "mock",
-                setup_data.to_value_without_cache(),
+                Value::native(setup_data),
                 InterfacePriority::None,
             )
             .unwrap();
@@ -507,7 +583,7 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
                 "mock",
-                setup_data.to_value_without_cache(),
+                Value::native(setup_data),
                 InterfacePriority::None,
             )
             .await
@@ -542,20 +618,23 @@ mod tests {
             Rc::new(|setup_data: Value| {
                 Box::pin(async move {
                     let setup =
-                        MockSetupData::try_from(Value::from(setup_data))
-                            .unwrap();
+                        setup_data.try_into_value::<MockSetupData>().unwrap();
                     setup.create_interface()
                 })
             });
-        interface_manager
-            .register_dyn_interface_factory("mock".to_string(), dyn_factory);
+        interface_manager.register_dyn_interface_factory(
+            "mock".to_string(),
+            dyn_factory,
+            ReconnectionConfig::NoReconnect,
+            ComInterfaceProperties::default,
+        );
         let setup_data = MockSetupData {
             name: "test-interface".to_string(),
         };
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
                 "mock",
-                setup_data.to_value_without_cache(),
+                Value::native(setup_data),
                 InterfacePriority::None,
             )
             .await

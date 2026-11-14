@@ -1,113 +1,147 @@
 use crate::{
-    dif::serde_context::SerdeContext,
-    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibTypeId},
+    dif::{
+        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
+    },
+    libs::core::{
+        core_lib_id::CoreLibIdIndex,
+        type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    },
     prelude::*,
     shared_values::SharedContainer,
     types::{
-        shared_container_containing_entity_type::SharedContainerContainingEntityType,
+        entity_type::EntityType,
         r#type::Type,
         type_definition::TypeDefinition,
         type_definition_with_metadata::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
-    utils::serde_serialize_seed::SerializeSeed,
 };
 use core::ops::Deref;
+use erased_serde::__private::serde::ser::SerializeTuple;
 use num::ToPrimitive;
 use serde::{
     Serializer,
-    de::{DeserializeSeed, IntoDeserializer, Visitor},
+    de::{IntoDeserializer, Visitor},
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Type> {
-    type Value = Type;
+struct InnerType<'a>(&'a Type);
 
-    fn serialize<S>(
-        &mut self,
-        value: &Self::Value,
+impl SerializeWithSerdeContext for InnerType<'_> {
+    fn serialize_with_ctx<S>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        match value {
+        match self.0 {
             Type::Definition(type_definition) => match type_definition
                 .definition
             {
                 TypeDefinition::CoreType(_core)
                     if type_definition.metadata == TypeMetadata::default() =>
                 {
-                    self.cast::<TypeDefinition>()
-                        .serialize(&type_definition.definition, serializer)
+                    type_definition
+                        .definition
+                        .serialize_with_ctx(ctx, serializer)
                 }
-                _ => self
-                    .cast::<TypeDefinitionWithMetadata>()
-                    .serialize(type_definition, serializer),
+                _ => type_definition.serialize_with_ctx(ctx, serializer),
             },
             Type::Entity(shared_container_containing_nominal_type) => {
-                self.cast::<SharedContainer>().serialize(
-                    shared_container_containing_nominal_type.deref(),
-                    serializer,
-                )
+                shared_container_containing_nominal_type
+                    .deref()
+                    .serialize_with_ctx(ctx, serializer)
             }
         }
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Type> {
-    type Value = Type;
-
-    fn deserialize<D: serde::de::Deserializer<'de>>(
-        self,
-        deserializer: D,
-    ) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_any(self)
+impl SerializeWithSerdeContext for Type {
+    fn serialize_with_ctx<S>(
+        &self,
+        ctx: &SerdeContext<'_>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut tuple = serializer.serialize_tuple(2)?;
+        tuple.serialize_element(
+            &CoreLibIdIndex::from(CoreLibBaseTypeId::Type).to_u16(),
+        )?;
+        tuple.serialize_element(&ValueWithSerdeContext::new(
+            &InnerType(self),
+            ctx,
+        ))?;
+        tuple.end()
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
+impl<'de> DeserializeWithSerdeContext<'de> for Type {
+    fn deserialize_with_ctx<D: serde::de::Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(DeserializeSerdeContext::<Type>::new(ctx))
+    }
+}
+
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Type> {
+    type Value = Type;
     fn expecting(
         &self,
         formatter: &mut core::fmt::Formatter,
     ) -> core::fmt::Result {
         formatter.write_str("a type definition")
     }
-    type Value = Type;
 
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let metadata = seq
-            .next_element()?
-            .ok_or_else(|| serde::de::Error::custom("missing metadata"))?;
-        let definition = seq
-            .next_element_seed(self.cast::<TypeDefinition>())?
-            .ok_or_else(|| serde::de::Error::custom("missing definition"))?;
-        Ok(Type::Definition(TypeDefinitionWithMetadata::new(
-            definition, metadata,
-        )))
-    }
-
-    fn visit_str<E>(mut self, v: &str) -> Result<Self::Value, E>
+    fn visit_i8<E>(self, v: i8) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        Ok(Type::Entity(unsafe {
-            SharedContainerContainingEntityType::new_unchecked(
-                self.cast::<SharedContainer>()
-                    .deserialize(v.into_deserializer())?,
-            )
-        }))
+        self.visit_u16(v as u16)
     }
-    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+
+    fn visit_i16<E>(self, v: i16) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        self.visit_str(&v)
+        self.visit_u16(v as u16)
+    }
+    fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        self.visit_u16(v as u16)
     }
 
+    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        self.visit_u16(v as u16)
+    }
+
+    fn visit_i128<E>(self, v: i128) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        self.visit_u16(v.to_u16().ok_or_else(|| {
+            serde::de::Error::custom(format!("core type id out of range: {v}"))
+        })?)
+    }
+    fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        self.visit_u16(v as u16)
+    }
     fn visit_u16<E>(self, v: u16) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
@@ -123,8 +157,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
             .into(),
         ))
     }
-
-    fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
+    fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
@@ -138,42 +171,35 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
             serde::de::Error::custom(format!("core type id out of range: {v}"))
         })?)
     }
-    fn visit_i128<E>(self, v: i128) -> Result<Self::Value, E>
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        self.visit_u16(v.to_u16().ok_or_else(|| {
-            serde::de::Error::custom(format!("core type id out of range: {v}"))
-        })?)
+        Ok(Type::Entity(unsafe {
+            EntityType::new_unchecked(SharedContainer::deserialize_with_ctx(
+                self.ctx,
+                v.into_deserializer(),
+            )?)
+        }))
     }
-    fn visit_i16<E>(self, v: i16) -> Result<Self::Value, E>
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        self.visit_u16(v as u16)
+        self.visit_str(&v)
     }
-    fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where
-        E: serde::de::Error,
+        A: serde::de::SeqAccess<'de>,
     {
-        self.visit_u16(v as u16)
-    }
-    fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.visit_u16(v as u16)
-    }
-    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.visit_u16(v as u16)
-    }
-    fn visit_i8<E>(self, v: i8) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.visit_u16(v as u16)
+        let metadata = seq
+            .next_element()?
+            .ok_or_else(|| serde::de::Error::custom("missing metadata"))?;
+        let definition = seq
+            .next_element_seed(self.cast::<TypeDefinition>())?
+            .ok_or_else(|| serde::de::Error::custom("missing definition"))?;
+        Ok(Type::Definition(TypeDefinitionWithMetadata::new(
+            definition, metadata,
+        )))
     }
 }

@@ -1,20 +1,17 @@
-use crate::values::{
-    core_values::map::Map,
-    value_container::{ValueContainer, value_key::BorrowedValueKey},
+use crate::{
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    values::{core_values::map::Map, value_container::ValueContainer},
 };
 
-use crate::{
-    value_updates::{
-        errors::UpdateError,
-        update_data::{DeleteEntryUpdateData, SetEntryUpdateData},
-        update_handler::{
-            InternalMutabilityUpdateHandler, UpdateCallbackData,
-            UpdateCallbackDataAccess, UpdateHandlerImpl,
-        },
+use crate::value_updates::{
+    errors::UpdateError,
+    update_data::{DeleteEntryUpdateData, SetEntryUpdateData},
+    update_handler::{
+        InternalMutabilityUpdateHandler, UpdateCallbackData,
+        UpdateCallbackDataAccess, UpdateHandlerImpl,
     },
-    values::core_values::map::MapKey,
 };
-use core::result::Result;
+use core::{cell::RefCell, result::Result};
 
 impl InternalMutabilityUpdateHandler for Map {
     fn set_update_callback_data(
@@ -26,7 +23,7 @@ impl InternalMutabilityUpdateHandler for Map {
             child.set_update_callback_data(
                 observe_data
                     .as_ref()
-                    .map(|data| data.with_child_path(MapKey::from(key))),
+                    .map(|data| data.with_child_path(key.clone())), // TODO: what happens if key can't be cloned here? (should not be allowed)
             );
         }
         // Update the update callback data for the list itself
@@ -44,23 +41,25 @@ impl UpdateHandlerImpl for Map {
     fn try_set_entry(
         &mut self,
         data: SetEntryUpdateData,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<Option<ValueContainer>, UpdateError> {
-        let key = BorrowedValueKey::from(data.key);
-        self.try_set_with_source(key, data.value, None)
+        self.try_set_with_source(data.key, data.value, None)
             .map_err(UpdateError::access_error)
     }
 
     fn try_delete_entry(
         &mut self,
         data: DeleteEntryUpdateData,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
-        let key = BorrowedValueKey::from(data.key);
-        self.try_delete_with_source(key, None)
+        _cache: &RefCell<SharedReferencesCache>,
+    ) -> Result<ValueContainer, UpdateError> {
+        self.try_delete_with_source(&data.key, None)
             .map_err(UpdateError::access_error)
-            .map(Some)
     }
 
-    fn try_clear(&mut self) -> Result<ValueContainer, UpdateError> {
+    fn try_clear(
+        &mut self,
+        _cache: &RefCell<SharedReferencesCache>,
+    ) -> Result<ValueContainer, UpdateError> {
         self.try_clear_with_source(None)
             .map_err(UpdateError::access_error)
     }

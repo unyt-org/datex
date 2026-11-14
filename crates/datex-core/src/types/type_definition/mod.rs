@@ -14,8 +14,7 @@ use crate::{
         r#type::Type,
         type_definition::{
             callable::CallableTypeDefinition,
-            collection::CollectionTypeDefinition,
-            impl_type::ImplTypeDefinition,
+            collection::CollectionTypeDefinition, impl_type::ImplMarkers,
             intersection::IntersectionTypeDefinition, list::ListTypeDefinition,
             map::MapTypeDefinition, range::RangeTypeDefinition,
             tagged_type::TaggedTypeDefinition, union::UnionTypeDefinition,
@@ -35,8 +34,8 @@ pub mod list;
 pub mod map;
 pub mod range;
 pub mod tagged_type;
+mod to_instructions;
 pub mod type_match;
-
 /// Base enum for a type definition
 /// This is normally the base for types at runtime, in contrast to [Type], which is the base for types
 /// at compile time.
@@ -72,7 +71,7 @@ pub enum TypeDefinition {
     /// The type is treated as equivalent to `innerType` for most operations,
     /// but the impl markers can be used to enforce additional constraints during
     /// type checking or runtime behavior.
-    ImplType(ImplTypeDefinition),
+    ImplMarkers(ImplMarkers),
 
     /// NOTE: all the types below can never exist as actual types of a runtime value - they are only
     /// relevant for type space definitions and type checking.
@@ -91,6 +90,26 @@ pub enum TypeDefinition {
     CoreType(CoreLibTypeId), // -> $123
 }
 
+use strum::{EnumString, VariantNames};
+
+#[derive(Debug, Clone, PartialEq, Eq, AsRefStr, EnumString, VariantNames)]
+#[strum(serialize_all = "snake_case")]
+pub enum TypeDefinitionKind {
+    Literal,
+    List,
+    Map,
+    Range,
+    Collection,
+    Shared,
+    Box,
+    Callable,
+    ImplMarkers,
+    Intersection,
+    Union,
+    TaggedType,
+    CoreType,
+}
+
 impl TypeDefinition {
     /// Returns true if the type definition is a structural type (e.g. a collection, literal, or shared type).
     pub fn is_structural(&self) -> bool {
@@ -98,7 +117,7 @@ impl TypeDefinition {
             self,
             TypeDefinition::CoreType(_)
                 | TypeDefinition::Box(Type::Entity(_))
-                | TypeDefinition::ImplType(_)
+                | TypeDefinition::ImplMarkers(_)
         )
     }
 
@@ -160,7 +179,7 @@ impl Hash for TypeDefinition {
                 callable.return_type.hash(state);
                 callable.yeet_type.hash(state);
             }
-            TypeDefinition::ImplType(definition) => {
+            TypeDefinition::ImplMarkers(definition) => {
                 definition.hash(state);
             }
             TypeDefinition::Box(ty) => {
@@ -205,7 +224,7 @@ impl Display for TypeDefinition {
             TypeDefinition::Shared(reference) => {
                 write!(f, "{}", reference.deref())
             }
-            TypeDefinition::ImplType(definition) => {
+            TypeDefinition::ImplMarkers(definition) => {
                 write!(f, "{}", definition)?;
                 Ok(())
             }
@@ -273,7 +292,7 @@ impl Display for TypeDefinition {
 pub mod equality;
 pub mod intersection;
 mod serde_dif;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_type_expression_data;
 pub mod union;
 
@@ -343,8 +362,8 @@ impl TypeDefinition {
     }
 
     /// Creates a new type with impls.
-    pub fn impl_type(ty: impl Into<Type>, impls: Vec<PointerAddress>) -> Self {
-        TypeDefinition::ImplType(ImplTypeDefinition::new(ty.into(), impls))
+    pub fn impl_markers(impls: Vec<PointerAddress>) -> Self {
+        TypeDefinition::ImplMarkers(ImplMarkers::new(impls))
     }
 
     /// Get the core lib type pointer id for this structural type definition

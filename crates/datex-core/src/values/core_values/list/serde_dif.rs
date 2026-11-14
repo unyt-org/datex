@@ -1,47 +1,57 @@
 use crate::{
-    dif::serde_context::SerdeContext,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    dif::{
+        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        dif_vec::DIFVec, serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
+    },
+    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
     values::{core_values::list::List, value_container::ValueContainer},
 };
+use erased_serde::__private::serde::ser::SerializeTuple;
+use num_traits::ToPrimitive;
 use serde::{
     Serializer,
+    de::Visitor,
     ser::{SerializeMap, SerializeSeq},
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, List> {
-    type Value = List;
-
-    fn serialize<S>(
-        &mut self,
-        value: &Self::Value,
+impl SerializeWithSerdeContext for List {
+    fn serialize_with_ctx<S>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_seq(Some(value.len() as usize))?;
-        for value in value.iter() {
-            state.serialize_element(&ValueWithSeed::new(
-                value,
-                self.cast::<ValueContainer>(),
-            ))?;
-        }
-        state.end()
+        // [CoreLibBaseTypeId::List, list]
+        let mut tuple = serializer.serialize_tuple(2)?;
+        tuple.serialize_element(
+            &CoreLibIdIndex::from(CoreLibBaseTypeId::List).to_u16(),
+        )?;
+        tuple.serialize_element(&ValueWithSerdeContext::new(
+            &DIFVec(&self.items),
+            ctx,
+        ))?;
+        tuple.end()
     }
 }
 
-impl<'de, 'ctx> serde::de::DeserializeSeed<'de> for SerdeContext<'ctx, List> {
-    type Value = List;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<List, D::Error>
+impl<'de> DeserializeWithSerdeContext<'de> for List {
+    fn deserialize_with_ctx<D>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<List, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_seq(self)
+        deserializer.deserialize_seq(DeserializeSerdeContext::<List>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> serde::de::Visitor<'de> for SerdeContext<'ctx, List> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, List> {
     type Value = List;
 
     fn expecting(
@@ -51,7 +61,7 @@ impl<'de, 'ctx> serde::de::Visitor<'de> for SerdeContext<'ctx, List> {
         formatter.write_str("a sequence of values for List")
     }
 
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<List, A::Error>
+    fn visit_seq<A>(self, mut seq: A) -> Result<List, A::Error>
     where
         A: serde::de::SeqAccess<'de>,
     {

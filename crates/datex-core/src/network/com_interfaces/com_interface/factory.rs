@@ -1,24 +1,27 @@
 pub use crate::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
     channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
-    datex_proxy::DatexValueProxyDeserialize,
     global::dxb_block::DXBBlock,
     network::{
         com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
             ComInterfaceUUID,
-            properties::{ComInterfaceProperties, InterfaceDirection},
+            properties::{
+                ComInterfaceProperties, InterfaceDirection, ReconnectionConfig,
+            },
             socket::ComInterfaceSocketUUID,
         },
     },
     prelude::*,
     std_sync::Mutex,
+    traits::{convert_parts::FromParts, convert_value::ConvertValue},
     utils::async_callback::AsyncCallback,
     values::{core_values::endpoint::Endpoint, value::Value},
 };
 use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
 use futures::channel::oneshot::Sender;
 use futures_core::future::LocalBoxFuture;
+use futures_util::TryStreamExt;
 
 pub type NewSocketsIterator = Pin<
     Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,
@@ -182,7 +185,10 @@ impl SocketConfiguration {
     pub fn new_combined<I>(
         socket_configuration: SocketProperties,
         generator_initializer: impl FnOnce(
-            UnboundedReceiver<(DXBBlock, Sender<Result<(), SendFailure>>)>,
+            UnboundedReceiver<(
+                DXBBlock,
+                Sender<Result<SendSuccess, SendFailure>>,
+            )>,
         ) -> I,
     ) -> Self
     where
@@ -190,7 +196,7 @@ impl SocketConfiguration {
     {
         let (out_sender, out_receiver) = create_unbounded_channel::<(
             DXBBlock,
-            Sender<Result<(), SendFailure>>,
+            Sender<Result<SendSuccess, SendFailure>>,
         )>();
         let out_sender = Rc::new(Mutex::new(out_sender));
 
@@ -201,7 +207,7 @@ impl SocketConfiguration {
                 let out_sender = out_sender.clone();
                 async move {
                     let (sender, receiver) = futures::channel::oneshot::channel::<
-                        Result<(), SendFailure>,
+                        Result<SendSuccess, SendFailure>,
                     >();
                     out_sender
                         .try_lock()
@@ -228,10 +234,10 @@ pub enum SendCallback {
     /// An asynchronous send callback.
     /// The callback receives a DXBBlock and the UUID of the socket to send the data through.
     /// It returns a future that resolves to a Result indicating success or failure.
-    /// The success case does not return any data, as any received data should be handled
-    /// through the receive iterator.
+    /// The success case should always return [SendSuccess::Sent] without any response data,
+    /// as any received data should be handled through the receive iterator.
     /// The failure case returns a SendFailure containing the original DXBBlock.
-    Async(AsyncCallback<DXBBlock, Result<(), SendFailure>>),
+    Async(AsyncCallback<DXBBlock, Result<SendSuccess, SendFailure>>),
 }
 
 impl Debug for SendCallback {
@@ -246,7 +252,7 @@ impl Debug for SendCallback {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub enum SendSuccess {
     /// Indicates that the data was sent successfully without any immediate received data.
     #[default]
@@ -288,14 +294,15 @@ impl SendCallback {
     pub fn new_async<F, Fut>(f: F) -> Self
     where
         F: Fn(DXBBlock) -> Fut + 'static,
-        Fut: core::future::Future<Output = Result<(), SendFailure>> + 'static,
+        Fut: core::future::Future<Output = Result<SendSuccess, SendFailure>>
+            + 'static,
     {
         SendCallback::Async(AsyncCallback::new(f))
     }
 }
 
 pub struct ComInterfaceConfiguration {
-    // should not be provided from JS side
+    /// should not be provided from JS side
     uuid: ComInterfaceUUID,
     /// The properties of the interface instance
     pub properties: Rc<ComInterfaceProperties>,
@@ -389,12 +396,14 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 /// The trait should be implemented for the setup data type of the interface.
 /// Example:
 /// ```
+/// #![feature(gen_blocks)]
+///
 /// use datex_macros_internal::Datex;
 /// use datex_core::network::com_hub::errors::ComInterfaceCreateError;
 /// use datex_core::network::com_interfaces::com_interface::factory::{ComInterfaceSyncFactory,ComInterfaceConfiguration};
-/// use datex_core::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
+/// use datex_core::network::com_interfaces::com_interface::properties::{ComInterfaceProperties, ReconnectionConfig};
 ///
-/// #[derive(Datex)]
+/// #[derive(Datex, Clone)]
 /// # #[datex(_force_datex_core_namespace)]
 /// struct ExampleInterfaceSetupData {
 ///    pub example_data: String,
@@ -413,10 +422,14 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 ///             ..Default::default()
 ///         }
 ///     }
+///
+///     fn get_reconnection_config() -> ReconnectionConfig {
+///         ReconnectionConfig::reconnect()
+///     }
 /// }
 pub trait ComInterfaceSyncFactory
 where
-    Self: DatexValueProxyDeserialize + Sized,
+    Self: ConvertValue + FromParts + Sized,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
@@ -424,8 +437,9 @@ where
     fn factory(
         setup_data: Value,
     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
-        let setup_data = Self::try_from_value(setup_data)
-            .map_err(ComInterfaceCreateError::SetupDataParseError)?;
+        let setup_data = setup_data
+            .try_convert_into_value()
+            .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
         Self::create_interface(setup_data)
     }
 
@@ -438,6 +452,13 @@ where
 
     /// Get the default interface properties for the interface.
     fn get_default_properties() -> ComInterfaceProperties;
+
+    /// Defines the reconnection strategy for the interface
+    /// If the interface is not able to reconnect, it will be destroyed
+    /// The default implementation returns [ReconnectionConfig::NoReconnect]
+    fn get_reconnection_config() -> ReconnectionConfig {
+        ReconnectionConfig::NoReconnect
+    }
 }
 
 /// This trait can be implemented to provide a factory with an asynchronous setup process
@@ -445,13 +466,15 @@ where
 /// The trait should be implemented for the setup data type of the interface.
 /// Example:
 /// ```
+/// #![feature(gen_blocks)]
+///
 /// use datex_macros_internal::Datex;
 /// use datex_core::network::com_hub::errors::ComInterfaceCreateError;
 /// use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
-/// use datex_core::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
-/// use datex_core::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;///
+/// use datex_core::network::com_interfaces::com_interface::properties::{ComInterfaceProperties, ReconnectionConfig};
+/// use datex_core::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 ///
-/// #[derive(Datex)]
+/// #[derive(Datex, Clone)]
 /// # #[datex(_force_datex_core_namespace)]
 /// struct ExampleInterfaceSetupData {
 ///    pub example_data: String,
@@ -472,18 +495,23 @@ where
 ///             ..Default::default()
 ///         }
 ///     }
+///
+///     fn get_reconnection_config() -> ReconnectionConfig {
+///         ReconnectionConfig::reconnect()
+///     }
 /// }
 pub trait ComInterfaceAsyncFactory
 where
-    Self: DatexValueProxyDeserialize + Sized,
+    Self: ConvertValue + FromParts + Sized,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
     /// The setup data is passed as a ValueContainer and has to be downcasted
     fn factory(setup_data: Value) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
-            let setup_data = Self::try_from_value(setup_data)
-                .map_err(ComInterfaceCreateError::SetupDataParseError)?;
+            let setup_data = setup_data
+                .try_convert_into_value()
+                .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
             Self::create_interface(setup_data).await
         })
     }
@@ -495,4 +523,11 @@ where
 
     /// Get the default interface properties for the interface.
     fn get_default_properties() -> ComInterfaceProperties;
+
+    /// Defines the reconnection strategy for the interface
+    /// If the interface is not able to reconnect, it will be destroyed
+    /// The default implementation returns [ReconnectionConfig::NoReconnect]
+    fn get_reconnection_config() -> ReconnectionConfig {
+        ReconnectionConfig::NoReconnect
+    }
 }

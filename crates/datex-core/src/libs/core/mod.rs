@@ -5,10 +5,12 @@ use crate::{
         type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
         value_id::CoreLibValueId,
     },
+    prelude::*,
     random::RandomState,
     types::type_definition::callable::CallableTypeDefinition,
     values::{
         core_value::CoreValue,
+        core_value_with_classification::CoreValueWithClassification,
         core_values::{
             callable::{CallableBody, error::CallableError},
             map::Map,
@@ -24,13 +26,14 @@ mod type_match;
 pub mod value_id;
 
 use crate::{
-    prelude::*,
+    libs::core::type_id::TOTAL_CORE_LIB_TYPE_COUNT,
+    runtime::Runtime,
     traits::apply::{ApplyArgument, get_borrowed_apply_argument_values},
     types::{r#type::Type, type_definition::callable::CallableKind},
+    utils::logger::log_info_with_tag,
     values::core_values::{callable::CoreStub, endpoint::Endpoint},
 };
 use indexmap::IndexMap;
-use log::info;
 use strum::IntoEnumIterator;
 
 #[derive(Debug)]
@@ -103,7 +106,8 @@ impl CoreLibraryValues {
     }
 
     fn print_impl(
-        args: Vec<ApplyArgument>,
+        mut args: Vec<ApplyArgument>,
+        _runtime: &Runtime,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>
     {
         // TODO #680: add I/O abstraction layer / interface
@@ -111,26 +115,27 @@ impl CoreLibraryValues {
         let mut output = String::new();
 
         // if first argument is a string value, print it directly
-        let _value_args = if let Some(ValueContainer::Local(Value {
-            inner: CoreValue::Text(text),
-            ..
-        })) = args.first().map(|v| &v.value)
+        if let Some(ValueContainer::Local(Value::Core(
+            CoreValueWithClassification {
+                inner: CoreValue::Text(text),
+                ..
+            },
+        ))) = args.first().map(|v| &v.value)
         {
-            output.push_str(&text.0);
+            output.push_str(text.as_str());
             // if there are still values after the string, add a space
             if args.len() > 1 {
                 output.push(' ');
-            }
-            &args[1..]
-        } else {
-            &args
-        };
+            };
+            // remove the first argument from the list of arguments to be printed
+            args.remove(0);
+        }
 
         #[cfg(feature = "decompiler")]
         let args_string = args
             .iter()
             .map(|v| {
-                crate::decompiler::decompile_value(
+                crate::decompiler::ast_to_source_code::value_to_source_code(
                     &v.value,
                     crate::decompiler::DecompileOptions::colorized(),
                 )
@@ -145,9 +150,7 @@ impl CoreLibraryValues {
             .join(" ");
         output.push_str(&args_string);
 
-        #[cfg(feature = "std")]
-        println!("[PRINT] {}", output);
-        info!("[PRINT] {}", output);
+        log_info_with_tag!("PRINT", "{}", output);
 
         // return all borrowed args
         Ok((None, get_borrowed_apply_argument_values(args)))
@@ -159,7 +162,12 @@ pub struct CoreLibraryTypes(IndexMap<CoreLibTypeId, Value, RandomState>);
 
 impl Default for CoreLibraryTypes {
     fn default() -> Self {
-        Self(Self::core_lib_types().collect())
+        let mut map = IndexMap::with_capacity_and_hasher(
+            TOTAL_CORE_LIB_TYPE_COUNT as usize,
+            RandomState::default(),
+        );
+        map.extend(Self::core_lib_types());
+        Self(map)
     }
 }
 
@@ -213,11 +221,10 @@ impl Default for CoreLibrary {
                     .iterate()
                     .map(|(id, value)| (CoreLibId::Type(id), value.clone())),
             )
-            .map(|(id, value)| (id.to_string(), ValueContainer::from(value)))
-            .collect::<Vec<_>>();
+            .map(|(id, value)| (id.to_string(), ValueContainer::from(value)));
 
         CoreLibrary {
-            map: Value::from(Map::from(entries)),
+            map: Value::from(Map::from_iter(entries)),
             types,
             values,
         }
@@ -261,7 +268,7 @@ mod tests {
     #[test]
     fn debug() {
         flexi_logger::init();
-        info!("{}", CoreLibrary::default().map());
+        log::info!("{}", CoreLibrary::default().map());
     }
 
     #[test]

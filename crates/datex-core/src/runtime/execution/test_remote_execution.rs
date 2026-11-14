@@ -18,7 +18,7 @@ use crate::{
     },
     values::{
         core_values::{
-            endpoint::Endpoint, integer::Integer, list::List, time::Instant,
+            endpoint::Endpoint, instant::Instant, integer::Integer, list::List,
         },
         value_container::ValueContainer,
     },
@@ -53,7 +53,12 @@ pub async fn basic_remote_execution() {
 
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute("1 + 2", &[], Some(&mut remote_execution_context))
+                .execute(
+                    "1 + 2",
+                    &[],
+                    Some(&mut remote_execution_context),
+                    false,
+                )
                 .await;
             assert_eq!(
                 result.unwrap().unwrap(),
@@ -61,7 +66,12 @@ pub async fn basic_remote_execution() {
             );
 
             let result = runtime_a
-                .execute("2 + 3", &[], Some(&mut remote_execution_context))
+                .execute(
+                    "2 + 3",
+                    &[],
+                    Some(&mut remote_execution_context),
+                    false,
+                )
                 .await;
             assert_eq!(
                 result.unwrap().unwrap(),
@@ -95,6 +105,7 @@ pub async fn remote_execution_persistent_context() {
                     "const x = 10; clone x", // FIXME: auto copy for integer?
                     &[],
                     Some(&mut remote_execution_context),
+                    false,
                 )
                 .await;
             assert_eq!(
@@ -104,7 +115,7 @@ pub async fn remote_execution_persistent_context() {
 
             // execute another script that uses the previous context
             let result = runtime_a
-                .execute("x + 5", &[], Some(&mut remote_execution_context))
+                .execute("x + 5", &[], Some(remote_execution_context), false)
                 .await;
             assert_eq!(
                 result.unwrap().unwrap(),
@@ -137,7 +148,12 @@ pub async fn remote_inline() {
 
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute("@test_b :: 1 + 2", &[], Some(&mut execution_context))
+                .execute(
+                    "@test_b :: 1 + 2",
+                    &[],
+                    Some(&mut execution_context),
+                    false,
+                )
                 .await;
             assert_eq!(
                 result.unwrap().unwrap(),
@@ -162,7 +178,14 @@ pub async fn remote_inline_implicit_context() {
         endpoint_b.clone(),
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
-            let result = runtime_a.execute("@test_b :: 1 + 2", &[], None).await;
+            let result = runtime_a
+                .execute(
+                    "@test_b :: 1 + 2",
+                    &[],
+                    None::<ExecutionContext>,
+                    false,
+                )
+                .await;
             assert_eq!(
                 result.unwrap().unwrap(),
                 ValueContainer::from(Integer::from(3i8))
@@ -188,7 +211,12 @@ pub async fn remote_shared_value_inject_move() {
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute("var x = shared 42; @test_b :: x + 1", &[], None)
+                .execute(
+                    "var x = shared 42; @test_b :: x + 1",
+                    &[],
+                    None::<ExecutionContext>,
+                    false,
+                )
                 .await;
             assert_eq!(
                 result.unwrap().unwrap(),
@@ -218,7 +246,8 @@ pub async fn remote_shared_value_inject_ref() {
                 .execute(
                     "var x = shared 42; @test_b :: ['x + 1, 'x]",
                     &[],
-                    None,
+                    None::<ExecutionContext>,
+                    false,
                 )
                 .await
                 .unwrap()
@@ -279,7 +308,12 @@ pub async fn remote_shared_value_return(
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute(&format!("@test_b :: ({shared_string} 42)"), &[], None)
+                .execute(
+                    &format!("@test_b :: ({shared_string} 42)"),
+                    &[],
+                    None::<ExecutionContext>,
+                    false,
+                )
                 .await
                 .unwrap()
                 .unwrap();
@@ -337,7 +371,8 @@ pub async fn remote_shared_roundtrip_move(
                         "const x = {shared_string} 42; @test_b :: (print 'x; x)"
                     ),
                     &[],
-                    None,
+                    None::<ExecutionContext>,
+                    false,
                 )
                 .await
                 .unwrap()
@@ -393,6 +428,7 @@ pub async fn test_remote_datetime_literal() {
                     "@test_b :: 2026-04-13T18:28:09.415Z",
                     &[],
                     Some(&mut execution_context),
+                    false,
                 )
                 .await
                 .unwrap()
@@ -430,6 +466,7 @@ pub async fn test_remote_datetime_arithmetic() {
                     "@test_b :: 2026-04-13T18:28:09.415Z + 1000",
                     &[],
                     Some(&mut execution_context),
+                    false,
                 )
                 .await
                 .unwrap()
@@ -469,6 +506,7 @@ pub async fn test_remote_endpoint_property() {
                     "@test_b.example = 42",
                     &[],
                     Some(&mut execution_context),
+                    false,
                 )
                 .await
                 .unwrap();
@@ -479,7 +517,12 @@ pub async fn test_remote_endpoint_property() {
 
             // get property
             let result = runtime_a
-                .execute("@test_b.example", &[], Some(&mut execution_context))
+                .execute(
+                    "@test_b.example",
+                    &[],
+                    Some(&mut execution_context),
+                    false,
+                )
                 .await
                 .unwrap()
                 .unwrap();
@@ -529,6 +572,7 @@ pub async fn test_remote_sync() {
                     "@test_b :: (@@local.a = 'mut ?; @@local.a)",
                     core::slice::from_ref(&reference),
                     Some(&mut execution_context),
+                    false,
                 )
                 .await
                 .unwrap()
@@ -544,12 +588,15 @@ pub async fn test_remote_sync() {
 
             // trigger update a -> b
             shared_value_on_a
-                .try_handle_update(Update::new(
-                    TransceiverId::Local,
-                    UpdateData::new(UpdateOperation::replace(
-                        ValueContainer::from(100),
-                    )),
-                ))
+                .try_handle_update(
+                    Update::new(
+                        TransceiverId::Local,
+                        UpdateData::new(UpdateOperation::replace(
+                            ValueContainer::from(100),
+                        )),
+                    ),
+                    runtime_a.shared_references_cache_refcell(),
+                )
                 .unwrap();
 
             // wait for update sync
@@ -583,12 +630,15 @@ pub async fn test_remote_sync() {
 
                 // trigger update b -> a
                 shared_value_on_b
-                    .try_handle_update(Update::new(
-                        TransceiverId::Local,
-                        UpdateData::new(UpdateOperation::replace(
-                            ValueContainer::from(200),
-                        )),
-                    ))
+                    .try_handle_update(
+                        Update::new(
+                            TransceiverId::Local,
+                            UpdateData::new(UpdateOperation::replace(
+                                ValueContainer::from(200),
+                            )),
+                        ),
+                        runtime_b.shared_references_cache_refcell(),
+                    )
                     .unwrap();
             }
 

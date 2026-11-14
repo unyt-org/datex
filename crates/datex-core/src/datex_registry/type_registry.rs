@@ -1,8 +1,8 @@
 //! This module acts as the central type registry, to collect structs and enums annotated with `#[derive(datex)]` to make them available for external projects.
 use crate::{
-    datex_proxy::DatexProxyType, prelude::*,
+    datex_registry::registry_collect, prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    types::r#type::Type,
+    traits::get_datex_type::GetDatexType, types::r#type::Type,
 };
 use core::fmt::Debug;
 
@@ -44,8 +44,8 @@ impl Debug for DatexTypeRegistration {
 }
 
 impl DatexTypeRegistration {
-    /// Creates a new [DatexTypeRegistration] for a type T that implements [DatexProxyType].
-    pub const fn new_with_cache<T: DatexProxyType>(
+    /// Creates a new [DatexTypeRegistration] for a type T that implements [GetDatexType].
+    pub const fn new_with_cache<T: GetDatexType>(
         metadata: DatexTypeMetadata,
     ) -> Self {
         Self {
@@ -55,8 +55,8 @@ impl DatexTypeRegistration {
         }
     }
 
-    /// Creates a new [DatexTypeRegistration] for a type T that implements [DatexProxyType].
-    pub const fn new_without_cache<T: DatexProxyType>(
+    /// Creates a new [DatexTypeRegistration] for a type T that implements [GetDatexType].
+    pub const fn new_without_cache<T: GetDatexType>(
         metadata: DatexTypeMetadata,
     ) -> Self {
         Self {
@@ -73,13 +73,11 @@ impl DatexTypeRegistration {
     }
 }
 
-inventory::collect!(DatexTypeRegistration);
-
-/// Returns an iterator over all registered Datex types.
-pub fn all_datex_type_registrations()
--> impl Iterator<Item = &'static DatexTypeRegistration> {
-    inventory::iter::<DatexTypeRegistration>.into_iter()
-}
+registry_collect!(
+    DatexTypeRegistration,
+    DATEX_TYPE_REGISTRATIONS,
+    all_datex_type_registrations
+);
 
 /// Returns a vector of all Datex types resolved using the provided memory.
 pub fn all_datex_types(memory: &mut SharedReferencesCache) -> Vec<Type> {

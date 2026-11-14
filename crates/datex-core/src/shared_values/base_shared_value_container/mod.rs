@@ -33,13 +33,15 @@ pub struct BaseSharedValueContainer {
     /// The [TypeDefinition] that is allowed to be assigned to the shared container. This is used for type checking when assigning a new value container to the shared container.
     allowed_type: TypeDefinition,
     mutability: SharedContainerMutability,
+    /// When true, DXB blocks containing updates for this value will get the debug flag set.
+    is_debug: bool,
 }
 
 impl BaseSharedValueContainer {
     /// Returns a new [BaseSharedValueContainer] with a [ValueContainer] containing a [CoreValue::Null], an allowed type of [CoreLibTypeId::Base(CoreLibBaseTypeId::Null)] and a mutability of [SharedContainerMutability::Immutable].
     pub fn null() -> Self {
         Self::new_with_inferred_allowed_type(
-            ValueContainer::Local(Value::new(CoreValue::Null, None)),
+            ValueContainer::Local(Value::new(CoreValue::Null)),
             SharedContainerMutability::Immutable,
         )
     }
@@ -59,6 +61,7 @@ impl BaseSharedValueContainer {
             value_container,
             allowed_type,
             mutability,
+            is_debug: false,
         })
     }
 
@@ -76,6 +79,7 @@ impl BaseSharedValueContainer {
             value_container,
             allowed_type,
             mutability,
+            is_debug: false,
         }
     }
 
@@ -106,6 +110,14 @@ impl BaseSharedValueContainer {
     }
     pub fn mutability(&self) -> &SharedContainerMutability {
         &self.mutability
+    }
+
+    pub fn mark_debug(&mut self, is_debug: bool) {
+        self.is_debug = is_debug;
+    }
+
+    pub fn is_debug(&self) -> bool {
+        self.is_debug
     }
 }
 

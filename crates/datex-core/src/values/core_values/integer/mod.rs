@@ -12,19 +12,78 @@ pub mod equality;
 pub mod ops;
 pub mod serde_dif;
 use num::{BigInt, Num, ToPrimitive};
-
+mod to_instructions;
 use core::{fmt::Display, hash::Hash, str::FromStr};
 use num_integer::Integer as NumInteger;
 use serde::Deserialize;
 pub mod binrw;
+pub mod classification;
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+pub mod datex_native_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
 pub mod primitive;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod try_clone;
 pub mod update_handler;
 mod value_access;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Hash, Eq)]
 pub struct Integer(pub BigInt);
+
+impl From<&i8> for Integer {
+    fn from(value: &i8) -> Self {
+        Integer(BigInt::from(*value))
+    }
+}
+impl From<&i16> for Integer {
+    fn from(value: &i16) -> Self {
+        Integer(BigInt::from(*value))
+    }
+}
+impl From<&i32> for Integer {
+    fn from(value: &i32) -> Self {
+        Integer(BigInt::from(*value))
+    }
+}
+impl From<&i64> for Integer {
+    fn from(value: &i64) -> Self {
+        Integer(BigInt::from(*value))
+    }
+}
+impl From<&i128> for Integer {
+    fn from(value: &i128) -> Self {
+        Integer(BigInt::from(*value))
+    }
+}
+impl From<&u8> for Integer {
+    fn from(value: &u8) -> Self {
+        Integer(BigInt::from(*value))
+    }
+}
+impl From<&u16> for Integer {
+    fn from(value: &u16) -> Self {
+        Integer(BigInt::from(*value))
+    }
+}
+impl From<&u32> for Integer {
+    fn from(value: &u32) -> Self {
+        Integer(BigInt::from(*value))
+    }
+}
+impl From<&u64> for Integer {
+    fn from(value: &u64) -> Self {
+        Integer(BigInt::from(*value))
+    }
+}
+impl From<&u128> for Integer {
+    fn from(value: &u128) -> Self {
+        Integer(BigInt::from(*value))
+    }
+}
 
 impl<'de> Deserialize<'de> for Integer {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

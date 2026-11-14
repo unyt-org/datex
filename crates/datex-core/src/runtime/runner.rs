@@ -1,10 +1,12 @@
 use crate::{
     channel::mpsc::create_unbounded_channel,
-    global::dxb_block::IncomingSection,
-    network::com_hub::ComHub,
+    network::{
+        block_handler::{BlockHandler, create_incoming_sections_channel},
+        com_hub::{ComHub, ComInterfaceReconnectRequest},
+    },
     prelude::*,
     runtime::{
-        Runtime, RuntimeConfig, RuntimeInternal,
+        CustomRuntimeInfo, Runtime, RuntimeConfig, RuntimeInternal,
         cache::shared_references_cache::SharedReferencesCache,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
@@ -29,16 +31,28 @@ pub struct RuntimeRunner {
 impl RuntimeRunner {
     /// Creates a new runtime instance with the given configuration and global context.
     /// Note: If the endpoint is not specified in the config, a random endpoint will be generated.
-    pub fn new(config: RuntimeConfig) -> RuntimeRunner {
+    pub fn new(
+        config: RuntimeConfig,
+        info: CustomRuntimeInfo,
+    ) -> RuntimeRunner {
         let endpoint = config.endpoint.clone();
 
         let (task_manager, runtime_task_future) = TaskManager::create();
 
         let (incoming_sections_sender, incoming_sections_receiver) =
-            create_unbounded_channel::<IncomingSection>();
+            create_incoming_sections_channel();
 
-        let (com_hub, com_hub_task_future) =
-            ComHub::create(endpoint.clone(), incoming_sections_sender);
+        let (
+            com_interface_reconnect_request_sender,
+            com_interface_reconnect_request_receiver,
+        ) = create_unbounded_channel::<ComInterfaceReconnectRequest>();
+
+        let (com_hub, com_hub_task_future) = ComHub::create(
+            endpoint.clone(),
+            incoming_sections_sender,
+            com_interface_reconnect_request_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
         let memory = RefCell::new(SharedReferencesCache::default());
         let pointer_address_provider = Rc::new(RefCell::new(
             SelfOwnedPointerAddressProvider::new(endpoint.clone()),
@@ -49,10 +63,15 @@ impl RuntimeRunner {
             memory,
             pointer_address_provider,
             config,
-            com_hub,
+            com_hub.clone(),
             task_manager,
             incoming_sections_receiver,
+            com_interface_reconnect_request_receiver,
+            info,
         ));
+
+        // link runtime to com hub (needed for network tracing)
+        *com_hub.runtime.borrow_mut() = Some(runtime.clone());
 
         let runtime_internal = runtime.internal.clone();
 
@@ -64,7 +83,9 @@ impl RuntimeRunner {
                 // runtime task manager
                 runtime_task_future,
                 // runtime incoming sections handler
-                runtime_internal.handle_incoming_sections_task()
+                runtime_internal.clone().handle_incoming_sections_task(),
+                // runtime interface reconnect request handler
+                runtime_internal.handle_reconnect_requests_task(),
             );
         };
 
@@ -157,7 +178,10 @@ mod tests {
 
     #[tokio::test]
     async fn runtime_runner() {
-        let runner = RuntimeRunner::new(RuntimeConfig::default());
+        let runner = RuntimeRunner::new(
+            RuntimeConfig::default(),
+            CustomRuntimeInfo::default(),
+        );
         let mut runtime = None;
         runner
             .run(async |runtime_inner| {

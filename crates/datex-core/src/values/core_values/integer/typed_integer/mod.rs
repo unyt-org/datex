@@ -11,8 +11,8 @@ use crate::values::core_values::{
 pub mod equality;
 pub mod update_handler;
 use crate::{
-    libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId},
-    prelude::*,
+    libs::core::type_id::CoreLibTypeId, prelude::*,
+    traits::get_core_lib_type_id::GetCoreLibTypeId,
 };
 use ::binrw::{BinRead, BinWrite};
 use core::{fmt::Display, hash::Hash, result::Result, unreachable};
@@ -20,9 +20,19 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
+
+mod classification;
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
 pub mod primitive;
-#[cfg(feature = "decompiler")]
+pub mod serde_dif;
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod try_clone;
 mod value_access;
 
 /// The integer type variants to be used as a inline
@@ -90,30 +100,9 @@ pub enum TypedInteger {
     U128(u128),
 }
 
-impl Serialize for TypedInteger {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        match self {
-            TypedInteger::IBig(v) => v.serialize(serializer),
-            TypedInteger::I8(v) => v.serialize(serializer),
-            TypedInteger::I16(v) => v.serialize(serializer),
-            TypedInteger::I32(v) => v.serialize(serializer),
-            TypedInteger::I64(v) => v.serialize(serializer),
-            TypedInteger::I128(v) => v.serialize(serializer),
-            TypedInteger::U8(v) => v.serialize(serializer),
-            TypedInteger::U16(v) => v.serialize(serializer),
-            TypedInteger::U32(v) => v.serialize(serializer),
-            TypedInteger::U64(v) => v.serialize(serializer),
-            TypedInteger::U128(v) => v.serialize(serializer),
-        }
-    }
-}
-
 impl From<&TypedInteger> for CoreLibTypeId {
     fn from(value: &TypedInteger) -> Self {
-        CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(value.variant()))
+        value.core_lib_type_id()
     }
 }
 

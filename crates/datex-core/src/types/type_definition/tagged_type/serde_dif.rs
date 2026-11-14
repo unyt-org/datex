@@ -2,84 +2,69 @@ use core::fmt;
 
 use serde::{
     Deserializer, Serializer,
-    de::{self, DeserializeSeed, SeqAccess, Visitor},
+    de::{self, SeqAccess, Visitor},
     ser::SerializeSeq,
 };
 
 use crate::{
-    dif::serde_context::SerdeContext,
+    dif::{
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+    },
     types::type_definition::tagged_type::TaggedTypeDefinition,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, TaggedTypeDefinition> {
-    type Value = TaggedTypeDefinition;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
+impl SerializeWithSerdeContext for TaggedTypeDefinition {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(2))?;
-        seq.serialize_element(&value.tag)?;
-        match &value.ty {
+        seq.serialize_element(&self.tag)?;
+        match &self.ty {
             Some(ty) => {
-                seq.serialize_element(&ValueWithSeed::new(
+                seq.serialize_element(&ValueWithSerdeContext::new(
                     ty.as_ref(),
-                    self.cast::<Type>(),
+                    ctx,
                 ))?;
             }
-            None => seq.serialize_element(&ValueWithSeed::new(
+            None => seq.serialize_element(&ValueWithSerdeContext::new(
                 &TypeDefinition::CoreType(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Unit,
-                ))
-                .into(),
-                self.cast::<Type>(),
+                )),
+                ctx,
             ))?,
         }
         seq.end()
     }
 }
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Box<Type>> {
-    type Value = Option<Box<Type>>;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        match value {
-            Some(ty) => {
-                let mut seed = self.cast::<Type>();
-                seed.serialize(ty, serializer)
-            }
-            None => serializer.serialize_none(),
-        }
-    }
-}
-
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, TaggedTypeDefinition>
-{
-    type Value = TaggedTypeDefinition;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+impl<'de> DeserializeWithSerdeContext<'de> for TaggedTypeDefinition {
+    fn deserialize_with_ctx<D>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_tuple(2, self)
+        deserializer.deserialize_tuple(
+            2,
+            DeserializeSerdeContext::<TaggedTypeDefinition>::new(ctx),
+        )
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TaggedTypeDefinition> {
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, TaggedTypeDefinition>
+{
     type Value = TaggedTypeDefinition;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("a tuple [tag, ty]")
     }
 
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where
         A: SeqAccess<'de>,
     {
@@ -100,91 +85,12 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TaggedTypeDefinition> {
 }
 
 use crate::{
+    dif::{
+        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
+    },
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
     types::{r#type::Type, type_definition::TypeDefinition},
 };
-
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Option<Box<Type>>> {
-    type Value = Option<Box<Type>>;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_option(self)
-    }
-}
-
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Option<Type>> {
-    type Value = Option<Type>;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_option(self)
-    }
-}
-
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Option<Type>> {
-    type Value = Option<Type>;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("an optional Type")
-    }
-
-    fn visit_none<E>(self) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        Ok(None)
-    }
-
-    fn visit_some<D>(mut self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let ty = self.cast::<Type>().deserialize(deserializer)?;
-
-        Ok(Some(ty))
-    }
-
-    fn visit_unit<E>(self) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        Ok(None)
-    }
-}
-
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Option<Box<Type>>> {
-    type Value = Option<Box<Type>>;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("an optional Type")
-    }
-
-    fn visit_none<E>(self) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        Ok(None)
-    }
-
-    fn visit_some<D>(mut self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let ty = self.cast::<Type>().deserialize(deserializer)?;
-
-        Ok(Some(Box::new(ty)))
-    }
-
-    fn visit_unit<E>(self) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        Ok(None)
-    }
-}

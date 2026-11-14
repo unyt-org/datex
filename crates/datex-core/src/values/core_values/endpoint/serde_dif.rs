@@ -1,13 +1,15 @@
 use crate::{
-    dif::serde_context::SerdeContext, prelude::*,
-    values::core_values::endpoint::Endpoint,
+    dif::{
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+    },
+    libs::core::type_id::CoreLibBaseTypeId,
+    prelude::*,
+    values::{core_value::CoreValue, core_values::endpoint::Endpoint},
 };
 use alloc::string::String;
-use core::fmt;
-use serde::{
-    Deserialize, Serialize,
-    de::{Error, Visitor},
-};
+use serde::{Deserialize, Serialize, Serializer, de::Error};
 
 impl Serialize for Endpoint {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -20,34 +22,54 @@ impl Serialize for Endpoint {
     }
 }
 
-impl<'a> Deserialize<'a> for Endpoint {
+impl<'de> Deserialize<'de> for Endpoint {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'a>,
+        D: serde::Deserializer<'de>,
     {
-        let s: String = Deserialize::deserialize(deserializer)?;
+        let s = String::deserialize(deserializer)?;
         Endpoint::from_string(&s).map_err(serde::de::Error::custom)
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Endpoint> {
-    type Value = Endpoint;
+/*
+TODO: handle
+   ctx.serialize_core_value(
+            self,
+            CoreLibBaseTypeId::Endpoint.into(),
+            &ValueClassification::default(),
+            serializer,
+            false,
+        )
+in macro
+ */
 
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("an endpoint string")
+impl SerializeWithSerdeContext for Endpoint {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        ctx.serialize_core_value(
+            self,
+            CoreLibBaseTypeId::Endpoint.into(),
+            serializer,
+            false,
+        )
     }
+}
 
-    fn visit_str<E>(self, value: &str) -> Result<Endpoint, E>
+impl<'de> DeserializeWithSerdeContext<'de> for Endpoint {
+    fn deserialize_with_ctx<D>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Self, D::Error>
     where
-        E: Error,
+        D: serde::Deserializer<'de>,
     {
-        Endpoint::from_string(value).map_err(E::custom)
-    }
-
-    fn visit_string<E>(self, value: String) -> Result<Endpoint, E>
-    where
-        E: Error,
-    {
-        Endpoint::from_string(&value).map_err(E::custom)
+        match ctx.deserialize_core_value(deserializer)? {
+            CoreValue::Endpoint(endpoint) => Ok(endpoint),
+            _ => Err(D::Error::custom("Expected CoreValue::Endpoint")),
+        }
     }
 }

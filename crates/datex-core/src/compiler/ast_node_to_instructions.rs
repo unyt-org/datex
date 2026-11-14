@@ -1,0 +1,102 @@
+use crate::{
+    compiler::{
+        context::CompilationContext, error::CompilerError,
+        metadata::CompileContextMetadata,
+        precompiler::precompiled_ast::AstMetadata,
+    },
+    core_compiler::core_compilation_context::ByteCursor,
+    instruction::{
+        BytecodeItem, Instruction, Label, instruction_data::JumpData,
+        regular_instruction::RegularInstruction,
+    },
+    prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+};
+use binrw::BinWrite;
+
+pub trait AstNodeToInstructions {
+    fn ast_node_to_instructions<'a>(
+        &'a self,
+        compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
+        ast_metadata: &'a mut AstMetadata,
+        ctx_metadata: CompileContextMetadata,
+    ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a>;
+    
+
+    /// Compiles a given AST node to a DXB byte buffer, using the provided compilation context, metadata, and scope.
+    fn try_compile_to_dxb(
+        &self,
+        compilation_context: &mut CompilationContext,
+        cache: &mut SharedReferencesCache,
+        ast_metadata: &mut AstMetadata,
+    ) -> Result<Vec<u8>, CompilerError> {
+        let mut buffer = ByteCursor::new(Vec::new());
+        let mut labels: HashMap<Label, u32> = HashMap::new();
+
+        // byte position, offset base label, target label
+        let mut fixes: Vec<(u32, Label, Label)> = Vec::new();
+
+        for item in self.ast_node_to_instructions(
+            compilation_context,
+            cache,
+            ast_metadata,
+            CompileContextMetadata::outer(),
+            // TODO see how to pass the context trought ast_node_to_instructions and when
+            // to fork
+        ) {
+            match item? {
+                BytecodeItem::Instruction(instruction) => {
+                    instruction.write(&mut buffer)?;
+                }
+                BytecodeItem::Label(label) => {
+                    labels.insert(label, buffer.position() as u32);
+                }
+                BytecodeItem::Jump { target } => {
+                    let instruction = Instruction::Regular(
+                        RegularInstruction::Jump(JumpData { offset: 0 }),
+                    );
+                    let start = buffer.position() as u32;
+                    instruction.write(&mut buffer)?;
+                    fixes.push((start + 1, Label(start), target));
+                }
+
+                BytecodeItem::JumpIfFalse {
+                    target,
+                    condition_end,
+                } => {
+                    let instruction = Instruction::Regular(
+                        RegularInstruction::JumpIfFalse(JumpData { offset: 0 }),
+                    );
+                    let start = buffer.position() as u32;
+                    instruction.write(&mut buffer)?;
+                    fixes.push((start + 1, condition_end, target));
+                }
+            }
+        }
+
+        let mut bytes = buffer.into_inner();
+
+        for (operand_pos, base_label, target_label) in fixes {
+            let base = match base_label {
+                Label(_) if !labels.contains_key(&base_label) => {
+                    operand_pos + 4
+                }
+                _ => *labels
+                    .get(&base_label)
+                    .ok_or_else(|| CompilerError::InvalidJump)?,
+            };
+
+            let target = *labels
+                .get(&target_label)
+                .ok_or_else(|| CompilerError::InvalidJump)?;
+
+            let offset = i32::try_from(target as i64 - base as i64)
+                .map_err(|_| CompilerError::InvalidJump)?;
+            let range = (operand_pos as usize)..operand_pos as usize + 4;
+            bytes[range].copy_from_slice(&offset.to_le_bytes());
+        }
+
+        Ok(bytes)
+    }
+}

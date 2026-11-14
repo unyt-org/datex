@@ -1,9 +1,6 @@
 use crate::{
     value_updates::errors::UpdateError,
-    values::{
-        value::Value,
-        value_container::{ValueContainer, value_key::ValueKey},
-    },
+    values::{value::Value, value_container::ValueContainer},
 };
 
 /// Trait that can be implemented on core values that allows the resolution
@@ -11,13 +8,15 @@ use crate::{
 pub trait LocalChildPathResolver {
     fn resolve_child(
         &mut self,
-        key: &ValueKey,
-    ) -> Result<&mut ValueContainer, UpdateError>;
+        _key: &ValueContainer,
+    ) -> Result<&mut ValueContainer, UpdateError> {
+        Err(UpdateError::InvalidUpdate)
+    }
 
     fn resolve_value_for_path(
         &mut self,
-        first: &ValueKey,
-        remaining_path: &[ValueKey],
+        first: &ValueContainer,
+        remaining_path: &[ValueContainer],
     ) -> Result<&mut Value, UpdateError> {
         let child = self.resolve_child(first)?;
 

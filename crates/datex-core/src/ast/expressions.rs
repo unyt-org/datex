@@ -23,11 +23,13 @@ use crate::{
     },
     values::{
         core_value::CoreValue,
+        core_value_with_classification::CoreValueWithClassification,
         core_values::{
-            self, Instant,
+            self,
             boolean::Boolean,
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
+            instant::Instant,
             integer::{Integer, typed_integer::TypedInteger},
             text::Text,
         },
@@ -92,6 +94,7 @@ impl PartialEq for DatexExpression {
         self.data == other.data
     }
 }
+impl Eq for DatexExpression {}
 
 #[derive(Clone, Debug, PartialEq)]
 /// The different kinds of type expressions in the AST
@@ -141,6 +144,10 @@ pub enum DatexExpressionData {
     List(List),
     /// Map, e.g {"xy": 2, (3): 4, xy: "xy"}
     Map(Map),
+
+    Sender,
+    Receiver,
+
     /// One or more statements, e.g (1; 2; 3)
     Statements(Statements),
     /// reference access to shared value, e.g. '$ABC / 'mut $ABC
@@ -178,7 +185,7 @@ pub enum DatexExpressionData {
     TypeExpression(TypeExpression),
 
     /// callable (function/procedure) declaration, e.g. function my_function() -> type ( ... )
-    CallableDeclaration(CallableDeclaration),
+    CallableDeclaration(Box<CallableDeclaration>),
 
     /// Create a new shared container
     CreateShared(CreateShared),
@@ -252,6 +259,14 @@ pub enum DatexExpressionData {
     EntityValue(EntityValueExpression),
 }
 
+impl DatexExpressionData {
+    pub fn callable_declaration(
+        callable_declaration: CallableDeclaration,
+    ) -> Self {
+        DatexExpressionData::CallableDeclaration(Box::new(callable_declaration))
+    }
+}
+
 impl Spanned for DatexExpressionData {
     type Output = DatexExpression;
 
@@ -304,10 +319,12 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
             }) => {
                 let value = ValueContainer::try_from(expression.data())?;
                 match value {
-                    ValueContainer::Local(Value {
-                        inner: CoreValue::Integer(_) | CoreValue::Decimal(_),
-                        ..
-                    }) => match operator {
+                    ValueContainer::Local(Value::Core(
+                        CoreValueWithClassification {
+                            inner: CoreValue::Integer(_) | CoreValue::Decimal(_),
+                            ..
+                        },
+                    )) => match operator {
                         UnaryOperator::Arithmetic(
                             ArithmeticUnaryOperator::Plus,
                         ) => value,

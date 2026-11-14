@@ -1,7 +1,10 @@
 use crate::{
-    datex_proxy::DatexProxyType,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::{
+        convert_value_container::ConvertValueContainer,
+        get_datex_type::GetDatexType,
+    },
     types::r#type::Type,
     values::{
         core_values::callable::error::CallableError,
@@ -26,7 +29,7 @@ macro_rules! impl_datex_callable {
             where
                 F: Fn(#(A~N,)*) -> R,
                 #(
-                    A~N: DatexProxyType + TryFrom<ValueContainer>,
+                    A~N: GetDatexType + ConvertValueContainer,
                 )*
             {
                 fn parameters(
@@ -49,7 +52,7 @@ macro_rules! impl_datex_callable {
                         let arg~N: A~N = args
                             .next()
                             .unwrap()
-                            .try_into()
+                            .try_into_value()
                             .map_err(|_| CallableError::InvalidSignature)?;
                     )*
                     Ok(self(#(arg~N,)*))

@@ -1,37 +1,41 @@
 use crate::runtime::cache::shared_values_cache::SharedValuesCache;
-use core::marker::PhantomData;
+use core::cell::RefCell;
+
+#[cfg(test)]
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
+#[cfg(test)]
+use crate::dif::serialize_with_serde_context::SerializeWithSerdeContext;
+#[cfg(test)]
+use crate::prelude::*;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 #[derive(Debug)]
-pub struct SerdeContext<'ctx, T> {
-    pub shared_container_cache: &'ctx mut SharedValuesCache,
-    _marker: PhantomData<T>,
+pub struct SerdeContext<'ctx> {
+    pub shared_values_cache: &'ctx RefCell<SharedValuesCache>,
+    pub shared_references_cache: &'ctx RefCell<SharedReferencesCache>,
 }
 
-impl<'ctx, T> SerdeContext<'ctx, T> {
-    pub fn new(shared_container_cache: &'ctx mut SharedValuesCache) -> Self {
+impl<'ctx> SerdeContext<'ctx> {
+    pub fn new(
+        shared_container_cache: &'ctx RefCell<SharedValuesCache>,
+        shared_references_cache: &'ctx RefCell<SharedReferencesCache>,
+    ) -> Self {
         Self {
-            shared_container_cache,
-            _marker: PhantomData,
+            shared_values_cache: shared_container_cache,
+            shared_references_cache,
         }
-    }
-
-    /// Converts this deserialization context to a deserialization context for another type U
-    pub fn cast<U>(&mut self) -> SerdeContext<'_, U> {
-        SerdeContext::new(self.shared_container_cache)
     }
 
     /// Try to deserialize a JSON string to a DATEX value using the provided context
     #[cfg(test)]
-    pub fn try_deserialize_from_json(
-        self,
+    pub fn try_deserialize_from_json<T>(
+        &self,
         json_string: &'ctx str,
     ) -> Result<T, serde_json::Error>
     where
-        SerdeContext<'ctx, T>: serde::de::DeserializeSeed<'ctx, Value = T>,
+        T: DeserializeWithSerdeContext<'ctx>,
     {
-        use serde::de::DeserializeSeed;
-
-        DeserializeSeed::deserialize(
+        DeserializeWithSerdeContext::deserialize_with_ctx(
             self,
             &mut serde_json::Deserializer::from_str(json_string),
         )
@@ -39,21 +43,14 @@ impl<'ctx, T> SerdeContext<'ctx, T> {
 
     /// Convert a serializable DATEX value to a JSON string
     #[cfg(test)]
-    pub fn serialize_to_json(&mut self, value: &T) -> alloc::string::String
+    pub fn serialize_to_json<T>(&mut self, value: &T) -> String
     where
-        SerdeContext<'ctx, T>:
-            crate::utils::serde_serialize_seed::SerializeSeed<Value = T>,
+        T: SerializeWithSerdeContext,
     {
-        use crate::{prelude::*, utils::serde_serialize_seed::SerializeSeed};
+        use crate::prelude::*;
         let mut serializer = serde_json::Serializer::new(Vec::new());
-        self.serialize(value, &mut serializer).unwrap();
+        value.serialize_with_ctx(self, &mut serializer).unwrap();
         let bytes = serializer.into_inner();
         String::from_utf8(bytes).unwrap()
-    }
-}
-
-impl<'ctx> From<&'ctx mut SharedValuesCache> for SerdeContext<'ctx, ()> {
-    fn from(cache: &'ctx mut SharedValuesCache) -> Self {
-        SerdeContext::new(cache)
     }
 }

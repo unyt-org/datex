@@ -1,42 +1,40 @@
 use crate::{
-    dif::serde_context::SerdeContext,
-    prelude::*,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    dif::{
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+    },
     value_updates::UpdateReturn,
-    values::value_container::ValueContainer,
 };
 
+use crate::dif::{
+    dif_vec::DIFVec, value_with_serde_context::ValueWithSerdeContext,
+};
 use serde::{
     Serializer,
     ser::{SerializeSeq, SerializeStruct},
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, UpdateReturn> {
-    type Value = UpdateReturn;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
+impl SerializeWithSerdeContext for UpdateReturn {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(None)?;
 
-        match value {
+        match self {
             UpdateReturn::None => {
                 seq.serialize_element("none")?;
             }
             UpdateReturn::SingleValue(value) => {
                 seq.serialize_element("single_value")?;
-                seq.serialize_element(&ValueWithSeed::new(
-                    value,
-                    self.cast::<ValueContainer>(),
-                ))?;
+                seq.serialize_element(&ValueWithSerdeContext::new(value, ctx))?;
             }
             UpdateReturn::MultipleValues(values) => {
                 seq.serialize_element("multiple_values")?;
-                seq.serialize_element(&ValueWithSeed::new(
-                    values,
-                    self.cast::<Vec<ValueContainer>>(),
+                seq.serialize_element(&ValueWithSerdeContext::new(
+                    &DIFVec(values),
+                    ctx,
                 ))?;
             }
         }

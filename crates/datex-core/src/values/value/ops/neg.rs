@@ -6,6 +6,11 @@ impl Neg for Value {
     type Output = Result<Value, ValueError>;
 
     fn neg(self) -> Self::Output {
-        (-self.inner).map(Value::from)
+        match self {
+            Value::Core(core_value) => (-core_value).map(Value::Core),
+            Value::Native(_native_value) => {
+                todo!()
+            }
+        }
     }
 }

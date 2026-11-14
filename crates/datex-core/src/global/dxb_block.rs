@@ -70,7 +70,7 @@ pub enum IncomingSection {
     /// a single block
     SingleBlock((Option<DXBBlock>, IncomingEndpointContextSectionId)),
     /// a stream of blocks
-    /// the stream is finished when a block has the end_of_block flag set
+    /// the stream is finished when a block has the end_of_section flag set
     BlockStream(
         (
             Option<UnboundedReceiver<DXBBlock>>,

@@ -30,6 +30,55 @@ mod local;
 mod remote;
 mod script;
 
+/// Represents an execution context that can be either final (dropped after execution) or persisted (kept for future executions).
+/// Depending on this, the [is_end_of_context] flag is set to true or false on the DXB block
+pub enum FinalOrPersistedExecutionContext<'a> {
+    /// The execution is no longer used afterwards and will be dropped after the execution is finished
+    Final(ExecutionContext),
+    /// The execution context is only given as a reference and will be persisted after the execution is finished.
+    /// This allows reusing the same execution context for multiple executions.
+    Ongoing(&'a mut ExecutionContext),
+}
+
+impl FinalOrPersistedExecutionContext<'_> {
+    /// Returns true if the execution context is final and will be dropped after the execution is finished.
+    pub fn is_end_of_context(&self) -> bool {
+        matches!(self, FinalOrPersistedExecutionContext::Final(_))
+    }
+}
+
+impl AsRef<ExecutionContext> for FinalOrPersistedExecutionContext<'_> {
+    fn as_ref(&self) -> &ExecutionContext {
+        match self {
+            FinalOrPersistedExecutionContext::Final(context) => context,
+            FinalOrPersistedExecutionContext::Ongoing(context) => context,
+        }
+    }
+}
+
+impl AsMut<ExecutionContext> for FinalOrPersistedExecutionContext<'_> {
+    fn as_mut(&mut self) -> &mut ExecutionContext {
+        match self {
+            FinalOrPersistedExecutionContext::Final(context) => context,
+            FinalOrPersistedExecutionContext::Ongoing(context) => context,
+        }
+    }
+}
+
+impl From<ExecutionContext> for FinalOrPersistedExecutionContext<'_> {
+    fn from(context: ExecutionContext) -> Self {
+        FinalOrPersistedExecutionContext::Final(context)
+    }
+}
+
+impl<'a> From<&'a mut ExecutionContext>
+    for FinalOrPersistedExecutionContext<'a>
+{
+    fn from(context: &'a mut ExecutionContext) -> Self {
+        FinalOrPersistedExecutionContext::Ongoing(context)
+    }
+}
+
 /// An execution context holds the persistent state for executing multiple scripts sequentially within the same context.
 /// This can be either a local context, which is used for executing scripts in the same process, or a remote context,
 /// which is used for executing scripts on a remote endpoint.
@@ -100,6 +149,7 @@ impl ExecutionContext {
         inserted_values: &[ValueContainer],
         receivers: Vec<Endpoint>,
     ) -> Result<DXBWithSharedValues, SpannedCompilerError> {
+        use crate::compiler::compilation_result::CompilationResult;
         let compile_scope = self.compile_scope();
         // TODO #107: don't clone compile_scope if possible
         let res = compile_template(
@@ -113,9 +163,13 @@ impl ExecutionContext {
             self.runtime().clone(),
         );
         match res {
-            Ok((result, compile_scope)) => {
-                self.set_compile_scope(compile_scope);
-                Ok(result)
+            Ok(CompilationResult {
+                dxb_with_shared_values,
+                scope,
+                ..
+            }) => {
+                self.set_compile_scope(scope);
+                Ok(dxb_with_shared_values)
             }
             Err(err) => Err(err),
         }
@@ -132,10 +186,11 @@ impl ExecutionContext {
 
         #[cfg(feature = "decompiler")]
         {
-            let decompiled = crate::decompiler::decompile_body(
-                dxb,
-                crate::decompiler::DecompileOptions::colorized(),
-            );
+            let decompiled =
+                crate::decompiler::dxb_to_source_code::dxb_to_source_code(
+                    dxb,
+                    crate::decompiler::DecompileOptions::colorized(),
+                );
             if let Err(e) = decompiled {
                 info!("\x1b[31m[Decompiler Error] {e}\x1b[0m");
             } else {

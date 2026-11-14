@@ -1,8 +1,9 @@
 use crate::{
+    global::protocol_structures::serializable::Serializable,
     instruction::{
         NextExpectedInstructions,
         instruction_data::{
-            CallableSignatureData, ImplTypeData, IntersectionData, ListData,
+            CallableSignatureData, ImplMarkersData, IntersectionData, ListData,
             ListSliceCollectionData, MapData, TaggedTypeData,
             TypeReferenceData, UnionData,
         },
@@ -26,7 +27,7 @@ pub enum TypeInstruction {
     #[brw(magic = 0x0u8)]
     CoreType(CoreLibTypeId),
     #[brw(magic = 0x1u8)]
-    ImplType(ImplTypeData),
+    ImplMarkers(ImplMarkersData),
     #[brw(magic = 0x2u8)]
     SharedTypeReference(TypeReferenceData),
     #[brw(magic = 0x3u8)]
@@ -53,8 +54,14 @@ pub enum TypeInstruction {
     ListCollection,
     #[brw(magic = 0xEu8)]
     Boxed,
-    #[brw(magic = 0xFFu8)]
+    #[brw(magic = 0xFu8)]
     Callable(CallableSignatureData),
+    #[brw(magic = 0x11u8)]
+    EntityType,
+    #[brw(magic = 0x12u8)]
+    Sender,
+    #[brw(magic = 0x13u8)]
+    Receiver,
 }
 
 /// Serializes TypeInstruction to tuple (instruction code as string, optional metadata as string)
@@ -104,7 +111,6 @@ impl TypeInstruction {
             TypeInstruction::Callable(callable) => {
                 NextExpectedInstructions::Type(callable.total_type_count())
             }
-            TypeInstruction::ImplType(_) => NextExpectedInstructions::Type(1),
             TypeInstruction::TaggedType(ty) => {
                 if ty.has_type {
                     NextExpectedInstructions::Type(1)
@@ -116,6 +122,9 @@ impl TypeInstruction {
                 NextExpectedInstructions::Type(1)
             }
             TypeInstruction::Range => NextExpectedInstructions::Type(2),
+            TypeInstruction::EntityType => NextExpectedInstructions::Regular(1),
+            TypeInstruction::Sender => NextExpectedInstructions::Type(1),
+            TypeInstruction::Receiver => NextExpectedInstructions::Type(1),
             _ => NextExpectedInstructions::None,
         }
     }
@@ -136,14 +145,11 @@ impl TypeInstruction {
             TypeInstruction::CoreType(data) => {
                 write!(string, "{}", data)
             }
-            TypeInstruction::ImplType(data) => {
+            TypeInstruction::ImplMarkers(data) => {
                 write!(string, "[{} impls]", data.impl_count)
             }
             TypeInstruction::TaggedType(data) => {
                 write!(string, "[tag: {}]", data.tag.0)
-            }
-            TypeInstruction::Map(data) => {
-                write!(string, "[{} entries]", data.element_count)
             }
             TypeInstruction::Union(data) => {
                 write!(string, "[{} elements]", data.element_count)
@@ -159,6 +165,13 @@ impl TypeInstruction {
             }
             TypeInstruction::Boxed => {
                 write!(string, "[boxed]")
+            }
+            TypeInstruction::Map(data) => {
+                write!(
+                    string,
+                    "[count: {}, allow_only_text_keys: {}]",
+                    data.element_count, data.allow_only_text_keys
+                )
             }
             _ => {
                 // no custom disassembly
@@ -181,5 +194,13 @@ impl Display for TypeInstruction {
         }
 
         Ok(())
+    }
+}
+impl Serializable for TypeInstruction {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut writer = binrw::io::Cursor::new(Vec::new());
+        self.write(&mut writer)
+            .expect("instruction should serialize");
+        writer.into_inner()
     }
 }

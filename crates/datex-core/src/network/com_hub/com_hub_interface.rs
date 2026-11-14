@@ -12,8 +12,15 @@ use crate::network::{
 use log::info;
 
 use crate::{
-    network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory,
-    prelude::*, values::value::Value,
+    network::{
+        com_hub::managers::com_interface_manager::InterfaceInfo,
+        com_interfaces::com_interface::{
+            factory::ComInterfaceAsyncFactory,
+            properties::{ComInterfaceProperties, ReconnectionConfig},
+        },
+    },
+    prelude::*,
+    values::value::Value,
 };
 
 /// Interface management methods
@@ -35,9 +42,15 @@ impl ComHub {
         &self,
         interface_type: String,
         factory: DynInterfaceImplementationFactoryFn,
+        reconnection_config: ReconnectionConfig,
+        get_default_properties: fn() -> ComInterfaceProperties,
     ) {
-        self.interfaces_manager
-            .register_dyn_interface_factory(interface_type, factory);
+        self.interfaces_manager.register_dyn_interface_factory(
+            interface_type,
+            factory,
+            reconnection_config,
+            get_default_properties,
+        );
     }
 
     /// Adds a new interface to the ComHub based on the provided configuration
@@ -52,6 +65,7 @@ impl ComHub {
             uuid,
             interface_configuration.properties.clone(),
             priority,
+            None,
         )?;
         let ready_signal = self.register_com_interface_handler(
             interface_configuration,
@@ -123,32 +137,32 @@ impl ComHub {
 
     pub async fn remove_interface(
         &self,
-        interface_uuid: ComInterfaceUUID,
-    ) -> Result<(), ()> {
+        interface_uuid: &ComInterfaceUUID,
+    ) -> Result<InterfaceInfo, ()> {
         info!("Removing interface with UUID: {}", interface_uuid);
 
-        if !self.interfaces_manager.has_interface(&interface_uuid) {
+        if !self.interfaces_manager.has_interface(interface_uuid) {
             return Err(());
         }
 
         let interface_loop_active = self
             .interfaces_manager
-            .is_interface_waiting_for_socket_connections(&interface_uuid);
+            .is_interface_waiting_for_socket_connections(interface_uuid);
 
         let remove_future = if interface_loop_active {
             Some(
                 self.interfaces_manager
-                    .trigger_remove_interface(&interface_uuid),
+                    .trigger_remove_interface(interface_uuid),
             )
         } else {
             None
         };
 
-        self.interfaces_manager.cleanup_interface(&interface_uuid)?;
+        let info = self.interfaces_manager.cleanup_interface(interface_uuid)?;
 
         // clean up all associated sockets first, to trigger socket close callbacks and interface cleanup if necessary
         self.socket_manager
-            .remove_sockets_for_interface_uuid(&interface_uuid)
+            .remove_sockets_for_interface_uuid(interface_uuid)
             .await;
 
         // interface is still active, must be explicitly stopped
@@ -157,7 +171,7 @@ impl ComHub {
             let _ = remove_future.await;
         }
 
-        Ok(())
+        Ok(info)
     }
 
     pub fn has_interface(&self, interface_uuid: &ComInterfaceUUID) -> bool {
@@ -179,7 +193,11 @@ mod tests {
             protocol_structures::routing_header::SignatureType,
         },
         network::{
-            com_hub::{ComHub, InterfacePriority, metadata::ComHubMetadata},
+            block_handler::{BlockHandler, create_incoming_sections_channel},
+            com_hub::{
+                ComHub, ComInterfaceReconnectRequest, InterfacePriority,
+                metadata::ComHubMetadata,
+            },
             com_interfaces::com_interface::{
                 ComInterfaceUUID,
                 factory::{
@@ -232,9 +250,15 @@ mod tests {
         let properties = configuration.properties.clone();
 
         let (incoming_sections_sender, _incoming_sections_receiver) =
-            create_unbounded_channel::<IncomingSection>();
-        let (com_hub, task_future) =
-            ComHub::create(Endpoint::default(), incoming_sections_sender);
+            create_incoming_sections_channel();
+        let (reconnect_request_sender, _reconnect_request_receiver) =
+            create_unbounded_channel::<ComInterfaceReconnectRequest>();
+        let (com_hub, task_future) = ComHub::create(
+            Endpoint::default(),
+            incoming_sections_sender,
+            reconnect_request_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
 
         // add interface
         com_hub
@@ -272,10 +296,7 @@ mod tests {
         // remove interface before the com interface is fully initialized
         select(
             Box::pin(async {
-                com_hub
-                    .remove_interface(interface_uuid.clone())
-                    .await
-                    .unwrap();
+                com_hub.remove_interface(&interface_uuid).await.unwrap();
             }),
             Box::pin(task_future),
         )
@@ -304,10 +325,7 @@ mod tests {
                         .socket_manager
                         .are_sockets_registered_for_interface(&interface_uuid)
                 );
-                com_hub
-                    .remove_interface(interface_uuid.clone())
-                    .await
-                    .unwrap();
+                com_hub.remove_interface(&interface_uuid).await.unwrap();
             }),
             Box::pin(task_future),
         )
@@ -324,11 +342,17 @@ mod tests {
     #[tokio::test]
     async fn remove_nonexistent_interface() {
         let (incoming_sections_sender, _incoming_sections_receiver) =
-            create_unbounded_channel::<IncomingSection>();
-        let (com_hub, _task_future) =
-            ComHub::create(Endpoint::default(), incoming_sections_sender);
+            create_incoming_sections_channel();
+        let (reconnect_request_sender, _reconnect_request_receiver) =
+            create_unbounded_channel::<ComInterfaceReconnectRequest>();
+        let (com_hub, _task_future) = ComHub::create(
+            Endpoint::default(),
+            incoming_sections_sender,
+            reconnect_request_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
 
-        let result = com_hub.remove_interface(ComInterfaceUUID::new()).await;
+        let result = com_hub.remove_interface(&ComInterfaceUUID::new()).await;
         assert!(result.is_err());
     }
 
@@ -362,7 +386,7 @@ mod tests {
             // create block to send from A to B
             let block_a_to_b_body = [1, 2, 3];
             let mut block_a_to_b = DXBBlock::new_with_body(&block_a_to_b_body);
-            block_a_to_b.set_receivers(vec![peer_b.com_hub.endpoint.clone()]);
+            block_a_to_b.set_receivers(vec![peer_b.com_hub.endpoint().clone()]);
             block_a_to_b
                 .routing_header
                 .flags

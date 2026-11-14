@@ -1,53 +1,85 @@
 use crate::{
-    dif::serde_context::SerdeContext, prelude::*,
-    utils::serde_serialize_seed::SerializeSeed,
+    dif::{
+        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
+    },
+    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
+    prelude::*,
     values::core_values::callable::Callable,
 };
 use core::fmt;
+use num_traits::ToPrimitive;
 use serde::{
     Deserializer, Serializer,
-    de::{DeserializeSeed, SeqAccess, Visitor},
+    de::{SeqAccess, Visitor},
     ser::SerializeTuple,
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Callable> {
-    type Value = Callable;
+struct InnerCallable<'a>(&'a Callable);
 
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
+impl SerializeWithSerdeContext for InnerCallable<'_> {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         // put callable into cache
-        let hash = self.shared_container_cache.store_callable(value.clone());
+        let hash = ctx
+            .shared_values_cache
+            .borrow_mut()
+            .store_callable(self.0.clone());
         let mut data = serializer.serialize_tuple(3)?;
 
         // store hash
         data.serialize_element(&hash.to_string())?;
 
         // store name
-        data.serialize_element(&value.name)?;
+        data.serialize_element(&self.0.name)?;
 
         // async bool
-        data.serialize_element(&value.signature.requires_async)?;
+        data.serialize_element(&self.0.signature.requires_async)?;
 
         data.end()
         // todo: also store function signature information
     }
 }
-
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Callable> {
-    type Value = Callable;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Callable, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_any(self)
+impl SerializeWithSerdeContext for Callable {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let mut tuple = serializer.serialize_tuple(2)?;
+        tuple.serialize_element(
+            &CoreLibIdIndex::from(CoreLibBaseTypeId::Callable).to_u16(),
+        )?;
+        tuple.serialize_element(&ValueWithSerdeContext::new(
+            &InnerCallable(self),
+            ctx,
+        ))?;
+        tuple.end()
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Callable> {
+impl<'de> DeserializeWithSerdeContext<'de> for Callable {
+    fn deserialize_with_ctx<D>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Callable, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer
+            .deserialize_any(DeserializeSerdeContext::<Callable>::new(ctx))
+    }
+}
+
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, Callable>
+{
     type Value = Callable;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -70,7 +102,9 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Callable> {
         let _requires_async: Option<bool> = seq.next_element()?;
 
         let callable = self
-            .shared_container_cache
+            .ctx
+            .shared_values_cache
+            .borrow_mut()
             .get_callable(hash_u64)
             .ok_or_else(|| {
                 serde::de::Error::custom(format!(

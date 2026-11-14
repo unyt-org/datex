@@ -3,7 +3,7 @@ use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Datex, Debug, Serialize, Deserialize)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 pub struct DisassemblerOptions {
     #[serde(default)]
     pub tree: bool,

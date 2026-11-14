@@ -1,53 +1,81 @@
-use core::fmt;
-
 use crate::{
-    dif::serde_context::SerdeContext,
+    dif::{
+        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
+    },
+    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
     prelude::*,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::{core_values::range::Range, value_container::ValueContainer},
 };
+use core::fmt;
+use num_traits::ToPrimitive;
 use serde::{
     Serializer,
-    de::{DeserializeSeed, Error, IgnoredAny, MapAccess, Visitor},
+    de::{Error, IgnoredAny, MapAccess, Visitor},
     ser::{SerializeSeq, SerializeStruct, SerializeTuple},
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Range> {
-    type Value = Range;
+struct InnerRange<'a>(&'a Range);
 
-    fn serialize<S>(
-        &mut self,
-        value: &Self::Value,
+impl SerializeWithSerdeContext for InnerRange<'_> {
+    fn serialize_with_ctx<S>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let mut state = serializer.serialize_tuple(2)?;
-        state.serialize_element(&ValueWithSeed::new(
-            &*value.start,
-            self.cast::<ValueContainer>(),
+        state.serialize_element(&ValueWithSerdeContext::new(
+            &*self.0.start,
+            ctx,
         ))?;
-        state.serialize_element(&ValueWithSeed::new(
-            &*value.end,
-            self.cast::<ValueContainer>(),
+        state.serialize_element(&ValueWithSerdeContext::new(
+            &*self.0.end,
+            ctx,
         ))?;
         state.end()
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Range> {
-    type Value = Range;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Range, D::Error>
+impl SerializeWithSerdeContext for Range {
+    fn serialize_with_ctx<S>(
+        &self,
+        ctx: &SerdeContext<'_>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
     where
-        D: serde::Deserializer<'de>,
+        S: Serializer,
     {
-        deserializer.deserialize_map(self)
+        let mut tuple = serializer.serialize_tuple(2)?;
+        tuple.serialize_element(
+            &CoreLibIdIndex::from(CoreLibBaseTypeId::Range).to_u16(),
+        )?;
+        tuple.serialize_element(&ValueWithSerdeContext::new(
+            &InnerRange(self),
+            ctx,
+        ))?;
+        tuple.end()
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Range> {
+impl<'de> DeserializeWithSerdeContext<'de> for Range {
+    fn deserialize_with_ctx<D>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Range, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(DeserializeSerdeContext::<Range>::new(ctx))
+    }
+}
+
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Range> {
     type Value = Range;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -55,7 +83,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Range> {
     }
 
     /// We can have the range represented as a sequence of two elements (start and end)
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where
         A: serde::de::SeqAccess<'de>,
     {
@@ -74,7 +102,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Range> {
 
     /// We expect the range to be represented as a map with "start" and "end" keys, each containing a ValueContainer.
     /// TODO: Add inclusive / exclusive marker here
-    fn visit_map<A>(mut self, mut map: A) -> Result<Range, A::Error>
+    fn visit_map<A>(self, mut map: A) -> Result<Range, A::Error>
     where
         A: MapAccess<'de>,
     {

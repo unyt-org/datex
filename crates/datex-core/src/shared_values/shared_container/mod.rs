@@ -12,12 +12,13 @@ use crate::{
         },
         traits::_ExposeRcInternal,
     },
-    utils::sheep::Sheep,
     values::value_container::ValueContainer,
 };
 pub mod identity;
+pub(crate) mod to_instructions;
 use crate::{
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{
         ReferenceMutability,
         base_shared_value_container::observers::{
@@ -30,11 +31,12 @@ use crate::{
         shared_mut::SharedMut,
         traits::SharedContainerCommon,
     },
+    traits::convert_value_container::ConvertValueContainer,
     types::type_definition::TypeDefinition,
     value_updates::update_handler::{
         InternalMutabilityUpdateHandler, UpdateCallbackData,
     },
-    values::core_value::CoreValue,
+    values::{core_value::CoreValue, core_values::native::DatexNative},
 };
 use alloc::rc::Rc;
 use core::{
@@ -91,6 +93,22 @@ impl SharedContainer {
                 address_provider,
             ),
         )
+    }
+
+    /// Creates a new owned [SharedContainer] containing an initial [DatexNative] value.
+    /// The allowed type is the type of the [DatexNative].
+    pub fn new_native<T: DatexNative>(
+        value: T,
+        mutability: SharedContainerMutability,
+        address_provider: &mut SelfOwnedPointerAddressProvider,
+        cache: &mut SharedReferencesCache,
+    ) -> Self {
+        SharedContainer::Owned(OwnedSharedContainer::new_native(
+            value,
+            mutability,
+            address_provider,
+            cache,
+        ))
     }
 
     /// Creates a new owned [SharedContainer] with an initial [ValueContainer],
@@ -201,9 +219,9 @@ impl SharedContainer {
     }
 
     /// Gets the current actual [TypeDefinition] of the collapsed inner [Value]
-    pub fn actual_type(&self) -> Sheep<'_, TypeDefinition> {
+    pub fn actual_type(&self) -> TypeDefinition {
         let value = self.collapsed_value();
-        Sheep::Owned(value.borrow().actual_type().into_owned())
+        value.borrow().actual_type()
     }
 
     pub fn collapsed_value(&self) -> CollapsedContainerValue<'_> {
@@ -415,7 +433,7 @@ impl SharedContainer {
     /// This only works for local values, not for shared values.
     pub fn try_as<T>(&self) -> Option<Ref<'_, T>>
     where
-        for<'a> &'a T: TryFrom<&'a CoreValue>,
+        T: ConvertValueContainer,
     {
         Ref::filter_map(self.value_container(), |value| value.try_as::<T>())
             .ok()
@@ -426,7 +444,7 @@ impl SharedContainer {
     /// This only works for local values, not for shared values.
     pub fn try_as_mut<T>(&self) -> Option<SharedMut<'_, T>>
     where
-        for<'a> &'a mut T: TryFrom<&'a mut CoreValue>,
+        T: ConvertValueContainer,
     {
         RefMut::filter_map(self.value_container_mut(), |value| {
             value.try_as_mut::<T>()
@@ -438,6 +456,34 @@ impl SharedContainer {
     /// This method is called when a borrow of the inner shared container is dropped.
     pub fn notify_borrow_dropped(&self) {
         // TODO: this could be used in the future to trigger queued updates only after a borrow was dropped
+    }
+
+    /// Marks the shared container as uninitialized.
+    pub(crate) fn mark_uninitialized(&mut self) {
+        match self {
+            SharedContainer::Owned(owned) => owned.mark_uninitialized(),
+            SharedContainer::Referenced(referenced) => {
+                referenced.mark_uninitialized()
+            }
+        }
+    }
+
+    /// Unmarks the shared container as uninitialized.
+    pub(crate) fn unset_uninitialized(&mut self) {
+        match self {
+            SharedContainer::Owned(owned) => owned.unset_uninitialized(),
+            SharedContainer::Referenced(referenced) => {
+                referenced.unset_uninitialized()
+            }
+        }
+    }
+
+    pub fn mark_debug(&self, is_debug: bool) {
+        self.base_shared_container_mut().mark_debug(is_debug);
+    }
+
+    pub fn is_debug(&self) -> bool {
+        self.base_shared_container().is_debug()
     }
 }
 
@@ -459,6 +505,7 @@ impl Clone for SharedContainer {
     }
 }
 
+// TODO: use impl_display_for_datex_value
 impl Display for SharedContainer {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
@@ -472,8 +519,9 @@ impl Display for SharedContainer {
 
 pub mod clone_unsafe;
 mod common;
-pub mod datex_proxy;
+mod convert_value_container;
 pub mod equality;
+pub mod get_datex_type;
 pub mod update_handler;
 
 impl From<OwnedSharedContainer> for SharedContainer {

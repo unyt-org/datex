@@ -49,6 +49,9 @@ pub enum InstructionCode {
     SET_ENTRY_INDEX,   // set property with integer index
     SET_ENTRY_TEXT,    // set property with text key
 
+    SENDER,
+    RECEIVER,
+
     MATCHES, // matches
 
     STRUCTURAL_EQUAL,     // ==
@@ -98,6 +101,8 @@ pub enum InstructionCode {
     CALLABLE,             // for functions/procedures
     CALLABLE_DECLARATION, // for inline DATEX script function/procedure declarations
 
+    ENTITY_TYPE_DEFINITION,
+
     // Note: fix to sync with PointerAddress
     REQUEST_REMOTE_SHARED_REF,     // '$x
     REQUEST_REMOTE_SHARED_REF_MUT, // 'mut $x
@@ -120,8 +125,8 @@ pub enum InstructionCode {
 
     UNBOX, // *x
 
-    /// type byte codes --> switch to Type Space
-    TYPED_VALUE,
+    /// value with entity classification
+    ENTITY_VALUE,
     TYPE_EXPRESSION, // type()
 
     // ...
@@ -167,6 +172,7 @@ pub enum InstructionCode {
     // lists and maps 0xe0 - 0xef
     LIST,       // (1,2,3)
     SHORT_LIST, // (1,2,3) - optimized short list with up to 255 elements
+    COMPACT_LIST, // optimized representation for a list containing core values of the same type (e.g. List<integer/u8>)
     MAP,        // (a:1, b:2)
     SHORT_MAP,  // {a:1, b:2} - optimized short map with up to 255 elements
 
@@ -174,6 +180,8 @@ pub enum InstructionCode {
     KEY_VALUE_DYNAMIC, // for object elements with dynamic key
 
     REMOTE_EXECUTION, // ::
+
+    CLASSIFIED_VALUE,
 }
 impl InstructionCode {
     pub const fn as_u8(&self) -> u8 {
@@ -190,6 +198,7 @@ mod tests {
     #[ignore]
     #[test]
     fn instruction_code_values() {
+        flexi_logger::init();
         // print a list of all instruction codes and their values for debugging purposes
         for code in InstructionCode::iter() {
             info!("{:?} = {:2X}", code, code as u8);

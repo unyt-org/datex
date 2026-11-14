@@ -1,28 +1,35 @@
 use crate::{
-    dif::serde_context::SerdeContext,
+    dif::{
+        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
+    },
     libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibTypeId},
     prelude::*,
-    types::type_definition::TypeDefinition,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    types::entities::entity_type_definition::dyn_deserialize::DynSeed,
     values::{
-        core_value::{CoreValue, serde_dif::CoreValueVisitor},
-        core_values::{
-            boolean::Boolean, decimal::typed_decimal::TypedDecimal,
-            native::NativeCoreValue,
+        core_value::CoreValue,
+        core_value_with_classification::{
+            CoreValueWithClassification, serde_dif::TagMarker,
         },
-        value::Value,
-        value_container::ValueContainer,
+        value::{
+            Value,
+            value_classification::{ValueClassification, ValueTag},
+        },
     },
 };
-use core::fmt;
+use core::{fmt, str::FromStr};
 use num::ToPrimitive;
 use serde::{
     Deserializer, Serialize, Serializer,
-    de::{DeserializeSeed, Error as DeError, Visitor},
-    ser::SerializeTuple,
+    de::{self, Error as DeError, MapAccess, Visitor},
+    ser::{SerializeMap, SerializeTuple},
 };
+use strum::VariantNames;
 
-impl<'ctx> SerdeContext<'ctx, Value> {
+impl<'ctx> SerdeContext<'ctx> {
     /// This method is used to serialize a value that can be represented directly depending on the flag set (e.g. a boolean or a text)
     /// or with a custom type definition (e.g. a nominal type).
     /// ## For no custom type:
@@ -32,11 +39,10 @@ impl<'ctx> SerdeContext<'ctx, Value> {
     ///   42f32 -> "42"
     /// ## For custom type:
     /// {custom_type: LiteralTypeDefinition::Integer(42), value: 42} -> [<core_lib_id>, <type_definition>, 42]
-    fn serialize_with_core_type<Se, T>(
-        &mut self,
+    pub(crate) fn serialize_core_value<Se, T>(
+        &self,
         inner: &T,
         core_lib_type_id: CoreLibTypeId,
-        custom_type: &Option<TypeDefinition>,
         serializer: Se,
         direct: bool,
     ) -> Result<Se::Ok, Se::Error>
@@ -44,199 +50,114 @@ impl<'ctx> SerdeContext<'ctx, Value> {
         T: Serialize + ?Sized,
         Se: Serializer,
     {
-        if direct && custom_type.is_none() {
+        if direct {
             return inner.serialize(serializer);
         }
 
         let index = CoreLibIdIndex::from(core_lib_type_id);
-        let mut tuple = serializer
-            .serialize_tuple(if custom_type.is_some() { 3 } else { 2 })?;
+        let mut tuple = serializer.serialize_tuple(2)?;
         tuple.serialize_element(&index.to_u16())?;
         tuple.serialize_element(inner)?;
-        if let Some(custom_type) = custom_type {
-            // [id, value, custom_type]
-            tuple.serialize_element(&ValueWithSeed::new(
-                custom_type,
-                &mut self.cast::<TypeDefinition>(),
-            ))?;
-        } else {
-            // [id, value]
-        }
         tuple.end()
     }
 
-    fn serialize_with_core_type_serde<Se, T>(
-        &mut self,
+    /// This method is used to serialize a value that requires a context to be serialized (i.e. a value that implements [SerializeWithSerdeContext]).
+    /// It will serialize the value as a tuple of [<core_lib_id>, <value>, <classification>], where the classification is optional.
+    pub(crate) fn serialize_value_with_context<Se, T>(
+        &self,
         inner: &T,
         core_lib_type_id: CoreLibTypeId,
-        custom_type: &Option<TypeDefinition>,
         serializer: Se,
         direct: bool,
     ) -> Result<Se::Ok, Se::Error>
     where
         T: Sized,
         Se: Serializer,
-        for<'a> SerdeContext<'a, T>: SerializeSeed<Value = T>,
+        for<'a> T: SerializeWithSerdeContext,
     {
-        if direct && custom_type.is_none() {
-            return self.cast::<T>().serialize(inner, serializer);
+        if direct {
+            return inner.serialize_with_ctx(self, serializer);
         }
         let index = CoreLibIdIndex::from(core_lib_type_id);
-        let mut tuple = serializer
-            .serialize_tuple(if custom_type.is_some() { 3 } else { 2 })?;
+        let mut tuple = serializer.serialize_tuple(2)?;
         tuple.serialize_element(&index.to_u16())?;
-        tuple.serialize_element(&ValueWithSeed::new(
-            inner,
-            &mut self.cast::<T>(),
-        ))?;
-        if let Some(custom_type) = custom_type {
-            // [id, value, custom_type]
-            tuple.serialize_element(&ValueWithSeed::new(
-                custom_type,
-                &mut self.cast::<TypeDefinition>(),
-            ))?;
-        } else {
-            // [id, value]
-        }
+        tuple.serialize_element(&ValueWithSerdeContext::new(inner, self))?;
         tuple.end()
+    }
+
+    /// Deserializes into a [CoreValue] using the provided [CoreLibTypeId] to determine the type of the value.
+    pub(crate) fn deserialize_core_value<'de, D>(
+        &self,
+        deserializer: D,
+    ) -> Result<CoreValue, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let deserialize_ctx = DeserializeSerdeContext::<CoreValue>::new(self);
+        deserializer.deserialize_any(deserialize_ctx)
     }
 }
 
 /// Serialization for [Value].
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
-    type Value = Value;
-
-    fn serialize<S>(
-        &mut self,
-        value: &Self::Value,
+impl SerializeWithSerdeContext for Value {
+    fn serialize_with_ctx<S>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let core_lib_type = value.default_core_type();
-        match &value.inner {
-            // Direct serializable core values, that can be serialized as they can be unambiguously deserialized without it
-            CoreValue::Boolean(b) => self.serialize_with_core_type(
-                b,
-                core_lib_type,
-                &value.custom_type,
-                serializer,
-                true,
-            ),
-            CoreValue::Text(s) => self.serialize_with_core_type(
-                s,
-                core_lib_type,
-                &value.custom_type,
-                serializer,
-                true,
-            ),
-            CoreValue::Null => self.serialize_with_core_type(
-                &(),
-                core_lib_type,
-                &value.custom_type,
-                serializer,
-                true,
-            ),
-            CoreValue::TypedDecimal(dec @ TypedDecimal::F64(_)) => self
-                .serialize_with_core_type(
-                    &dec,
-                    core_lib_type,
-                    &value.custom_type,
-                    serializer,
-                    dec.is_finite(),
-                ),
-
-            // Core values that require a specific core type id to be serialized for non-ambiguous deserialization
-            CoreValue::Endpoint(endpoint) => self.serialize_with_core_type(
-                endpoint,
-                core_lib_type,
-                &value.custom_type,
-                serializer,
-                false,
-            ),
-            CoreValue::Decimal(d) => self.serialize_with_core_type(
-                d,
-                core_lib_type,
-                &value.custom_type,
-                serializer,
-                false,
-            ),
-            CoreValue::Integer(i) => self.serialize_with_core_type(
-                i,
-                core_lib_type,
-                &value.custom_type,
-                serializer,
-                false,
-            ),
-            CoreValue::TypedInteger(ti) => self.serialize_with_core_type(
-                ti,
-                core_lib_type,
-                &value.custom_type,
-                serializer,
-                false,
-            ),
-            CoreValue::TypedDecimal(td) => self.serialize_with_core_type(
-                td,
-                core_lib_type,
-                &value.custom_type,
-                serializer,
-                false,
-            ),
-
-            // Complex core values, that can contain nested values
-            CoreValue::List(l) => self.serialize_with_core_type_serde(
-                l,
-                core_lib_type,
-                &value.custom_type,
-                serializer,
-                false,
-            ),
-            CoreValue::Range(range) => self.serialize_with_core_type_serde(
-                range,
-                core_lib_type,
-                &value.custom_type,
-                serializer,
-                false,
-            ),
-
-            CoreValue::Map(map) => self.serialize_with_core_type_serde(
-                map,
-                core_lib_type,
-                &value.custom_type,
-                serializer,
-                false,
-            ),
-            CoreValue::Type(ty) => self.serialize_with_core_type_serde(
-                ty,
-                core_lib_type,
-                &value.custom_type,
-                serializer,
-                false,
-            ),
-            CoreValue::EntityTypeDefinition(_entity_type_definition) => {
-                todo!()
-            }
-            CoreValue::Callable(callable) => self
-                .serialize_with_core_type_serde(
-                    callable,
-                    core_lib_type,
-                    &value.custom_type,
-                    serializer,
-                    false,
-                ),
-            CoreValue::Box(inner) => {
-                self.cast::<ValueContainer>().serialize(inner, serializer)
-            }
-            CoreValue::Uninitialized => panic!("Uninitialized value"),
-            CoreValue::Native(native) => {
-                self.cast::<NativeCoreValue>().serialize(native, serializer)
-            }
+        match self {
+            Value::Native(native) => native.serialize_with_ctx(ctx, serializer),
+            Value::Core(core) => core.serialize_with_ctx(ctx, serializer),
         }
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
+impl SerializeWithSerdeContext for (&CoreValue, &Option<ValueTag>) {
+    fn serialize_with_ctx<S>(
+        &self,
+        ctx: &SerdeContext<'_>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // if no tag, just serialize the core value
+        if self.1.is_none() {
+            self.0.serialize_with_ctx(ctx, serializer)
+        }
+        // else serialize as a map with "t" and "v" keys
+        else {
+            let mut map = serializer.serialize_map(Some(3))?;
+            map.serialize_entry(
+                TagMarker::Hint.as_ref(),
+                TagMarker::Tag.as_ref(),
+            )?;
+            map.serialize_entry(TagMarker::Tag.as_ref(), &self.1)?;
+            map.serialize_entry(
+                TagMarker::Value.as_ref(),
+                &ValueWithSerdeContext::new(&self.0, ctx),
+            )?;
+            map.end()
+        }
+    }
+}
+
+impl<'de> DeserializeWithSerdeContext<'de> for Value {
+    fn deserialize_with_ctx<D>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(DeserializeSerdeContext::<Value>::new(ctx))
+    }
+}
+
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
     type Value = Value;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -248,7 +169,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
     where
         E: DeError,
     {
-        Ok(Value::from(CoreValue::Null))
+        Ok(Value::new(self.cast::<CoreValue>().visit_unit()?))
     }
 
     /// default mapping for none: null
@@ -264,7 +185,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
     where
         E: DeError,
     {
-        Ok(Value::from(CoreValue::Boolean(Boolean::new(v))))
+        Ok(Value::new(self.cast::<CoreValue>().visit_bool(v)?))
     }
 
     /// default mapping for string: text
@@ -272,7 +193,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
     where
         E: DeError,
     {
-        Ok(Value::from(CoreValue::Text(v.into())))
+        Ok(Value::new(self.cast::<CoreValue>().visit_str(v)?))
     }
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
     where
@@ -286,9 +207,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
     where
         E: DeError,
     {
-        Ok(Value::from(CoreValue::TypedDecimal(TypedDecimal::F64(
-            v.into(),
-        ))))
+        Ok(Value::new(self.cast::<CoreValue>().visit_f64(v)?))
     }
 
     // default mapping for integers: decimal/f64 (with a check for overflow)
@@ -375,51 +294,85 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
         })?)
     }
 
-    /// mapping for [core_lib_type_id, value, custom_type?]
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    /// mapping for [tag?, [core_lib_type_id, core_value]]
+    fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
     where
         A: serde::de::SeqAccess<'de>,
     {
-        let core_lib_type_id: u16 = seq.next_element()?.ok_or_else(|| {
-            serde::de::Error::custom("expected a sequence with at least one element for core value deserialization")
-        })?;
-
-        let core_lib_id = CoreLibTypeId::try_from(CoreLibIdIndex(
-            core_lib_type_id,
+        Ok(Value::Core(
+            self.cast::<CoreValueWithClassification>().visit_seq(seq)?,
         ))
-        .map_err(|_| {
-            serde::de::Error::custom("invalid core lib id index".to_string())
-        })?;
-
-        let visitor = CoreValueVisitor {
-            core_lib_id,
-            context: &mut self,
-        };
-        let inner: CoreValue = seq.next_element_seed(visitor)?.ok_or_else(|| {
-            serde::de::Error::custom(format!(
-                "expected a sequence with at least two elements for core value deserialization, got only one (core lib id: {core_lib_id})"
-            ))
-        })?;
-
-        let custom_type: Option<TypeDefinition> =
-            seq.next_element_seed(self.cast::<TypeDefinition>()).map_err(|err| {
-                serde::de::Error::custom(format!(
-                    "error deserializing custom type definition for core value: {err}"
-                ))
-            })?;
-
-        Ok(Value::new(inner, custom_type))
     }
-}
 
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Value> {
-    type Value = Value;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
     where
-        D: Deserializer<'de>,
+        A: MapAccess<'de>,
     {
-        deserializer.deserialize_any(self)
+        let mut classification = ValueClassification::new_unclassified();
+
+        while let Some(key) = map.next_key::<String>()? {
+            match TagMarker::from_str(&key).map_err(|_| {
+                de::Error::unknown_variant(&key, TagMarker::VARIANTS)
+            })? {
+                // Not relevant at this level.
+                TagMarker::Hint => {
+                    let _: serde_json::Value = map.next_value()?;
+                }
+
+                // Get the classification first if it exists.
+                TagMarker::Classification => {
+                    classification = map
+                        .next_value_seed(self.cast::<ValueClassification>())?;
+
+                    // Resolve native value based on entity classification.
+                    if let Some(entity_type) = &classification.entity_type
+                        && let Some(deserialize_fn) =
+                            entity_type.entity_definition().deserialize_from_dif
+                    {
+                        // The next key must be "v".
+                        let key =
+                            map.next_key::<String>()?.ok_or_else(|| {
+                                DeError::custom(
+                                    "Expected key 'v' not found in map",
+                                )
+                            })?;
+
+                        if key != TagMarker::Value.as_ref() {
+                            return Err(DeError::custom(format!(
+                                "Expected key 'v' not found in map, found key '{key}' instead"
+                            )));
+                        }
+
+                        // Deserialize via the entity type deserialize function.
+                        let value = map.next_value_seed(DynSeed {
+                            f: deserialize_fn,
+                            ctx: self.ctx,
+                        })?;
+
+                        return Ok(value);
+                    }
+                }
+
+                // Normal, non-native core value.
+                TagMarker::Value => {
+                    let mut value = map.next_value_seed(
+                        self.cast::<CoreValueWithClassification>(),
+                    )?;
+
+                    value.classification =
+                        value.classification.merge(classification);
+
+                    return Ok(Value::Core(value));
+                }
+                TagMarker::Tag => {
+                    return Err(DeError::custom("Unexpected Tag here"));
+                }
+            }
+        }
+
+        Err(DeError::custom(
+            "Expected either classification or value key in map",
+        ))
     }
 }
 
@@ -431,28 +384,35 @@ mod tests {
             core_lib_id::CoreLibIdIndex,
             type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
         },
-        runtime::cache::shared_values_cache::SharedValuesCache,
+        runtime::cache::{
+            shared_references_cache::SharedReferencesCache,
+            shared_values_cache::SharedValuesCache,
+        },
         values::{
             core_value::CoreValue,
             core_values::{
                 decimal::typed_decimal::{DecimalTypeVariant, TypedDecimal},
                 endpoint::Endpoint,
+                instant::Instant,
                 integer::{Integer, typed_integer::IntegerTypeVariant},
-                map::{Map, MapEntries},
+                map::Map,
             },
             value_container::ValueContainer,
         },
     };
-    use core::str::FromStr;
+    use core::{cell::RefCell, str::FromStr};
     use test_case::test_case;
 
     #[test]
     fn endpoint_serialization() {
         let endpoint = Endpoint::from_str("@jonas").unwrap();
-        let value = Value::new(CoreValue::Endpoint(endpoint.clone()), None);
-        let mut cache = SharedValuesCache::default();
-        let serialized =
-            SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
+        let value = Value::new(CoreValue::Endpoint(endpoint.clone()));
+        let shared_values_cache = RefCell::new(SharedValuesCache::default());
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
+        let serialized = context.serialize_to_json(&value);
         assert_eq!(
             serialized,
             format!(
@@ -467,39 +427,20 @@ mod tests {
 
     #[test]
     fn serialize_map() {
-        let mut cache = SharedValuesCache::default();
+        let shared_values_cache = RefCell::new(SharedValuesCache::default());
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
-        // { endpoint: "@jonas" } -> [<map-idx>, { endpoint: [<endpoint-idx>, "@jonas"] }]
-        let value = Value::from(CoreValue::Map(
-            Map::structural_with_string_keys(vec![(
-                "endpoint".into(),
-                ValueContainer::Local(Value::from(
-                    Endpoint::from_str("@jonas").unwrap(),
-                )),
-            )]),
-        ));
-        let serialized =
-            SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
-        assert_eq!(
-            serialized,
-            format!(
-                r#"[{},{{"endpoint":[{},"@jonas"]}}]"#,
-                CoreLibIdIndex::from(CoreLibTypeId::Base(
-                    CoreLibBaseTypeId::Map
-                )),
-                CoreLibIdIndex::from(CoreLibTypeId::Base(
-                    CoreLibBaseTypeId::Endpoint
-                ))
-            )
-        );
-
-        // { "endpoint": "@jonas" } -> [<map-idx>, [[<endpoint-idx>, "@jonas"]]]
-        let value = Value::from(CoreValue::Map(Map::structural(vec![(
+        // { endpoint: "@jonas" } -> [<map-idx>, ["endpoint", [<endpoint-idx>, "@jonas"] ]]
+        let value = Value::from(CoreValue::Map(Map::new_structural(vec![(
             "endpoint".into(),
-            Value::from(Endpoint::from_str("@jonas").unwrap()).into(),
+            ValueContainer::Local(Value::from(
+                Endpoint::from_str("@jonas").unwrap(),
+            )),
         )])));
-        let serialized =
-            SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
         assert_eq!(
             serialized,
             format!(
@@ -516,39 +457,43 @@ mod tests {
 
     #[test]
     fn default_representation() {
+        let shared_values_cache = RefCell::new(SharedValuesCache::default());
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
+
         // text
         let value = Value::from(CoreValue::Text("Hello, world!".into()));
-        let serialized =
-            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
-                .serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
         assert_eq!(serialized, r#""Hello, world!""#);
 
         // decimal f64
         let value = Value::from(CoreValue::TypedDecimal(TypedDecimal::F64(
             5.14f64.into(),
         )));
-        let serialized =
-            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
-                .serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
         assert_eq!(serialized, r#"5.14"#);
 
         // boolean
         let value = Value::from(CoreValue::Boolean(true.into()));
-        let serialized =
-            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
-                .serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
         assert_eq!(serialized, r#"true"#);
     }
 
     #[test]
     fn non_default_representation() {
+        let shared_values_cache = RefCell::new(SharedValuesCache::default());
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
+
         // f32
         let value = Value::from(CoreValue::TypedDecimal(TypedDecimal::F32(
             5.14f32.into(),
         )));
-        let serialized =
-            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
-                .serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
 
         assert_eq!(
             serialized,
@@ -562,9 +507,7 @@ mod tests {
 
         // integer
         let value = Value::from(CoreValue::Integer(Integer::new(42)));
-        let serialized =
-            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
-                .serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
         assert_eq!(
             serialized,
             format!(
@@ -577,9 +520,7 @@ mod tests {
 
         // typed integer
         let value = Value::from(CoreValue::TypedInteger(42u8.into()));
-        let serialized =
-            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
-                .serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
         assert_eq!(
             serialized,
             format!(
@@ -622,7 +563,7 @@ mod tests {
         CoreValue::Endpoint(Endpoint::from_str("@jonas").unwrap()) ; "endpoint"
     )]
     #[test_case(
-        CoreValue::Map(Map::structural_with_string_keys(vec![(
+        CoreValue::Map(Map::new_structural(vec![(
             "endpoint".into(),
             ValueContainer::Local(Value::from(Endpoint::from_str("@jonas").unwrap())),
         )])) ; "map with string keys"
@@ -654,14 +595,20 @@ mod tests {
     #[test_case(
         CoreValue::TypedDecimal(TypedDecimal::F32(f32::NEG_INFINITY.into())) ; "negative inf f32"
     )]
+    #[test_case(
+        CoreValue::Instant(Instant::now()) ; "instant"
+    )]
     fn roundtrip_no_custom_type(value: CoreValue) {
+        let shared_values_cache = RefCell::new(SharedValuesCache::default());
+        let shared_references_cache =
+            RefCell::new(SharedReferencesCache::default());
+        let mut context =
+            SerdeContext::new(&shared_values_cache, &shared_references_cache);
+
         let value = Value::from(value);
-        let mut cache = SharedValuesCache::default();
-        let serialized =
-            SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
-        let deserialized: Value = SerdeContext::<Value>::new(&mut cache)
-            .try_deserialize_from_json(&serialized)
-            .unwrap();
+        let serialized = context.serialize_to_json(&value);
+        let deserialized: Value =
+            context.try_deserialize_from_json(&serialized).unwrap();
         assert_eq!(deserialized, value);
     }
 }

@@ -1,9 +1,9 @@
-use alloc::rc::Rc;
 use datex_core::{
     compiler::{CompileOptions, compile_script},
     core_compiler::core_compilation_context::DXBWithSharedValues,
     decompiler::{
-        DecompileOptions, FormattingMode, FormattingOptions, decompile_body,
+        DecompileOptions, FormattingMode, FormattingOptions,
+        dxb_to_source_code::dxb_to_source_code,
     },
     runtime::{
         Runtime,
@@ -15,7 +15,9 @@ use datex_core::{
     traits::structural_eq::{StructuralEq, assert_structural_eq},
     values::{
         core_value::CoreValue,
-        core_values::{decimal::Decimal, integer::Integer, map::Map},
+        core_values::{
+            decimal::Decimal, integer::Integer, list::List, map::Map,
+        },
         value::Value,
         value_container::ValueContainer,
     },
@@ -50,7 +52,7 @@ fn json_value_to_datex_value(json: &json_syntax::Value) -> Value {
         }
         json_syntax::Value::Boolean(b) => Value::from(*b),
         json_syntax::Value::Array(arr) => {
-            let mut vec = Vec::new();
+            let mut vec = List::default();
             for value in arr {
                 vec.push(json_value_to_datex_value(value));
             }
@@ -101,7 +103,7 @@ fn get_datex_decompiled_from_json(json_string: &str) -> String {
     let (dxb, _) =
         compile_script(json_string, CompileOptions::default(), runtime)
             .unwrap();
-    let decompiled = decompile_body(
+    let decompiled = dxb_to_source_code(
         &dxb,
         DecompileOptions {
             formatting_options: FormattingOptions {

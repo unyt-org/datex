@@ -1,6 +1,5 @@
 use core::{cell::Ref, ops::DerefMut};
 use datex_core::{
-    datex_proxy::{DatexProxyType, DatexValueContainerProxySerialize},
     datex_registry::{
         all_datex_module_registrations, all_datex_type_registrations,
         get_all_modules,
@@ -14,6 +13,9 @@ use datex_core::{
     },
     traits::{
         apply::{Apply, ApplyArgument},
+        classification::Classification,
+        convert_value_container::ConvertValueContainer,
+        get_datex_type::GetDatexType,
         try_clone::TryClone,
         value_access::ValueAccess,
     },
@@ -22,8 +24,8 @@ use datex_core::{
             entity_impls::{EntityImpl, EntityImplMethod},
             entity_type_definition::EntityTypeDefinition,
         },
+        entity_type::EntityType,
         literal_type_definition::LiteralTypeDefinition,
-        shared_container_containing_entity_type::SharedContainerContainingEntityType,
         r#type::Type,
         type_definition::{
             TypeDefinition,
@@ -31,14 +33,13 @@ use datex_core::{
         },
     },
     values::{
-        borrowed_value_container::BorrowedValueContainer,
         core_value::CoreValue,
         core_values::{
             callable::Callable,
             integer::typed_integer::{IntegerTypeVariant, TypedInteger},
             native::{DatexNative, NativeCoreValue},
         },
-        value::Value,
+        value::{Value, value_classification::ValueClassification},
         value_container::ValueContainer,
     },
 };
@@ -86,11 +87,11 @@ fn entity_type_definition_from_type(
 #[test]
 fn take_from_cache() {
     let runtime = Runtime::stub();
-    let mut memory = runtime.shared_references_cache_mut();
-    let example_type = Example::datex_type(memory.deref_mut());
+    let mut cache = runtime.shared_references_cache_mut();
+    let example_type = Example::datex_type(cache.deref_mut());
 
     // when calling the datex_type function multiple times, it should return the same type definition from cache
-    assert_eq!(example_type, Example::datex_type(memory.deref_mut()));
+    assert_eq!(example_type, Example::datex_type(cache.deref_mut()));
 }
 
 #[test]
@@ -102,21 +103,21 @@ fn try_clone() {
     42u8.try_clone().unwrap();
 
     // rust core types that implement Clone should also be able to be cloned via try_clone
-    let u8_value = CoreValue::native(42u8);
+    let u8_value = Value::native(42u8);
     u8_value.try_clone().unwrap();
 }
 
 #[test]
 fn call_instance_method_from_runtime() {
     let runtime = Runtime::stub();
-    let mut cache = runtime.shared_references_cache_mut();
+    let mut cache = runtime.shared_references_cache_refcell();
 
     let example = Example::new(1, 2);
-    let example_vc = Value::native(example, cache.deref_mut());
+    let example_vc = Value::native(example);
 
-    let example_type = Example::datex_type(cache.deref_mut());
+    let example_type = Example::datex_type(cache.borrow_mut().deref_mut());
     let set_a = example_type
-        .try_get_property("set_a".into(), cache.deref_mut())
+        .try_get_property(&ValueContainer::from("set_a"))
         .unwrap();
     let set_a_callable = set_a.try_as::<Callable>().unwrap();
 
@@ -137,10 +138,7 @@ fn call_instance_method_from_runtime() {
     assert_eq!(
         borrows.remove(0),
         // a was updated to 10
-        ValueContainer::from(Value::native(
-            Example { a: 10, b: 2 },
-            cache.deref_mut()
-        ))
+        ValueContainer::from(Value::native(Example { a: 10, b: 2 },))
     );
 }
 
@@ -149,25 +147,22 @@ async fn call_async_instance_method_from_runtime() {
     let runtime = Runtime::stub();
 
     let example = Example::new(1, 2);
-    let example_vc = Value::native(
-        example,
-        runtime.shared_references_cache_mut().deref_mut(),
-    );
+    let example_vc = Value::native(example);
 
     let example_type =
         Example::datex_type(runtime.shared_references_cache_mut().deref_mut());
     let async_test = example_type
-        .try_get_property(
-            "async_test".into(),
-            runtime.shared_references_cache_mut().deref_mut(),
-        )
+        .try_get_property(&ValueContainer::from("async_test"))
         .unwrap();
     let async_test_callable = async_test.try_as::<Callable>().unwrap();
 
     let (res, mut borrows) = async_test_callable
         .try_apply_async_checked(
             &runtime,
-            vec![ApplyArgument::referenced(example_vc), "test".into()],
+            vec![
+                ApplyArgument::referenced(example_vc),
+                "test".to_string().into(),
+            ],
         )
         .await
         .unwrap();
@@ -178,18 +173,15 @@ async fn call_async_instance_method_from_runtime() {
     // borrows should contain the original example value
     assert_eq!(
         borrows.remove(0),
-        ValueContainer::from(Value::native(
-            Example::new(1, 2),
-            runtime.shared_references_cache_mut().deref_mut()
-        ))
+        ValueContainer::Local(Value::native(Example::new(1, 2)))
     );
 }
 
 #[test]
 fn signatures() {
     let runtime = Runtime::stub();
-    let mut memory = runtime.shared_references_cache_mut();
-    let example_type = Example::datex_type(memory.deref_mut());
+    let mut cache = runtime.shared_references_cache_mut();
+    let example_type = Example::datex_type(cache.deref_mut());
     let type_definition = entity_type_definition_from_type(&example_type);
 
     // call static method by manually extracting it from the type definition
@@ -212,29 +204,14 @@ fn signatures() {
                 .unwrap()
                 .0
                 .unwrap();
-            assert_eq!(
-                result,
-                ValueContainer::Local(Value::new(
-                    CoreValue::native(3u8),
-                    Some(TypeDefinition::core(CoreLibVariantTypeId::Integer(
-                        IntegerTypeVariant::U8
-                    )))
-                ))
-            );
+            assert_eq!(result, ValueContainer::from(3u8));
         }
         _ => {
             panic!("Expected entity type, got {:?}", example_type);
         }
     }
 
-    // call method directly on an Example instance via the ValueContainer
-    let example_instance = Box::new(Example { a: 1, b: 2 });
-    let example_instance_vc = example_instance
-        .try_boxed_to_value_container(&mut memory)
-        .unwrap();
-    // TODO: also store type in value container (this will require passing cache to the ValueContainer::from function somehow)
-    // Then we can access methods on the type definition here
-
+    // check methods signatures
     {
         // set_a
         let set_a_sig = &type_definition
@@ -330,4 +307,42 @@ fn signatures() {
             }
         );
     }
+}
+
+#[test]
+fn methods_calls_on_value_container() {
+    let runtime = Runtime::stub();
+    let mut cache = runtime.shared_references_cache_mut();
+
+    // call methods directly on an Example instance via the ValueContainer
+    let example_instance = Example { a: 1, b: 2 };
+    let example_instance_vc = ValueContainer::from(example_instance);
+
+    // get type
+    let example_type =
+        example_instance_vc.entity_type(cache.deref_mut()).unwrap();
+
+    // set_a
+    let set_a = example_type
+        .try_get_property(&ValueContainer::from("set_a"))
+        .unwrap()
+        .try_as::<Callable>()
+        .unwrap();
+    let (res, mut borrows) = set_a
+        .try_apply_sync_checked(
+            &runtime,
+            vec![
+                ApplyArgument::referenced(example_instance_vc),
+                TypedInteger::U8(10).into(),
+            ],
+        )
+        .unwrap();
+    let res = res.unwrap();
+    let result_u8 = res.try_as::<u8>().unwrap();
+    assert_eq!(result_u8, &10u8);
+    let retrieved_example_instance = borrows.remove(0);
+    assert_eq!(
+        retrieved_example_instance.try_as::<Example>().unwrap(),
+        &Example { a: 10, b: 2 }
+    );
 }

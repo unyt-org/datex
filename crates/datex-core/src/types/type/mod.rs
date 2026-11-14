@@ -1,5 +1,5 @@
 //! This module contains the implementation of the [Type] enum, which represents a type in the DATEX type system.
-//! A [Type] can either be an alias to a [TypeDefinitionWithMetadata] or a nominal type represented by a [SharedContainerContainingEntityType].
+//! A [Type] can either be an alias to a [TypeDefinitionWithMetadata] or a nominal type represented by a [EntityType].
 
 #[cfg(feature = "compiler")]
 use crate::ast::expressions::DatexExpressionData;
@@ -13,8 +13,8 @@ use crate::{
     },
     types::{
         entities::entity_type_definition::EntityTypeDefinition,
+        entity_type::EntityType,
         literal_type_definition::LiteralTypeDefinition,
-        shared_container_containing_entity_type::SharedContainerContainingEntityType,
         type_definition::TypeDefinition,
         type_definition_with_metadata::{
             LocalMutability, LocalOwnership, TypeDefinitionWithMetadata,
@@ -24,7 +24,7 @@ use crate::{
     values::{core_value::CoreValue, value_container::ValueContainer},
 };
 use core::{fmt::Display, hash::Hash, ops::Deref};
-
+mod to_instructions;
 pub mod type_match;
 
 /// Base enum for a type
@@ -35,7 +35,7 @@ pub enum Type {
     /// A type definition with metadata, corresponding to `type x = X`. Treated as a structural type
     Definition(TypeDefinitionWithMetadata),
     /// A nominal type, corresponding to `entity x = X`.
-    Entity(SharedContainerContainingEntityType),
+    Entity(EntityType),
 }
 
 impl Type {
@@ -65,7 +65,7 @@ impl Type {
         definition: EntityTypeDefinition,
         address_provider: &mut SelfOwnedPointerAddressProvider,
     ) -> Type {
-        Type::Entity(SharedContainerContainingEntityType::new_from_definition(
+        Type::Entity(EntityType::new_from_definition(
             definition,
             address_provider,
         ))
@@ -341,11 +341,17 @@ impl Type {
     // }
 }
 
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
 pub mod equality;
+mod get_core_lib_type_id;
+pub mod get_datex_type;
 pub mod serde_dif;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_type_expression_data;
 mod value_access;
 
@@ -478,11 +484,10 @@ impl TryFrom<ValueContainer> for Type {
     fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
         match value {
             ValueContainer::Shared(shared) => {
-                SharedContainerContainingEntityType::try_from(shared)
-                    .map(Type::Entity)
+                EntityType::try_from(shared).map(Type::Entity)
             }
-            ValueContainer::Local(value) => match value.inner {
-                CoreValue::Type(ty) => Ok(ty),
+            ValueContainer::Local(value) => match value.try_into_core_value() {
+                Ok(CoreValue::Type(ty)) => Ok(ty),
                 _ => Err(()),
             },
         }

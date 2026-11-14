@@ -1,6 +1,9 @@
 use datex_core::{
     compiler::{CompileOptions, compile_script},
-    decompiler::{DecompileOptions, FormattingOptions, decompile_body},
+    decompiler::{
+        DecompileOptions, FormattingOptions,
+        dxb_to_source_code::dxb_to_source_code,
+    },
     runtime::Runtime,
 };
 use log::info;
@@ -11,7 +14,7 @@ fn compare_compiled_with_decompiled(datex_script: &str) {
         compile_script(datex_script, CompileOptions::default(), runtime)
             .unwrap();
 
-    let decompiled = decompile_body(&dxb, DecompileOptions::compact())
+    let decompiled = dxb_to_source_code(&dxb, DecompileOptions::compact())
         .unwrap_or_else(|err| core::panic!("Failed to decompile: {err:?}"));
 
     info!("original   : {datex_script}");
@@ -26,7 +29,7 @@ fn compare_compiled(datex_script: &str, expected: &str) {
         compile_script(datex_script, CompileOptions::default(), runtime)
             .unwrap();
 
-    let decompiled_color = decompile_body(
+    let decompiled_color = dxb_to_source_code(
         &dxb,
         DecompileOptions {
             formatting_options: FormattingOptions::compact(),
@@ -34,7 +37,7 @@ fn compare_compiled(datex_script: &str, expected: &str) {
         },
     )
     .unwrap_or_else(|err| core::panic!("Failed to decompile: {err:?}"));
-    let decompiled = decompile_body(&dxb, DecompileOptions::default())
+    let decompiled = dxb_to_source_code(&dxb, DecompileOptions::default())
         .unwrap_or_else(|err| core::panic!("Failed to decompile: {err:?}"));
 
     info!("original   : {datex_script}");
@@ -74,7 +77,6 @@ c";"#,
 pub fn compile_expressions() {
     compare_compiled_with_decompiled("1+2;");
     compare_compiled_with_decompiled("[1,2]");
-    // ARR_START 1 2 3 SCOPE_END
     compare_compiled_with_decompiled("[1,2,3+4]");
     compare_compiled_with_decompiled("[1,2,[3,4,[5]]];");
     compare_compiled_with_decompiled("[1,2,[3],[4,5],6]");

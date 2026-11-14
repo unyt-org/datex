@@ -1,59 +1,22 @@
 use crate::{
     core_compiler::{
-        buffer_provider::BufferProvider,
         core_compilation_context::{CompileInput, DXBWithSharedValues},
-        type_compiler::append_type_instruction,
         value_visitor::ValueVisitor,
     },
-    instruction::{
-        instruction_codes::InstructionCode,
-        regular_instruction::RegularInstruction,
-    },
-    utils::buffers::{append_i16, append_i32},
-    values::{
-        core_value::CoreValue,
-        core_values::{
-            Instant,
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            integer::{Integer, typed_integer::TypedInteger},
-        },
-        value::Value,
-        value_container::ValueContainer,
-    },
-};
-use binrw::{
-    BinWrite,
-    io::{Cursor, Write},
+    instruction::regular_instruction::RegularInstruction,
+    values::{value::Value, value_container::ValueContainer},
 };
 
 use crate::{
-    core_compiler::core_compilation_context::{
-        ByteCursor, CoreCompilationContext,
-    },
-    instruction::{
-        Instruction,
-        instruction_data::{
-            CallableData, CallableDataBody, CallableSignatureData,
-            ShortTextData,
-        },
-    },
-    libs::core::{
-        core_lib_id::{CoreLibId, CoreLibIdIndex},
-        type_id::{CoreLibBaseTypeId, CoreLibTypeId},
-        value_id::CoreLibValueId,
+    core_compiler::{
+        core_compilation_context::CoreCompilationContext,
+        to_instructions::{ToInstructions, yield_all, yield_all_collected},
     },
     prelude::*,
-    runtime::execution::ExecutionError,
-    shared_values::{
-        PointerAddress, ReferenceMutability, SharedContainer,
-        SharedContainerOwnership, traits::SharedContainerCommon,
+    runtime::{
+        cache::shared_references_cache::SharedReferencesCache,
+        execution::ExecutionError,
     },
-    types::{
-        r#type::Type,
-        type_definition::{TypeDefinition, tagged_type::TaggedTypeDefinition},
-        type_definition_with_metadata::TypeDefinitionWithMetadata,
-    },
-    values::core_values::callable::CallableBody,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -85,516 +48,59 @@ impl From<InjectedValueValidationError> for ExecutionError {
 pub fn compile_value_container(
     value_container: &ValueContainer,
     compile_input: CompileInput,
+    cache: &mut SharedReferencesCache,
 ) -> DXBWithSharedValues {
-    let mut context =
-        CoreCompilationContext::new(Vec::with_capacity(256), compile_input);
-    context.visit_value_container(value_container);
-    context.into_dxb_with_shared_values()
+    CoreCompilationContext::new(compile_input)
+        .compile_to_dxb_with_shared_values(value_container, cache)
 }
 
 pub fn compile_value(
     value: Value,
     compile_input: CompileInput,
+    cache: &mut SharedReferencesCache,
 ) -> DXBWithSharedValues {
-    compile_value_container(&ValueContainer::Local(value), compile_input)
+    compile_value_container(&ValueContainer::Local(value), compile_input, cache)
 }
 
-// TODO: add struct for panics
-pub fn compile_panic(
-    panic_value: String,
-    compile_input: CompileInput,
-) -> Vec<u8> {
-    let mut context =
-        CoreCompilationContext::new(Vec::with_capacity(256), compile_input);
-
-    append_apply(
-        &mut context,
-        RegularInstruction::get_core_lib_value(
-            CoreLibId::Value(CoreLibValueId::Panic).into(),
-        ),
-        vec![ValueContainer::Local(panic_value.into())],
-    );
-
-    context.into_dxb_with_shared_values().dxb
-}
-
-/// Appends a shared container to the buffer by registering it in the shared value tracking and appending the stack index
-pub fn append_shared_container_from_preamble(
-    context: &mut CoreCompilationContext,
-    shared_container: &SharedContainer,
-) {
-    let ownership = shared_container.ownership();
-    let index = context
-        .shared_value_tracking
-        .borrow_mut()
-        .register_shared_value(shared_container);
-    context.write(match ownership {
-        SharedContainerOwnership::Owned => {
-            RegularInstruction::take_stack_value(index)
-        }
-        SharedContainerOwnership::Referenced(
-            ReferenceMutability::Immutable,
-        ) => RegularInstruction::get_stack_value_shared_ref(index),
-        SharedContainerOwnership::Referenced(ReferenceMutability::Mutable) => {
-            RegularInstruction::get_stack_value_shared_ref_mut(index)
-        }
-    });
-}
-
-pub fn append_local_pointer_address(
-    cursor: &mut ByteCursor,
-    local_address: [u8; 5],
-) {
-    cursor.write_all(&local_address).unwrap();
-}
-
-/// Compiles a value container to the buffer of the provided context
-pub fn append_value_container<T: BufferProvider + ValueVisitor>(
-    context: &mut T,
-    value_container: &ValueContainer,
-) {
-    context.visit_value_container(value_container);
-}
-
-/// Compiles a value to the buffer of the provided context
-pub fn append_value<T: BufferProvider + ValueVisitor>(
-    context: &mut T,
-    value: &Value,
-) {
-    // append non-default type information
-    if let Some(custom_type) = &value.custom_type {
-        // special case: tagged value with default type, no type cast needed
-        match custom_type {
-            // unit tagged value (e.g. #Example)
-            TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty:
-                    Some(Type::Definition(TypeDefinitionWithMetadata {
-                        definition:
-                            TypeDefinition::CoreType(CoreLibTypeId::Base(
-                                CoreLibBaseTypeId::Unit,
-                            )),
-                        ..
-                    })),
-                tag,
-            }) => {
-                context
-                    .write(RegularInstruction::tagged_value(tag.clone(), true));
-                return; // early return, don't append null value; TODO: assert that value is actually null?
-            }
-            // tagged value with actual value (e.g. #Example(null))
-            TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: Option::None,
-                tag,
-            }) => {
-                context.write(RegularInstruction::tagged_value(
-                    tag.clone(),
-                    false,
-                ));
-            }
-            _ => append_type_cast(context, custom_type),
-        }
-    }
-    let _: () = match &value.inner {
-        CoreValue::Type(ty) => {
-            if let Some(core_id) = ty.try_as_core_lib_type() {
-                append_get_core_lib_value(
-                    context.cursor_mut(),
-                    CoreLibId::Type(core_id),
-                );
-            } else {
-                context.write(RegularInstruction::type_expression());
-                context.visit_type(ty);
-            }
-        }
-        CoreValue::Callable(callable) => {
-            let (body, injected_values) = match &callable.body {
-                CallableBody::DatexBytecode(datex_bytecode) => (
-                    CallableDataBody {
-                        injected_value_count: datex_bytecode
-                            .injected_values
-                            .len()
-                            as u32,
-                        length: datex_bytecode.body.len() as u32,
-                        body: datex_bytecode.body.clone(),
-                    },
-                    datex_bytecode.injected_values.clone(), // FIXME avoid clone!
-                ),
-                _ => (
-                    CallableDataBody {
-                        injected_value_count: 0,
-                        length: 0,
-                        body: vec![],
-                    },
-                    vec![],
-                ),
-            };
-
-            context.write(RegularInstruction::Callable(CallableData {
-                signature: CallableSignatureData {
-                    name: ShortTextData(
-                        callable.name.clone().unwrap_or_default(),
-                    ),
-                    kind: callable.signature.kind,
-                    requires_async: callable.signature.requires_async,
-                    parameter_count: callable.signature.parameters.len() as u8,
-                    has_rest_parameter: callable
-                        .signature
-                        .rest_parameter
-                        .is_some(),
-                    has_return_type: callable.signature.return_type.is_some(),
-                    has_yeet_type: callable.signature.yeet_type.is_some(),
-                    parameter_names: callable
-                        .signature
-                        .parameters
-                        .iter()
-                        .map(|(name, _)| {
-                            ShortTextData(name.clone().unwrap_or_default())
-                        })
-                        .collect(),
-                    rest_parameter_name: callable
-                        .signature
-                        .rest_parameter
-                        .as_ref()
-                        .map(|(name, _)| {
-                            ShortTextData(name.clone().unwrap_or_default())
-                        }),
-                },
-                body,
-            }));
-
-            // add parameter types
-            for (_, param) in &callable.signature.parameters {
-                context.visit_type(param);
-            }
-            // add rest parameter type
-            if let Some((_, param)) = &callable.signature.rest_parameter {
-                context.visit_type(param);
-            }
-            // add return type
-            if let Some(ty) = &callable.signature.return_type {
-                context.visit_type(ty);
-            }
-            // add yield type
-            if let Some(ty) = &callable.signature.yeet_type {
-                context.visit_type(ty);
-            }
-
-            for value in injected_values {
-                context.visit_value_container(&value);
-            }
-        }
-        CoreValue::Integer(integer) => {
-            // NOTE: we might optimize this later, but using INT with big integer encoding
-            // for all integers for now
-            // let integer = integer.to_smallest_fitting();
-            // append_encoded_integer(buffer, &integer);
-            context.write(RegularInstruction::integer(integer.clone()));
-        }
-        CoreValue::TypedInteger(integer) => {
-            append_encoded_integer(context.cursor_mut(), integer)
-        }
-
-        CoreValue::Endpoint(endpoint) => {
-            context.write(RegularInstruction::endpoint(endpoint.clone()));
-        }
-        CoreValue::Decimal(decimal) => {
-            append_decimal(context.cursor_mut(), decimal)
-        }
-        CoreValue::TypedDecimal(val) => {
-            append_encoded_decimal(context.cursor_mut(), val)
-        }
-        CoreValue::Boolean(val) => append_boolean(context.cursor_mut(), val.0),
-        CoreValue::Null => context.write(RegularInstruction::null()),
-        CoreValue::Text(val) => {
-            context.write(RegularInstruction::text(val.0.clone()))
-        }
-        CoreValue::List(val) => {
-            // if list size < 256, use SHORT_LIST
-            context.write(RegularInstruction::list(val.len()));
-
-            for item in val.into_iter() {
-                context.visit_value_container(item);
-            }
-        }
-        CoreValue::Map(val) => {
-            context.write(RegularInstruction::map(val.size() as u32));
-            for (key, value) in val.iter() {
-                append_key_value_pair(
-                    context,
-                    &ValueContainer::from(key),
-                    value,
-                );
-            }
-        }
-        CoreValue::Range(range) => {
-            context.write(RegularInstruction::range());
-            context.visit_value_container(&range.start);
-            context.visit_value_container(&range.end);
-        }
-        CoreValue::EntityTypeDefinition(_) => {
-            todo!()
-        }
-        CoreValue::Box(inner) => {
-            context.write(RegularInstruction::boxed_value());
-            context.visit_value_container(inner);
-        }
-        CoreValue::Uninitialized => {
-            panic!("Tried to compile uninitialized value")
-        }
-        CoreValue::Native(_) => {
-            todo!("Tried to compile native value")
-        }
-    };
-}
-
-pub fn append_core_type_cast(
-    _context: &mut impl BufferProvider,
-    _core_lib_type_id: CoreLibTypeId,
-) {
-    // TODO: append type cast with only id (no need to access shared container)
-    todo!()
-}
-
-pub fn append_apply<T: BufferProvider + ValueVisitor>(
-    context: &mut T,
+#[derive(Clone, Debug, PartialEq)]
+pub struct ApplyWithArgs {
     callee: RegularInstruction,
     args: Vec<ValueContainer>,
-) {
-    context.write(RegularInstruction::apply(args.len() as u8));
+}
+impl ApplyWithArgs {
+    pub fn new(callee: RegularInstruction, args: Vec<ValueContainer>) -> Self {
+        Self { callee, args }
+    }
+}
+
+impl ToInstructions for ApplyWithArgs {
+    fn to_instructions<'a>(
+        &'a self,
+        visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache,
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
+        Box::new(gen {
+            yield_all!(append_apply(
+                visitor,
+                cache,
+                self.callee.clone(),
+                self.args.clone()
+            ));
+        })
+    }
+}
+
+gen fn append_apply<'a>(
+    visitor: &'a mut dyn ValueVisitor,
+    cache: &'a mut SharedReferencesCache,
+    callee: RegularInstruction,
+    args: Vec<ValueContainer>,
+) -> crate::instruction::Instruction {
+    yield RegularInstruction::apply(args.len() as u8).into();
     for arg in args {
-        context.visit_value_container(&arg);
+        yield_all_collected!(arg.to_instructions(visitor, cache)); // FIXME: don't collect
     }
-    context.write(callee);
-}
-
-pub fn append_type_cast<T: BufferProvider + ValueVisitor>(
-    context: &mut T,
-    ty: &TypeDefinition,
-) {
-    context.write(RegularInstruction::typed_value());
-
-    // append type
-    context.visit_type(&Type::from(ty.clone()));
-}
-
-/// Appends a boolean value using the TRUE or FALSE instruction
-pub fn append_boolean(cursor: &mut ByteCursor, boolean: bool) {
-    if boolean {
-        RegularInstruction::r#true().write(cursor).unwrap();
-    } else {
-        RegularInstruction::r#false().write(cursor).unwrap();
-    }
-}
-
-// Append a decimal value using the DECIMAL instruction code and big decimal encoding
-pub fn append_decimal(cursor: &mut ByteCursor, decimal: &Decimal) {
-    append_instruction_code(cursor, InstructionCode::DECIMAL);
-    append_big_decimal(cursor, decimal);
-}
-
-pub fn append_big_decimal(cursor: &mut ByteCursor, decimal: &Decimal) {
-    decimal.write_le(cursor).unwrap();
-}
-
-/// Appends a typed integer with explicit type casts
-pub fn append_typed_integer(
-    context: &mut impl BufferProvider,
-    integer: &TypedInteger,
-) {
-    append_core_type_cast(context, CoreLibTypeId::from(integer));
-    append_encoded_integer(context.cursor_mut(), integer);
-}
-
-/// Appends an encoded integer without explicit type casts
-pub fn append_encoded_integer(cursor: &mut ByteCursor, integer: &TypedInteger) {
-    let instruction = match integer {
-        TypedInteger::I8(val) => RegularInstruction::int8(*val),
-        TypedInteger::I16(val) => RegularInstruction::int16(*val),
-        TypedInteger::I32(val) => RegularInstruction::int32(*val),
-        TypedInteger::I64(val) => RegularInstruction::int64(*val),
-        TypedInteger::I128(val) => RegularInstruction::int128(*val),
-        TypedInteger::U8(val) => RegularInstruction::uint8(*val),
-        TypedInteger::U16(val) => RegularInstruction::uint16(*val),
-        TypedInteger::U32(val) => RegularInstruction::uint32(*val),
-        TypedInteger::U64(val) => RegularInstruction::uint64(*val),
-        TypedInteger::U128(val) => RegularInstruction::uint128(*val),
-        TypedInteger::IBig(val) => RegularInstruction::big_integer(val.clone()), // FIXME: no clone
-    };
-
-    instruction.write(cursor).unwrap();
-}
-
-pub fn append_instant(cursor: &mut ByteCursor, instant: &Instant) {
-    RegularInstruction::instant(instant.0)
-        .write(cursor)
-        .unwrap();
-}
-
-/// Appends a typed decimal with explicit type casts
-pub fn append_encoded_decimal(cursor: &mut ByteCursor, decimal: &TypedDecimal) {
-    fn append_f32_or_f64(cursor: &mut ByteCursor, decimal: &TypedDecimal) {
-        match decimal {
-            TypedDecimal::F32(val) => {
-                RegularInstruction::decimal_f32(val.into_inner())
-                    .write(cursor)
-                    .unwrap();
-            }
-            TypedDecimal::F64(val) => {
-                RegularInstruction::decimal_f64(val.into_inner())
-                    .write(cursor)
-                    .unwrap();
-            }
-            TypedDecimal::Decimal(val) => {
-                append_instruction_code(cursor, InstructionCode::DECIMAL_BIG);
-                append_big_decimal(cursor, val);
-            }
-        }
-    }
-
-    append_f32_or_f64(cursor, decimal)
-
-    // TODO #635: maybe use this in the future, but type casts are necessary to decide which actual type is represented
-    // match decimal.as_integer() {
-    //     Some(int) => {
-    //         let smallest = smallest_fitting_signed(int as i128);
-    //         match smallest {
-    //             TypedInteger::I8(val) => {
-    //                 append_float_as_i16(buffer, val as i16);
-    //             }
-    //             TypedInteger::I16(val) => {
-    //                 append_float_as_i16(buffer, val);
-    //             }
-    //             TypedInteger::I32(val) => {
-    //                 append_float_as_i32(buffer, val);
-    //             }
-    //             _ => append_f32_or_f64(buffer, decimal),
-    //         }
-    //     }
-    //     None => append_f32_or_f64(buffer, decimal),
-    // }
-}
-
-/// Appends a big integer using the BIG_INTEGER instruction code and big integer encoding
-pub fn append_big_integer(cursor: &mut ByteCursor, integer: &Integer) {
-    integer
-        .write_le(cursor)
-        .expect("Failed to write big integer");
-}
-
-/// Appends a typed decimal with explicit type casts
-pub fn append_typed_decimal(
-    context: &mut impl BufferProvider,
-    decimal: &TypedDecimal,
-) {
-    append_core_type_cast(context, CoreLibTypeId::from(decimal));
-    append_encoded_decimal(context.cursor_mut(), decimal);
-}
-
-/// Appends a decimal as an i16 with the DECIMAL_AS_INT_16 instruction code
-pub fn append_float_as_i16(cursor: &mut ByteCursor, int: i16) {
-    append_instruction_code(cursor, InstructionCode::DECIMAL_AS_INT_16);
-    append_i16(cursor, int);
-}
-
-/// Appends a decimal as an i32 with the DECIMAL_AS_INT_32 instruction code
-pub fn append_float_as_i32(cursor: &mut ByteCursor, int: i32) {
-    append_instruction_code(cursor, InstructionCode::DECIMAL_AS_INT_32);
-    append_i32(cursor, int);
-}
-
-/// Appends a type cast to a core library type, using the GET_CORE_LIB_VALUE instruction with the type id
-pub fn append_get_shared_ref(
-    context: &mut impl BufferProvider,
-    address: PointerAddress,
-    mutability: &ReferenceMutability,
-) {
-    match address {
-        PointerAddress::SelfOwned(local_address) => {
-            context
-                .write(RegularInstruction::get_local_shared_ref(local_address));
-        }
-        PointerAddress::Remote(address) => match mutability {
-            ReferenceMutability::Immutable => {
-                context.write(RegularInstruction::request_remote_shared_ref(
-                    address,
-                ));
-            }
-            ReferenceMutability::Mutable => {
-                context.write(
-                    RegularInstruction::request_remote_shared_ref_mut(address),
-                );
-            }
-        },
-    }
-}
-
-/// Appends a GET_CORE_LIB_VALUE instruction with the given core library id
-pub fn append_get_core_lib_value(cursor: &mut ByteCursor, id: CoreLibId) {
-    RegularInstruction::get_core_lib_value(CoreLibIdIndex::from(id))
-        .write(cursor)
-        .unwrap();
-}
-
-/// Appends a key-value pair for map entries, optimizing for short text keys
-pub fn append_key_value_pair<T: BufferProvider + ValueVisitor>(
-    context: &mut T,
-    key: &ValueContainer,
-    value: &ValueContainer,
-) {
-    // insert key
-    match key {
-        // if text, append_key_string, else dynamic
-        ValueContainer::Local(Value {
-            inner: CoreValue::Text(text),
-            ..
-        }) => {
-            append_key_string(context, &text.0);
-        }
-        _ => {
-            context.write(RegularInstruction::key_value_dynamic());
-            context.visit_value_container(key);
-        }
-    }
-    // insert value
-    context.visit_value_container(value);
-}
-
-/// Appends a key string for map entries, optimizing for short text keys
-pub fn append_key_string<T: BufferProvider>(
-    context: &mut T,
-    key_string: &String,
-) {
-    if key_string.len() < 256 {
-        context.write(RegularInstruction::key_value_short_text(
-            key_string.clone(),
-        ));
-    } else {
-        context.write(RegularInstruction::key_value_dynamic());
-        context.write(RegularInstruction::text(key_string.clone()));
-    }
-}
-
-/// Helper function to directly compile an instruction into a byte vector
-pub fn compile_instruction(instruction: impl Into<Instruction>) -> Vec<u8> {
-    let mut cursor = Cursor::new(Vec::new());
-    append_instruction(&mut cursor, instruction.into());
-    cursor.into_inner()
-}
-
-pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) {
-    match instruction {
-        Instruction::Regular(instruction) => {
-            instruction.write(cursor).unwrap();
-        }
-        Instruction::Type(instruction) => {
-            append_type_instruction(cursor, instruction)
-        }
-    }
-}
-
-#[deprecated(note = "Use context.write(RegularInstruction) instead")]
-pub fn append_instruction_code(cursor: &mut ByteCursor, code: InstructionCode) {
-    cursor.write_all(&[code as u8]).unwrap();
+    yield callee.into();
 }
 
 #[cfg(test)]
@@ -607,39 +113,61 @@ mod tests {
                 default_core_compilation_context,
             },
             shared_value_tracking::TrackedValueMetadata,
+            to_instructions::ToInstructions,
             value_compiler::compile_value,
-            value_visitor::ValueVisitor,
+            value_visitor::{ValueVisitor, compile_instructions_to_dxb},
         },
         disassembler::{
-            assertions::{assert_instructions_equal, instructions},
+            assertions::{
+                assert_instructions_equal, instructions, instructions_with_span,
+            },
             print_disassembled,
         },
+        dxb_parser::body::InstructionWithSpan,
         global::stack_index::StackIndex,
         instruction::{
+            Instruction,
             instruction_data::{
-                Int32Data, MoveWithValue, SharedRefWithValue, ShortListData,
-                ShortTextData, TaggedValue,
+                CallableData, CallableDataBody, CallableDataBodyDebugFlat,
+                CallableDataBodyDebugTree, CallableDataDebugFlat,
+                CallableDataDebugTree, CallableSignatureData,
+                ClassifiedValueData, Int32Data, MoveWithValue,
+                SharedRefWithValue, ShortListData, ShortTextData,
             },
             regular_instruction::RegularInstruction,
+            type_instruction::TypeInstruction,
         },
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
         runtime::{
+            Runtime, cache::shared_references_cache::SharedReferencesCache,
             pointer_address_provider::SelfOwnedPointerAddressProvider,
             pointer_availability_lookup::PointerAvailabilityLookup,
         },
         shared_values::{
             PointerAddress, ReferenceMutability, SharedContainer,
-            SharedContainerMutability,
+            SharedContainerMutability, traits::SharedContainerCommon,
         },
         types::{
             r#type::Type,
             type_definition::{
-                TypeDefinition, tagged_type::TaggedTypeDefinition,
+                TypeDefinition,
+                callable::{CallableKind, CallableTypeDefinition},
+                tagged_type::TaggedTypeDefinition,
             },
+            type_definition_with_metadata::TypeMetadata,
         },
         values::{
-            core_value::CoreValue, core_values::list::List, value::Value,
+            core_value::CoreValue,
+            core_values::{
+                callable::{Callable, CallableBody},
+                endpoint::Endpoint,
+                list::List,
+            },
+            value::{
+                Value,
+                value_classification::{ValueClassification, ValueTag},
+            },
             value_container::ValueContainer,
         },
     };
@@ -650,56 +178,61 @@ mod tests {
         value: Value,
         expected_instructions: Vec<RegularInstruction>,
     ) {
+        let cache = &mut SharedReferencesCache::default();
         let compiled = compile_value(
             value,
             CompileInput {
                 pointer_lookup: &PointerAvailabilityLookup::default(),
                 receivers: &[],
             },
+            cache,
         );
         assert_instructions_equal!(&compiled.dxb, expected_instructions,);
     }
 
     #[test]
     fn compile_tagged_empty_value() {
-        let value = Value::new(
+        let value = Value::core_with_classification(
             CoreValue::Null,
-            Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: Some(Box::new(Type::Definition(
-                    TypeDefinition::CoreType(CoreLibTypeId::Base(
-                        CoreLibBaseTypeId::Unit,
-                    ))
-                    .into(),
-                ))),
-                tag: "Example".to_string(),
-            })),
+            ValueClassification::new_with_tag(ValueTag {
+                name: "Example".to_string(),
+                is_empty: true,
+            }),
         );
 
         compile_value_assert_instructions(
             value,
-            vec![RegularInstruction::TaggedValue(TaggedValue {
-                tag: ShortTextData("Example".to_string()),
-                is_empty: true,
+            vec![RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                has_tag: true,
+                tag: Some(ShortTextData("Example".to_string())),
+                tag_value_is_empty: true,
+                impl_count: 0,
+                impls: vec![],
+                is_entity: false,
             })],
         );
     }
 
     #[test]
     fn compile_tagged_value() {
-        let value = Value::new(
+        let value = Value::core_with_classification(
             CoreValue::Null,
-            Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: None,
-                tag: "Example".to_string(),
-            })),
+            ValueClassification::new_with_tag(ValueTag {
+                name: "Example".to_string(),
+                is_empty: false,
+            }),
         );
 
         compile_value_assert_instructions(
             value,
             vec![
-                RegularInstruction::TaggedValue(TaggedValue {
-                    tag: ShortTextData("Example".to_string()),
-                    is_empty: false,
+                RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                    has_tag: true,
+                    tag: Some(ShortTextData("Example".to_string())),
+                    tag_value_is_empty: false,
+                    impl_count: 0,
+                    impls: vec![],
+                    is_entity: false,
                 }),
                 RegularInstruction::Null,
             ],
@@ -745,8 +278,13 @@ mod tests {
 
         let shared_container = ValueContainer::Shared(owned_shared);
         let mut context = core_compilation_context();
+        let cache = &mut SharedReferencesCache::default();
 
-        context.visit_value_container(&shared_container);
+        let dxb = compile_instructions_to_dxb(
+            context.shared_value_tracking.get_mut(),
+            cache,
+            &shared_container,
+        );
 
         // The address should now be registered in the shared value tracking
         assert_matches!(
@@ -762,8 +300,10 @@ mod tests {
             }
         );
 
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
+
         assert_instructions_equal!(
-            &context.into_dxb_with_shared_values().dxb,
+            &dxb,
             (RegularInstruction::statements_with_children(
                 false,
                 instructions!(
@@ -835,7 +375,12 @@ mod tests {
 
         let shared_container = ValueContainer::Shared(outer_shared);
         let mut context = core_compilation_context();
-        context.visit_value_container(&shared_container);
+        let cache = &mut SharedReferencesCache::default();
+        let dxb = compile_instructions_to_dxb(
+            context.shared_value_tracking.get_mut(),
+            cache,
+            &shared_container,
+        );
 
         assert_matches!(
             context
@@ -870,7 +415,7 @@ mod tests {
             }
         );
 
-        let dxb = context.into_dxb_with_shared_values().dxb;
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
 
         assert_instructions_equal!(
             &dxb,
@@ -897,6 +442,7 @@ mod tests {
                                                 ReferenceMutability::Mutable,
                                             container_mutability:
                                                 SharedContainerMutability::Mutable,
+                                            is_debug: false,
                                         }
                                     ).with_children(instructions!(
                                         RegularInstruction::Int32(Int32Data(1))
@@ -953,7 +499,12 @@ mod tests {
 
         let shared_container = ValueContainer::Shared(outer_shared);
         let mut context = core_compilation_context();
-        context.visit_value_container(&shared_container);
+        let cache = &mut SharedReferencesCache::default();
+        let dxb = compile_instructions_to_dxb(
+            context.shared_value_tracking.get_mut(),
+            cache,
+            &shared_container,
+        );
 
         assert_matches!(
             context
@@ -974,11 +525,12 @@ mod tests {
                 .unwrap(),
             TrackedValueMetadata::Root {
                 index: StackIndex(0),
-                ..
+                is_self_referencing: false,
+                is_known: false,
             }
         );
 
-        let dxb = context.into_dxb_with_shared_values().dxb;
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
 
         assert_instructions_equal!(
             &dxb,
@@ -1034,8 +586,13 @@ mod tests {
         };
         let shared_container = ValueContainer::Shared(reference.clone());
         let mut context = core_compilation_context();
+        let cache = &mut SharedReferencesCache::default();
 
-        context.visit_value_container(&shared_container);
+        let dxb = compile_instructions_to_dxb(
+            context.shared_value_tracking.get_mut(),
+            cache,
+            &shared_container,
+        );
 
         assert_matches!(
             context
@@ -1047,11 +604,11 @@ mod tests {
             TrackedValueMetadata::Root {
                 index: StackIndex(0),
                 is_known: false,
-                ..
+                is_self_referencing: false,
             }
         );
 
-        let dxb = context.into_dxb_with_shared_values().dxb;
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
 
         assert_instructions_equal!(
             &dxb,
@@ -1070,6 +627,7 @@ mod tests {
                                         ReferenceMutability::Immutable,
                                     container_mutability:
                                         SharedContainerMutability::Immutable,
+                                    is_debug: false,
                                 }
                             ),
                             RegularInstruction::Int32(Int32Data(5)),
@@ -1117,7 +675,12 @@ mod tests {
             .into(),
         );
         let mut context = core_compilation_context();
-        context.visit_value_container(&local);
+        let cache = &mut SharedReferencesCache::default();
+        let dxb = compile_instructions_to_dxb(
+            context.shared_value_tracking.get_mut(),
+            cache,
+            &local,
+        );
 
         assert_matches!(
             context
@@ -1128,7 +691,8 @@ mod tests {
                 .unwrap(),
             TrackedValueMetadata::Root {
                 index: StackIndex(0),
-                ..
+                is_known: false,
+                is_self_referencing: false,
             }
         );
         assert_matches!(
@@ -1140,11 +704,12 @@ mod tests {
                 .unwrap(),
             TrackedValueMetadata::Root {
                 index: StackIndex(1),
-                ..
+                is_known: false,
+                is_self_referencing: false,
             }
         );
 
-        let dxb = context.into_dxb_with_shared_values().dxb;
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
 
         assert_instructions_equal!(
             &dxb,
@@ -1192,6 +757,257 @@ mod tests {
                     )),
                 )
             ),)
+        );
+    }
+
+    #[test]
+    fn self_referencing_shared_container() {
+        let mut provider = SelfOwnedPointerAddressProvider::default();
+        let shared = SharedContainer::new_owned_with_inferred_allowed_type(
+            List::default(),
+            SharedContainerMutability::Mutable,
+            &mut provider,
+        );
+
+        // *x = ['mut x]
+        {
+            let mut shared_vale_container = shared.value_container_mut();
+            let list = shared_vale_container.try_as_mut::<List>().unwrap();
+            list.push(ValueContainer::Shared(shared.clone()));
+        }
+
+        let shared_clone = shared.clone();
+
+        let shared_owned_address = match shared.pointer_address() {
+            PointerAddress::SelfOwned(owned) => owned,
+            _ => unreachable!(),
+        };
+
+        let mut context = core_compilation_context();
+        let cache = &mut SharedReferencesCache::default();
+        let shared_container = ValueContainer::Shared(shared);
+        let dxb = compile_instructions_to_dxb(
+            context.shared_value_tracking.get_mut(),
+            cache,
+            &shared_container,
+        );
+
+        assert_matches!(
+            context
+                .shared_value_tracking
+                .borrow()
+                .tracked_values
+                .get(&shared_clone)
+                .unwrap(),
+            TrackedValueMetadata::Root {
+                index: StackIndex(0),
+                is_known: false,
+                is_self_referencing: true,
+            }
+        );
+
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
+
+        assert_instructions_equal!(
+            &dxb,
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
+                        false,
+                        instructions!(
+                            // x = shared nut [[UNINITIALIZED]]
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability:
+                                    SharedContainerMutability::Mutable,
+                                previous_address: shared_owned_address,
+                            }).with_children(instructions!(
+                                RegularInstruction::Uninitialized
+                            )),
+                            // *x = ['mut x]
+                            RegularInstruction::SetSharedContainerValue.with_children(
+                                instructions!(
+                                    RegularInstruction::list_with_children(
+                                        instructions!(
+                                            RegularInstruction::GetStackValueSharedRefMut(
+                                                StackIndex(0)
+                                            ),
+                                        )
+                                    ),
+                                    RegularInstruction::BorrowStackValue(
+                                        StackIndex(0)
+                                    )
+                                )
+                            ),
+                            // [x]
+                            RegularInstruction::list_with_children(
+                                instructions!(
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(0)
+                                    ),
+                                )
+                            )
+                        )
+                    ),
+                    RegularInstruction::TakeStackValue(StackIndex(0)),
+                )
+            ),)
+        );
+    }
+
+    #[test]
+    fn callable() {
+        let callable = Callable {
+            name: Some("example".to_string()),
+            signature: CallableTypeDefinition {
+                kind: CallableKind::Function,
+                requires_async: false,
+                parameters: vec![],
+                rest_parameter: None,
+                return_type: None,
+                yeet_type: None,
+            },
+            body: CallableBody::Hidden,
+            creator: Endpoint::LOCAL,
+            docs: None,
+        };
+
+        let mut context = core_compilation_context();
+        let cache = &mut SharedReferencesCache::default();
+        let callable_container = ValueContainer::from(callable);
+        let dxb = compile_instructions_to_dxb(
+            context.shared_value_tracking.get_mut(),
+            cache,
+            &callable_container,
+        );
+
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
+
+        assert_instructions_equal!(
+            &dxb,
+            (RegularInstruction::Callable(CallableData {
+                signature: CallableSignatureData {
+                    name: ShortTextData("example".to_string()),
+                    kind: CallableKind::Function,
+                    parameter_count: 0,
+                    requires_async: false,
+                    has_rest_parameter: false,
+                    has_return_type: false,
+                    has_yeet_type: false,
+                    parameter_names: vec![],
+                    rest_parameter_name: None,
+                },
+                body: CallableDataBody {
+                    length: 0,
+                    injected_value_count: 0,
+                    body: vec![]
+                },
+            }),)
+        );
+    }
+
+    #[test]
+    fn callable_with_params_and_return_type() {
+        let callable = Callable {
+            name: Some("example".to_string()),
+            signature: CallableTypeDefinition {
+                kind: CallableKind::Function,
+                requires_async: false,
+                parameters: vec![
+                    (
+                        Some("x".to_string()),
+                        Type::core(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Integer,
+                        )),
+                    ),
+                    (
+                        Some("y".to_string()),
+                        Type::core(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Text,
+                        )),
+                    ),
+                ],
+                rest_parameter: None,
+                return_type: Some(Box::new(Type::core(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Boolean,
+                )))),
+                yeet_type: None,
+            },
+            body: CallableBody::Hidden,
+            creator: Endpoint::LOCAL,
+            docs: None,
+        };
+
+        let mut context = core_compilation_context();
+        let cache = &mut SharedReferencesCache::default();
+        let callable_container = ValueContainer::from(callable);
+        let dxb = compile_instructions_to_dxb(
+            context.shared_value_tracking.get_mut(),
+            cache,
+            &callable_container,
+        );
+
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
+
+        assert_instructions_equal!(
+            &dxb,
+            (RegularInstruction::Callable(CallableData {
+                signature: CallableSignatureData {
+                    name: ShortTextData("example".to_string()),
+                    kind: CallableKind::Function,
+                    parameter_count: 2,
+                    requires_async: false,
+                    has_rest_parameter: false,
+                    has_return_type: true,
+                    has_yeet_type: false,
+                    parameter_names: vec![
+                        ShortTextData("x".to_string()),
+                        ShortTextData("y".to_string()),
+                    ],
+                    rest_parameter_name: None,
+                },
+                body: CallableDataBody {
+                    length: 0,
+                    injected_value_count: 0,
+                    body: vec![]
+                },
+                // body: CallableDataBodyDebugFlat {
+                //     injected_value_count: 0,
+                //     length: 100,
+                //     body: instructions_with_span!(
+                //         Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
+                //         Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into())),
+                //
+                //         Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
+                //         Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Text.into())),
+                //
+                //         Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
+                //         Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Boolean.into())),
+                //     ),
+                // }
+            })
+            .with_children(instructions!(
+                Instruction::Type(TypeInstruction::DefinitionWithMetadata(
+                    TypeMetadata::default()
+                )),
+                Instruction::Type(TypeInstruction::CoreType(
+                    CoreLibBaseTypeId::Integer.into()
+                )),
+                Instruction::Type(TypeInstruction::DefinitionWithMetadata(
+                    TypeMetadata::default()
+                )),
+                Instruction::Type(TypeInstruction::CoreType(
+                    CoreLibBaseTypeId::Text.into()
+                )),
+                Instruction::Type(TypeInstruction::DefinitionWithMetadata(
+                    TypeMetadata::default()
+                )),
+                Instruction::Type(TypeInstruction::CoreType(
+                    CoreLibBaseTypeId::Boolean.into()
+                )),
+            )))
         );
     }
 }

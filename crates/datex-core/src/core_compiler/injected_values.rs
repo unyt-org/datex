@@ -1,10 +1,10 @@
 use crate::{
     core_compiler::{
-        buffer_provider::BufferProvider,
         core_compilation_context::{
             ByteCursor, CompileInput, CoreCompilationContext,
             DXBWithSharedValues,
         },
+        to_instructions::{ToInstructions, yield_all},
         value_compiler::InjectedValueValidationError,
         value_visitor::ValueVisitor,
     },
@@ -16,10 +16,15 @@ use crate::{
         regular_instruction::RegularInstruction,
     },
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::SharedContainer,
     values::value_container::ValueContainer,
 };
 use binrw::{BinWrite, io::Write};
+
+struct InjectedValues {
+    pub values: Vec<ValueContainer>,
+}
 
 /// Compiles injected values into a DXB buffer with shared values
 ///
@@ -32,6 +37,7 @@ pub fn compile_injected_values(
     instruction_block_data: InstructionBlockData,
     injected_values: Vec<ValueContainer>,
     compile_input: CompileInput,
+    cache: &mut SharedReferencesCache,
 ) -> Result<DXBWithSharedValues, InjectedValueValidationError> {
     if injected_values.is_empty() {
         Ok(DXBWithSharedValues {
@@ -39,20 +45,21 @@ pub fn compile_injected_values(
             shared_values: vec![],
         })
     } else {
-        let mut context =
-            CoreCompilationContext::new(Vec::new(), compile_input);
-
         validate_injected_value_declaration_for_values(
             &instruction_block_data.injected_values,
             &injected_values,
         )?;
 
-        compile_injected_values_with_context(&mut context, &injected_values);
-
         let DXBWithSharedValues {
             dxb: preambles_dxb,
             shared_values,
-        } = context.into_dxb_with_shared_values();
+        } = CoreCompilationContext::new(compile_input)
+            .compile_to_dxb_with_shared_values(
+                &InjectedValues {
+                    values: injected_values,
+                },
+                cache,
+            );
 
         // prepend statements block
         let mut cursor = ByteCursor::new(Vec::new());
@@ -67,6 +74,28 @@ pub fn compile_injected_values(
         cursor.write_all(&instruction_block_data.body).unwrap();
 
         Ok(DXBWithSharedValues::new(cursor.into_inner(), shared_values))
+    }
+}
+
+/// Compiles injected values into a DXB buffer with shared values, using the provided compilation context.
+/// # Safety
+/// The caller must ensure that minimum a single injected value is provided, as this function assumes that the injected values are not empty
+impl ToInstructions for InjectedValues {
+    fn to_instructions<'a>(
+        &'a self,
+        visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache,
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
+        Box::new(gen move {
+            if self.values.is_empty() {
+                unreachable!(); // injected values should not be empty, this function should only be called if there are injected values
+            }
+            yield RegularInstruction::list(self.values.len() as u32).into();
+
+            for value_container in &self.values {
+                yield_all!(value_container.to_instructions(visitor, cache));
+            }
+        })
     }
 }
 
@@ -122,24 +151,6 @@ fn validate_injected_value_declaration_for_values(
     Ok(())
 }
 
-/// Compiles injected values into a DXB buffer with shared values, using the provided compilation context.
-/// # Safety
-/// The caller must ensure that minimum a single injected value is provided, as this function assumes that the injected values are not empty.
-fn compile_injected_values_with_context(
-    compilation_context: &mut CoreCompilationContext,
-    injected_values: &[ValueContainer],
-) {
-    if injected_values.is_empty() {
-        unreachable!(); // injected values should not be empty, this function should only be called if there are injected values
-    }
-    compilation_context
-        .write(RegularInstruction::list(injected_values.len() as u32));
-
-    for value_container in injected_values {
-        compilation_context.visit_value_container(value_container);
-    }
-}
-
 #[cfg(test)]
 #[cfg(feature = "disassembler")]
 mod tests {
@@ -167,6 +178,7 @@ mod tests {
         },
         prelude::*,
         runtime::{
+            cache::shared_references_cache::SharedReferencesCache,
             pointer_address_provider::SelfOwnedPointerAddressProvider,
             pointer_availability_lookup::PointerAvailabilityLookup,
         },
@@ -183,6 +195,7 @@ mod tests {
         instruction_block_data: InstructionBlockData,
         injected_values: Vec<ValueContainer>,
         receivers: &[Endpoint],
+        cache: &mut SharedReferencesCache,
     ) -> Result<DXBWithSharedValues, InjectedValueValidationError> {
         let pointer_availability_lookup =
             PointerAvailabilityLookup::new(Endpoint::default());
@@ -193,28 +206,32 @@ mod tests {
                 pointer_lookup: &pointer_availability_lookup,
                 receivers,
             },
+            cache,
         )
     }
     fn compile_injected_values_test(
         instruction_block_data: InstructionBlockData,
         injected_values: Vec<ValueContainer>,
+        cache: &mut SharedReferencesCache,
     ) -> Result<DXBWithSharedValues, InjectedValueValidationError> {
         compile_injected_values_test_with_receivers(
             instruction_block_data,
             injected_values,
             &[],
+            cache,
         )
     }
 
     #[test]
     fn remote_execution_no_injected_values() {
+        let cache = &mut SharedReferencesCache::default();
         let exec_block_data = InstructionBlockData {
             injected_value_count: 0,
             length: 0,
             injected_values: vec![],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_injected_values_test(exec_block_data, vec![])
+        let res = compile_injected_values_test(exec_block_data, vec![], cache)
             .unwrap()
             .dxb;
         assert_instructions_equal!(&res, (RegularInstruction::Null))
@@ -222,6 +239,7 @@ mod tests {
 
     #[test]
     fn remote_execution_with_injected_ref_value() {
+        let cache = &mut SharedReferencesCache::default();
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
         let owned_container =
@@ -246,6 +264,7 @@ mod tests {
             vec![ValueContainer::Shared(SharedContainer::Referenced(
                 owned_container.derive_with_max_mutability(),
             ))],
+            cache,
         )
         .unwrap()
         .dxb;
@@ -263,7 +282,8 @@ mod tests {
                                 RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                                     address: owned_address,
                                     ref_mutability: ReferenceMutability::Immutable,
-                                    container_mutability: SharedContainerMutability::Immutable
+                                    container_mutability: SharedContainerMutability::Immutable,
+                                    is_debug: false,
                                 }),
                                 RegularInstruction::Int32(Int32Data(42)),
                                 RegularInstruction::list_with_children(instructions!(
@@ -285,6 +305,7 @@ mod tests {
     #[test]
     fn remote_execution_multiple_ref_values() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+        let cache = &mut SharedReferencesCache::default();
 
         let shared_value1 = SharedContainer::Referenced(
             SharedContainer::new_owned_with_inferred_allowed_type(
@@ -334,6 +355,7 @@ mod tests {
                 ValueContainer::Shared(shared_value1),
                 ValueContainer::Shared(shared_value2),
             ],
+            cache,
         )
         .unwrap()
         .dxb;
@@ -351,14 +373,16 @@ mod tests {
                             RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                                 address: owned_address_1,
                                 ref_mutability: ReferenceMutability::Immutable,
-                                container_mutability: SharedContainerMutability::Immutable
+                                container_mutability: SharedContainerMutability::Immutable,
+                                is_debug: false,
                             }),
                             RegularInstruction::Int32(Int32Data(42)),
                             RegularInstruction::PushToStack,
                             RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                                 address: owned_address_2,
                                 ref_mutability: ReferenceMutability::Mutable,
-                                container_mutability: SharedContainerMutability::Mutable
+                                container_mutability: SharedContainerMutability::Mutable,
+                                is_debug: false,
                             }),
                             RegularInstruction::Int32(Int32Data(100)),
                             RegularInstruction::list_with_children(instructions!(
@@ -384,6 +408,7 @@ mod tests {
     #[test]
     fn remote_execution_with_injected_moved_value() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+        let cache = &mut SharedReferencesCache::default();
 
         let shared_value =
             SharedContainer::new_owned_with_inferred_allowed_type(
@@ -409,6 +434,7 @@ mod tests {
         let res = compile_injected_values_test(
             exec_block_data,
             vec![ValueContainer::Shared(shared_value)],
+            cache,
         )
         .unwrap()
         .dxb;
@@ -464,6 +490,7 @@ mod tests {
     #[test]
     fn remote_execution_moved_value_and_ref() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+        let cache = &mut SharedReferencesCache::default();
 
         let shared_value1 =
             SharedContainer::new_owned_with_inferred_allowed_type(
@@ -516,6 +543,7 @@ mod tests {
                     shared_value2.derive_reference_with_max_mutability(),
                 )),
             ],
+            cache,
         )
         .unwrap()
         .dxb;
@@ -540,7 +568,8 @@ mod tests {
                             RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                                 address: shared_value2_address,
                                 ref_mutability: ReferenceMutability::Immutable,
-                                container_mutability: SharedContainerMutability::Immutable
+                                container_mutability: SharedContainerMutability::Immutable,
+                                is_debug: false
                             }),
                             RegularInstruction::Int32(Int32Data(100)),
 

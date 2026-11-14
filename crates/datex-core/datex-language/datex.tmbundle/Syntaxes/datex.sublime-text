@@ -6,27 +6,16 @@ file_extensions:
 scope: source.datex
 contexts:
   main:
-    - match: '"([^"\\]|\\.)*"'   # Match double-quoted strings, including escaped quotes
-      scope: string.quoted.double.datex
+    - include: comments
+    - include: strings
+    - include: constants
+    - include: keywords
+    - include: numbers
+    - include: endpoints
+    - include: slots
+    - include: functions
 
-    - match: '\b(true|false|null)\b'  # Booleans and null
-      scope: constant.language.datex
-
-    - match: '\b(\d|_)+\.(\d|_)+(f32|f64|big)?\b'       # Floating-point numbers
-      scope: constant.numeric.float.datex
-
-    - match: 'nan|NaN|infinity|Infinity'       # Floating-point numbers
-      scope: constant.numeric.float.datex
-
-    - match: '\b(\d|_)+((i|u)(8|16|32|64|big))?\b'            # Integers
-      scope: constant.numeric.integer.datex
-
-    - match: '\s+'                # Whitespace (ignored)
-      scope: text.whitespace.datex
-
-    - match: '\b(var|const|type|if|else|function|procedure|shared|mut)\b'           # Keywords
-      scope: keyword.control.datex
-
+  comments:
     - match: '//.*$'   # single-line comments
       scope: comment.line.double-slash.datex
 
@@ -39,11 +28,43 @@ contexts:
           scope: punctuation.definition.comment.end.datex
           pop: true
 
-    - match: '#\d+'    # Slot
+  strings:
+    - match: '"'
+      scope: punctuation.definition.string.begin.datex
+      push:
+        - meta_scope: string.quoted.double.datex
+        - match: '\\.'   # escape sequences
+          scope: constant.character.escape.datex
+        - match: '"'
+          scope: punctuation.definition.string.end.datex
+          pop: true
+
+  constants:
+    - match: '\b(true|false|null)\b'   # Booleans and null
+      scope: constant.language.datex
+
+  keywords:
+    - match: '\b(const|let|shared|mut|function|if|else|return|print)\b'
+      scope: keyword.control.datex
+
+  numbers:
+    # Floats, optionally with f32 / f64 / dbig suffix
+    - match: '\b(?:[0-9]+\.[0-9]+(?:[eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+)(?:f32|f64|dbig)?\b|\b[0-9]+(?:f32|f64|dbig)\b'
+      scope: constant.numeric.float.datex
+
+    # Integers (decimal, hex, binary), optionally with u8..u128 / ubig / i8..i128 / ibig suffix
+    - match: '\b(?:0x[0-9a-fA-F]+|0b[01]+|[0-9]+)(?:u8|u16|u32|u64|u128|ubig|i8|i16|i32|i64|i128|ibig)?\b'
+      scope: constant.numeric.integer.datex
+
+  endpoints:
+    - match: '@[@+]?[a-zA-Z_][a-zA-Z0-9_]*'
+      scope: variable.other.endpoint.datex
+
+  slots:
+    - match: '#[a-zA-Z0-9_]+'
       scope: variable.other.slot.datex
 
-    - match: '\$[0-9a-fA-F]+'    # Pointer Address
-      scope: variable.other.pointer.datex
-
-    - match: '@[@+]?\w+'    # Endpoint
-      scope: variable.other.endpoint.datex
+  functions:
+    - match: '\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()'
+      captures:
+        1: entity.name.function.datex

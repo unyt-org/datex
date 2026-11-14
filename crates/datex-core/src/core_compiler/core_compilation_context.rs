@@ -1,25 +1,20 @@
-use core::cell::RefCell;
-
 use crate::{
     core_compiler::{
-        buffer_provider::BufferProvider,
         preamble::append_injected_values_preamble,
         shared_value_tracking::SharedValueTracking,
-        to_instructions::{SharedValueTrackingProvider, ToInstructions},
-        type_compiler::append_type_instruction,
-        value_compiler::{append_shared_container_from_preamble, append_value},
-        value_visitor::ValueVisitor,
+        to_instructions::ToInstructions,
+        value_visitor::compile_instructions_to_dxb,
     },
-    instruction::type_instruction::TypeInstruction,
     prelude::*,
-    runtime::pointer_availability_lookup::PointerAvailabilityLookup,
-    shared_values::SharedContainer,
-    types::r#type::Type,
-    values::{
-        core_values::endpoint::Endpoint, value_container::ValueContainer,
+    runtime::{
+        cache::shared_references_cache::SharedReferencesCache,
+        pointer_availability_lookup::PointerAvailabilityLookup,
     },
+    shared_values::SharedContainer,
+    values::core_values::endpoint::Endpoint,
 };
 use binrw::io::Cursor;
+use core::cell::RefCell;
 
 pub type ByteCursor = Cursor<Vec<u8>>;
 
@@ -93,7 +88,6 @@ pub(crate) unsafe fn default_compile_input<'a>() -> CompileInput<'a> {
 
 #[derive(Debug)]
 pub struct CoreCompilationContext<'a> {
-    pub cursor: ByteCursor,
     pub shared_value_tracking: RefCell<SharedValueTracking<'a>>,
     pub input: CompileInput<'a>,
 }
@@ -102,17 +96,13 @@ pub struct CoreCompilationContext<'a> {
 /// This function is unsafe because it creates a CoreCompilationContext
 pub(crate) unsafe fn default_core_compilation_context<'a>()
 -> CoreCompilationContext<'a> {
-    CoreCompilationContext::new(Vec::new(), unsafe { default_compile_input() })
+    CoreCompilationContext::new(unsafe { default_compile_input() })
 }
 
 impl<'a> CoreCompilationContext<'a> {
     /// Create a new core compilation context with an initial byte input buffer
-    pub fn new(
-        buffer: Vec<u8>,
-        input: CompileInput<'a>,
-    ) -> CoreCompilationContext<'a> {
+    pub fn new(input: CompileInput<'a>) -> CoreCompilationContext<'a> {
         CoreCompilationContext {
-            cursor: Cursor::new(buffer),
             shared_value_tracking: RefCell::new(SharedValueTracking::new(
                 input.pointer_lookup,
                 input.receivers,
@@ -127,20 +117,43 @@ impl<'a> CoreCompilationContext<'a> {
         receivers: &'a [Endpoint],
     ) -> CoreCompilationContext<'a> {
         let input = CompileInput::new(pointer_lookup, receivers);
-        CoreCompilationContext::new(vec![], input)
+        CoreCompilationContext::new(input)
     }
 
-    pub fn cursor(&self) -> &Cursor<Vec<u8>> {
-        &self.cursor
+    /// Compiles a [ToInstructions] value with shared value tracking and appends a preamble with the injected shared values.
+    /// Returns the final byte buffer and the list of shared values that were moved or referenced during compilation
+    pub fn compile_to_dxb_with_shared_values(
+        mut self,
+        input: &impl ToInstructions,
+        cache: &mut SharedReferencesCache,
+    ) -> DXBWithSharedValues {
+        let compiled_body = compile_instructions_to_dxb(
+            self.shared_value_tracking.get_mut(),
+            cache,
+            input,
+        );
+
+        self.append_preamble_to_dxb(compiled_body, cache)
     }
 
-    /// Finalizes the compilation context by appending a preamble with the injected shared values,
-    /// and returns the final byte buffer and the list of shared values that were moved or referenced during compilation
-    pub fn into_dxb_with_shared_values(self) -> DXBWithSharedValues {
-        let tracked_values = self.shared_value_tracking;
-        let inner = tracked_values.into_inner().into_tracked_values();
+    /// Appends a preamble with the injected shared values to the provided, already compiled body and returns a [DXBWithSharedValues]
+    /// containing the combined buffer and the list of shared values that were moved or referenced during compilation.
+    /// Note: This function should only be called with a body that results from a compilation that used the same shared value tracking as this context, otherwise the shared values may not match the body.
+    pub fn append_preamble_to_dxb(
+        self,
+        compiled_body: Vec<u8>,
+        cache: &mut SharedReferencesCache,
+    ) -> DXBWithSharedValues {
+        let tracked_values = self
+            .shared_value_tracking
+            .into_inner()
+            .into_tracked_values();
         let (combined_buffer, top_level_values) =
-            append_injected_values_preamble(inner, self.cursor.into_inner());
+            append_injected_values_preamble(
+                tracked_values,
+                compiled_body,
+                cache,
+            );
         // SAFETY: it is assumed that the tracked values from the shared value tracking were
         // moved inside the compilation and are no longer accessible from the outside
         unsafe {
@@ -149,43 +162,5 @@ impl<'a> CoreCompilationContext<'a> {
                 top_level_values,
             )
         }
-    }
-}
-
-impl BufferProvider for CoreCompilationContext<'_> {
-    fn cursor_mut(&mut self) -> &mut ByteCursor {
-        &mut self.cursor
-    }
-}
-
-impl ValueVisitor for CoreCompilationContext<'_> {
-    /// Appends a value container.
-    /// For local values, the value is just serialized
-    /// For shared values, the container is registered in the context shared value tracking
-    fn visit_value_container(&mut self, value_container: &ValueContainer) {
-        // TODO can we pass value container by reference?
-        match value_container {
-            ValueContainer::Local(value) => append_value(self, value),
-            ValueContainer::Shared(reference) => {
-                append_shared_container_from_preamble(self, reference);
-            }
-        }
-    }
-
-    fn visit_type(&mut self, ty: &Type) {
-        let instructions =
-            ty.to_instructions(self).collect::<Vec<TypeInstruction>>();
-
-        for instruction in instructions {
-            append_type_instruction(self.cursor_mut(), instruction);
-        }
-    }
-}
-
-impl<'a> SharedValueTrackingProvider<'a> for CoreCompilationContext<'a> {
-    fn shared_value_tracking<'b>(
-        &'b self,
-    ) -> Option<&'b RefCell<SharedValueTracking<'a>>> {
-        Some(&self.shared_value_tracking)
     }
 }

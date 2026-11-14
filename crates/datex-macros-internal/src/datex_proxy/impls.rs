@@ -1,6 +1,9 @@
 use crate::{
     datex_proxy::native_callable::generate_native_callable_from_impl_fn,
-    utils::{get_datex_core_crate_name, get_project_relative_file_path},
+    utils::{
+        derive_datex_prelude, get_datex_core_crate_name,
+        get_project_relative_file_path,
+    },
 };
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
@@ -8,8 +11,8 @@ use syn::ItemImpl;
 
 pub fn generate_impl_glue_code(
     _args: Option<TokenStream>,
-    input: TokenStream,
-    item: &ItemImpl,
+    _input: TokenStream,
+    mut item: ItemImpl,
 ) -> TokenStream {
     let datex_core_crate_name = get_datex_core_crate_name();
     let self_ty = &item.self_ty;
@@ -17,7 +20,7 @@ pub fn generate_impl_glue_code(
     let mut methods = Vec::new();
     let mut static_methods = Vec::new();
 
-    for impl_item in &item.items {
+    for impl_item in &mut item.items {
         if let syn::ImplItem::Fn(method) = impl_item {
             let is_method = method
                 .sig
@@ -51,32 +54,27 @@ pub fn generate_impl_glue_code(
             .to_string()
     };
     let name = item.self_ty.to_token_stream().to_string();
+    let prelude = derive_datex_prelude(false);
 
     quote! {
-        #input
+        #item
 
         const _: () = {
-            use #datex_core_crate_name::{
-                prelude::*,
-                types::type_definition::callable::{CallableKind, CallableTypeDefinition},
-                values::core_values::callable::{Callable, CallableBody, NativeCallable},
-                types::entities::entity_impls::EntityImplMethod,
-                values::core_values::callable::{native_sync_callable, native_async_callable},
-                datex_proxy::DatexValueContainerProxyDeserialize,
-                values::value_container::ValueContainer,
-            };
+            #prelude
 
-            #datex_core_crate_name::inventory::submit! {
+            #datex_core_crate_name::datex_registry::registry_register!(
+                #datex_core_crate_name::datex_registry::DatexImplRegistration,
+                DATEX_IMPL_REGISTRATIONS,
                 #datex_core_crate_name::datex_registry::DatexImplRegistration {
                     namespace: #namespace,
                     name: #name,
-                    create_impl: |cache| #datex_core_crate_name::types::entities::entity_impls::EntityImpl {
+                    create_impl: |cache| EntityImpl {
                         methods: vec![#(#methods),*],
                         static_methods: vec![#(#static_methods),*],
                     },
                     owner_type_id: || { ::core::any::TypeId::of::<#self_ty>()},
                 }
-            }
+            );
         };
     }
 }

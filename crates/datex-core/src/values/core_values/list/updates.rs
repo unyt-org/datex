@@ -8,10 +8,7 @@ use crate::{
         update_data::UpdateOperation,
         update_handler::InternalMutabilityUpdateHandler,
     },
-    values::{
-        core_values::list::List,
-        value_container::{ValueContainer, value_key::ValueKey},
-    },
+    values::{core_values::list::List, value_container::ValueContainer},
 };
 use core::ops::Range;
 
@@ -22,26 +19,23 @@ impl List {
     /// Returns the previous value at the index if it was replaced.
     pub fn try_set_with_source(
         &mut self,
-        index: i64,
+        index: u32,
         mut value: ValueContainer,
         source_id: Option<TransceiverId>,
     ) -> Result<ValueContainer, IndexOutOfBoundsError> {
-        let mapped_index = self.get_valid_index(index)?;
-
         // set update callback data for the new value if needed
         if self.update_callback_data.is_some() {
             self.set_child_update_callback_data_if_local(&index, &mut value);
         }
 
         // replace
-        let res =
-            core::mem::replace(&mut self.items[mapped_index as usize], value);
+        let res = core::mem::replace(&mut self.items[index as usize], value);
 
         // trigger update callback if needed
         self.maybe_trigger_update_callback(source_id, || {
             UpdateOperation::set_entry(
-                ValueKey::Index(index),
-                self.items[mapped_index as usize].clone(),
+                ValueContainer::local(index),
+                self.items[index as usize].clone(),
             )
         });
 
@@ -52,19 +46,14 @@ impl List {
     /// If the index is out of bounds, an error is returned.
     pub fn try_delete_with_source(
         &mut self,
-        index: i64,
+        index: u32,
         source_id: Option<TransceiverId>,
     ) -> Result<ValueContainer, IndexOutOfBoundsError> {
-        let mapped_index = self.get_valid_index(index)?;
-
-        let res = self
-            .items
-            .remove(mapped_index as usize)
-            .without_local_observers();
+        let res = self.items.remove(index as usize).without_local_observers();
 
         // trigger update callback if needed
         self.maybe_trigger_update_callback(source_id, || {
-            UpdateOperation::delete_entry(ValueKey::Index(index))
+            UpdateOperation::delete_entry(ValueContainer::local(index))
         });
 
         Ok(res)
@@ -100,8 +89,8 @@ impl List {
             .map(|value| value.without_local_observers());
 
         self.maybe_trigger_update_callback(source_id, || {
-            UpdateOperation::delete_entry(ValueKey::Index(
-                self.items.len() as i64
+            UpdateOperation::delete_entry(ValueContainer::local(
+                self.items.len() as i64,
             ))
         });
 

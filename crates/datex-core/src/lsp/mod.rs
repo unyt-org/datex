@@ -439,7 +439,7 @@ mod tests {
     use super::*;
     use crate::{
         lsp::io::{Reader, Writer},
-        runtime::RuntimeRunner,
+        runtime::{CustomRuntimeInfo, RuntimeRunner},
     };
     use tokio::{
         task::LocalSet,
@@ -450,9 +450,12 @@ mod tests {
     async fn lsp_initialization() {
         LocalSet::new()
             .run_until(async move {
-                RuntimeRunner::new(RuntimeConfig::new_with_endpoint(
-                    Endpoint::from_str("@lspler").unwrap(),
-                ))
+                RuntimeRunner::new(
+                    RuntimeConfig::new_with_endpoint(
+                        Endpoint::from_str("@lspler").unwrap(),
+                    ),
+                    CustomRuntimeInfo::default(),
+                )
                 .run(async |runtime| {
                     let (tx_to_lsp, rx_from_client) =
                         mpsc::unbounded::<Vec<u8>>();

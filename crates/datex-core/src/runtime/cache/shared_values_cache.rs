@@ -10,18 +10,22 @@ use crate::{
         },
         traits::SharedContainerCommon,
     },
-    values::core_values::callable::Callable,
+    values::{
+        core_values::callable::Callable, value_container::ValueContainer,
+    },
 };
 use core::{
     fmt::Display,
     hash::{Hash, Hasher},
 };
+use std::collections::LinkedList;
 
 /// Cache layer that stores references or owned and referenced shared containers
 #[derive(Debug, Default)]
 pub struct SharedValuesCache {
     values: HashMap<PointerAddress, SharedContainer>,
     callables: HashMap<u64, Callable>,
+    vecs: HashMap<usize, Box<dyn std::any::Any>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -88,6 +92,7 @@ impl SharedValuesCache {
                 .map(|container| (container.pointer_address(), container))
                 .collect(),
             callables: HashMap::new(),
+            vecs: HashMap::new(),
         }
     }
 
@@ -110,6 +115,21 @@ impl SharedValuesCache {
         let hash = hasher.finish();
         self.callables.insert(hash, callable);
         hash
+    }
+
+    /// Returns a raw address to the memory location of the stored vector
+    pub fn store_vec<T: 'static>(&mut self, vec: Vec<T>) -> usize {
+        let boxed = Box::new(vec);
+        let address = (&*boxed) as *const Vec<T> as usize;
+
+        self.vecs.insert(address, boxed);
+
+        address
+    }
+
+    /// Removes a stored vector from the cache based on its raw address.
+    pub fn remove_stored_vec(&mut self, address: usize) {
+        self.vecs.remove(&address);
     }
 
     /// Retrieves a callable from the cache based on its hash value.
@@ -180,6 +200,24 @@ impl SharedValuesCache {
 
     /// Tries to get a mutable reference to a shared container from the cache at the given pointer address.
     /// If the container for the address is not in the cache, a [ValueNotFoundInCacheError] is returned.
+    pub fn try_get_shared_container_reference(
+        &self,
+        pointer_address: &PointerAddress,
+        mutability: ReferenceMutability,
+    ) -> Result<ReferencedSharedContainer, CacheValueRetrievalError> {
+        match mutability {
+            ReferenceMutability::Mutable => {
+                self.try_get_shared_container_mutable_reference(pointer_address)
+            }
+            ReferenceMutability::Immutable => Ok(self
+                .try_get_shared_container_immutable_reference(
+                    pointer_address,
+                )?),
+        }
+    }
+
+    /// Tries to get a mutable reference to a shared container from the cache at the given pointer address.
+    /// If the container for the address is not in the cache, a [ValueNotFoundInCacheError] is returned.
     /// If the container cannot be accessed as a mutable reference, an [UnexpectedImmutableReferenceError] error is returned.
     pub fn try_get_shared_container_mutable_reference(
         &self,
@@ -236,5 +274,28 @@ impl SharedValuesCache {
         self.values
             .get(pointer_address)
             .is_some_and(|container| container.ownership() >= ownership)
+    }
+}
+
+#[cfg(feature = "decompiler")]
+impl Display for SharedValuesCache {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        use crate::decompiler::{ast_to_source_code::value_to_source_code, *};
+
+        writeln!(f, "Values:")?;
+        for (address, value) in &self.values {
+            writeln!(
+                f,
+                "  {}: {}",
+                address,
+                value_to_source_code(
+                    &ValueContainer::Shared(
+                        value.clone_with_move_indicator_if_owned()
+                    ),
+                    DecompileOptions::default()
+                )
+            )?;
+        }
+        Ok(())
     }
 }

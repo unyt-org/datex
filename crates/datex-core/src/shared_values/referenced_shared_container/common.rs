@@ -45,6 +45,7 @@ impl SharedContainerCommon for ReferencedSharedContainer {
     /// Checks if the reference can be mutated by the local endpoint
     fn can_mutate(&self) -> bool {
         self.reference_mutability == ReferenceMutability::Mutable
+            || self.is_uninitialized
     }
 
     // TODO: convert to try_inner borrows
@@ -82,5 +83,9 @@ impl SharedContainerCommon for ReferencedSharedContainer {
 
     fn observer_data_mut(&self) -> RefMut<'_, ObserverData> {
         self.observer_data.borrow_mut()
+    }
+
+    fn is_uninitialized(&self) -> bool {
+        self.is_uninitialized
     }
 }

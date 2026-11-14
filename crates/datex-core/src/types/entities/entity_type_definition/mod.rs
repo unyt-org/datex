@@ -1,4 +1,4 @@
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod value_access;
 
@@ -7,16 +7,23 @@ use crate::{
     prelude::*, types::type_definition::TypeDefinition,
     values::core_values::callable::Callable,
 };
+pub mod dyn_deserialize;
+pub mod serde_dif;
+mod to_instructions;
+
+use crate::types::entities::entity_type_definition::dyn_deserialize::DeFn;
 use core::fmt::Display;
 
 /// Represents a definition of an "entity" type,
 /// which describes a nominal type identified by a unique pointer id.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct EntityTypeDefinition {
-    pub(crate) definition: TypeDefinition,
     pub(crate) name: String,
+    pub(crate) definition: TypeDefinition,
     pub(crate) allowed_variants: Vec<String>,
     pub(crate) impls: Vec<EntityImpl>,
+    // TODO: dif feature flag?
+    pub(crate) deserialize_from_dif: Option<DeFn>,
 }
 
 impl Display for EntityTypeDefinition {
@@ -35,6 +42,7 @@ impl EntityTypeDefinition {
             name,
             allowed_variants: Vec::new(),
             impls: Vec::new(),
+            deserialize_from_dif: None,
         }
     }
 
@@ -48,11 +56,38 @@ impl EntityTypeDefinition {
             name,
             allowed_variants: Vec::new(),
             impls,
+            deserialize_from_dif: None,
+        }
+    }
+
+    pub fn new_with_impls_and_deserialize(
+        definition: TypeDefinition,
+        name: String,
+        impls: Vec<EntityImpl>,
+        deserialize_from_dif: Option<DeFn>,
+    ) -> EntityTypeDefinition {
+        EntityTypeDefinition {
+            definition,
+            name,
+            allowed_variants: Vec::new(),
+            impls,
+            deserialize_from_dif,
         }
     }
 
     pub fn impls(&self) -> &[EntityImpl] {
         &self.impls
+    }
+
+    pub fn deserialize_from_dif(&self) -> Option<&DeFn> {
+        self.deserialize_from_dif.as_ref()
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn allowed_variants(&self) -> &[String] {
+        &self.allowed_variants
     }
 
     /// Returns a reference to the method for the given method name, if it exists in this implementation.

@@ -31,6 +31,9 @@ use modular_bitfield::{bitfield, prelude::B4};
 mod disassembler_instruction_data;
 #[cfg(feature = "disassembler")]
 pub use disassembler_instruction_data::*;
+use crate::libs::core::core_lib_id::CoreLibIdIndex;
+use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId};
+use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
@@ -176,15 +179,6 @@ impl ReadEndian for ShortTextData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct TaggedValue {
-    pub(crate) tag: ShortTextData,
-    #[br(map = |x: u8| x != 0)]
-    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
-    pub(crate) is_empty: bool,
-}
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
 pub struct CallableSignatureData {
     pub name: ShortTextData, // empty string if anonymous
     pub kind: CallableKind,
@@ -252,6 +246,60 @@ impl CallableSignatureData {
 pub struct CallableDeclarationData {
     pub signature: CallableSignatureData,
     pub body: InstructionBlockData,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct EntityTypeDefinitionData {
+    pub name: ShortTextData,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct ClassifiedValueData {
+    // tag
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub has_tag: bool,
+    #[br(if(has_tag))]
+    pub(crate) tag: Option<ShortTextData>,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub(crate) tag_value_is_empty: bool,
+
+    // entity
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub(crate) is_entity: bool,
+
+    // impls
+    pub impl_count: u32,
+    #[br(count = impl_count)]
+    pub(crate) impls: Vec<PointerAddress>,
+}
+
+impl ClassifiedValueData {
+    pub fn new_tagged(tag: String, tag_value_is_empty: bool) -> Self {
+        Self {
+            has_tag: true,
+            tag: Some(ShortTextData(tag)),
+            tag_value_is_empty,
+            is_entity: false,
+            impl_count: 0,
+            impls: Vec::new(),
+        }
+    }
+
+    pub fn new_entity() -> Self {
+        Self {
+            has_tag: false,
+            tag: None,
+            tag_value_is_empty: false,
+            is_entity: true,
+            impl_count: 0,
+            impls: Vec::new(),
+        }
+    }
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
@@ -361,6 +409,52 @@ pub struct ShortListData {
     pub element_count: u8,
 }
 
+/// Returns the size in bytes of a single element of the given core lib type id.
+/// This is used for compact lists and other data structures that store elements of a single core lib type.
+/// If the core lib type id does not have a known fixed size, this function will panic.
+pub fn element_size(core_lib_type_id: CoreLibIdIndex) -> u32 {
+    match CoreLibTypeId::try_from(core_lib_type_id) {
+        Ok(id) => match id {
+            CoreLibTypeId::Base(base_id) => match base_id {
+                CoreLibBaseTypeId::Null => 0,
+                CoreLibBaseTypeId::Boolean => 1,
+                _ => unimplemented!("Core lib type does not support element size: {}", core_lib_type_id),
+            }
+            CoreLibTypeId::Variant(variant_id) => match variant_id {
+                CoreLibVariantTypeId::Integer(integer_variant) => match integer_variant {
+                    IntegerTypeVariant::U8 => 1,
+                    IntegerTypeVariant::U16 => 2,
+                    IntegerTypeVariant::U32 => 4,
+                    IntegerTypeVariant::U64 => 8,
+                    IntegerTypeVariant::U128 => 16,
+                    IntegerTypeVariant::I8 => 1,
+                    IntegerTypeVariant::I16 => 2,
+                    IntegerTypeVariant::I32 => 4,
+                    IntegerTypeVariant::I64 => 8,
+                    IntegerTypeVariant::I128 => 16,
+                    _ => unimplemented!("Core lib type does not support element size: {}", core_lib_type_id),
+                }
+                _ => unimplemented!("Core lib type does not support element size: {}", core_lib_type_id),
+            }
+        }
+        Err(_) => unimplemented!("Core lib type does not support element size: {}", core_lib_type_id),
+    }
+}
+
+pub fn calculate_list_size(core_lib_type_id: CoreLibIdIndex, element_count: u32) -> u32 {
+    let element_size = element_size(core_lib_type_id);
+    element_size * element_count
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct CompactListData {
+    pub element_count: u32,
+    pub core_lib_type: CoreLibIdIndex,
+    #[br(count = calculate_list_size(core_lib_type, element_count))]
+    pub elements: Vec<u8>,
+}
+
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct StatementsData {
@@ -397,12 +491,18 @@ pub struct ListData {
 #[brw(little)]
 pub struct ShortMapData {
     pub element_count: u8,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub allow_only_text_keys: bool,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct MapData {
     pub element_count: u32,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub allow_only_text_keys: bool,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
@@ -437,6 +537,9 @@ pub struct SharedRef {
     pub address: PointerAddress,
     pub ref_mutability: ReferenceMutability,
     pub container_mutability: SharedContainerMutability,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub is_debug: bool,
     // TODO: hash
 }
 
@@ -446,6 +549,9 @@ pub struct SharedRefWithValue {
     pub address: SelfOwnedPointerAddress, // address of the caller
     pub ref_mutability: ReferenceMutability,
     pub container_mutability: SharedContainerMutability,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub is_debug: bool,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
@@ -517,7 +623,7 @@ pub struct CallMethodData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct ImplTypeData {
+pub struct ImplMarkersData {
     pub impl_count: u8,
     #[br(count = impl_count)]
     pub impls: Vec<PointerAddress>,

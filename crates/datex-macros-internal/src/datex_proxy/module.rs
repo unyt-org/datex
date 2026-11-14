@@ -1,6 +1,9 @@
 use crate::{
-    datex_proxy::native_callable::generate_native_callable_from_fn,
-    utils::get_datex_core_crate_name,
+    datex_proxy::{
+        helpers::get_pointer_address_for_fn,
+        native_callable::generate_native_callable_from_fn,
+    },
+    utils::{derive_datex_prelude, get_datex_core_crate_name},
 };
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
@@ -40,9 +43,9 @@ impl Parse for ModuleAttributes {
 
 pub fn generate_mod_glue_code(
     args: Option<TokenStream>,
-    item: &ItemMod,
+    item: ItemMod,
 ) -> TokenStream {
-    let items = if let Some((_, items)) = &item.content {
+    let mut items = if let Some((_, items)) = item.content {
         items
     } else {
         panic!("The #[datex] attribute can only be applied to inline modules.");
@@ -59,30 +62,37 @@ pub fn generate_mod_glue_code(
         .unwrap_or_else(|| item.ident.to_string());
 
     let vis = &item.vis;
-    let ident = &item.ident;
+    let mod_ident = &item.ident;
+    let mod_name = mod_ident.to_string();
 
     // map items to their token streams
-    let datex_items: Vec<TokenStream> =
-        items.iter().filter_map(map_to_datex_item).collect();
-
+    let datex_items: Vec<TokenStream> = items
+        .iter_mut()
+        .filter_map(|item| map_to_datex_item(item, &mod_name))
+        .collect();
+    let prelude = derive_datex_prelude(false);
     quote! {
         #(#attrs)*
-        #vis mod #ident {
+        #vis mod #mod_ident {
+            #prelude
+
             #(#items)*
 
-            #datex_core_crate_name::inventory::submit! {
+            #datex_core_crate_name::datex_registry::registry_register!(
+                #datex_core_crate_name::datex_registry::DatexModuleRegistration,
+                DATEX_MODULE_REGISTRATIONS,
                 #datex_core_crate_name::datex_registry::DatexModuleRegistration {
                     name: #datex_module_name,
-                    create_module: |cache| #datex_core_crate_name::values::core_values::map::Map::structural_with_string_keys(
+                    create_module: |cache| #datex_core_crate_name::values::core_values::map::Map::new_structural(
                         vec![#(#datex_items),*],
                     ),
                 }
-            }
+            );
         }
     }
 }
 
-fn map_to_datex_item(item: &Item) -> Option<TokenStream> {
+fn map_to_datex_item(item: &mut Item, mod_name: &str) -> Option<TokenStream> {
     match item {
         // only register pub functions
         Item::Fn(item_fn)
@@ -91,10 +101,23 @@ fn map_to_datex_item(item: &Item) -> Option<TokenStream> {
             let mapped = generate_native_callable_from_fn(item_fn);
             let name = item_fn.sig.ident.to_string();
 
+            let ptr_address_init = get_pointer_address_for_fn(mod_name, &name);
+
             Some(quote! {
                 (
-                    #name.to_string(),
-                    #mapped.into(),
+                    #name.into(),
+                    ValueContainer::Shared(
+                        /// SAFETY: The pointer address is generated at compile time and should be unique for each function.
+                        OwnedSharedContainer::from(unsafe {
+                            SelfOwnedSharedContainer::new_with_address(
+                                BaseSharedValueContainer::new_with_inferred_allowed_type(
+                                    #mapped,
+                                    SharedContainerMutability::Immutable,
+                                ),
+                                #ptr_address_init,
+                            )
+                        }).into()
+                    )
                 )
             })
         }

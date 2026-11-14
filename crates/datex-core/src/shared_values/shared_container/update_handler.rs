@@ -1,4 +1,7 @@
+use core::cell::RefCell;
+
 use crate::{
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{SharedContainer, traits::SharedContainerCommon},
     value_updates::{
         errors::UpdateError,
@@ -8,7 +11,11 @@ use crate::{
 };
 
 impl UpdateHandler for SharedContainer {
-    fn try_handle_update(&mut self, update: Update) -> UpdateResult {
+    fn try_handle_update(
+        &mut self,
+        update: Update,
+        cache: &RefCell<SharedReferencesCache>,
+    ) -> UpdateResult {
         if let SharedContainer::Referenced(referenced) = self
             && !referenced.can_mutate()
         {
@@ -22,7 +29,10 @@ impl UpdateHandler for SharedContainer {
 
         let result = self
             .base_shared_container_mut()
-            .try_handle_update(operation, path)?;
+            .try_handle_update(operation, path, cache)?;
+
+        // since we have assigned a new value to the shared container, we must unset the uninitialized flag
+        self.unset_uninitialized();
 
         // call observers
         for observer in observers {
@@ -46,10 +56,7 @@ mod tests {
             },
         },
         value_updates::update_data::{UpdateData, UpdateOperation},
-        values::{
-            core_values::list::List,
-            value_container::{ValueContainer, value_key::ValueKey},
-        },
+        values::{core_values::list::List, value_container::ValueContainer},
     };
     use alloc::rc::Rc;
     use core::cell::RefCell;
@@ -83,6 +90,7 @@ mod tests {
 
     #[test]
     fn update_top_down_trigger_observer() {
+        let cache = RefCell::new(SharedReferencesCache::default());
         let (mut shared, updates) =
             get_shared_container_with_observer(List::from(vec![
                 ValueContainer::from(1),
@@ -95,7 +103,7 @@ mod tests {
             )),
         );
 
-        shared.try_handle_update(update.clone()).unwrap();
+        shared.try_handle_update(update.clone(), &cache).unwrap();
 
         {
             let updates = updates.borrow();
@@ -154,7 +162,7 @@ mod tests {
                     TransceiverId::Local,
                     UpdateData::new_with_path(
                         UpdateOperation::append_entry(ValueContainer::from(2),),
-                        vec![ValueKey::Index(0)]
+                        vec![ValueContainer::local(0u32)]
                     )
                 )
             )

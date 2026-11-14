@@ -1,7 +1,11 @@
+#[cfg(test)]
+pub mod test;
+
 use crate::{
-    datex_proxy::{DatexProxyType, DatexValueProxyInfallibleSerialize},
     prelude::*,
     runtime::Runtime,
+    traits::get_datex_type::GetDatexType,
+    utils::logger::{LogMessage, register_log_sender},
     values::value_container::ValueContainer,
 };
 use datex_macros_internal::{Datex, datex};
@@ -9,33 +13,118 @@ use datex_macros_internal::{Datex, datex};
 #[datex(name = "inspector")]
 mod datex_inspector {
     use super::*;
-    use crate::datex_proxy::shared::Shared;
+    use crate::{
+        network::com_hub::{
+            BlockDirection, BlockInterceptor, metadata::ComHubMetadata,
+        },
+        runtime::{RuntimeInfo, RuntimeStats},
+        shared_wrappers::shared::{shared_ref::SharedRef, to_shared::ToShared},
+        values::core_values::{channel::create_channel, receiver::Receiver},
+    };
+    use core::cell::RefCell;
+    use log::info;
 
     #[derive(Datex, Debug, Clone)]
+    #[datex(structural)]
+    pub struct CapturedBlockData {
+        block: Vec<u8>,
+        socket_uuid: String,
+        direction: BlockDirection,
+    }
+
+    #[derive(Datex, Debug, Clone)]
+    #[datex(no_deserialize, builtin = 0x000001)]
+    /// The Inspector is a built-in debug helper that provides access to the DATEX runtime and its properties.
+    /// It is currently publicly accessible, but will be restricted with permission rules in the future.
     pub struct Inspector {
-        name: String, // TODO: distinguish between pub and private entity properties
+        // TODO: #[datex(readonly)]
+        // TODO: distinguish between pub and private entity properties
+        pub name: String,
+        pub info: RuntimeInfo,
     }
 
     #[datex]
     impl Inspector {
-        pub fn name_getter(&self) -> String {
-            self.name.clone()
+        /// Returns a stream of all global log messages of the endpoint.
+        pub fn logs(
+            &self,
+            #[runtime] runtime: &Runtime,
+        ) -> SharedRef<Receiver<LogMessage>> {
+            let (sender, receiver) = create_channel(runtime);
+            register_log_sender(sender);
+            receiver.mark_debug(true);
+            receiver
         }
 
+        /// Returns a stream of all incoming and outgoing blocks on the endpoint (excluding debug blocks).
+        pub fn blocks(
+            &self,
+            #[runtime] runtime: &Runtime,
+        ) -> SharedRef<Receiver<CapturedBlockData>> {
+            let (mut sender, receiver) = create_channel(runtime);
+
+            let uuid = Rc::new(RefCell::new(None));
+            let uuid_clone = uuid.clone();
+            let runtime_clone = runtime.clone();
+
+            *uuid.borrow_mut() = Some(runtime.com_hub().register_block_interceptor(BlockInterceptor::new(
+                move |block| {
+                    let captured_block = CapturedBlockData {
+                        block: block.block.to_bytes(),
+                        socket_uuid: block.socket_uuid.to_string(),
+                        direction: block.direction,
+                    };
+                    if sender.send(captured_block).is_err() {
+                        // remove interceptor
+                        runtime_clone.com_hub().unregister_block_interceptor(uuid_clone.borrow().as_ref().unwrap());
+                    }
+                },
+                false, // exclude debug blocks
+            )));
+
+            receiver.mark_debug(true);
+
+            receiver
+        }
+
+        /// Returns the current metadata information (connected interfaces, sockets) of the endpoint's com hub.
+        pub fn com_hub_metadata(
+            &self,
+            #[runtime] runtime: &Runtime,
+        ) -> ComHubMetadata {
+            runtime.com_hub().get_metadata()
+        }
+
+        /// Returns the current runtime statistics of the endpoint.
+        pub fn stats(&self, #[runtime] runtime: &Runtime) -> RuntimeStats {
+            runtime.get_stats()
+        }
+
+        /// Attempts to reboot the endpoint associated with the inspector.
+        /// Currently, this function is not implemented and will panic if called.
+        pub fn try_reboot_endpoint(&self) {
+            panic!("try_reboot_endpoint is not implemented yet");
+        }
         // // TODO
-        // pub fn method_for_shared_instance(self: Shared<Self>) -> String {
+        // pub fn method_for_shared_instance(self: SharedRef<Self>) -> String {
         //     self.borrow().name.clone()
         // }
     }
 
     /// Creates a new [Inspector] instance.
-    pub fn create(name: String) -> Shared<Inspector> {
-        // TODO: add SharedRef here, caller should not own inspector
-        Inspector { name }.shared(&mut crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider::default(), &mut crate::runtime::cache::shared_references_cache::SharedReferencesCache::default())
-    }
-
-    pub async fn async_test(a: String) -> String {
-        format!("a = {}", a)
+    /// TODO: this should return a unique temporary reference &mut Inspector that can be used by the caller.
+    #[datex]
+    pub fn create(
+        name: String,
+        #[runtime] runtime: &Runtime,
+    ) -> SharedRef<Inspector> {
+        let inspector = Inspector {
+            name,
+            info: runtime.info().clone(),
+        }
+        .shared_ref(runtime);
+        inspector.mark_debug(true);
+        inspector
     }
 }
 
@@ -54,47 +143,47 @@ pub fn register_inspector_namespace(runtime: &Runtime) {
 #[cfg(test)]
 mod tests {
     use crate::{
-        traits::apply::Apply, types::type_definition::callable::CallableKind,
-        values::core_values::callable::native_sync_callable,
+        inspector::datex_inspector::Inspector,
+        traits::{
+            apply::{Apply, ApplyArgument},
+            convert_value_container::ConvertValueContainer,
+            value_access::ValueAccess,
+        },
+        types::type_definition::callable::CallableKind,
+        values::core_values::callable::{Callable, native_sync_callable},
     };
+    use core::ops::DerefMut;
 
-    // FIXME
-    // #[test]
-    // fn ty() {
-    //     let mut memory = SharedReferencesCache::default();
-    //     let inspector_type = Inspector::datex_type(
-    //         &mut memory,
-    //     );
-    //     let r = native_sync_callable(
-    //         Inspector::create,
-    //         Some("create".to_string()),
-    //         CallableKind::Procedure,
-    //         &mut memory,
-    //     );
-    //
-    //     let inspector = Inspector::create("Test Inspector".to_string());
-    //     let vc = inspector.to_value_container(&mut memory);
-    //
-    //     // TODO: methods bound to value container / even better, methods bound to the type definition
-    //     // We must the store type in value container (this will require passing cache to the ValueContainer::from function somehow)
-    //     // Then we can access methods on the type definition here
-    //     let runtime = crate::runtime::Runtime::stub();
-    //     if let Some(method) = vc
-    //         .try_as::<Map>()
-    //         .and_then(|map| map.try_get("name_getter").ok())
-    //     {
-    //         let result = method
-    //             .try_apply_sync(&runtime, vec![])
-    //             .unwrap()
-    //             .expect("Method should return a value");
-    //         assert_eq!(
-    //             result.try_into_value::<String>().unwrap(),
-    //             "Test Inspector"
-    //         );
-    //     } else {
-    //         panic!("Method not found");
-    //     }
-    // }
+    #[test]
+    fn ty() {
+        let runtime = Runtime::stub();
+        let inspector_type = Inspector::datex_type(
+            runtime.shared_references_cache_mut().deref_mut(),
+        );
+
+        // create a new inspector instance via inspector.create()
+        let inspector =
+            datex_inspector::create("Test Inspector".to_string(), &runtime);
+        let inspector_container = inspector.to_value_container();
+        let inspector_container_clone = inspector_container.clone();
+
+        // call inspector->stats()
+        let name_fn = inspector_type
+            .try_get_property(&ValueContainer::from("stats"))
+            .unwrap()
+            .try_as::<Callable>()
+            .unwrap();
+        let (result, mut borrows) = name_fn
+            .try_apply_sync_checked(
+                &runtime,
+                vec![ApplyArgument::referenced(inspector_container)],
+            )
+            .unwrap();
+
+        // TODO: check return value
+        // borrowed inspector should be given back to the caller
+        assert_eq!(borrows.remove(0), inspector_container_clone);
+    }
 
     use super::*;
     #[test]
@@ -114,7 +203,7 @@ mod tests {
             .unwrap()
             .0
             .expect("Function should return a value");
-        assert_eq!(res, 5u8.into());
+        assert_eq!(res.try_as::<u8>(), Some(&5u8));
 
         // 2 args
         let func_2 = |x: u8, y: u8| x + y;
@@ -129,6 +218,6 @@ mod tests {
             .unwrap()
             .0
             .expect("Function should return a value");
-        assert_eq!(res_2, 7u8.into());
+        assert_eq!(res_2.try_as::<u8>(), Some(&7u8));
     }
 }

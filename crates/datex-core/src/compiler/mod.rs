@@ -2,87 +2,59 @@
 use crate::{
     ast::{
         expressions::{
-            BinaryOperation, CallableDeclaration, ComparisonOperation,
-            Conditional, DatexExpression, DatexExpressionData,
-            PropertyAssignment, RemoteExecution, RootPropertyAccess,
-            Statements, UnaryOperation, UnboundedStatement, UnboxAssignment,
-            ValueAccessType, VariableAccess, VariableAssignment,
-            VariableDeclaration, VariableKind,
+            DatexExpression, DatexExpressionData, Statements,
+            UnboundedStatement, VariableKind,
         },
         resolved_variable::VariableId,
     },
     compiler::{
+        compilation_result::CompilationResult,
         context::CompilationContext,
         error::{
             CompilerError, DetailedCompilerErrorsWithMaybeRichAst,
             SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
             SimpleOrDetailedCompilerError, SpannedCompilerError,
         },
-        metadata::CompileMetadata,
         scope::CompilationScope,
     },
-    core_compiler::{
-        buffer_provider::BufferProvider,
-        core_compilation_context::{CompileInput, DXBWithSharedValues},
-        to_instructions::ToInstructions,
-        value_compiler::{
-            append_get_shared_ref, append_key_string,
-            append_shared_container_from_preamble, append_value,
-        },
+    core_compiler::core_compilation_context::{
+        CompileInput, DXBWithSharedValues,
     },
     global::{
         dxb_block::DXBBlock,
-        operators::modification::ModificationOperator,
         protocol_structures::{
-            block_header::BlockHeader,
-            encrypted_header::EncryptedHeader,
-            injected_values::{
-                InjectedValueType, LocalInjectedValueType,
-                SharedInjectedValueType,
-            },
+            block_header::BlockHeader, encrypted_header::EncryptedHeader,
             routing_header::RoutingHeader,
         },
-        root_properties::RootProperty,
         stack_index::StackIndex,
     },
-    instruction::{
-        instruction_codes::InstructionCode,
-        instruction_data::{
-            CallableDeclarationData, CallableSignatureData,
-            InstructionBlockData, JumpData, ShortTextData,
-            UnboundedStatementsData,
-        },
-        regular_instruction::RegularInstruction,
-    },
+    instruction::instruction_data::InstructionBlockData,
     parser::{Parser, ParserOptions, errors::SpannedParserError},
     prelude::*,
-    runtime::{Runtime, execution::context::ExecutionMode},
-    shared_values::{
-        ReferenceMutability, SharedContainer, SharedContainerMutability,
-        traits::SharedContainerCommon,
+    runtime::{
+        Runtime, cache::shared_references_cache::SharedReferencesCache,
+        execution::context::ExecutionMode,
     },
     time::Instant as TimingInstant,
-    utils::buffers::{append_u8, append_u32},
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
-use binrw::io::Write;
-use core::{cell::RefCell, str::FromStr};
-use log::{debug, info};
+use core::ops::DerefMut;
+use log::debug;
 use precompiler::{
     options::PrecompilerOptions,
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
 
+pub mod ast_node_to_instructions;
+pub mod compilation_result;
 pub mod context;
-pub mod datex_expression_to_instruction;
 pub mod error;
 pub mod metadata;
 pub mod precompiler;
 pub mod scope;
-pub mod type_compiler;
 #[cfg(feature = "std")]
 pub mod workspace;
 
@@ -136,12 +108,12 @@ impl From<VariableRepresentation> for VariableModel {
 impl VariableModel {
     /// Determines the variable model based on the variable kind and metadata.
     pub fn infer(
-        variable_kind: VariableKind,
+        variable_kind: &VariableKind,
         _variable_metadata: Option<VariableMetadata>,
         _execution_mode: ExecutionMode,
     ) -> Self {
         // const variables are always constant
-        if variable_kind == VariableKind::Const {
+        if *variable_kind == VariableKind::Const {
             VariableModel::Constant
         }
         // otherwise, we use VariableSlot (default for `var` variables)
@@ -152,8 +124,8 @@ impl VariableModel {
 
     pub fn infer_from_ast_metadata_and_type(
         ast_metadata: &AstMetadata,
-        variable_id: Option<VariableId>,
-        variable_kind: VariableKind,
+        variable_id: &Option<VariableId>,
+        variable_kind: &VariableKind,
         execution_mode: ExecutionMode,
     ) -> Self {
         let variable_metadata =
@@ -231,7 +203,7 @@ pub fn compile_script(
     runtime: Runtime,
 ) -> Result<(Vec<u8>, CompilationScope), SpannedCompilerError> {
     compile_template(datex_script, vec![], options, runtime)
-        .map(|e| (e.0.dxb, e.1))
+        .map(|e| (e.dxb_with_shared_values.dxb, e.scope))
 }
 
 /// Directly extracts a static value from a DATEX script as a `ValueContainer`.
@@ -241,7 +213,7 @@ pub fn extract_static_value_from_script(
     datex_script: &str,
 ) -> Result<Option<ValueContainer>, SpannedParserError> {
     let valid_parse_result = Parser::parse_with_default_options(datex_script)?;
-    Ok(extract_static_value_from_ast(&valid_parse_result))
+    Ok(ValueContainer::try_from(valid_parse_result.data()).ok())
 }
 
 /// Converts a DATEX script template text with inserted values into an AST with metadata
@@ -258,32 +230,34 @@ pub fn compile_script_or_return_static_value(
         runtime.clone(),
     )?;
     let lookup = runtime.pointer_availability_lookup();
-    let mut compilation_context = CompilationContext::new(
-        Vec::with_capacity(256),
+    let mut cache = runtime.shared_references_cache_mut();
+    let compilation_context = CompilationContext::new(
         vec![],
         options.compile_scope.execution_mode,
         CompileInput::new(&lookup, &options.receivers),
-    );
-    // FIXME #480: no clone here
-    let scope = compile_ast(
-        ast.clone(),
-        &mut compilation_context,
         options.compile_scope,
-    )?;
-    if compilation_context.has_non_static_value {
+    );
+    let compilation_result = compilation_context
+        .compile_ast_node_to_dxb_with_shared_values(
+            &*ast.ast.data,
+            &mut ast.metadata.borrow_mut(),
+            cache.deref_mut(),
+        )?;
+    drop(cache);
+    if compilation_result.has_non_static_value {
         Ok((
-            StaticValueOrDXB::DXB(
-                compilation_context.into_dxb_with_shared_values(),
-            ),
-            scope,
+            StaticValueOrDXB::DXB(compilation_result.dxb_with_shared_values),
+            compilation_result.scope,
         ))
     } else {
-        // try to extract static value from AST
-        extract_static_value_from_ast(&ast.ast)
-            .map(|value| (StaticValueOrDXB::StaticValue(Some(value)), scope))
-            .ok_or_else(|| {
-                SpannedCompilerError::from(CompilerError::NonStaticValue)
-            })
+        // try to extract static value from AST, otherwise panic (should not happen if compilation_result.has_non_static_value is false)
+        let value_container = ValueContainer::try_from(ast.ast.data())
+            .expect("AST should be a static value if compilation_result.has_non_static_value is false");
+
+        Ok((
+            StaticValueOrDXB::StaticValue(Some(value_container)),
+            compilation_result.scope,
+        ))
     }
 }
 
@@ -354,6 +328,7 @@ pub fn parse_datex_script_to_rich_ast_simple_error(
             })
         )
     };
+
     debug!(" [parse took {} ms]", parse_start.elapsed().as_millis());
     let precompile_start = TimingInstant::now();
     let res = precompile_to_rich_ast(
@@ -417,23 +392,29 @@ pub fn compile_template(
     inserted_values: Vec<Option<ValueContainer>>,
     mut options: CompileOptions,
     runtime: Runtime,
-) -> Result<(DXBWithSharedValues, CompilationScope), SpannedCompilerError> {
+) -> Result<CompilationResult, SpannedCompilerError> {
     let ast = parse_datex_script_to_rich_ast_simple_error(
         datex_script,
         &mut options,
         runtime.clone(),
     )?;
+
     let lookup = runtime.pointer_availability_lookup();
     let input = CompileInput::new(&lookup, &options.receivers);
-    let mut compilation_context = CompilationContext::new(
-        Vec::with_capacity(256),
+    let compilation_context = CompilationContext::new(
         inserted_values,
         options.compile_scope.execution_mode,
         input,
+        options.compile_scope,
     );
     let compile_start = TimingInstant::now();
-    let res = compile_ast(ast, &mut compilation_context, options.compile_scope)
-        .map(|scope| (compilation_context.into_dxb_with_shared_values(), scope))
+
+    let mut cache = runtime.shared_references_cache_mut();
+    let res = compilation_context
+        .compile_ast_with_metadata_to_dxb_with_shared_values(
+            ast,
+            cache.deref_mut(),
+        )
         .map_err(SpannedCompilerError::from);
 
     debug!(
@@ -441,28 +422,6 @@ pub fn compile_template(
         compile_start.elapsed().as_millis()
     );
     res
-}
-
-/// Compiles a precompiled DATEX AST, returning the compilation context and scope
-fn compile_ast(
-    ast: RichAst,
-    compilation_context: &mut CompilationContext,
-    scope: CompilationScope,
-) -> Result<CompilationScope, CompilerError> {
-    let compilation_scope = compile_rich_ast(compilation_context, ast, scope)?;
-    Ok(compilation_scope)
-}
-
-/// Tries to extract a static value from a DATEX expression AST.
-/// If the expression is not a static value (e.g., contains a placeholder or dynamic operation),
-/// it returns an error.
-fn extract_static_value_from_ast(
-    ast: &DatexExpression,
-) -> Option<ValueContainer> {
-    if let DatexExpressionData::Placeholder(_) = ast.data() {
-        return None;
-    }
-    ValueContainer::try_from(ast.data()).ok()
 }
 
 /// Macro for compiling a DATEX script template text with inserted values into a DXB body,
@@ -526,1097 +485,16 @@ fn precompile_to_rich_ast(
     Ok(rich_ast)
 }
 
-pub fn compile_rich_ast(
+pub fn compile_child_realm_instructions(
     compilation_context: &mut CompilationContext,
-    rich_ast: RichAst,
-    scope: CompilationScope,
-) -> Result<CompilationScope, CompilerError> {
-    let org = core::mem::replace(&mut compilation_context.scope, scope);
-    compile_expression(
-        compilation_context,
-        rich_ast,
-        CompileMetadata::outer(),
-    )?;
-    let result_scope = core::mem::replace(&mut compilation_context.scope, org);
-    Ok(result_scope)
-}
-
-fn compile_expression(
-    compilation_context: &mut CompilationContext,
-    rich_ast: RichAst,
-    meta: CompileMetadata,
-) -> Result<(), CompilerError> {
-    let metadata = rich_ast.metadata;
-    let ast = rich_ast.ast;
-
-    let DatexExpression {
-        data,
-        span: _,
-        ty: _,
-    } = ast;
-    match *data {
-        // TODO remove all the instructions and switch to [ToInstruction] trait, fix scopes
-        DatexExpressionData::List(list) => {
-            compilation_context
-                .core_context
-                .write(RegularInstruction::list(list.items.len() as u32));
-            for item in list.items {
-                compile_expression(
-                    compilation_context,
-                    RichAst::new(item, &metadata),
-                    CompileMetadata::default(),
-                )?;
-            }
-        }
-        DatexExpressionData::Map(map) => {
-            // TODO #434: Handle string keyed maps (structs)
-            match map.entries.len() {
-                0..=255 => {
-                    compilation_context
-                        .append_instruction_code(InstructionCode::SHORT_MAP);
-                    append_u8(
-                        compilation_context.cursor(),
-                        map.entries.len() as u8,
-                    );
-                }
-                _ => {
-                    compilation_context
-                        .append_instruction_code(InstructionCode::MAP);
-                    append_u32(
-                        compilation_context.cursor(),
-                        map.entries.len() as u32, // FIXME #672: conversion from usize to u32
-                    );
-                }
-            }
-            for (key, value) in map.entries {
-                compile_key_value_entry(
-                    compilation_context,
-                    key,
-                    value,
-                    &metadata,
-                )?;
-            }
-        }
-        DatexExpressionData::Placeholder(placeholder_type) => {
-            // FIXME #720
-            let placeholder = compilation_context
-                .inserted_values
-                .get_mut(compilation_context.inserted_value_index)
-                .expect("Placeholder index out of bounds");
-            if let Some(value_container) = placeholder.take() {
-                // TODO: validate in precompiler that the value container is actually a shared value
-
-                match &value_container {
-                    ValueContainer::Local(value) => match placeholder_type {
-                        ValueAccessType::SharedRef
-                        | ValueAccessType::SharedRefMut => {
-                            return Err(
-                                CompilerError::SharedRefToNonSharedValue,
-                            );
-                        }
-                        ValueAccessType::MoveOrCopy => {
-                            append_value(
-                                compilation_context.core_context(),
-                                value,
-                            );
-                        }
-                        ValueAccessType::Clone => {
-                            append_value(
-                                compilation_context.core_context(),
-                                value,
-                            );
-                        }
-                        ValueAccessType::Borrow => {
-                            append_value(
-                                compilation_context.core_context(),
-                                value,
-                            );
-                        }
-                    },
-                    ValueContainer::Shared(shared_container) => {
-                        match placeholder_type {
-                            ValueAccessType::SharedRefMut => {
-                                let shared_container_mut_ref = shared_container
-                                    .try_derive_mutable_reference()
-                                    .map_err(|_| CompilerError::SharedMutRefToImmutableValue)?;
-                                append_shared_container_from_preamble(
-                                    compilation_context.core_context(),
-                                    &shared_container_mut_ref.into(),
-                                );
-                            }
-                            ValueAccessType::SharedRef => {
-                                append_shared_container_from_preamble(
-                                    compilation_context.core_context(),
-                                        &shared_container.derive_immutable_reference().into(),
-                                )
-                            },
-                            ValueAccessType::MoveOrCopy => {
-                                match shared_container {
-                                    SharedContainer::Owned(shared_container) => {
-                                        append_shared_container_from_preamble(
-                                            compilation_context.core_context(),
-                                            &shared_container.clone_with_move_indicator().into(),
-                                        );
-                                    }
-                                    _ => return Err(CompilerError::InvalidConversionFromRefToOwnedValue),
-                                }
-                            },
-                            ValueAccessType::Clone => {
-                                let cloned = shared_container.inner().base_shared_container().value_container().clone();
-                                match cloned {
-                                    ValueContainer::Local(value) => {
-                                        append_value(
-                                            compilation_context.core_context(),
-                                            &value,
-                                        );
-                                    }
-                                    ValueContainer::Shared(shared_container) => {
-                                        append_shared_container_from_preamble(
-                                            compilation_context.core_context(),
-                                            &shared_container.clone(), // FIXME: Do we need to derive ref here, and what mutability ?
-                                        )
-                                    }
-                                }
-                            },
-                            ValueAccessType::Borrow => {
-                                append_shared_container_from_preamble(
-                                    compilation_context.core_context(),
-                                    &shared_container.derive_reference_with_max_mutability().into(),
-                                );
-                            }
-                        };
-                    }
-                }
-            } else {
-                // TODO
-                // compilation_context
-                //     .append_instruction_code(InstructionCode::CLONE_STACK_VALUE);
-                // compilation_context.insert_virtual_slot_address(
-                //     InjectedParentVariable::local(
-                //         compilation_context.inserted_value_index as u32,
-                //     ),
-                // );
-            }
-            compilation_context.inserted_value_index += 1;
-        }
-
-        // statements
-        DatexExpressionData::Statements(Statements {
-            mut statements,
-            is_terminated,
-            unbounded,
-        }) => {
-            compilation_context.mark_has_non_static_value();
-            // if single statement and not terminated, just compile the expression
-            // (not for unbounded execution mode)
-            if unbounded.is_none() && statements.len() == 1 && !is_terminated {
-                compile_expression(
-                    compilation_context,
-                    RichAst::new(statements.remove(0), &metadata),
-                    CompileMetadata::default(),
-                )?;
-            } else {
-                let is_outer_context = meta.is_outer_context();
-
-                // Enter a child scope for nested contexts.
-                if !is_outer_context {
-                    let parent_scope =
-                        core::mem::take(&mut compilation_context.scope);
-                    compilation_context.scope = parent_scope.push();
-                }
-
-                if let Some(UnboundedStatement { is_first, .. }) = unbounded {
-                    // if this is the first section of an unbounded statements block, mark as unbounded
-                    if is_first {
-                        compilation_context.append_instruction_code(
-                            InstructionCode::UNBOUNDED_STATEMENTS,
-                        );
-                    }
-                    // if not first, don't insert any instruction code
-                }
-                // otherwise, statements with fixed length
-                else {
-                    compilation_context.write(RegularInstruction::statements(
-                        statements.len() as u32,
-                        is_terminated,
-                    ));
-                }
-
-                for statement in statements.into_iter() {
-                    compile_expression(
-                        compilation_context,
-                        RichAst::new(statement, &metadata),
-                        CompileMetadata::default(),
-                    )?;
-                }
-
-                // Restore the parent scope after compiling the child context.
-                if !is_outer_context {
-                    let child_scope =
-                        core::mem::take(&mut compilation_context.scope);
-
-                    compilation_context.scope = child_scope
-                        .pop()
-                        .ok_or(CompilerError::ScopePopError)?;
-                }
-
-                // if this is the last section of an unbounded statements block, add closing instruction
-                if let Some(UnboundedStatement { is_last: true, .. }) =
-                    unbounded
-                {
-                    compilation_context.append_instruction_code(
-                        InstructionCode::UNBOUNDED_STATEMENTS_END,
-                    );
-
-                    // append termination flag
-                    append_u8(
-                        compilation_context.cursor(),
-                        if is_terminated { 1 } else { 0 },
-                    );
-                }
-            }
-        }
-
-        // unary operations (negation, not, etc.)
-        DatexExpressionData::UnaryOperation(UnaryOperation {
-            operator,
-            expression,
-        }) => {
-            compilation_context
-                .append_instruction_code(InstructionCode::from(&operator));
-            compile_expression(
-                compilation_context,
-                RichAst::new(expression, &metadata),
-                CompileMetadata::default(),
-            )?;
-        }
-
-        // operations (add, subtract, multiply, divide, etc.)
-        DatexExpressionData::BinaryOperation(BinaryOperation {
-            operator,
-            left,
-            right,
-            ..
-        }) => {
-            compilation_context.mark_has_non_static_value();
-            // append binary code for operation if not already current binary operator
-            compilation_context
-                .append_instruction_code(InstructionCode::from(&operator));
-            compile_expression(
-                compilation_context,
-                RichAst::new(left, &metadata),
-                CompileMetadata::default(),
-            )?;
-            compile_expression(
-                compilation_context,
-                RichAst::new(right, &metadata),
-                CompileMetadata::default(),
-            )?;
-        }
-
-        // comparisons (e.g., equal, not equal, greater than, etc.)
-        DatexExpressionData::ComparisonOperation(ComparisonOperation {
-            operator,
-            left,
-            right,
-        }) => {
-            compilation_context.mark_has_non_static_value();
-            // append binary code for operation if not already current binary operator
-            compilation_context
-                .append_instruction_code(InstructionCode::from(&operator));
-            compile_expression(
-                compilation_context,
-                RichAst::new(left, &metadata),
-                CompileMetadata::default(),
-            )?;
-            compile_expression(
-                compilation_context,
-                RichAst::new(right, &metadata),
-                CompileMetadata::default(),
-            )?;
-        }
-
-        // apply
-        DatexExpressionData::Apply(apply) => {
-            compilation_context.mark_has_non_static_value();
-
-            // append apply instruction code
-            let len = apply.arguments.len();
-
-            // more than u8 size args -> error
-            if len > u8::MAX as usize {
-                return Err(CompilerError::TooManyApplyArguments);
-            }
-
-            compilation_context.write(RegularInstruction::apply(len as u8));
-
-            // compile arguments
-            for argument in apply.arguments.iter() {
-                compile_expression(
-                    compilation_context,
-                    RichAst::new(argument.clone(), &metadata),
-                    CompileMetadata::default(),
-                )?;
-            }
-
-            // compile function expression
-            compile_expression(
-                compilation_context,
-                RichAst::new(apply.base, &metadata),
-                CompileMetadata::default(),
-            )?;
-        }
-
-        DatexExpressionData::InterfaceMethodCall(mut call) => {
-            compilation_context.mark_has_non_static_value();
-
-            // TODO: replace with trait impls
-            match call.method_name.as_str() {
-                "append" => {
-                    compilation_context
-                        .core_context
-                        .write(RegularInstruction::append_entry());
-                    // must be exactly one element
-                    if call.arguments.len() != 1 {
-                        return Err(CompilerError::InvalidInterfaceMethodCall(
-                            call.method_name.to_string(),
-                        ));
-                    }
-
-                    compile_expression(
-                        compilation_context,
-                        RichAst::new(call.arguments.remove(0), &metadata),
-                        CompileMetadata::default(),
-                    )?;
-                }
-                "clear" => {
-                    compilation_context
-                        .core_context
-                        .write(RegularInstruction::clear());
-
-                    // no arguments allowed
-                    if !call.arguments.is_empty() {
-                        return Err(CompilerError::InvalidInterfaceMethodCall(
-                            call.method_name.to_string(),
-                        ));
-                    }
-                }
-                "splice" => {
-                    // must be exactly three elements
-                    if call.arguments.len() != 3 {
-                        return Err(CompilerError::InvalidInterfaceMethodCall(
-                            call.method_name.to_string(),
-                        ));
-                    }
-
-                    compilation_context
-                        .core_context
-                        .write(RegularInstruction::splice_dynamic());
-
-                    for argument in call.arguments.drain(..) {
-                        compile_expression(
-                            compilation_context,
-                            RichAst::new(argument, &metadata),
-                            CompileMetadata::default(),
-                        )?;
-                    }
-                }
-                _ => {
-                    // TODO: check if method actually exists
-
-                    compilation_context.core_context.write(
-                        RegularInstruction::call_method(
-                            call.method_name,
-                            call.arguments.len() as u8,
-                        ),
-                    );
-
-                    for argument in call.arguments.drain(..) {
-                        compile_expression(
-                            compilation_context,
-                            RichAst::new(argument, &metadata),
-                            CompileMetadata::default(),
-                        )?;
-                    }
-                }
-            }
-
-            // compile target expression
-            compile_expression(
-                compilation_context,
-                RichAst::new(call.target, &metadata),
-                CompileMetadata::default(),
-            )?;
-        }
-
-        DatexExpressionData::PropertyAccess(property_access) => {
-            compilation_context.mark_has_non_static_value();
-
-            // depending on the key, handle different property accesses
-            match property_access.property.data() {
-                // simple text key if length fits in u8
-                DatexExpressionData::Text(key) if key.0.len() <= 255 => {
-                    compile_text_property_access(compilation_context, &key.0)
-                }
-                // index access if integer fits in u32
-                DatexExpressionData::Integer(index)
-                    if let Some(index) = index.as_u32() =>
-                {
-                    compile_index_property_access(compilation_context, index)
-                }
-                _ => {
-                    compile_dynamic_property_access(
-                        compilation_context,
-                        property_access.property,
-                    )?;
-                }
-            }
-
-            // compile base expression
-            compile_expression(
-                compilation_context,
-                RichAst::new(property_access.base, &metadata),
-                CompileMetadata::default(),
-            )?;
-        }
-
-        DatexExpressionData::GenericInstantiation(_generic_instantiation) => {
-            // NOTE: might already be handled in type compilation
-            todo!("#674 Undescribed by author.")
-        }
-
-        DatexExpressionData::PropertyAssignment(property_assignment) => {
-            compilation_context.mark_has_non_static_value();
-
-            let PropertyAssignment {
-                base,
-                property,
-                assigned_expression,
-                ..
-            } = property_assignment;
-            // depending on the key, handle different property assignments
-            match property.data() {
-                // simple text key if length fits in u8
-                DatexExpressionData::Text(key) if key.len() <= 255 => {
-                    compilation_context.write(
-                        RegularInstruction::set_entry_text(key.0.clone()),
-                    );
-                }
-                // index access if integer fits in u32
-                DatexExpressionData::Integer(index)
-                    if let Some(index) = index.as_u32() =>
-                {
-                    compile_index_property_assignment(
-                        compilation_context,
-                        index,
-                    )
-                }
-                _ => {
-                    compile_dynamic_property_assignment(
-                        compilation_context,
-                        property,
-                    )?;
-                }
-            }
-
-            // compile assigned expression
-            compile_expression(
-                compilation_context,
-                RichAst::new(assigned_expression, &metadata),
-                CompileMetadata::default(),
-            )?;
-
-            // compile base expression
-            compile_expression(
-                compilation_context,
-                RichAst::new(base, &metadata),
-                CompileMetadata::default(),
-            )?;
-        }
-
-        // variables
-        // declaration
-        DatexExpressionData::VariableDeclaration(VariableDeclaration {
-            id,
-            name,
-            kind,
-            type_annotation: _,
-            init_expression: value,
-        }) => {
-            compilation_context.mark_has_non_static_value();
-
-            // push to stack
-            compilation_context
-                .append_instruction_code(InstructionCode::PUSH_TO_STACK);
-            // compile expression
-            compile_expression(
-                compilation_context,
-                RichAst::new(value, &metadata),
-                CompileMetadata::default(),
-            )?;
-
-            let stack_index = compilation_context.scope.get_next_stack_index();
-
-            let variable_model =
-                VariableModel::infer_from_ast_metadata_and_type(
-                    &metadata.borrow(),
-                    id,
-                    kind,
-                    compilation_context.execution_mode,
-                );
-
-            // create new variable depending on the model
-            let variable = match variable_model {
-                VariableModel::Constant => {
-                    Variable::new_const(name.clone(), stack_index)
-                }
-                VariableModel::VariableSlot => {
-                    Variable::new_variable_slot(name.clone(), kind, stack_index)
-                }
-            };
-
-            compilation_context.scope.register_variable_slot(variable);
-        }
-
-        DatexExpressionData::RequestSharedRef(shared_reference) => {
-            compilation_context.mark_has_non_static_value();
-            append_get_shared_ref(
-                compilation_context.core_context(),
-                shared_reference.address,
-                &shared_reference.mutability,
-            )
-        }
-
-        // assignment
-        DatexExpressionData::VariableAssignment(VariableAssignment {
-            operator,
-            name,
-            expression,
-            ..
-        }) => {
-            compilation_context.mark_has_non_static_value();
-            // get variable slot address
-            let (stack_index, kind) = compilation_context
-                .scope
-                .resolve_variable_name(&name, None)
-                .map_err(|_| {
-                    CompilerError::AssignmentToExternalVariable(name.clone())
-                })?
-                .ok_or_else(|| {
-                    CompilerError::UndeclaredVariable(name.clone())
-                })?;
-
-            // TODO #484: check not needed, is already handled in precompiler - can we guarantee this?
-            // if const, return error
-            if kind == VariableKind::Const {
-                return Err(CompilerError::AssignmentToConst(name.clone()));
-            }
-
-            match operator {
-                None => {
-                    // append binary code to load variable
-                    info!(
-                        "append variable - stack index: {stack_index:?}, name: {name}"
-                    );
-                    compilation_context.write(
-                        RegularInstruction::set_stack_value(stack_index),
-                    );
-
-                    // compile expression
-                    compile_expression(
-                        compilation_context,
-                        RichAst::new(expression, &metadata),
-                        CompileMetadata::default(),
-                    )?;
-                }
-                Some(operator) => {
-                    // TODO #435: handle mut type
-                    // // if immutable reference, return error
-                    // if mut_type == Some(ReferenceMutability::Immutable) {
-                    //     return Err(
-                    //         CompilerError::AssignmentToImmutableReference(
-                    //             name.clone(),
-                    //         ),
-                    //     );
-                    // }
-                    // // if immutable value, return error
-                    // else if mut_type == None {
-                    //     return Err(CompilerError::AssignmentToImmutableValue(
-                    //         name.clone(),
-                    //     ));
-                    // }
-
-                    if compile_maybe_direct_assignment_operation(
-                        compilation_context,
-                        operator,
-                    ) {
-                        // compile expression
-                        compile_expression(
-                            compilation_context,
-                            RichAst::new(expression, &metadata),
-                            CompileMetadata::default(),
-                        )?;
-
-                        compilation_context.write(
-                            RegularInstruction::borrow_stack_value(stack_index),
-                        );
-                    } else {
-                        // Generate x = x * z instructions;
-                        todo!()
-                    }
-                }
-            }
-        }
-
-        DatexExpressionData::UnboxAssignment(UnboxAssignment {
-            operator,
-            unbox_expression,
-            assigned_expression,
-        }) => {
-            compilation_context.mark_has_non_static_value();
-
-            match operator {
-                Some(operator) => {
-                    if !compile_maybe_direct_assignment_operation(
-                        compilation_context,
-                        operator,
-                    ) {
-                        // Generate x = x * z instructions;
-                        todo!()
-                    }
-                }
-                None => compilation_context
-                    .core_context
-                    .write(RegularInstruction::set_shared_container_value()),
-            };
-
-            // compile assigned expression
-            compile_expression(
-                compilation_context,
-                RichAst::new(assigned_expression, &metadata),
-                CompileMetadata::default(),
-            )?;
-
-            // compile unbox expression
-            compile_expression(
-                compilation_context,
-                RichAst::new(unbox_expression, &metadata),
-                CompileMetadata::default(),
-            )?;
-        }
-
-        // variable access
-        DatexExpressionData::VariableAccess(VariableAccess {
-            name,
-            access_type,
-            ..
-        }) => {
-            compilation_context.mark_has_non_static_value();
-
-            let slot_type = match access_type {
-                ValueAccessType::SharedRefMut => {
-                    InjectedValueType::Shared(SharedInjectedValueType::RefMut)
-                }
-                ValueAccessType::SharedRef => {
-                    InjectedValueType::Shared(SharedInjectedValueType::Ref)
-                }
-                // TODO: map to local slot types depending on type
-                ValueAccessType::MoveOrCopy => {
-                    InjectedValueType::Shared(SharedInjectedValueType::Move)
-                }
-                // TODO:
-                ValueAccessType::Clone => {
-                    InjectedValueType::Local(LocalInjectedValueType::Move)
-                }
-                ValueAccessType::Borrow => {
-                    InjectedValueType::Shared(SharedInjectedValueType::Move)
-                }
-            };
-
-            let slot_access = match access_type {
-                ValueAccessType::SharedRefMut => {
-                    InstructionCode::GET_STACK_VALUE_SHARED_REF_MUT
-                }
-                ValueAccessType::SharedRef => {
-                    InstructionCode::GET_STACK_VALUE_SHARED_REF
-                }
-                ValueAccessType::MoveOrCopy => {
-                    InstructionCode::TAKE_STACK_VALUE
-                }
-                ValueAccessType::Clone => InstructionCode::CLONE_STACK_VALUE,
-                ValueAccessType::Borrow => InstructionCode::BORROW_STACK_VALUE,
-            };
-
-            // get variable slot address
-            let (stack_index, ..) = compilation_context
-                .scope
-                .resolve_variable_name_with_slot_type(&name, slot_type)
-                .ok_or_else(|| {
-                    CompilerError::UndeclaredVariable(name.clone())
-                })?;
-            // append binary code to load variable
-            compilation_context.append_instruction_code(slot_access);
-            compilation_context.insert_stack_index(stack_index);
-        }
-
-        // remote execution
-        DatexExpressionData::RemoteExecution(RemoteExecution {
-            left: caller,
-            right: ast,
-            injected_variable_count,
-        }) => {
-            compilation_context.mark_has_non_static_value();
-
-            let (instruction_block_data, new_scope) =
-                compile_child_realm_instructions(
-                    compilation_context,
-                    ast,
-                    injected_variable_count.unwrap(), // must be set by precompiler
-                    &metadata,
-                    vec![],
-                )?;
-
-            compilation_context.scope = new_scope;
-
-            // insert remote execution instruction
-            compilation_context.write(RegularInstruction::remote_execution(
-                instruction_block_data,
-            ));
-
-            // insert compiled caller expression
-            compile_expression(
-                compilation_context,
-                RichAst::new(caller, &metadata),
-                CompileMetadata::default(),
-            )?;
-        }
-
-        // root property (e.g. $.endpoint)
-        DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
-            property_name,
-        }) => {
-            let root_property = RootProperty::from_str(&property_name);
-
-            if let Ok(root_property) = root_property {
-                compilation_context.write(
-                    RegularInstruction::get_root_property(root_property),
-                );
-            } else {
-                return Err(CompilerError::InvalidRootPropertyName(
-                    property_name.clone(),
-                ));
-            }
-        }
-
-        // refs
-        DatexExpressionData::DeriveRef(create_ref) => {
-            compilation_context.mark_has_non_static_value();
-            // TODO #764: handle lifetimes, mutability, correctly (in precompiler)
-            // TODO #765: handle move/clone
-            compile_expression(
-                compilation_context,
-                RichAst::new(create_ref.expression, &metadata),
-                CompileMetadata::default(),
-            )?;
-        }
-
-        // shared refs
-        DatexExpressionData::DeriveSharedRef(create_shared_ref) => {
-            compilation_context.mark_has_non_static_value();
-            compilation_context.append_instruction_code(
-                match create_shared_ref.mutability {
-                    ReferenceMutability::Immutable => {
-                        InstructionCode::DERIVE_SHARED_REF
-                    }
-                    ReferenceMutability::Mutable => {
-                        InstructionCode::DERIVE_SHARED_REF_MUT
-                    }
-                },
-            );
-            compile_expression(
-                compilation_context,
-                RichAst::new(create_shared_ref.expression, &metadata),
-                CompileMetadata::default(),
-            )?;
-        }
-        // shared values
-        DatexExpressionData::CreateShared(create_shared) => {
-            compilation_context.mark_has_non_static_value();
-            let mutability = create_shared.mutability;
-
-            compilation_context.append_instruction_code(match mutability {
-                SharedContainerMutability::Immutable => {
-                    InstructionCode::CREATE_SHARED
-                }
-                SharedContainerMutability::Mutable => {
-                    InstructionCode::CREATE_SHARED_MUT
-                }
-            });
-            compile_expression(
-                compilation_context,
-                RichAst::new(create_shared.expression, &metadata),
-                CompileMetadata::default(),
-            )?;
-        }
-
-        DatexExpressionData::TypeExpression(type_expression) => {
-            compilation_context.write(RegularInstruction::TypeExpression);
-            compilation_context
-                .append_compiled_type_expression(&type_expression);
-        }
-        DatexExpressionData::Range(range_dec) => {
-            compilation_context.append_instruction_code(InstructionCode::RANGE);
-
-            compile_expression(
-                compilation_context,
-                RichAst::new(range_dec.start, &metadata),
-                CompileMetadata::default(),
-            )?;
-            compile_expression(
-                compilation_context,
-                RichAst::new(range_dec.end, &metadata),
-                CompileMetadata::default(),
-            )?;
-        }
-
-        DatexExpressionData::Unbox(unbox) => {
-            compilation_context.mark_has_non_static_value();
-            compilation_context.append_instruction_code(InstructionCode::UNBOX);
-            compile_expression(
-                compilation_context,
-                RichAst::new(unbox.expression, &metadata),
-                CompileMetadata::default(),
-            )?;
-        }
-
-        DatexExpressionData::Tag(tag_expression) => {
-            let tag_instruction = RegularInstruction::tagged_value(
-                tag_expression.tag,
-                tag_expression.expression.is_none(),
-            );
-            compilation_context.write(tag_instruction);
-
-            // append expression
-            if let Some(inner_expression) = tag_expression.expression {
-                compile_expression(
-                    compilation_context,
-                    RichAst::new(inner_expression, &metadata),
-                    CompileMetadata::default(),
-                )?;
-            }
-        }
-
-        DatexExpressionData::Conditional(Conditional {
-            condition,
-            then_branch,
-            else_branch,
-        }) => {
-            compilation_context.mark_has_non_static_value();
-            let input = compilation_context.core_context.input.clone();
-            let condition_bytes = {
-                let mut ctx = CompilationContext::new(
-                    Vec::with_capacity(256),
-                    compilation_context.inserted_values.clone(),
-                    compilation_context.execution_mode,
-                    input.clone(),
-                );
-                ctx.scope = compilation_context.scope.clone();
-
-                compile_expression(
-                    &mut ctx,
-                    RichAst::new(condition, &metadata),
-                    CompileMetadata::default(),
-                )?;
-                let DXBWithSharedValues {
-                    dxb,
-                    shared_values: _,
-                } = ctx.into_dxb_with_shared_values();
-                dxb
-            };
-
-            let then_bytes = {
-                let mut ctx = CompilationContext::new(
-                    Vec::with_capacity(256),
-                    compilation_context.inserted_values.clone(),
-                    compilation_context.execution_mode,
-                    input.clone(),
-                );
-                ctx.scope = compilation_context.scope.clone();
-                compile_expression(
-                    &mut ctx,
-                    RichAst::new(then_branch, &metadata),
-                    CompileMetadata::default(),
-                )?;
-                let DXBWithSharedValues {
-                    dxb,
-                    shared_values: _,
-                } = ctx.into_dxb_with_shared_values();
-                dxb
-            };
-
-            let else_bytes = match else_branch {
-                Some(else_expr) => {
-                    let mut ctx = CompilationContext::new(
-                        Vec::with_capacity(256),
-                        compilation_context.inserted_values.clone(),
-                        compilation_context.execution_mode,
-                        input,
-                    );
-                    ctx.scope = compilation_context.scope.clone();
-                    compile_expression(
-                        &mut ctx,
-                        RichAst::new(else_expr, &metadata),
-                        CompileMetadata::default(),
-                    )?;
-                    let DXBWithSharedValues {
-                        dxb,
-                        shared_values: _,
-                    } = ctx.into_dxb_with_shared_values();
-                    dxb
-                }
-                None => Vec::new(),
-            };
-            compilation_context.write(RegularInstruction::UnboundedStatements);
-
-            compilation_context.write(RegularInstruction::JumpIfFalse(
-                JumpData {
-                    // The false path starts after the then branch and, only
-                    // when present, the five-byte Jump used by the true path
-                    // to skip the else branch.
-                    offset: (then_bytes.len()
-                        + if else_bytes.is_empty() { 0 } else { 5 })
-                        as i32,
-                },
-            ));
-            compilation_context
-                .cursor()
-                .write_all(&condition_bytes)
-                .unwrap();
-            compilation_context.cursor().write_all(&then_bytes).unwrap();
-
-            if !else_bytes.is_empty() {
-                compilation_context.write(RegularInstruction::Jump(JumpData {
-                    offset: else_bytes.len() as i32,
-                }));
-                compilation_context.cursor().write_all(&else_bytes).unwrap();
-            }
-
-            compilation_context.write(
-                RegularInstruction::UnboundedStatementsEnd(
-                    UnboundedStatementsData { terminated: false },
-                ),
-            );
-        }
-
-        DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
-            compilation_context.write(RegularInstruction::get_core_lib_value(
-                core_lib_id.into(),
-            ));
-        }
-
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
-            signature,
-            body,
-            injected_variable_count,
-        }) => {
-            compilation_context.mark_has_non_static_value();
-
-            // generate variables for parameters
-            let mut variables = vec![];
-            let mut index = StackIndex(0);
-            for (name, _) in &signature.parameters {
-                variables.push(
-                    Variable::new_const(name.clone(), index), // TODO: allow var
-                );
-                index += 1;
-            }
-            if let Some((name, _)) = &signature.rest_parameter {
-                variables.push(
-                    Variable::new_const(name.clone(), index), // TODO: allow var
-                );
-            }
-
-            let (instruction_block_data, new_scope) =
-                compile_child_realm_instructions(
-                    compilation_context,
-                    body,
-                    injected_variable_count.unwrap(), // must be set by precompiler
-                    &metadata,
-                    variables,
-                )?;
-
-            compilation_context.scope = new_scope;
-
-            compilation_context.write(RegularInstruction::CallableDeclaration(
-                CallableDeclarationData {
-                    signature: CallableSignatureData {
-                        name: ShortTextData(signature.name.unwrap_or_default()),
-                        kind: signature.kind,
-                        requires_async: signature.requires_async,
-                        parameter_count: signature.parameters.len() as u8,
-                        has_rest_parameter: signature.rest_parameter.is_some(),
-                        has_return_type: signature.return_type.is_some(),
-                        has_yeet_type: signature.yeet_type.is_some(),
-                        parameter_names: signature
-                            .parameters
-                            .iter()
-                            .map(|(name, _)| ShortTextData(name.clone()))
-                            .collect(),
-                        rest_parameter_name: signature
-                            .rest_parameter
-                            .clone()
-                            .map(|(name, _)| ShortTextData(name)),
-                    },
-                    body: instruction_block_data,
-                },
-            ));
-
-            // add parameter types
-            for (_, param) in signature.parameters {
-                compilation_context.append_compiled_type_expression(&param);
-            }
-            // add rest parameter type
-            if let Some((_, param)) = signature.rest_parameter {
-                compilation_context.append_compiled_type_expression(&param);
-            }
-            // add return type
-            if let Some(ty) = signature.return_type {
-                compilation_context.append_compiled_type_expression(&ty);
-            }
-            // add yield type
-            if let Some(ty) = signature.yeet_type {
-                compilation_context.append_compiled_type_expression(&ty);
-            }
-        }
-
-        data => {
-            let expressions = data
-                .to_instructions(compilation_context)
-                .collect::<Vec<_>>();
-            for instruction in expressions {
-                compilation_context.write(instruction);
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn compile_child_realm_instructions(
-    compilation_context: &mut CompilationContext,
-    ast: DatexExpression,
+    cache: &mut SharedReferencesCache,
+    ast: &DatexExpression,
     injected_variable_count: u32,
-    metadata: &Rc<RefCell<AstMetadata>>,
+    metadata: &mut AstMetadata,
     existing_variables: Vec<Variable>,
 ) -> Result<(InstructionBlockData, CompilationScope), CompilerError> {
     let input = compilation_context.core_context.input.clone();
     // compile remote execution block
-    let mut execution_block_ctx = CompilationContext::new(
-        Vec::with_capacity(256),
-        vec![],
-        ExecutionMode::Static,
-        input,
-    );
 
     let stack_index_offset =
         StackIndex(injected_variable_count + existing_variables.len() as u32);
@@ -1628,26 +506,34 @@ fn compile_child_realm_instructions(
         stack_index_offset,
         injected_values_offset,
     );
-
     for variable in existing_variables {
         child_scope.register_variable_slot(variable);
     }
 
-    let external_scope = compile_rich_ast(
-        &mut execution_block_ctx,
-        RichAst::new(ast, metadata),
+    let execution_block_ctx = CompilationContext::new(
+        vec![],
+        ExecutionMode::Static,
+        input,
         child_scope,
-    )?;
-    // reset to current scope
-    let external_parent_scope = external_scope
-        .pop_external()
-        .ok_or(CompilerError::ScopePopError)?;
+    );
 
     // TODO: what to do with the shared values? [shared_values]
-    let DXBWithSharedValues {
-        dxb,
-        shared_values: _,
-    } = execution_block_ctx.into_dxb_with_shared_values();
+    let CompilationResult {
+        dxb_with_shared_values:
+            DXBWithSharedValues {
+                dxb,
+                shared_values: _,
+            },
+        scope: child_scope,
+        ..
+    } = execution_block_ctx.compile_ast_node_to_dxb_with_shared_values(
+        &*ast.data, metadata, cache,
+    )?;
+
+    // reset to current scope
+    let external_parent_scope = child_scope
+        .pop_external()
+        .ok_or(CompilerError::ScopePopError)?;
 
     // insert remote execution instruction
     Ok((
@@ -1663,129 +549,13 @@ fn compile_child_realm_instructions(
     ))
 }
 
-/// Compiles a direct assignment operation (e.g., `+=`, `-=`) into the corresponding regular instruction (e.g. [RegularInstruction::Increment]).
-/// Returns `true` if the operation was successfully compiled, or `false` if the operator is not a direct assignment operation.
-fn compile_maybe_direct_assignment_operation(
-    compilation_context: &mut CompilationContext,
-    operator: ModificationOperator,
-) -> bool {
-    match operator {
-        ModificationOperator::AddAssign => compilation_context
-            .core_context
-            .write(RegularInstruction::increment()),
-        ModificationOperator::SubtractAssign => compilation_context
-            .core_context
-            .write(RegularInstruction::decrement()),
-        _operator => return false,
-    };
-    true
-}
-
-fn compile_key_value_entry(
-    compilation_context: &mut CompilationContext,
-    key: DatexExpression,
-    value: DatexExpression,
-    metadata: &Rc<RefCell<AstMetadata>>,
-) -> Result<(), CompilerError> {
-    match *key.data {
-        // text -> insert key string
-        DatexExpressionData::Text(text) => {
-            append_key_string(compilation_context.core_context(), &text.0);
-        }
-        // other -> insert key as dynamic
-        _ => {
-            compilation_context
-                .append_instruction_code(InstructionCode::KEY_VALUE_DYNAMIC);
-            compile_expression(
-                compilation_context,
-                RichAst::new(key, metadata),
-                CompileMetadata::default(),
-            )?;
-        }
-    };
-    // insert value
-    compile_expression(
-        compilation_context,
-        RichAst::new(value, metadata),
-        CompileMetadata::default(),
-    )?;
-    Ok(())
-}
-
-fn compile_text_property_access(
-    compilation_context: &mut CompilationContext,
-    key: &str,
-) {
-    compilation_context
-        .append_instruction_code(InstructionCode::GET_ENTRY_TEXT);
-    // append key length as u8
-    append_u8(compilation_context.cursor(), key.len() as u8);
-    // append key bytes
-    compilation_context
-        .cursor()
-        .write_all(key.as_bytes())
-        .expect("Failed to write key bytes to compilation context cursor");
-}
-
-fn compile_index_property_access(
-    compilation_context: &mut CompilationContext,
-    index: u32,
-) {
-    compilation_context
-        .append_instruction_code(InstructionCode::GET_ENTRY_INDEX);
-    append_u32(compilation_context.cursor(), index);
-}
-
-fn compile_index_property_assignment(
-    compilation_context: &mut CompilationContext,
-    index: u32,
-) {
-    compilation_context
-        .append_instruction_code(InstructionCode::SET_ENTRY_INDEX);
-    append_u32(compilation_context.cursor(), index);
-}
-
-fn compile_dynamic_property_access(
-    compilation_context: &mut CompilationContext,
-    key_expression: DatexExpression,
-) -> Result<(), CompilerError> {
-    compilation_context
-        .append_instruction_code(InstructionCode::GET_ENTRY_DYNAMIC);
-    // compile key expression
-    compile_expression(
-        compilation_context,
-        RichAst::new(
-            key_expression,
-            &Rc::new(RefCell::new(AstMetadata::default())),
-        ),
-        CompileMetadata::default(),
-    )
-}
-
-fn compile_dynamic_property_assignment(
-    compilation_context: &mut CompilationContext,
-    key_expression: DatexExpression,
-) -> Result<(), CompilerError> {
-    compilation_context
-        .append_instruction_code(InstructionCode::SET_ENTRY_DYNAMIC);
-    // compile key expression
-    compile_expression(
-        compilation_context,
-        RichAst::new(
-            key_expression,
-            &Rc::new(RefCell::new(AstMetadata::default())),
-        ),
-        CompileMetadata::default(),
-    )
-}
-
 #[cfg(test)]
 #[cfg(feature = "disassembler")]
 pub mod tests {
     use super::{
-        CompilationContext, CompileOptions, StaticValueOrDXB, compile_ast,
-        compile_script, compile_script_or_return_static_value,
-        compile_template, parse_datex_script_to_rich_ast_simple_error,
+        CompilationContext, CompileOptions, StaticValueOrDXB, compile_script,
+        compile_script_or_return_static_value, compile_template,
+        parse_datex_script_to_rich_ast_simple_error,
     };
     use crate::{
         ast::expressions::{CallableDeclaration, CallableSignature},
@@ -1810,11 +580,14 @@ pub mod tests {
     };
 
     use crate::instruction::instruction_data::{
-        CallableDeclarationDataDebugTree, InstructionBlockDataDebugFlat,
+        CallableDeclarationDataDebugTree, ClassifiedValueData,
+        InstructionBlockDataDebugFlat,
     };
 
     use crate::{
-        compiler::error::CompilerError,
+        compiler::{
+            compilation_result::CompilationResult, error::CompilerError,
+        },
         disassembler::{
             assertions::{
                 assert_instructions_equal, instructions, instructions_with_span,
@@ -1834,7 +607,7 @@ pub mod tests {
             instruction_data::{
                 InstructionBlockData, InstructionBlockDataDebugTree, ListData,
                 MapData, ShortListData, ShortMapData, ShortTextData,
-                StatementsData, TaggedValue, UInt8Data,
+                StatementsData, UInt8Data,
             },
         },
         libs::core::{
@@ -1844,10 +617,11 @@ pub mod tests {
         prelude::*,
         runtime::{Runtime, RuntimeConfig, RuntimeRunner},
         shared_values::PointerAddress,
+        traits::convert_value_container::ConvertValueContainer,
         values::core_values::integer::{Integer, typed_integer::TypedInteger},
     };
     use alloc::format;
-    use core::assert_matches;
+    use core::{assert_matches, ops::DerefMut};
     use log::*;
 
     fn compile_unwrap(script: &str) -> Vec<u8> {
@@ -1874,24 +648,29 @@ pub mod tests {
         result
     }
 
-    fn get_compilation_context(script: &'_ str) -> CompilationContext<'_> {
+    fn get_compilation_result(script: &'_ str) -> CompilationResult {
         let mut options = CompileOptions::default();
+        let runtime = Runtime::stub();
         let ast = parse_datex_script_to_rich_ast_simple_error(
             script,
             &mut options,
-            Runtime::stub(),
+            runtime.clone(),
         )
         .unwrap();
         let input = unsafe { default_compile_input() };
         let mut compilation_context = CompilationContext::new(
-            Vec::with_capacity(256),
             vec![],
             options.compile_scope.execution_mode,
             input,
+            options.compile_scope,
         );
-        compile_ast(ast, &mut compilation_context, options.compile_scope)
-            .unwrap();
+        let mut cache = runtime.shared_references_cache_mut();
         compilation_context
+            .compile_ast_with_metadata_to_dxb_with_shared_values(
+                ast,
+                cache.deref_mut(),
+            )
+            .unwrap()
     }
 
     fn compile_datex_script_debug_unbounded(
@@ -2416,6 +1195,7 @@ pub mod tests {
         let expected = vec![
             InstructionCode::SHORT_MAP.into(),
             1, // length
+            1,
             InstructionCode::KEY_VALUE_SHORT_TEXT.into(),
             3, // length of "key"
             b'k',
@@ -2435,6 +1215,7 @@ pub mod tests {
         let expected = vec![
             InstructionCode::SHORT_MAP.into(),
             1, // length
+            0,
             InstructionCode::KEY_VALUE_DYNAMIC.into(),
             InstructionCode::UINT_8.into(),
             10,
@@ -2453,6 +1234,7 @@ pub mod tests {
         let mut expected: Vec<u8> = vec![
             InstructionCode::SHORT_MAP.into(),
             1, // length
+            1,
             InstructionCode::KEY_VALUE_DYNAMIC.into(),
             InstructionCode::TEXT.into(),
         ];
@@ -2470,6 +1252,7 @@ pub mod tests {
         let expected = [
             InstructionCode::SHORT_MAP.into(),
             1, // length
+            0,
             InstructionCode::KEY_VALUE_DYNAMIC.into(),
             InstructionCode::ADD.into(),
             InstructionCode::UINT_8.into(),
@@ -2490,6 +1273,7 @@ pub mod tests {
         let expected = vec![
             InstructionCode::SHORT_MAP.into(),
             3, // length
+            0,
             InstructionCode::KEY_VALUE_SHORT_TEXT.into(),
             3, // length of "key"
             b'k',
@@ -2522,6 +1306,7 @@ pub mod tests {
         let expected: Vec<u8> = vec![
             InstructionCode::SHORT_MAP.into(),
             0, // length
+            1,
         ];
         assert_eq!(result, expected);
     }
@@ -2532,9 +1317,13 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_instructions_equal!(
             &result,
-            (RegularInstruction::TaggedValue(TaggedValue {
-                tag: ShortTextData("Example".to_string()),
-                is_empty: true,
+            (RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                has_tag: true,
+                tag: Some(ShortTextData("Example".to_string())),
+                tag_value_is_empty: true,
+                impl_count: 0,
+                impls: vec![],
+                is_entity: false,
             }))
         )
     }
@@ -2546,11 +1335,18 @@ pub mod tests {
         assert_instructions_equal!(
             &result,
             (
-                RegularInstruction::TaggedValue(TaggedValue {
-                    tag: ShortTextData("Example".to_string()),
-                    is_empty: false,
+                RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                    has_tag: true,
+                    tag: Some(ShortTextData("Example".to_string())),
+                    tag_value_is_empty: false,
+                    impl_count: 0,
+                    impls: vec![],
+                    is_entity: false,
                 }),
-                RegularInstruction::ShortMap(ShortMapData { element_count: 1 }),
+                RegularInstruction::ShortMap(ShortMapData {
+                    element_count: 1,
+                    allow_only_text_keys: true
+                }),
                 RegularInstruction::KeyValueShortText(ShortTextData(
                     "a".to_string()
                 )),
@@ -2566,9 +1362,13 @@ pub mod tests {
         assert_instructions_equal!(
             &result,
             (
-                RegularInstruction::TaggedValue(TaggedValue {
-                    tag: ShortTextData("Example".to_string()),
-                    is_empty: false,
+                RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                    has_tag: true,
+                    tag: Some(ShortTextData("Example".to_string())),
+                    tag_value_is_empty: false,
+                    impl_count: 0,
+                    impls: vec![],
+                    is_entity: false,
                 }),
                 RegularInstruction::ShortText(ShortTextData(
                     "test".to_string()
@@ -2584,9 +1384,13 @@ pub mod tests {
         assert_instructions_equal!(
             &result,
             (
-                RegularInstruction::TaggedValue(TaggedValue {
-                    tag: ShortTextData("Example".to_string()),
-                    is_empty: false,
+                RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                    has_tag: true,
+                    tag: Some(ShortTextData("Example".to_string())),
+                    tag_value_is_empty: false,
+                    impl_count: 0,
+                    impls: vec![],
+                    is_entity: false,
                 }),
                 RegularInstruction::Null,
             )
@@ -2760,7 +1564,7 @@ pub mod tests {
             Runtime::stub(),
         )
         .expect("Failed to compile template")
-        .0
+        .dxb_with_shared_values
         .dxb
     }
 
@@ -2790,7 +1594,7 @@ pub mod tests {
         let a = TypedInteger::from(1u8);
         let result = compile!(Runtime::stub(), "?", a);
         assert_eq!(
-            result.unwrap().0.dxb,
+            result.unwrap().dxb_with_shared_values.dxb,
             vec![InstructionCode::UINT_8.into(), 1,]
         );
     }
@@ -2804,7 +1608,7 @@ pub mod tests {
             TypedInteger::from(2u8)
         );
         assert_eq!(
-            result.unwrap().0.dxb,
+            result.unwrap().dxb_with_shared_values.dxb,
             vec![
                 InstructionCode::ADD.into(),
                 InstructionCode::UINT_8.into(),
@@ -2843,45 +1647,45 @@ pub mod tests {
     fn static_value_detection() {
         // non-static
         let script = "1 + 2";
-        let compilation_scope = get_compilation_context(script);
+        let compilation_scope = get_compilation_result(script);
         assert!(compilation_scope.has_non_static_value);
 
         let script = "1 2";
-        let compilation_scope = get_compilation_context(script);
+        let compilation_scope = get_compilation_result(script);
         assert!(compilation_scope.has_non_static_value);
 
         let script = "1;2";
-        let compilation_scope = get_compilation_context(script);
+        let compilation_scope = get_compilation_result(script);
         assert!(compilation_scope.has_non_static_value);
 
         let script = r#"{("x" + "y"): 1}"#;
-        let compilation_scope = get_compilation_context(script);
+        let compilation_scope = get_compilation_result(script);
         assert!(compilation_scope.has_non_static_value);
 
         // static
         let script = "1";
-        let compilation_scope = get_compilation_context(script);
+        let compilation_scope = get_compilation_result(script);
         assert!(!compilation_scope.has_non_static_value);
 
         let script = "[]";
-        let compilation_scope = get_compilation_context(script);
+        let compilation_scope = get_compilation_result(script);
         assert!(!compilation_scope.has_non_static_value);
 
         let script = "{}";
-        let compilation_scope = get_compilation_context(script);
+        let compilation_scope = get_compilation_result(script);
         assert!(!compilation_scope.has_non_static_value);
 
         let script = "[1,2,3]";
-        let compilation_scope = get_compilation_context(script);
+        let compilation_scope = get_compilation_result(script);
         assert!(!compilation_scope.has_non_static_value);
 
         let script = "{a: 2}";
-        let compilation_scope = get_compilation_context(script);
+        let compilation_scope = get_compilation_result(script);
         assert!(!compilation_scope.has_non_static_value);
 
         // because of unary - 42
         let script = "-42";
-        let compilation_scope = get_compilation_context(script);
+        let compilation_scope = get_compilation_result(script);
         assert!(!compilation_scope.has_non_static_value);
     }
 
@@ -2895,9 +1699,10 @@ pub mod tests {
         )
         .unwrap()
         .0;
+
         assert_matches!(
             res,
-            StaticValueOrDXB::StaticValue(val) if val == Some(TypedInteger::from(1u8).into())
+            StaticValueOrDXB::StaticValue(val) if val.as_ref().unwrap().try_as::<u8>().unwrap() == &1u8
         );
 
         let script = "1u8 + 2u8";
@@ -2908,6 +1713,7 @@ pub mod tests {
         )
         .unwrap()
         .0;
+
         assert_matches!(
             res,
             StaticValueOrDXB::DXB(DXBWithSharedValues { dxb, ..}) if dxb == vec![

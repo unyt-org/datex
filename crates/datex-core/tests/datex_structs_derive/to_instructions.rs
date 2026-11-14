@@ -1,0 +1,261 @@
+use datex_core::{
+    core_compiler::{
+        core_compilation_context::{CompileInput, CoreCompilationContext},
+        to_instructions::ToInstructions,
+        value_compiler::compile_value,
+    },
+    disassembler::{
+        assertions::{
+            assert_instruction_lists_eq, assert_instructions_equal,
+            instructions,
+        },
+        disassemble_body, disassemble_instruction_tree_to_string,
+        options::DisassemblerOptions,
+    },
+    global::stack_index::StackIndex,
+    instruction::{
+        BytecodeItem, Instruction, NestedInstructionResolutionStrategy,
+        instruction_data::{ClassifiedValueData, MapData, MoveWithValue},
+        regular_instruction::RegularInstruction,
+        type_instruction::TypeInstruction,
+    },
+    libs::core::type_id::CoreLibVariantTypeId,
+    runtime::{
+        cache::shared_references_cache::SharedReferencesCache,
+        pointer_availability_lookup::PointerAvailabilityLookup,
+    },
+    shared_values::{
+        PointerAddress, SelfOwnedPointerAddress, SharedContainerMutability,
+    },
+    traits::get_datex_type::GetDatexType,
+    types::{
+        literal_type_definition::LiteralTypeDefinition, r#type::Type,
+        type_definition_with_metadata::TypeMetadata,
+    },
+    values::{
+        core_values::{integer::typed_integer::IntegerTypeVariant, text::Text},
+        value::Value,
+    },
+};
+use datex_macros_internal::Datex;
+#[derive(Datex, Debug)]
+#[datex(structural)]
+struct ExampleStruct {
+    a: u8,
+    b: String,
+}
+
+/// Converts a structure that implements `ToInstructions` into a vector of `Instruction`s.
+/// Skips the preamble, just directly calls `to_instructions`.
+fn to_instructions<T: ToInstructions>(structure: &T) -> Vec<Instruction> {
+    let cache = &mut SharedReferencesCache::default();
+    let pointer_lookup = PointerAvailabilityLookup::default();
+    let mut context =
+        CoreCompilationContext::new(CompileInput::new(&pointer_lookup, &[]));
+    structure
+        .to_instructions(context.shared_value_tracking.get_mut(), cache)
+        .collect::<Vec<_>>()
+}
+
+/// Converts a structure that implements `ToInstructions` into a vector of `Instruction`s.
+/// Includes the preamble.
+fn to_instructions_with_preamble<T: ToInstructions>(
+    structure: &T,
+) -> Vec<Instruction> {
+    let cache = &mut SharedReferencesCache::default();
+    let pointer_lookup = PointerAvailabilityLookup::default();
+    let dxb =
+        CoreCompilationContext::new(CompileInput::new(&pointer_lookup, &[]))
+            .compile_to_dxb_with_shared_values(structure, cache)
+            .dxb;
+
+    disassemble_body(
+        &dxb,
+        NestedInstructionResolutionStrategy::ResolveNestedScopesTree,
+    )
+    .0
+    .flatten()
+    .into_iter()
+    .map(|item| item.instruction)
+    .collect::<Vec<_>>()
+}
+
+#[test]
+fn example_struct_to_instructions() {
+    let structure = ExampleStruct {
+        a: 42u8,
+        b: "Test".to_string(),
+    };
+    assert_instruction_lists_eq!(
+        to_instructions(&structure),
+        (RegularInstruction::map(2, true).with_children(instructions!(
+            // a
+            RegularInstruction::key_value_short_text("a".to_string()),
+            RegularInstruction::uint8(42),
+            // b
+            RegularInstruction::key_value_short_text("b".to_string()),
+            RegularInstruction::text("Test".to_string()),
+        )))
+    )
+}
+
+#[derive(Datex, Debug)]
+#[datex(structural)]
+struct StructWithValue {
+    a: u8,
+    value: Value,
+}
+
+#[test]
+fn struct_with_value_to_instructions() {
+    let structure = StructWithValue {
+        a: 42u8,
+        value: Value::from(123u8),
+    };
+    assert_instruction_lists_eq!(
+        to_instructions(&structure),
+        (RegularInstruction::map(2, true).with_children(instructions!(
+            // a
+            RegularInstruction::key_value_short_text("a".to_string()),
+            RegularInstruction::uint8(42),
+            // value
+            RegularInstruction::key_value_short_text("value".to_string()),
+            RegularInstruction::uint8(123),
+        )))
+    );
+}
+
+#[derive(Datex, Debug)]
+#[datex(structural)]
+enum ExampleEnum {
+    Variant1(u8),
+    Variant2 { x: u8, y: String },
+    Variant3(u8, String),
+    Variant4,
+}
+
+#[test]
+fn example_enum_variant_1_to_instructions() {
+    let variant1 = ExampleEnum::Variant1(42);
+    assert_instruction_lists_eq!(
+        to_instructions(&variant1),
+        (RegularInstruction::ClassifiedValue(ClassifiedValueData::new_tagged(
+            "Variant1".to_string(),
+            false
+        ))
+        .with_children(instructions!(RegularInstruction::uint8(42),)))
+    );
+}
+
+#[test]
+fn example_enum_variant_2_to_instructions() {
+    let variant2 = ExampleEnum::Variant2 {
+        x: 42,
+        y: "Test".to_string(),
+    };
+    assert_instruction_lists_eq!(
+        to_instructions(&variant2),
+        (RegularInstruction::ClassifiedValue(ClassifiedValueData::new_tagged(
+            "Variant2".to_string(),
+            false
+        ))
+        .with_children(instructions!(
+            RegularInstruction::map(2, true).with_children(instructions!(
+                // x
+                RegularInstruction::key_value_short_text("x".to_string()),
+                RegularInstruction::uint8(42),
+                // y
+                RegularInstruction::key_value_short_text("y".to_string()),
+                RegularInstruction::text("Test".to_string()),
+            ))
+        )))
+    );
+}
+
+#[test]
+fn example_enum_variant_3_to_instructions() {
+    let variant3 = ExampleEnum::Variant3(42, "Test".to_string());
+    assert_instruction_lists_eq!(
+        to_instructions(&variant3),
+        (RegularInstruction::ClassifiedValue(ClassifiedValueData::new_tagged(
+            "Variant3".to_string(),
+            false
+        ))
+        .with_children(instructions!(
+            RegularInstruction::list_with_children(instructions!(
+                RegularInstruction::uint8(42),
+                RegularInstruction::text("Test".to_string()),
+            ))
+        )))
+    );
+}
+
+#[test]
+fn example_enum_variant_4_to_instructions() {
+    let variant4 = ExampleEnum::Variant4;
+    assert_instruction_lists_eq!(
+        to_instructions(&variant4),
+        vec![RegularInstruction::ClassifiedValue(
+            ClassifiedValueData::new_tagged("Variant4".to_string(), true)
+        )]
+    );
+}
+
+#[derive(Datex, Debug)]
+struct EntityStruct {
+    a: u8,
+}
+
+#[test]
+fn entity_struct_to_instructions() {
+    let structure = EntityStruct { a: 42u8 };
+
+    let struct_type_address =
+        match EntityStruct::datex_type(&mut SharedReferencesCache::default()) {
+            Type::Entity(ty) => match ty.shared_container().pointer_address() {
+                PointerAddress::SelfOwned(address) => address,
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        };
+
+    assert_instruction_lists_eq!(
+        to_instructions_with_preamble(&structure),
+        (
+            RegularInstruction::statements_with_children(false, instructions!(
+                RegularInstruction::push_list_to_stack()
+                    .with_children(instructions!(
+                        RegularInstruction::statements_with_children(false, instructions!(
+                            RegularInstruction::push_to_stack().with_children(instructions!(
+                                RegularInstruction::move_with_value(MoveWithValue {
+                                    mutability: SharedContainerMutability::Immutable,
+                                    previous_address: struct_type_address,
+                                }),
+                                RegularInstruction::entity_type_definition("EntityStruct".to_string()),
+                                TypeInstruction::Map(MapData {
+                                    element_count: 1,
+                                    allow_only_text_keys: false,
+                                }),
+                                TypeInstruction::DefinitionWithMetadata(TypeMetadata::default()),
+                                TypeInstruction::Literal(LiteralTypeDefinition::Text(Text::new("a"))),
+                                TypeInstruction::DefinitionWithMetadata(TypeMetadata::default()),
+                                TypeInstruction::CoreType(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8).into()),
+                            )),
+                            RegularInstruction::list_with_children(instructions!(
+                                RegularInstruction::take_stack_value(StackIndex(0))
+                            )),
+                        ))
+                    )),
+                RegularInstruction::ClassifiedValue(ClassifiedValueData::new_entity())
+                    .with_children(instructions!(
+                        RegularInstruction::take_stack_value(StackIndex(0)),
+                        RegularInstruction::map(1, true).with_children(instructions!(
+                            // a
+                            RegularInstruction::key_value_short_text("a".to_string()),
+                            RegularInstruction::uint8(42),
+                        ))
+                    ))
+            ))
+        )
+    );
+}

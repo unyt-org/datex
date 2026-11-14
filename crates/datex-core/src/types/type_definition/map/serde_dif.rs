@@ -1,31 +1,32 @@
-use core::fmt;
-
 use crate::{
-    dif::serde_context::SerdeContext,
+    dif::{
+        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
+    },
     types::{r#type::Type, type_definition::map::MapTypeDefinition},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
 };
 use serde::{
     Deserializer, Serializer,
-    de::{self, DeserializeSeed, SeqAccess, Visitor},
+    de::{SeqAccess, Visitor},
     ser::{SerializeSeq, SerializeTuple},
 };
 
 /// Serde implementations for [MapTypeDefinition].
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, MapTypeDefinition> {
-    type Value = MapTypeDefinition;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
+impl SerializeWithSerdeContext for MapTypeDefinition {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let mut seq = serializer.serialize_seq(Some(value.len()))?;
+        let mut seq = serializer.serialize_seq(Some(self.len()))?;
 
-        for (key, value) in value.iter() {
-            seq.serialize_element(&ValueWithSeed::new(
+        for (key, value) in self.iter() {
+            seq.serialize_element(&ValueWithSerdeContext::new(
                 &(key.clone(), value.clone()),
-                self.cast::<(Type, Type)>(),
+                ctx,
             ))?;
         }
 
@@ -34,82 +35,37 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, MapTypeDefinition> {
 }
 
 /// Serde implementations for inner tuple type `(Type, Type)`.
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, (Type, Type)> {
-    type Value = (Type, Type);
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
+impl SerializeWithSerdeContext for (Type, Type) {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut tuple = serializer.serialize_tuple(2)?;
 
-        tuple.serialize_element(&ValueWithSeed::new(
-            &value.0,
-            self.cast::<Type>(),
-        ))?;
+        tuple.serialize_element(&ValueWithSerdeContext::new(&self.0, ctx))?;
 
-        tuple.serialize_element(&ValueWithSeed::new(
-            &value.1,
-            self.cast::<Type>(),
-        ))?;
+        tuple.serialize_element(&ValueWithSerdeContext::new(&self.1, ctx))?;
 
         tuple.end()
     }
 }
 /// Deserialization implementations for [MapTypeDefinition].
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, MapTypeDefinition> {
-    type Value = MapTypeDefinition;
-
-    fn deserialize<D: serde::de::Deserializer<'de>>(
-        self,
+impl<'de> DeserializeWithSerdeContext<'de> for MapTypeDefinition {
+    fn deserialize_with_ctx<D: Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
         deserializer: D,
-    ) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_seq(self)
-    }
-}
-/// Deserialization implementations for inner tuple type `(Type, Type)`.
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, (Type, Type)> {
-    type Value = (Type, Type);
-
-    fn deserialize<D: Deserializer<'de>>(
-        self,
-        deserializer: D,
-    ) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_tuple(2, self)
-    }
-}
-
-/// Visitor implementations for deserialization of inner tuple type `(Type, Type)`.
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, (Type, Type)> {
-    type Value = (Type, Type);
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a type-definition key/value tuple")
-    }
-
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let key = seq
-            .next_element_seed(self.cast::<Type>())?
-            .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-
-        let value = seq
-            .next_element_seed(self.cast::<Type>())?
-            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
-
-        if seq.next_element::<de::IgnoredAny>()?.is_some() {
-            return Err(de::Error::invalid_length(3, &self));
-        }
-
-        Ok((key, value))
+    ) -> Result<Self, D::Error> {
+        deserializer.deserialize_seq(
+            DeserializeSerdeContext::<MapTypeDefinition>::new(ctx),
+        )
     }
 }
 
 /// Visitor implementations for deserialization of [MapTypeDefinition].
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, MapTypeDefinition> {
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, MapTypeDefinition>
+{
     fn expecting(
         &self,
         formatter: &mut core::fmt::Formatter,
@@ -117,7 +73,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, MapTypeDefinition> {
         formatter.write_str("a map type definition")
     }
     type Value = MapTypeDefinition;
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where
         A: serde::de::SeqAccess<'de>,
     {

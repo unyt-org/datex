@@ -11,6 +11,7 @@ use crate::{
             ComparisonOperator, SharedValueUnaryOperator, UnaryOperator,
             binary::{ArithmeticOperator, RangeOperator},
         },
+        protocol_structures::serializable::Serializable,
         root_properties::RootProperty,
         stack_index::StackIndex,
     },
@@ -18,13 +19,13 @@ use crate::{
         NextExpectedInstructions,
         instruction_codes::InstructionCode,
         instruction_data::{
-            ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-            FloatAsInt32Data, InstantData, InstructionBlockData, Int8Data,
-            Int16Data, Int32Data, Int64Data, Int128Data, JumpData,
-            JumpWithValueData, ListData, MapData, MoveWithValue, SharedRef,
-            SharedRefWithValue, ShortListData, ShortMapData,
-            ShortStatementsData, ShortTextData, SpliceData, StatementsData,
-            TaggedValue, TextData, UInt8Data, UInt16Data, UInt32Data,
+            ApplyData, ClassifiedValueData, Float32Data, Float64Data,
+            FloatAsInt16Data, FloatAsInt32Data, InstantData,
+            InstructionBlockData, Int8Data, Int16Data, Int32Data, Int64Data,
+            Int128Data, JumpData, JumpWithValueData, ListData, MapData,
+            MoveWithValue, SharedRef, SharedRefWithValue, ShortListData,
+            ShortMapData, ShortStatementsData, ShortTextData, SpliceData,
+            StatementsData, TextData, UInt8Data, UInt16Data, UInt32Data,
             UInt64Data, UInt128Data, UnboundedStatementsData,
         },
     },
@@ -34,15 +35,18 @@ use crate::{
         PointerAddress, ReferenceMutability, RemotePointerAddress,
         SelfOwnedPointerAddress,
     },
-    values::core_values::{
-        Instant,
-        decimal::{Decimal, typed_decimal::TypedDecimal},
-        endpoint::Endpoint,
-        integer::Integer,
+    values::{
+        core_values::{
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
+            instant::Instant,
+            integer::Integer,
+        },
+        value::value_classification::ValueClassification,
     },
 };
 use binrw::{
-    BinRead,
+    BinRead, BinWrite,
     io::{Read, Seek},
 };
 use core::fmt::{Display, Write as FmtWrite};
@@ -110,6 +114,12 @@ impl RegularInstruction {
         RegularInstruction::Instant(InstantData(value))
     }
 
+    pub fn entity_type_definition(name: String) -> Self {
+        RegularInstruction::EntityTypeDefinition(EntityTypeDefinitionData {
+            name: ShortTextData(name),
+        })
+    }
+
     /// Creates a text instruction, choosing between the short and default variant based on the length of the string.
     pub fn text(value: String) -> Self {
         match value.len() {
@@ -128,10 +138,22 @@ impl RegularInstruction {
         RegularInstruction::ShortText(ShortTextData(value))
     }
 
-    pub fn tagged_value(tag: String, is_empty: bool) -> Self {
-        RegularInstruction::TaggedValue(TaggedValue {
-            tag: ShortTextData(tag),
-            is_empty,
+    // Creates a tagged value without
+    pub fn classified_value(classification: &ValueClassification) -> Self {
+        RegularInstruction::ClassifiedValue(ClassifiedValueData {
+            has_tag: classification.tag.is_some(),
+            tag: classification
+                .tag
+                .as_ref()
+                .map(|tag| ShortTextData(tag.name.clone())),
+            tag_value_is_empty: classification
+                .tag
+                .as_ref()
+                .map(|tag| tag.is_empty)
+                .unwrap_or(false),
+            is_entity: classification.entity_type.is_some(),
+            impl_count: classification.impls.len() as u32,
+            impls: classification.impls.clone(),
         })
     }
 
@@ -158,24 +180,26 @@ impl RegularInstruction {
     }
 
     /// Creates a map instruction, choosing between the short and default variant based on the count of elements.
-    pub fn map(count: u32) -> Self {
+    pub fn map(count: u32, allow_only_text_keys: bool) -> Self {
         match count {
-            0..=255 => Self::map_short(count as u8),
-            _ => Self::map_default(count),
+            0..=255 => Self::map_short(count as u8, allow_only_text_keys),
+            _ => Self::map_default(count, allow_only_text_keys),
         }
     }
 
     /// Creates a map instruction with the default variant, regardless of the count of elements.
-    pub fn map_default(count: u32) -> Self {
+    pub fn map_default(count: u32, allow_only_text_keys: bool) -> Self {
         RegularInstruction::Map(MapData {
             element_count: count,
+            allow_only_text_keys,
         })
     }
 
     /// Creates a map instruction with the short variant, regardless of the count of elements.
-    pub fn map_short(count: u8) -> Self {
+    pub fn map_short(count: u8, allow_only_text_keys: bool) -> Self {
         RegularInstruction::ShortMap(ShortMapData {
             element_count: count,
+            allow_only_text_keys,
         })
     }
 
@@ -409,6 +433,13 @@ impl RegularInstruction {
     pub fn r#false() -> Self {
         RegularInstruction::False
     }
+    pub fn boolean(value: bool) -> Self {
+        if value {
+            Self::r#true()
+        } else {
+            Self::r#false()
+        }
+    }
     pub fn set_stack_value(stack_index: StackIndex) -> Self {
         RegularInstruction::SetStackValue(stack_index)
     }
@@ -444,9 +475,6 @@ impl RegularInstruction {
     }
     pub fn unbox() -> Self {
         RegularInstruction::Unbox
-    }
-    pub fn typed_value() -> Self {
-        RegularInstruction::TypedValue
     }
     pub fn type_expression() -> Self {
         RegularInstruction::TypeExpression
@@ -605,6 +633,8 @@ pub enum RegularInstruction {
     List(ListData),
     #[magic(InstructionCode::SHORT_LIST)]
     ShortList(ShortListData),
+    #[magic(InstructionCode::COMPACT_LIST)]
+    CompactList(CompactListData),
     #[magic(InstructionCode::MAP)]
     Map(MapData),
     #[magic(InstructionCode::SHORT_MAP)]
@@ -614,9 +644,6 @@ pub enum RegularInstruction {
     KeyValueDynamic,
     #[magic(InstructionCode::KEY_VALUE_SHORT_TEXT)]
     KeyValueShortText(ShortTextData),
-
-    #[magic(InstructionCode::TAGGED_VALUE)]
-    TaggedValue(TaggedValue),
 
     // binary operator
     #[magic(InstructionCode::ADD)]
@@ -731,13 +758,17 @@ pub enum RegularInstruction {
     #[magic(InstructionCode::CALLABLE_DECLARATION)]
     CallableDeclaration(CallableDeclarationData),
 
+    #[magic(InstructionCode::ENTITY_TYPE_DEFINITION)]
+    EntityTypeDefinition(EntityTypeDefinitionData),
+
     #[magic(InstructionCode::CALLABLE)]
     Callable(CallableData),
 
-    #[magic(InstructionCode::TYPED_VALUE)]
-    TypedValue,
     #[magic(InstructionCode::TYPE_EXPRESSION)]
     TypeExpression,
+
+    #[magic(InstructionCode::CLASSIFIED_VALUE)]
+    ClassifiedValue(ClassifiedValueData),
 
     // modification instructions: will later be mapped to trait impls
     // UpdateOperation::Replace
@@ -778,6 +809,12 @@ pub enum RegularInstruction {
     SetEntryIndex(UInt32Data),
     #[magic(InstructionCode::SET_ENTRY_DYNAMIC)]
     SetEntryDynamic,
+
+    #[magic(InstructionCode::SENDER)]
+    Sender,
+
+    #[magic(InstructionCode::RECEIVER)]
+    Receiver,
 
     /// Debug variant for RemoteExecution, includes full remote execution instruction list (flat) instead of raw dxb
     /// This variant is only used by the disassembler
@@ -888,6 +925,10 @@ impl RegularInstruction {
                 NextExpectedInstructions::Regular(list.element_count)
             } // list elements
 
+            RegularInstruction::CompactList(list) => {
+                NextExpectedInstructions::None
+            } // compact list, elements are inlined
+
             RegularInstruction::ShortMap(map) => {
                 NextExpectedInstructions::Regular(map.element_count as u32)
             } // map entries
@@ -948,6 +989,9 @@ impl RegularInstruction {
 
             RegularInstruction::Unbox => NextExpectedInstructions::Regular(1), // value to unbox
 
+            RegularInstruction::Sender => NextExpectedInstructions::Regular(1), // contains a shared reference to the receiver
+            RegularInstruction::Receiver => NextExpectedInstructions::None,
+
             RegularInstruction::AppendEntry => {
                 NextExpectedInstructions::Regular(2)
             }
@@ -1005,9 +1049,6 @@ impl RegularInstruction {
             | RegularInstruction::SetStackValue(_) => {
                 NextExpectedInstructions::Regular(1)
             }
-            RegularInstruction::TypedValue => {
-                NextExpectedInstructions::RegularAndType(1, 1)
-            }
 
             RegularInstruction::TypeExpression => {
                 NextExpectedInstructions::Type(1)
@@ -1017,13 +1058,19 @@ impl RegularInstruction {
                 NextExpectedInstructions::Regular(1)
             }
             RegularInstruction::Range => NextExpectedInstructions::Regular(2),
-            RegularInstruction::TaggedValue(TaggedValue {
-                is_empty, ..
-            }) => {
-                if *is_empty {
-                    NextExpectedInstructions::None
+            RegularInstruction::ClassifiedValue(classified_value) => {
+                if classified_value.tag_value_is_empty {
+                    if classified_value.is_entity {
+                        NextExpectedInstructions::Regular(1)
+                    } else {
+                        NextExpectedInstructions::None
+                    }
                 } else {
-                    NextExpectedInstructions::Regular(1)
+                    if classified_value.is_entity {
+                        NextExpectedInstructions::Regular(2)
+                    } else {
+                        NextExpectedInstructions::Regular(1)
+                    }
                 }
             }
 
@@ -1053,6 +1100,10 @@ impl RegularInstruction {
                     data.body.injected_value_count,
                     data.signature.total_type_count(),
                 )
+            }
+
+            RegularInstruction::EntityTypeDefinition(_) => {
+                NextExpectedInstructions::Type(1)
             }
 
             _ => NextExpectedInstructions::None,
@@ -1173,11 +1224,19 @@ impl RegularInstruction {
             RegularInstruction::ShortList(data) => {
                 write!(string, "{}", data.element_count)
             }
+            RegularInstruction::CompactList(data) => {
+                let elements_hex = data.elements.iter()
+                    .map(|b| format!("{:02x}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                
+                write!(string, "[count: {}, type: {}, elements: <{}>]", data.element_count, CoreLibTypeId::try_from(data.core_lib_type).map(|id| id.to_string()).unwrap_or_else(|_| "<invalid>".to_string()), elements_hex)
+            }
             RegularInstruction::Map(data) => {
-                write!(string, "{}", data.element_count)
+                write!(string, "[count: {}, allow_only_text_keys: {}]", data.element_count, data.allow_only_text_keys)
             }
             RegularInstruction::ShortMap(data) => {
-                write!(string, "{}", data.element_count)
+                write!(string, "[count: {}, allow_only_text_keys: {}]", data.element_count, data.allow_only_text_keys)
             }
             RegularInstruction::KeyValueShortText(data) => {
                 write!(string, "{}", data.0)
@@ -1214,6 +1273,13 @@ impl RegularInstruction {
                     address
                 )
             }
+            RegularInstruction::EntityTypeDefinition(data) => {
+                write!(
+                    string,
+                    "[name: {}]",
+                    data.name.0,
+                )
+            }
             RegularInstruction::RequestRemoteSharedRefMut(address) => {
                 write!(
                     string,
@@ -1239,17 +1305,18 @@ impl RegularInstruction {
             RegularInstruction::SharedRef(shared_ref) => {
                 write!(
                     string,
-                    "[ref_mutability: {:?}, address: {}]",
-                    shared_ref.ref_mutability, shared_ref.address.clone()
+                    "[ref_mutability: {:?}, address: {}, is_debug: {}]",
+                    shared_ref.ref_mutability, shared_ref.address.clone(), shared_ref.is_debug
                 )
             }
             RegularInstruction::SharedRefWithValue(shared_ref) => {
                 write!(
                     string,
-                    "[ref_mutability: {:?}, address: {}, container_mutability: {:?}]",
+                    "[ref_mutability: {:?}, address: {}, container_mutability: {:?}, is_debug: {}]",
                     shared_ref.ref_mutability,
                     PointerAddress::from(shared_ref.address.clone()),
-                    shared_ref.container_mutability
+                    shared_ref.container_mutability,
+                    shared_ref.is_debug
                 )
             }
             RegularInstruction::MoveWithValue(move_with_value) => {
@@ -1302,6 +1369,16 @@ impl RegularInstruction {
                 write!(string, "{}", short_text_data.0)
             }
 
+            RegularInstruction::ClassifiedValue(classified_value) => {
+                write!(
+                    string,
+                    "[tag: {}, tag_is_empty: {}, impls: {:?}, is_entity: {}]",
+                    classified_value.tag.as_ref().map(|tag| tag.0.as_str()).unwrap_or_else(|| "<none>"),
+                    classified_value.tag_value_is_empty,
+                    classified_value.impls,
+                    classified_value.is_entity
+                )
+            }
             #[cfg(feature = "disassembler")]
             RegularInstruction::_CallableDeclarationDebugTree(data) => {
                 write!(
@@ -1365,12 +1442,11 @@ impl RegularInstruction {
     }
 }
 
-use crate::instruction::instruction_data::{
-    CallMethodData, CallableData, CallableDeclarationData,
-};
+use crate::instruction::instruction_data::{CallMethodData, CallableData, CallableDeclarationData, CompactListData, EntityTypeDefinitionData};
 /// Serializes RegularInstruction to tuple (instruction code as string, optional metadata as string)
 #[cfg(feature = "disassembler")]
 use serde::{Serialize, Serializer, ser::SerializeTuple};
+use crate::libs::core::type_id::CoreLibTypeId;
 
 #[cfg(feature = "disassembler")]
 impl Serialize for RegularInstruction {
@@ -1422,6 +1498,14 @@ impl Display for RegularInstruction {
         Ok(())
     }
 }
+impl Serializable for RegularInstruction {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut writer = binrw::io::Cursor::new(Vec::new());
+        self.write(&mut writer)
+            .expect("instruction should serialize");
+        writer.into_inner()
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -1429,14 +1513,6 @@ mod tests {
 
     use super::*;
     use binrw::io::Cursor;
-
-    fn encode(instruction: &RegularInstruction) -> Vec<u8> {
-        let mut writer = Cursor::new(Vec::new());
-        instruction
-            .write(&mut writer)
-            .expect("instruction should serialize");
-        writer.into_inner()
-    }
 
     fn decode(bytes: &[u8]) -> BinResult<RegularInstruction> {
         let mut reader = Cursor::new(bytes);
@@ -1450,7 +1526,7 @@ mod tests {
     }
 
     fn assert_round_trip(instruction: RegularInstruction) {
-        let encoded = encode(&instruction);
+        let encoded = instruction.to_bytes();
         let decoded =
             decode(&encoded).expect("encoded instruction should deserialize");
 
@@ -1460,14 +1536,15 @@ mod tests {
     #[test]
     fn int8() {
         let instruction = RegularInstruction::int8(42);
-        let encoded = encode(&instruction);
+        let encoded = instruction.to_bytes();
+
         assert_eq!(encoded, vec![InstructionCode::INT_8.as_u8(), 42u8,]);
     }
 
     #[test]
     fn negative_int8() {
         let instruction = RegularInstruction::int8(-5);
-        let encoded = encode(&instruction);
+        let encoded = instruction.to_bytes();
         assert_eq!(
             encoded,
             vec![InstructionCode::INT_8.as_u8(), (-5i8) as u8,]
@@ -1478,7 +1555,7 @@ mod tests {
     #[test]
     fn int16() {
         let instruction = RegularInstruction::int16(0x1234);
-        let encoded = encode(&instruction);
+        let encoded = instruction.to_bytes();
         assert_eq!(encoded, vec![InstructionCode::INT_16.as_u8(), 0x34, 0x12,]);
     }
 
@@ -1588,7 +1665,7 @@ mod tests {
         let original =
             vec![InstructionCode::INT_32.as_u8(), 0x78, 0x56, 0x34, 0x12];
         let decoded = decode(&original).expect("valid INT_32");
-        let reencoded = encode(&decoded);
+        let reencoded = decoded.to_bytes();
         assert_eq!(reencoded, original);
     }
 }

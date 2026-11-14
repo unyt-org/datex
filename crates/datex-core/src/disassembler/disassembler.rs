@@ -583,11 +583,11 @@ fn disassemble_body_inner(
 mod tests {
     use super::*;
     use crate::{
-        core_compiler::value_compiler::append_instruction,
         disassembler::assertions::instructions_with_span,
         dxb_parser::next_instructions_stack::{
             NextInstructionsStack, NextScopeInstruction,
         },
+        global::protocol_structures::serializable::Serializable,
         instruction::{
             instruction_codes::InstructionCode,
             instruction_data::{
@@ -601,14 +601,6 @@ mod tests {
     };
     use binrw::io::Cursor;
     use test_case::test_case;
-
-    fn instructions_to_bytes(instructions: Vec<Instruction>) -> Vec<u8> {
-        let mut cursor = Cursor::new(Vec::new());
-        for instruction in instructions {
-            append_instruction(&mut cursor, instruction);
-        }
-        cursor.into_inner()
-    }
 
     #[test_case(
         &[],
@@ -741,7 +733,7 @@ mod tests {
         expected_tree: InstructionTree<Instruction>,
         expected_err: Option<DXBParserError>,
     ) {
-        let dxb = instructions_to_bytes(instructions.to_vec());
+        let dxb = instructions.to_bytes();
         let (tree, err) = disassemble_body(
             &dxb,
             NestedInstructionResolutionStrategy::default(),
@@ -770,7 +762,7 @@ mod tests {
             )),
             Instruction::Regular(RegularInstruction::True),
         ];
-        let dxb = instructions_to_bytes(instructions.to_vec());
+        let dxb = instructions.to_bytes();
         let (tree, err) = disassemble_body(
             &dxb,
             NestedInstructionResolutionStrategy::ResolveNestedScopesFlat,
@@ -824,7 +816,7 @@ mod tests {
             )),
             Instruction::Regular(RegularInstruction::True),
         ];
-        let dxb = instructions_to_bytes(instructions.to_vec());
+        let dxb = instructions.to_bytes();
         let (tree, err) = disassemble_body(
             &dxb,
             NestedInstructionResolutionStrategy::ResolveNestedScopesTree,

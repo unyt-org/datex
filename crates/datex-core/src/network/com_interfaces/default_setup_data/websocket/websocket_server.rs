@@ -15,8 +15,8 @@ use crate::{
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
-#[derive(Datex, Debug, Serialize, Deserialize)]
-#[datex(structural_recursive)]
+#[derive(Datex, Clone, Debug, Serialize, Deserialize)]
+#[datex(structural)]
 pub struct WebSocketServerInterfaceSetupData {
     /// The address to bind the WebSocket server to (e.g., "0.0.0.0:8080").
     pub bind_address: String,

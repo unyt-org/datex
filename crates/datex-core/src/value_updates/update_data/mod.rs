@@ -3,9 +3,9 @@ mod serde_dif;
 use crate::{
     prelude::*,
     shared_values::base_shared_value_container::observers::TransceiverId,
-    values::value_container::{ValueContainer, value_key::ValueKey},
+    values::value_container::ValueContainer,
 };
-use strum::AsRefStr;
+use strum::{AsRefStr, EnumString};
 mod append_entry;
 mod decrement;
 mod delete_entry;
@@ -21,6 +21,23 @@ pub use increment::*;
 pub use list_splice::*;
 pub use replace::*;
 pub use set_entry::*;
+
+mod to_instructions;
+
+use strum::VariantNames;
+
+#[derive(Clone, Debug, PartialEq, AsRefStr, EnumString, VariantNames)]
+#[strum(serialize_all = "snake_case")]
+pub enum UpdateOperationKind {
+    Replace,
+    SetEntry,
+    DeleteEntry,
+    Clear,
+    AppendEntry,
+    ListSplice,
+    Increment,
+    Decrement,
+}
 
 #[derive(Clone, Debug, PartialEq, AsRefStr, Hash)]
 #[strum(serialize_all = "snake_case")]
@@ -54,10 +71,10 @@ impl UpdateOperation {
     pub fn replace(value: ValueContainer) -> Self {
         UpdateOperation::Replace(Box::new(ReplaceUpdateData::new(value)))
     }
-    pub fn set_entry(key: ValueKey, value: ValueContainer) -> Self {
+    pub fn set_entry(key: ValueContainer, value: ValueContainer) -> Self {
         UpdateOperation::SetEntry(Box::new(SetEntryUpdateData::new(key, value)))
     }
-    pub fn delete_entry(key: ValueKey) -> Self {
+    pub fn delete_entry(key: ValueContainer) -> Self {
         UpdateOperation::DeleteEntry(Box::new(DeleteEntryUpdateData::new(key)))
     }
     pub fn clear() -> Self {
@@ -100,7 +117,7 @@ impl UpdateOperation {
     pub fn with_source(
         self,
         source_id: TransceiverId,
-        path: Vec<ValueKey>,
+        path: Vec<ValueContainer>,
     ) -> Update {
         Update {
             source_id,
@@ -130,7 +147,7 @@ impl Update {
     pub fn data(&self) -> &UpdateData {
         &self.data
     }
-    pub fn path(&self) -> &[ValueKey] {
+    pub fn path(&self) -> &[ValueContainer] {
         self.data.path()
     }
     pub fn operation(&self) -> &UpdateOperation {
@@ -139,7 +156,9 @@ impl Update {
     pub fn into_operation(self) -> UpdateOperation {
         self.data.into_operation()
     }
-    pub fn into_parts(self) -> (TransceiverId, UpdateOperation, Vec<ValueKey>) {
+    pub fn into_parts(
+        self,
+    ) -> (TransceiverId, UpdateOperation, Vec<ValueContainer>) {
         let (operation, path) = self.data.into_parts();
         (self.source_id, operation, path)
     }
@@ -151,7 +170,7 @@ pub struct UpdateData {
     operation: UpdateOperation,
     /// Path to the value being updated (e.g. in case of nested property access)
     /// If the vector is empty, the update is applied to the root value.
-    path: Vec<ValueKey>,
+    path: Vec<ValueContainer>,
 }
 
 impl UpdateData {
@@ -164,17 +183,17 @@ impl UpdateData {
     }
     pub fn new_with_path(
         operation: UpdateOperation,
-        path: Vec<ValueKey>,
+        path: Vec<ValueContainer>,
     ) -> Self {
         UpdateData { operation, path }
     }
 
     /// The path to the value being updated. If the vector is empty, the update is applied to the root value.
-    pub fn path(&self) -> &[ValueKey] {
+    pub fn path(&self) -> &[ValueContainer] {
         &self.path
     }
 
-    pub fn into_parts(self) -> (UpdateOperation, Vec<ValueKey>) {
+    pub fn into_parts(self) -> (UpdateOperation, Vec<ValueContainer>) {
         (self.operation, self.path)
     }
 

@@ -38,12 +38,21 @@ pub enum DXBParserError {
     FromUtf8Error(FromUtf8Error),
     NotInUnboundedRegularScopeError,
     InvalidCoreLibId(CoreLibIdIndex),
+    InvalidProgram,
 }
 
 // custom impl required because binrw::Error does not implement PartialEq
 impl PartialEq for DXBParserError {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            (
+                DXBParserError::InvalidProgram,
+                DXBParserError::InvalidProgram,
+            ) => true,
+            (
+                DXBParserError::InvalidCoreLibId(a),
+                DXBParserError::InvalidCoreLibId(b),
+            ) => a == b,
             (
                 DXBParserError::InvalidEndpoint(a),
                 DXBParserError::InvalidEndpoint(b),
@@ -86,6 +95,8 @@ impl PartialEq for DXBParserError {
         }
     }
 }
+
+impl Eq for DXBParserError {}
 
 impl From<fmt::Error> for DXBParserError {
     fn from(error: fmt::Error) -> Self {
@@ -151,6 +162,9 @@ impl Display for DXBParserError {
             DXBParserError::InvalidCoreLibId(id) => {
                 core::write!(f, "Invalid Core Lib Id: {}", id.0)
             }
+            DXBParserError::InvalidProgram => {
+                core::write!(f, "Invalid program")
+            }
         }
     }
 }
@@ -209,6 +223,7 @@ pub fn iterate_instructions(
 
 pub gen fn iterate_instructions_with_seek(
     dxb_body_ref: Rc<RefCell<Vec<u8>>>,
+    #[allow(unused_variables)]
     nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
     seek_request: Option<Rc<RefCell<Option<i32>>>>,
 ) -> Result<InstructionWithSpan, DXBParserError> {
@@ -266,10 +281,11 @@ pub gen fn iterate_instructions_with_seek(
                         .map_err(DXBParserError::BinRwError)?;
 
                     let instruction = cfg_select! {
-                        feature = "disassembler" => instruction
-                            .convert_to_nested(
+                        all(test, feature = "disassembler") => {
+                            instruction.convert_to_nested(
                                 nested_instruction_resolution_strategy,
-                            )?,
+                            )?
+                        }
                         _ => instruction,
                     };
 

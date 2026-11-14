@@ -15,9 +15,17 @@ use core::{
 pub mod equality;
 use datex_crypto_facade::crypto::Crypto;
 use hex::decode;
+mod classification;
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
 pub mod serde_dif;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod try_clone;
 mod value_access;
 
 #[derive(
@@ -62,13 +70,19 @@ pub enum EndpointType {
     Anonymous = 0xFF,
 }
 
-#[derive(BinWrite, BinRead, Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(BinWrite, BinRead, Clone, Hash, PartialEq, Eq)]
 #[brw(little)]
 pub struct Endpoint {
     // 1 byte type, 18 bytes name, 2 bytes instance
     pub ty: EndpointType,
     pub identifier: [u8; 18],
     pub instance: EndpointInstance,
+}
+
+impl Debug for Endpoint {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "Endpoint({})", self)
+    }
 }
 
 impl Default for Endpoint {

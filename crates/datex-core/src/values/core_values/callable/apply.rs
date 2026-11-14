@@ -65,11 +65,11 @@ impl Apply for Callable {
 impl Apply for NativeCallable {
     fn try_apply_sync(
         &self,
-        _runtime: &Runtime,
+        runtime: &Runtime,
         args: Vec<ApplyArgument>,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         match self {
-            NativeCallable::Sync(f) => f(args).map_err(|e| e.into()),
+            NativeCallable::Sync(f) => f(args, runtime).map_err(|e| e.into()),
             NativeCallable::Async(_f) => {
                 Err(ApplyError::AsyncCallableRequiresAsyncExecution)
             }
@@ -78,12 +78,14 @@ impl Apply for NativeCallable {
 
     async fn try_apply_async(
         &self,
-        _runtime: &Runtime,
+        runtime: &Runtime,
         args: Vec<ApplyArgument>,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         match self {
-            NativeCallable::Sync(f) => f(args).map_err(|e| e.into()),
-            NativeCallable::Async(f) => f(args).await.map_err(|e| e.into()),
+            NativeCallable::Sync(f) => f(args, runtime).map_err(|e| e.into()),
+            NativeCallable::Async(f) => {
+                f(args, runtime).await.map_err(|e| e.into())
+            }
         }
     }
 }
@@ -109,12 +111,11 @@ impl Apply for DatexBytecodeCallable {
             .execute_dxb_sync(
                 DXBWithSharedValues::new(self.body.clone(), vec![]), // TODO: no clone?
                 Some(stack_values),
-                Some(&mut ExecutionContext::Local(LocalExecutionContext::new(
+                Some(ExecutionContext::Local(LocalExecutionContext::new(
                     ExecutionMode::Static,
                     runtime.clone(),
                     ExecutionCallerMetadata::local_default(), // TODO caller
                 ))),
-                true,
             )
             .map_err(CallableError::from)?;
 
@@ -138,12 +139,12 @@ impl Apply for DatexBytecodeCallable {
             .execute_dxb(
                 DXBWithSharedValues::new(self.body.clone(), vec![]), // TODO: no clone?
                 Some(stack_values),
-                Some(&mut ExecutionContext::Local(LocalExecutionContext::new(
+                Some(ExecutionContext::Local(LocalExecutionContext::new(
                     ExecutionMode::Static,
                     runtime.clone(),
                     ExecutionCallerMetadata::local_default(), // TODO caller
                 ))),
-                true,
+                false,
             )
             .await
             .map_err(CallableError::from)?;

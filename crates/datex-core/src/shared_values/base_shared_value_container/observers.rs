@@ -1,10 +1,11 @@
 use crate::{
-    dif::serde_context::SerdeContext,
-    prelude::*,
-    utils::{
-        freemap::{FreeHashMap, NextKey},
-        serde_serialize_seed::SerializeSeed,
+    dif::{
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
     },
+    prelude::*,
+    utils::freemap::{FreeHashMap, NextKey},
     value_updates::{
         update_data::Update, update_handler::InternalMutabilityUpdateHandler,
     },
@@ -22,7 +23,7 @@ use serde::{
 };
 use serde_with::__private__::DeError;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ObserverError {
     ObserverNotFound,
     ImmutableValue,
@@ -151,26 +152,22 @@ pub struct ObserveOptions {
     pub relay_own_updates: bool,
 }
 
-impl<'de> DeserializeSeed<'de> for SerdeContext<'de, ObserveOptions> {
-    type Value = ObserveOptions;
-
-    fn deserialize<D: Deserializer<'de>>(
-        self,
+impl<'de> DeserializeWithSerdeContext<'de> for ObserveOptions {
+    fn deserialize_with_ctx<D: Deserializer<'de>>(
+        _ctx: &SerdeContext<'_>,
         deserializer: D,
-    ) -> Result<Self::Value, D::Error> {
+    ) -> Result<Self, D::Error> {
         ObserveOptions::deserialize(deserializer)
     }
 }
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, ObserveOptions> {
-    type Value = ObserveOptions;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
+impl SerializeWithSerdeContext for ObserveOptions {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        _ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        value.serialize(serializer)
+        self.serialize(serializer)
     }
 }
 

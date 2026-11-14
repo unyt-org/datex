@@ -1,57 +1,59 @@
-use serde::{Serializer, de::DeserializeSeed, ser::SerializeSeq};
+use serde::{Serializer, ser::SerializeSeq};
 
 use crate::{
-    dif::serde_context::SerdeContext,
+    dif::{
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+    },
     types::{r#type::Type, type_definition::union::UnionTypeDefinition},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, UnionTypeDefinition> {
-    type Value = UnionTypeDefinition;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
+impl SerializeWithSerdeContext for UnionTypeDefinition {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let mut seq = serializer.serialize_seq(Some(value.len()))?;
-        for type_def in value.iter() {
-            seq.serialize_element(&ValueWithSeed::new(
-                type_def,
-                self.cast::<Type>(),
-            ))?;
+        let mut seq = serializer.serialize_seq(Some(self.len()))?;
+        for type_def in self.iter() {
+            seq.serialize_element(&ValueWithSerdeContext::new(type_def, ctx))?;
         }
         seq.end()
     }
 }
 
+use crate::dif::{
+    deserialize_serde_context::DeserializeSerdeContext,
+    deserialize_with_serde_context::DeserializeWithSerdeContext,
+    value_with_serde_context::ValueWithSerdeContext,
+};
 use core::fmt;
 use serde::{
     Deserializer,
     de::{SeqAccess, Visitor},
 };
 
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, UnionTypeDefinition>
-{
-    type Value = UnionTypeDefinition;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_seq(self)
+impl<'de> DeserializeWithSerdeContext<'de> for UnionTypeDefinition {
+    fn deserialize_with_ctx<D: Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Self, D::Error> {
+        deserializer.deserialize_seq(DeserializeSerdeContext::<
+            UnionTypeDefinition,
+        >::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, UnionTypeDefinition> {
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, UnionTypeDefinition>
+{
     type Value = UnionTypeDefinition;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("a sequence of types for UnionTypeDefinition")
     }
 
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where
         A: SeqAccess<'de>,
     {
