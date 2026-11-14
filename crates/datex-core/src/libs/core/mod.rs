@@ -83,7 +83,7 @@ impl Default for CoreLibraryValues {
             read_line: Value::callable(
                 Some("read_line".to_string()),
                 CallableTypeDefinition {
-                    kind: CallableKind::Function,
+                    kind: CallableKind::Procedure,
                     requires_async: true,
                     parameters: vec![],
                     rest_parameter: None,
