@@ -633,6 +633,8 @@ pub enum RegularInstruction {
     List(ListData),
     #[magic(InstructionCode::SHORT_LIST)]
     ShortList(ShortListData),
+    #[magic(InstructionCode::COMPACT_LIST)]
+    CompactList(CompactListData),
     #[magic(InstructionCode::MAP)]
     Map(MapData),
     #[magic(InstructionCode::SHORT_MAP)]
@@ -922,6 +924,10 @@ impl RegularInstruction {
             RegularInstruction::List(list) => {
                 NextExpectedInstructions::Regular(list.element_count)
             } // list elements
+
+            RegularInstruction::CompactList(list) => {
+                NextExpectedInstructions::None
+            } // compact list, elements are inlined
 
             RegularInstruction::ShortMap(map) => {
                 NextExpectedInstructions::Regular(map.element_count as u32)
@@ -1218,6 +1224,14 @@ impl RegularInstruction {
             RegularInstruction::ShortList(data) => {
                 write!(string, "{}", data.element_count)
             }
+            RegularInstruction::CompactList(data) => {
+                let elements_hex = data.elements.iter()
+                    .map(|b| format!("{:02x}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                
+                write!(string, "[count: {}, type: {}, elements: <{}>]", data.element_count, CoreLibTypeId::try_from(data.core_lib_type).map(|id| id.to_string()).unwrap_or_else(|_| "<invalid>".to_string()), elements_hex)
+            }
             RegularInstruction::Map(data) => {
                 write!(string, "[count: {}, allow_only_text_keys: {}]", data.element_count, data.allow_only_text_keys)
             }
@@ -1428,13 +1442,11 @@ impl RegularInstruction {
     }
 }
 
-use crate::instruction::instruction_data::{
-    CallMethodData, CallableData, CallableDeclarationData,
-    EntityTypeDefinitionData,
-};
+use crate::instruction::instruction_data::{CallMethodData, CallableData, CallableDeclarationData, CompactListData, EntityTypeDefinitionData};
 /// Serializes RegularInstruction to tuple (instruction code as string, optional metadata as string)
 #[cfg(feature = "disassembler")]
 use serde::{Serialize, Serializer, ser::SerializeTuple};
+use crate::libs::core::type_id::CoreLibTypeId;
 
 #[cfg(feature = "disassembler")]
 impl Serialize for RegularInstruction {

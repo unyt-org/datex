@@ -136,6 +136,9 @@ use crate::{
     },
 };
 use collected_execution_result::CollectedExecutionResult;
+use crate::libs::core::core_lib_id::CoreLibIdIndex;
+use crate::libs::core::type_id::CoreLibVariantTypeId;
+use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations
@@ -324,6 +327,17 @@ pub gen fn inner_execution_loop(
                                 }
                                 RegularInstruction::Decimal(big_decimal) => {
                                     Some(ValueContainer::from(big_decimal).into())
+                                }
+
+                                // compact lists
+                                RegularInstruction::CompactList(list_data) => {
+                                    // u8 list can just be passed through
+                                    if list_data.core_lib_type == CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)) {
+                                        Some(ValueContainer::from(list_data.element_count).into())
+                                    }
+                                    else {
+                                        todo!()
+                                    }
                                 }
 
                                 // endpoint

@@ -56,6 +56,10 @@ use crate::{
 };
 use alloc::format;
 use core::cell::RefCell;
+use crate::libs::core::core_lib_id::CoreLibIdIndex;
+use crate::libs::core::type_id::CoreLibVariantTypeId;
+use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
+use crate::values::value_container::ValueContainer;
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -221,6 +225,18 @@ pub fn ast_from_bytecode(
                         RegularInstruction::Integer(integer_data) => {
                             DatexExpressionData::Integer(integer_data)
                         }
+
+                        // compact lists
+                        RegularInstruction::CompactList(list_data) => {
+                            // u8 list can just be mapped directly
+                            if list_data.core_lib_type == CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)) {
+                               DatexExpressionData::List(List::new(list_data.elements.iter().map(|b| DatexExpressionData::TypedInteger(TypedInteger::from(*b)).with_default_span()).collect()))
+                            }
+                            else {
+                                todo!()
+                            }
+                        }
+
                         RegularInstruction::Range => {
                             unreachable!("decompiler ast from bytcode ranges not implemented");
                         }

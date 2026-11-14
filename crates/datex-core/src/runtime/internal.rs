@@ -97,9 +97,9 @@ pub struct RuntimeStats {
 #[datex(structural)]
 /// General static information about the runtime, e.g. version numbers.
 pub struct RuntimeInfo {
-    device_type: Option<String>,
-    other_versions: IndexMap<String, String, RandomState>,
     datex_version: String,
+    other_versions: IndexMap<String, String, RandomState>,
+    device_type: Option<String>,
     running_since: u64,
 }
 

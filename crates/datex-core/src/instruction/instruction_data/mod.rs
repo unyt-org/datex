@@ -31,6 +31,9 @@ use modular_bitfield::{bitfield, prelude::B4};
 mod disassembler_instruction_data;
 #[cfg(feature = "disassembler")]
 pub use disassembler_instruction_data::*;
+use crate::libs::core::core_lib_id::CoreLibIdIndex;
+use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId};
+use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
@@ -404,6 +407,52 @@ impl ReadEndian for TextData {
 #[brw(little)]
 pub struct ShortListData {
     pub element_count: u8,
+}
+
+/// Returns the size in bytes of a single element of the given core lib type id.
+/// This is used for compact lists and other data structures that store elements of a single core lib type.
+/// If the core lib type id does not have a known fixed size, this function will panic.
+pub fn element_size(core_lib_type_id: CoreLibIdIndex) -> u32 {
+    match CoreLibTypeId::try_from(core_lib_type_id) {
+        Ok(id) => match id {
+            CoreLibTypeId::Base(base_id) => match base_id {
+                CoreLibBaseTypeId::Null => 0,
+                CoreLibBaseTypeId::Boolean => 1,
+                _ => unimplemented!("Core lib type does not support element size: {}", core_lib_type_id),
+            }
+            CoreLibTypeId::Variant(variant_id) => match variant_id {
+                CoreLibVariantTypeId::Integer(integer_variant) => match integer_variant {
+                    IntegerTypeVariant::U8 => 1,
+                    IntegerTypeVariant::U16 => 2,
+                    IntegerTypeVariant::U32 => 4,
+                    IntegerTypeVariant::U64 => 8,
+                    IntegerTypeVariant::U128 => 16,
+                    IntegerTypeVariant::I8 => 1,
+                    IntegerTypeVariant::I16 => 2,
+                    IntegerTypeVariant::I32 => 4,
+                    IntegerTypeVariant::I64 => 8,
+                    IntegerTypeVariant::I128 => 16,
+                    _ => unimplemented!("Core lib type does not support element size: {}", core_lib_type_id),
+                }
+                _ => unimplemented!("Core lib type does not support element size: {}", core_lib_type_id),
+            }
+        }
+        Err(_) => unimplemented!("Core lib type does not support element size: {}", core_lib_type_id),
+    }
+}
+
+pub fn calculate_list_size(core_lib_type_id: CoreLibIdIndex, element_count: u32) -> u32 {
+    let element_size = element_size(core_lib_type_id);
+    element_size * element_count
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct CompactListData {
+    pub element_count: u32,
+    pub core_lib_type: CoreLibIdIndex,
+    #[br(count = calculate_list_size(core_lib_type, element_count))]
+    pub elements: Vec<u8>,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
