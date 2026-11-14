@@ -69,14 +69,12 @@ mod datex_inspector {
 
             *uuid.borrow_mut() = Some(runtime.com_hub().register_block_interceptor(BlockInterceptor::new(
                 move |block| {
-                    info!("Inspector captured block: {:?}", block);
                     let captured_block = CapturedBlockData {
                         block: block.block.to_bytes(),
                         socket_uuid: block.socket_uuid.to_string(),
                         direction: block.direction,
                     };
                     if sender.send(captured_block).is_err() {
-                        info!("Inspector blocks stream closed, unregistering block interceptor");
                         // remove interceptor
                         runtime_clone.com_hub().unregister_block_interceptor(uuid_clone.borrow().as_ref().unwrap());
                     }
