@@ -25,7 +25,7 @@ use crate::{
     },
     values::core_values::native::DatexNative,
 };
-use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
+use core::{fmt::Display, hash::Hash, ops::Deref};
 
 pub mod callable;
 pub mod collection;
@@ -414,7 +414,7 @@ impl TypeDefinition {
             }
             TypeDefinition::Shared(reference) => reference
                 .with_collapsed_type_value(|ty| ty.base_core_lib_type()),
-            _ => core::panic!("Unhandled type definition for base type"),
+            _ => panic!("Unhandled type definition for base type"),
         }
     }
 }

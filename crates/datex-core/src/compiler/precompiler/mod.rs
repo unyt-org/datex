@@ -1478,7 +1478,7 @@ mod tests {
             if let DatexExpressionData::Statements(stmts) = result.ast.data() {
                 stmts
             } else {
-                core::panic!("Expected statements");
+                panic!("Expected statements");
             };
         assert_eq!(
             *statements.statements.get(2).unwrap(),
@@ -1510,7 +1510,7 @@ mod tests {
             if let DatexExpressionData::Statements(stmts) = result.ast.data() {
                 stmts
             } else {
-                core::panic!("Expected statements");
+                panic!("Expected statements");
             };
         assert_eq!(
             *statements.statements.get(2).unwrap(),
@@ -2605,7 +2605,7 @@ mod tests {
             if let DatexExpressionData::Statements(stmts) = result.ast.data() {
                 stmts
             } else {
-                core::panic!("Expected statements");
+                panic!("Expected statements");
             };
 
         assert_eq!(
@@ -2637,7 +2637,7 @@ mod tests {
             if let DatexExpressionData::Statements(stmts) = result.ast.data() {
                 stmts
             } else {
-                core::panic!("Expected statements");
+                panic!("Expected statements");
             };
         assert_eq!(
                 *statements.statements.get(1).unwrap(),

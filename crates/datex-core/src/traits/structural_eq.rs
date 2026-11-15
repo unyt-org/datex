@@ -10,7 +10,7 @@ pub macro assert_structural_eq {
         match (&$left_val, &$right_val) {
             (left, right) => {
                 if !left.structural_eq(right) {
-                    core::panic!(
+                    panic!(
                         "structural equality assertion failed: `(left == right)`\n  left: `{:?}`,\n right: `{:?}`",
                         left,
                         right

@@ -237,7 +237,7 @@ pub async fn test_routes(
     // make sure the start endpoint for all routes is the same
     for route in routes {
         if route.hops[0].0 != start {
-            core::panic!(
+            panic!(
                 "Route start endpoints must all be the same. Found {} instead of {}",
                 route.hops[0].0,
                 start
@@ -247,7 +247,7 @@ pub async fn test_routes(
 
     for end in ends {
         if start != end {
-            core::panic!(
+            panic!(
                 "Route start {} does not match receiver {}",
                 start,
                 end
@@ -526,7 +526,7 @@ impl Network {
 
     pub async fn start(&mut self) {
         if self.is_initialized {
-            core::panic!("Network already initialized");
+            panic!("Network already initialized");
         }
         self.is_initialized = true;
 
@@ -747,6 +747,6 @@ impl Network {
                 return node.runtime.as_ref().unwrap();
             }
         }
-        core::panic!("Endpoint {endpoint} not found in network");
+        panic!("Endpoint {endpoint} not found in network");
     }
 }

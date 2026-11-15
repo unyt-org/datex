@@ -159,7 +159,7 @@ impl<'a> Formatter<'a> {
                 name,
                 ..
             }) => a.text(name),
-            e => core::panic!("Formatter not implemented for {:?}", e),
+            e => panic!("Formatter not implemented for {:?}", e),
         }
     }
 

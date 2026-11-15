@@ -30,7 +30,7 @@ impl ParserResult {
             ParserResult::Invalid(InvalidDatexParseResult {
                 errors, ..
             }) => {
-                core::panic!("Parsing failed with errors: {:?}", errors)
+                panic!("Parsing failed with errors: {:?}", errors)
             }
         }
     }

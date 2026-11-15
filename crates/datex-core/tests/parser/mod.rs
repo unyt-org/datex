@@ -93,7 +93,7 @@ fn parse_print_error(
 fn parse_to_value_container(src: &str) -> ValueContainer {
     let expr = parse_unwrap_data(src);
     ValueContainer::try_from(&expr).unwrap_or_else(|_| {
-        core::panic!("Failed to convert expression to ValueContainer")
+        panic!("Failed to convert expression to ValueContainer")
     })
 }
 
@@ -204,7 +204,7 @@ fn type_expression() {
             )
         );
     } else {
-        core::panic!("Expected VariableDeclaration");
+        panic!("Expected VariableDeclaration");
     }
 }
 
@@ -3191,6 +3191,6 @@ fn token_spans() {
         assert_eq!(right.span.start, 7);
         assert_eq!(right.span.end, 10);
     } else {
-        core::panic!("Expected BinaryOperation");
+        panic!("Expected BinaryOperation");
     }
 }

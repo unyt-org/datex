@@ -351,7 +351,7 @@ impl ComInterfaceManager {
     ) -> Rc<ComInterfaceProperties> {
         self.try_get_interface_properties_by_uuid(interface_uuid)
             .unwrap_or_else(|| {
-                core::panic!("Interface for uuid {interface_uuid} not found")
+                panic!("Interface for uuid {interface_uuid} not found")
             })
     }
 
@@ -365,7 +365,7 @@ impl ComInterfaceManager {
         {
             interface_info.is_waiting_for_socket_connections
         } else {
-            core::panic!("Interface for uuid {interface_uuid} not found");
+            panic!("Interface for uuid {interface_uuid} not found");
         }
     }
 
@@ -380,7 +380,7 @@ impl ComInterfaceManager {
         {
             interface_info.is_waiting_for_socket_connections = is_waiting;
         } else {
-            core::panic!("Interface for uuid {interface_uuid} not found");
+            panic!("Interface for uuid {interface_uuid} not found");
         }
     }
 

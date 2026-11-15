@@ -110,7 +110,7 @@ pub fn json_to_runtime_value_datex_auto_static_detection(
     if let StaticValueOrDXB::StaticValue(value) = dxb {
         value.expect("Static Value should not be empty")
     } else {
-        core::panic!("Expected static value, but got DXB");
+        panic!("Expected static value, but got DXB");
     }
 }
 

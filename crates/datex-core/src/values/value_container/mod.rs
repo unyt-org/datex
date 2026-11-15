@@ -280,7 +280,7 @@ impl ValueContainer {
         match self {
             ValueContainer::Shared(shared) => shared,
             _ => {
-                core::panic!("Cannot convert ValueContainer to SharedContainer")
+                panic!("Cannot convert ValueContainer to SharedContainer")
             }
         }
     }
@@ -288,7 +288,7 @@ impl ValueContainer {
         match self {
             ValueContainer::Shared(shared) => shared,
             _ => {
-                core::panic!("Cannot convert ValueContainer to SharedContainer")
+                panic!("Cannot convert ValueContainer to SharedContainer")
             }
         }
     }

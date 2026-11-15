@@ -495,7 +495,7 @@ mod tests {
             assert_eq!(literal, "42u8".to_string());
             assert_eq!(format!("{}", literal), "42u8".to_string());
         } else {
-            core::panic!("Expected DecimalIntegerLiteral with variant U8");
+            panic!("Expected DecimalIntegerLiteral with variant U8");
         }
 
         let mut lexer = Token::lexer("42");
@@ -503,7 +503,7 @@ mod tests {
         if let Ok(Token::IntegerLiteral(literal)) = res {
             assert_eq!(literal, "42".to_string());
         } else {
-            core::panic!("Expected DecimalIntegerLiteral with no variant");
+            panic!("Expected DecimalIntegerLiteral with no variant");
         }
     }
 

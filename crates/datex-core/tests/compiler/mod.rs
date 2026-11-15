@@ -15,7 +15,7 @@ fn compare_compiled_with_decompiled(datex_script: &str) {
             .unwrap();
 
     let decompiled = dxb_to_source_code(&dxb, DecompileOptions::compact())
-        .unwrap_or_else(|err| core::panic!("Failed to decompile: {err:?}"));
+        .unwrap_or_else(|err| panic!("Failed to decompile: {err:?}"));
 
     info!("original   : {datex_script}");
     info!("decompiled : {decompiled}");
@@ -36,9 +36,9 @@ fn compare_compiled(datex_script: &str, expected: &str) {
             resolve_slots: true,
         },
     )
-    .unwrap_or_else(|err| core::panic!("Failed to decompile: {err:?}"));
+    .unwrap_or_else(|err| panic!("Failed to decompile: {err:?}"));
     let decompiled = dxb_to_source_code(&dxb, DecompileOptions::default())
-        .unwrap_or_else(|err| core::panic!("Failed to decompile: {err:?}"));
+        .unwrap_or_else(|err| panic!("Failed to decompile: {err:?}"));
 
     info!("original   : {datex_script}");
     info!("expected : {expected}");

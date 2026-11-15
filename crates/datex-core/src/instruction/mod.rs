@@ -19,7 +19,7 @@ use binrw::{
     io::{Seek, Write},
     meta::{EndianKind, WriteEndian},
 };
-use core::{fmt::Display, prelude::rust_2024::*};
+use core::{fmt::Display};
 use serde::Serialize;
 mod bytecode_item;
 pub use bytecode_item::{BytecodeItem, Label};

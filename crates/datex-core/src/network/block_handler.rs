@@ -15,7 +15,7 @@ use crate::{
 use alloc::rc::Weak;
 
 use crate::{disassembler::print_disassembled, prelude::*};
-use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
+use core::{cell::RefCell, fmt::Debug};
 use log::{info, warn};
 use ringmap::RingMap;
 
@@ -468,7 +468,7 @@ impl BlockHandler {
             .borrow()
             .contains_key(&(context_id, section_index))
         {
-            core::panic!(
+            panic!(
                 "Observer for incoming response block (scope={context_id}, block={section_index}) already exists"
             );
         }
@@ -564,7 +564,7 @@ mod tests {
                     block_endpoint_context_id
                 );
             }
-            _ => core::panic!("Expected a SingleBlock section"),
+            _ => panic!("Expected a SingleBlock section"),
         }
     }
 
@@ -643,7 +643,7 @@ mod tests {
                 // blocks queue must contain the first block
                 assert!(section.next().await.is_some());
             }
-            _ => core::panic!("Expected a BlockStream section"),
+            _ => panic!("Expected a BlockStream section"),
         }
 
         // 2. Send second block
@@ -664,7 +664,7 @@ mod tests {
                 // blocks queue length must be 2 (was not yet drained)
                 assert_eq!(section.drain().await.len(), 1);
             }
-            _ => core::panic!("Expected a BlockStream section"),
+            _ => panic!("Expected a BlockStream section"),
         }
     }
 
@@ -753,7 +753,7 @@ mod tests {
                 let block = blocks.get(1).unwrap();
                 assert_eq!(block.block_header.block_number, 1);
             }
-            _ => core::panic!("Expected a BlockStream section"),
+            _ => panic!("Expected a BlockStream section"),
         }
     }
 
@@ -871,7 +871,7 @@ mod tests {
                 // block queue must contain the first block
                 assert!(section.next().await.is_some());
             }
-            _ => core::panic!("Expected a BlockStream section"),
+            _ => panic!("Expected a BlockStream section"),
         }
 
         // 2. Send second block
@@ -892,7 +892,7 @@ mod tests {
                 // blocks queue length must be 1
                 assert_eq!(section.drain().await.len(), 1);
             }
-            _ => core::panic!("Expected a BlockStream section"),
+            _ => panic!("Expected a BlockStream section"),
         }
 
         // 3. Send third block
@@ -914,7 +914,7 @@ mod tests {
                 // block queue must contain the first block
                 assert!(section.next().await.is_some());
             }
-            _ => core::panic!("Expected a BlockStream section"),
+            _ => panic!("Expected a BlockStream section"),
         }
 
         // 4. Send fourth block
@@ -935,7 +935,7 @@ mod tests {
                 // blocks queue length must be 1
                 assert_eq!(section.drain().await.len(), 1);
             }
-            _ => core::panic!("Expected a BlockStream section"),
+            _ => panic!("Expected a BlockStream section"),
         }
     }
 
@@ -991,7 +991,7 @@ mod tests {
                 assert_eq!(block.block_header.context_id, context_id);
                 assert_eq!(block.block_header.section_index, section_index);
             }
-            _ => core::panic!("Expected a SingleBlock section"),
+            _ => panic!("Expected a SingleBlock section"),
         }
     }
 }

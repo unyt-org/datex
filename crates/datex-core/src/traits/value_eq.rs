@@ -6,7 +6,7 @@ pub trait ValueEq {
 pub macro assert_value_eq {
     ($left_val:expr, $right_val:expr $(,)?) => {
         if !$left_val.value_eq(&$right_val) {
-            core::panic!(
+            panic!(
                 "value equality assertion failed: `(left === right)`\n  left: `{:?}`,\n right: `{:?}`",
                 $left_val, $right_val
             );

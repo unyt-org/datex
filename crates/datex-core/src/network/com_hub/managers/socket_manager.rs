@@ -349,10 +349,7 @@ impl ComInterfaceSocketManager {
         let direct_endpoint = socket.socket_properties.direct_endpoint.clone();
 
         if self.has_socket(&socket_uuid) {
-            core::panic!(
-                "Socket {} already exists in SocketManager",
-                socket_uuid
-            );
+            panic!("Socket {} already exists in SocketManager", socket_uuid);
         }
 
         info!(
@@ -406,7 +403,7 @@ impl ComInterfaceSocketManager {
         let can_receive = socket.socket_properties.direction.can_receive();
         let socket_uuid = socket.socket_properties.uuid().clone();
         if self.has_socket(&socket_uuid) {
-            core::panic!("Socket {} already exists in ComHub", socket_uuid);
+            panic!("Socket {} already exists in ComHub", socket_uuid);
         }
 
         info!(
@@ -477,7 +474,7 @@ impl ComInterfaceSocketManager {
                 InterfaceDirection::InOut => 0,
                 InterfaceDirection::Out => 1,
                 InterfaceDirection::In => {
-                    core::panic!("Socket {socket_uuid} is not allowed to be used as fallback socket")
+                    panic!("Socket {socket_uuid} is not allowed to be used as fallback socket")
                 }
             };
             (dir_rank, core::cmp::Reverse(*priority))

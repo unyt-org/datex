@@ -235,7 +235,7 @@ impl Endpoint {
     /// Panics if the name is invalid
     pub fn new(name: &str) -> Endpoint {
         Endpoint::from_string(name).unwrap_or_else(|_| {
-            core::panic!("Failed to convert str {name} to Endpoint")
+            panic!("Failed to convert str {name} to Endpoint")
         })
     }
 

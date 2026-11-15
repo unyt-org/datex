@@ -218,7 +218,7 @@ impl ExecutionContext {
 
         match self {
             ExecutionContext::Remote(_) => {
-                core::panic!("Remote execution requires a Runtime");
+                panic!("Remote execution requires a Runtime");
             }
             ExecutionContext::Local(LocalExecutionContext {
                 runtime,
@@ -300,7 +300,7 @@ impl ExecutionContext {
             }
             // remote execution is not supported directly in execution context
             ExecutionContext::Remote(..) => {
-                core::panic!("Remote execution requires a Runtime");
+                panic!("Remote execution requires a Runtime");
             }
         }
     }

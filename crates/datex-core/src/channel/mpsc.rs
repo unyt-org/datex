@@ -1,5 +1,5 @@
 use cfg_if::cfg_if;
-use core::{clone::Clone, prelude::rust_2024::*};
+use core::{clone::Clone};
 use futures_util::{SinkExt, StreamExt};
 
 #[cfg(not(feature = "std"))]

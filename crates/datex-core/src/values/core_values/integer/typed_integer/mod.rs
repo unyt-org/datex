@@ -192,7 +192,7 @@ impl TypedInteger {
             | core::num::IntErrorKind::NegOverflow => {
                 NumberParseError::OutOfRange
             }
-            _ => core::panic!("Unhandled integer parse error: {:?}", e.kind()),
+            _ => panic!("Unhandled integer parse error: {:?}", e.kind()),
         })
     }
 
