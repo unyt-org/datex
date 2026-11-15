@@ -1,5 +1,5 @@
 use binrw::{
-    BinRead, BinResult, BinWrite, Endian,
+    BinRead, BinReaderExt, BinResult, BinWrite, Endian,
     io::{Read, Seek, Write},
     meta::{EndianKind, ReadEndian},
 };
@@ -28,13 +28,12 @@ impl BinRead for Decimal {
                     .to_string(),
             });
         }
-        let big_decimal_type =
-            BigDecimalType::try_from(reader.read_le::<u8>()?);
+        let big_decimal_type = BigDecimalType::try_from(u8::read_le(reader)?);
 
         match big_decimal_type {
             Ok(BigDecimalType::Finite) => {
-                let numerator_len = reader.read_le::<u32>()? as usize;
-                let denominator_len = reader.read_le::<u32>()? as usize;
+                let numerator_len = u32::read_le(reader)? as usize;
+                let denominator_len = u32::read_le(reader)? as usize;
 
                 let mut numerator_bytes = vec![0; numerator_len];
                 let mut denominator_bytes = vec![0; denominator_len];

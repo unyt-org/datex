@@ -32,8 +32,8 @@ impl BinRead for Integer {
         _endian: Endian,
         _: Self::Args<'_>,
     ) -> BinResult<Self> {
-        let sign = reader.read_le::<u8>()?;
-        let len = reader.read_le::<u32>()? as usize;
+        let sign = u8::read_le(reader)?;
+        let len = u32::read_le(reader)? as usize;
         let mut bytes = vec![0; len];
         reader.read_exact(&mut bytes)?;
 
