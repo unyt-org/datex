@@ -3,7 +3,9 @@ use quote::quote;
 use syn::Ident;
 
 use crate::{
-    datex_proxy::data::{FieldIdent, Fields, Structure, StructureData},
+    datex_proxy::data::{
+        CommonFieldAttributes, FieldIdent, Fields, Structure, StructureData,
+    },
     generator::helpers::{
         SelfAccess, generate_struct_or_enum_variants_fields_mapping,
     },
@@ -153,7 +155,7 @@ fn generate_iter_map_parts(fields: &Fields, is_mut: bool) -> TokenStream {
             let fields_with_names = named
                 .iter()
                 // FIXME: skips serde fields for now (cannot be borrowed as value containers)
-                .filter(|field| field.field.attributes.field_mapping.is_datex())
+                .filter(|field| field.attributes().field_mapping.is_datex())
                 .map(|field| {
                     let name = field.datex_field_name();
                     let ident = field.normalized_ident();

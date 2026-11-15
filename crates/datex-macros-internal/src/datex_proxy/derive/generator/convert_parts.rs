@@ -1,6 +1,9 @@
 use crate::{
     datex_proxy::{
-        data::{FieldIdent, FieldMapping, Fields, StructureData},
+        data::{
+            CommonFieldAttributes, FieldIdent, FieldMapping, Fields,
+            StructureData,
+        },
         generator::helpers::{
             SelfAccess, generate_struct_or_enum_variants_fields_mapping,
             is_option,
@@ -124,7 +127,7 @@ fn generate_into_map_parts_for_fields(
                 let datex_field_name = field.datex_field_name();
                 let field_value_container = value_container_from_field(
                     field.normalized_ident(),
-                    &field.field.attributes.field_mapping,
+                    &field.attributes().field_mapping,
                 );
                 quote! {
                     yield (
@@ -158,7 +161,7 @@ fn generate_into_list_parts_for_fields(
             let yields = fields.iter().map(|field| {
                 let field_value_container = value_container_from_field(
                     field.normalized_ident(),
-                    &field.field.attributes.field_mapping,
+                    &field.attributes().field_mapping,
                 );
                 quote! {
                     yield #field_value_container;
@@ -327,7 +330,7 @@ fn generate_from_map_parts_for_fields(
 
                 let from_value_container = field_from_value_container(
                     accessor.clone(),
-                    &field.field.attributes.field_mapping,
+                    &field.attributes().field_mapping,
                     field.attributes.skip_with_default,
                     &field.field.ty,
                 );
@@ -371,7 +374,7 @@ fn generate_from_list_parts_for_fields(
                     let ident = field.normalized_ident();
                     let from_value_container = field_from_value_container(
                         ident.clone(),
-                        &field.field.attributes.field_mapping,
+                        &field.attributes().field_mapping,
                         false, // TODO
                         &field.field.ty,
                     );

@@ -1,7 +1,7 @@
 use crate::datex_proxy::{
     data::{
-        AnyField, EnumVariant, FieldIdent, FieldMapping, FieldType, Fields,
-        IndexedField, NamedField, Structure, StructureData,
+        AnyField, CommonFieldAttributes, EnumVariant, FieldIdent, FieldMapping,
+        FieldType, Fields, IndexedField, NamedField, Structure, StructureData,
     },
     generator::helpers::{
         SelfAccess, generate_struct_or_enum_variants_fields_mapping, is_option,
@@ -142,7 +142,7 @@ fn generate_dif_serialize_for_fields(
     if let Fields::Transparent(inner) = fields {
         let field_ident = inner.normalized_ident();
 
-        let value = match inner.field.attributes.field_mapping {
+        let value = match inner.attributes().field_mapping {
             FieldMapping::Datex => quote! {
                 ValueWithSerdeContext::new(#field_ident, ctx)
             },
@@ -193,7 +193,7 @@ fn generate_dif_serialize_for_fields(
                 let field_ident = field.normalized_ident();
                 let field_name = field.datex_field_name();
 
-                match field.field.attributes.field_mapping {
+                match field.attributes().field_mapping {
                     FieldMapping::Datex => quote! {
                         map.serialize_entry(
                             #field_name,
@@ -262,7 +262,7 @@ fn generate_dif_serialize_for_fields(
             let serialize_fields = unnamed_fields.iter().map(|field| {
                 let field_ident = field.normalized_ident();
 
-                match field.field.attributes.field_mapping {
+                match field.attributes().field_mapping {
                     FieldMapping::Datex => quote! {
                         seq.serialize_element(
                             &ValueWithSerdeContext::new(
@@ -768,7 +768,7 @@ fn generate_inner_visitor_methods_for_named_fields(
         let normalized_ident = field.normalized_ident();
         let ty = field.ty();
 
-        match field.field.attributes.field_mapping {
+        match field.attributes().field_mapping {
             FieldMapping::Datex => quote! {
                 #field_name => {
                     let value: #ty = map.next_value_seed(DeserializeSerdeContext::<#ty>::new(self.__ctx))?;
@@ -914,7 +914,7 @@ fn generate_inner_visitor_methods_for_unnamed_fields(
         let normalized_ident = field.normalized_ident();
         let ty = field.ty();
 
-        match field.field.attributes.field_mapping {
+        match field.attributes().field_mapping {
             FieldMapping::Datex => quote! {
                 let value = seq.next_element_seed(DeserializeSerdeContext::<#ty>::new(self.__ctx))?;
                 self.#normalized_ident = value;

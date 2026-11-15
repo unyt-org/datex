@@ -17,12 +17,12 @@ impl TypeKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Namespace {
-    None,
-    Module,
-    Named(String),
-}
+// #[derive(Debug, Clone, PartialEq, Eq)]
+// pub enum Namespace {
+//     None,
+//     Module,
+//     Named(String),
+// }
 
 #[derive(Debug, PartialEq, Default, Copy, Clone)]
 pub enum FieldMapping {

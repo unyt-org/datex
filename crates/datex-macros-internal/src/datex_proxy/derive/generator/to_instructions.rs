@@ -3,8 +3,8 @@ use quote::{ToTokens, quote};
 
 use crate::datex_proxy::{
     data::{
-        FieldIdent, FieldMapping, Fields, IndexedField, NamedField, Structure,
-        StructureData,
+        CommonFieldAttributes, FieldIdent, FieldMapping, Fields, IndexedField,
+        NamedField, Structure, StructureData,
     },
     generator::helpers::{
         SelfAccess, generate_struct_or_enum_variants_fields_mapping,
@@ -129,7 +129,7 @@ fn generate_named_fields_to_instructions(fields: &[NamedField]) -> TokenStream {
     let field_instructions = fields.iter().map(|field| {
         let accessor = field.ident_accessor().to_token_stream();
         let name = field.datex_field_name();
-        let mapping = &field.field.attributes.field_mapping;
+        let mapping = &field.attributes().field_mapping;
         let value_instructions = field_to_instructions(accessor, mapping);
 
         quote! {
@@ -153,7 +153,7 @@ fn generate_unnamed_fields_to_instructions(
 ) -> TokenStream {
     let field_instructions = fields.iter().map(|field| {
         let accessor = field.normalized_ident().to_token_stream();
-        let mapping = &field.field.attributes.field_mapping;
+        let mapping = &field.attributes().field_mapping;
         field_to_instructions(accessor, mapping)
     });
 
@@ -171,7 +171,7 @@ fn generate_transparent_field_to_instructions(
     field: &IndexedField,
 ) -> TokenStream {
     let accessor = field.normalized_ident().to_token_stream();
-    let mapping = &field.field.attributes.field_mapping;
+    let mapping = &field.attributes().field_mapping;
     field_to_instructions(accessor, mapping)
 }
 

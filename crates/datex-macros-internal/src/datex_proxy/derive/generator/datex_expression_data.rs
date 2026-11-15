@@ -1,5 +1,8 @@
 use crate::datex_proxy::{
-    data::{FieldIdent, FieldMapping, Fields, NamedField, StructureData},
+    data::{
+        CommonFieldAttributes, FieldIdent, FieldMapping, Fields, NamedField,
+        StructureData,
+    },
     generator::helpers::{
         SelfAccess, generate_struct_or_enum_variants_fields_mapping,
     },
@@ -73,7 +76,7 @@ fn generate_datex_expression_data_fields(
                 .map(|field| {
                     field_to_expression_data(
                         field.normalized_ident().into_token_stream(),
-                        &field.field.attributes.field_mapping,
+                        &field.attributes().field_mapping,
                     )
                 })
                 .collect::<Vec<_>>();
@@ -89,7 +92,7 @@ fn generate_datex_expression_data_fields(
         Fields::Transparent(field) => {
             let first_field = field_to_expression_data(
                 field.normalized_ident().into_token_stream(),
-                &field.field.attributes.field_mapping,
+                &field.attributes().field_mapping,
             );
             Some(quote! {
                 {
@@ -144,7 +147,7 @@ fn field_to_expression_data(
 fn named_field_to_expression_data(field: &NamedField) -> TokenStream {
     let id = field.normalized_ident().into_token_stream();
     let expression_data =
-        field_to_expression_data(id, &field.field.attributes.field_mapping);
+        field_to_expression_data(id, &field.attributes().field_mapping);
     let name = field.datex_field_name().to_string();
     quote! {
         (
