@@ -1002,7 +1002,7 @@ pub gen fn inner_execution_loop(
                                     let ty =
                                         collected_results.pop_type();
                                     RuntimeValue::ValueContainer(
-                                        ValueContainer::Local(Value::new(CoreValue::Type(ty))), // TODO #648: type for type
+                                        ValueContainer::Local(Value::new(CoreValue::Type(ty))),
                                     )
                                         .into()
                                 }
