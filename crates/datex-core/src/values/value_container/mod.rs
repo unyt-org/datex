@@ -6,6 +6,7 @@ use crate::{
 mod equality;
 mod identity;
 mod serde_dif;
+mod try_clone;
 use super::value::Value;
 use crate::{
     prelude::*,
