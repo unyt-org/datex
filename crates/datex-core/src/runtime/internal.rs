@@ -251,8 +251,9 @@ impl RuntimeInternal {
         }
         // also update endpoint
         unsafe {
-            *self.endpoint.get() = self.config().endpoint.clone();
-            *self.com_hub.endpoint.get() = self.config().endpoint.clone();
+            let endpoint = self.config().endpoint.clone();
+            *self.endpoint.get() = endpoint.clone();
+            *self.com_hub.endpoint.get() = endpoint;
         }
     }
 
