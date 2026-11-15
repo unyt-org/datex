@@ -53,24 +53,6 @@ impl<T: DatexNative> SharedRef<T> {
 }
 
 impl<T: DatexNative + 'static> SharedRef<T> {
-    pub fn try_new(
-        value: Box<T>,
-        address_provider: &mut SelfOwnedPointerAddressProvider,
-    ) -> Result<Self, ()> {
-        let value_container = ValueContainer::from(Value::native(*value));
-        Ok(Self {
-            container: OwnedSharedContainer::new_with_inferred_allowed_type(
-                value_container,
-                SharedContainerMutability::Mutable,
-                address_provider,
-            )
-            .derive_with_max_mutability(),
-            _phantom_t: core::marker::PhantomData,
-        })
-    }
-}
-
-impl<T: DatexNative + 'static> SharedRef<T> {
     pub fn new(
         value: T,
         address_provider: &mut SelfOwnedPointerAddressProvider,
