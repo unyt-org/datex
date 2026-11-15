@@ -39,11 +39,9 @@ debug = 1         # only used for debug_dhat
 chrono = { version = "0.4.38", default-features = false, features = ["alloc"] }
 
 # core dependencies
-erased-serde = {
-    version = "0.4.10",
-default-features = false,
-features = ["alloc"],
-}
+erased-serde = { version = "0.4.10", default-features = false, features = [
+    "alloc",
+] }
 strum = { version = "0.27.1", default-features = false, features = ["derive"] }
 num = { version = "0.4.3", default-features = false, features = [
     "alloc",

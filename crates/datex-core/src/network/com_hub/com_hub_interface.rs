@@ -212,7 +212,8 @@ mod tests {
         values::core_values::endpoint::Endpoint,
     };
     use alloc::{string::ToString, vec::Vec};
-    use core::{future::join, time::Duration};
+
+    use core::time::Duration;
     use futures_util::future::select;
     use log::info;
 
@@ -362,10 +363,9 @@ mod tests {
         let (peer_a, peer_b, init_future) = get_coupled_com_hubs().await;
 
         // run task futures for 10ms to allow sockets to connect
-        let _ = timeout(
-            Duration::from_millis(10),
-            join!(peer_a.task_future, peer_b.task_future, init_future),
-        )
+        let _ = timeout(Duration::from_millis(10), async {
+            tokio::join!(peer_a.task_future, peer_b.task_future, init_future,)
+        })
         .await;
 
         let sockets_a = get_metadata_sockets(peer_a.com_hub.get_metadata());
