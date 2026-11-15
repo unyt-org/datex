@@ -695,7 +695,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::HexadecimalIntegerLiteral(IntegerWithVariant {
-                value: "0xFF_FF_FF".to_string(),
+                value: "0xFFFFFF".to_string(),
                 variant: None
             }))
         );
@@ -704,7 +704,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::BinaryIntegerLiteral(IntegerWithVariant {
-                value: "0b1010_1010".to_string(),
+                value: "0b10101010".to_string(),
                 variant: None
             }))
         );
@@ -717,7 +717,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::DecimalLiteral(DecimalWithVariant {
-                value: "10.234_567e-8".to_string(),
+                value: "10.234567e-8".to_string(),
                 variant: Some(DecimalTypeVariant::F32)
             }))
         );
@@ -727,7 +727,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::DecimalLiteral(DecimalWithVariant {
-                value: "10.234_567e-8".to_string(),
+                value: "10.234567e-8".to_string(),
                 variant: None
             }))
         );
@@ -737,7 +737,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::DecimalLiteral(DecimalWithVariant {
-                value: "0.123_456".to_string(),
+                value: "0.123456".to_string(),
                 variant: None
             }))
         );
@@ -747,7 +747,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::DecimalLiteral(DecimalWithVariant {
-                value: "1_000.123_456".to_string(),
+                value: "1000.123456".to_string(),
                 variant: Some(DecimalTypeVariant::F32)
             }))
         );

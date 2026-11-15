@@ -1139,7 +1139,7 @@ mod tests {
         let typed_int_ast = DatexExpressionData::TypedInteger(42i8.into());
         assert_eq!(
             compact().format(&typed_int_ast.with_default_span()),
-            "42i8"
+            "42_i8"
         );
 
         let decimal_ast = DatexExpressionData::Decimal(
@@ -1166,7 +1166,7 @@ mod tests {
             DatexExpressionData::TypedDecimal(2.71f32.into());
         assert_eq!(
             pretty().format(&typed_decimal_ast.with_default_span()),
-            "2.71f32"
+            "2.71_f32"
         );
 
         let bool_ast = DatexExpressionData::Boolean(true.into());
@@ -1323,11 +1323,11 @@ mod tests {
             .with_default_span();
         assert_eq!(
             compact().format(&var_decl_ast),
-            "const x:&mut integer/u8=10u8"
+            "const x:&mut integer/u8=10_u8"
         );
         assert_eq!(
             pretty().format(&var_decl_ast),
-            "const x: &mut integer/u8 = 10u8"
+            "const x: &mut integer/u8 = 10_u8"
         );
     }
 
@@ -1335,13 +1335,13 @@ mod tests {
     fn typed_variants() {
         let typed_int_ast =
             DatexExpressionData::TypedInteger(42i8.into()).with_default_span();
-        assert_eq!(pretty().format(&typed_int_ast), "42i8");
+        assert_eq!(pretty().format(&typed_int_ast), "42_i8");
         assert_eq!(json_compat().format(&typed_int_ast), "42");
 
         let typed_decimal_ast =
             DatexExpressionData::TypedDecimal(2.71f32.into())
                 .with_default_span();
-        assert_eq!(pretty().format(&typed_decimal_ast), "2.71f32");
+        assert_eq!(pretty().format(&typed_decimal_ast), "2.71_f32");
         assert_eq!(json_compat().format(&typed_decimal_ast), "2.71");
     }
 
