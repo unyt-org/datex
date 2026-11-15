@@ -6,11 +6,10 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::ops::Deref;
 
 impl<T: HasPartsKind> HasPartsKind for Box<T> {
     fn parts_kind(&self) -> PartsKind {
-        self.deref().parts_kind()
+        (**self).parts_kind()
     }
 }
 

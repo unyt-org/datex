@@ -13,6 +13,6 @@ impl<T: DatexNative + GetDatexType> Classification for Box<T> {
         &self,
         cache: &mut SharedReferencesCache,
     ) -> ValueClassification {
-        self.as_ref().classification(cache)
+        (**self).classification(cache)
     }
 }

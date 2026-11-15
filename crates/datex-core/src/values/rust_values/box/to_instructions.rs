@@ -19,7 +19,7 @@ where
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield RegularInstruction::boxed_value().into();
-            yield_all!(self.as_ref().to_instructions(visitor, cache))
+            yield_all!((**self).to_instructions(visitor, cache))
         })
     }
 }

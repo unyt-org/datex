@@ -9,6 +9,6 @@ where
     T: ?Sized + ToDatexExpressionData,
 {
     fn to_datex_expression_data(&self) -> DatexExpressionData {
-        self.deref().to_datex_expression_data()
+        (**self).to_datex_expression_data()
     }
 }

@@ -16,12 +16,12 @@ impl<T: ValueAccess> ValueAccess for Box<T> {
         &self,
         key: &ValueContainer,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
-        self.deref().try_get_property(key)
+        (**self).try_get_property(key)
     }
     fn try_get_property_mut(
         &mut self,
         key: &ValueContainer,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
-        self.deref_mut().try_get_property_mut(key)
+        (**self).try_get_property_mut(key)
     }
 }
