@@ -9,9 +9,8 @@ use crate::{
     libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
     values::{core_values::list::List, value_container::ValueContainer},
 };
-use erased_serde::__private::serde::ser::SerializeTuple;
 use num_traits::ToPrimitive;
-use serde::{Serializer, de::Visitor};
+use serde::{Serializer, de::Visitor, ser::SerializeTuple};
 
 impl SerializeWithSerdeContext for List {
     fn serialize_with_ctx<S>(

@@ -14,12 +14,11 @@ use crate::{
     random::RandomState,
 };
 use core::{fmt, hash::Hash};
-use erased_serde::__private::serde::ser::SerializeTuple;
 use indexmap::IndexMap;
 use serde::{
     de,
     de::{MapAccess, SeqAccess, Visitor},
-    ser::SerializeSeq,
+    ser::{SerializeSeq, SerializeTuple},
 };
 
 pub struct InnerIndexMap<'a, K, V>(&'a IndexMap<K, V, RandomState>);

@@ -22,11 +22,11 @@ use crate::{
     },
 };
 use core::ops::Deref;
-use erased_serde::__private::serde::ser::SerializeTuple;
 use num::ToPrimitive;
 use serde::{
     Serializer,
     de::{IntoDeserializer, Visitor},
+    ser::SerializeTuple,
 };
 
 struct InnerType<'a>(&'a Type);
