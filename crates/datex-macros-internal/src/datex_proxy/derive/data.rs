@@ -150,6 +150,7 @@ pub trait AsConcreteField {
     fn try_as_named_field(&self) -> Option<&NamedField> {
         None
     }
+    #[allow(unused)]
     fn try_as_indexed_field(&self) -> Option<&IndexedField> {
         None
     }
@@ -255,10 +256,6 @@ impl Fields {
     /// Returns a list of all field accessors (field names or indices) as TokenStreams.
     pub fn field_accessors(&self) -> Vec<TokenStream> {
         self.iter().map(|f| f.accessor()).collect()
-    }
-
-    pub fn is_named(&self) -> bool {
-        matches!(self, Fields::Named(_))
     }
 
     /// Returns an iterator over all fields as `&dyn AnyField`.

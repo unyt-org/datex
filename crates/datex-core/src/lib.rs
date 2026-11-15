@@ -10,6 +10,7 @@
 #![feature(variant_count)]
 #![feature(const_cmp)]
 #![feature(const_trait_impl)]
+#![allow(incomplete_features)]
 #![feature(specialization)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]

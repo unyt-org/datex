@@ -27,14 +27,15 @@ pub fn generate_native_callable_from_fn(function: &mut ItemFn) -> TokenStream {
     )
 }
 
-// TODO: use for inline macro native_callable!( |args| ... )
+// TODO #846: Implement native callable macro for closures
+#[allow(unused)]
 pub fn generate_native_callable_from_closure(
-    _function: &ExprClosure,
+    function: &ExprClosure,
 ) -> TokenStream {
+    let is_async = function.asyncness.is_some();
+    let inputs = &function.inputs;
+    let body = &function.body;
     todo!()
-    // generate_native_callable(
-    //     function.asyncness.is_some(),
-    // )
 }
 
 enum RuntimeParamType {

@@ -28,8 +28,6 @@ pub macro registry_collect(
     $registry_ident:ident,
     $function:ident
 ) {
-    use $crate::prelude::*;
-
     #[$crate::linkme::distributed_slice]
     pub static $registry_ident: [$ty];
 

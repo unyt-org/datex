@@ -114,7 +114,7 @@ impl CallableTypeDefinition {
             });
         }
 
-        /// Check if the provided arguments match the expected types for each parameter.
+        // Check if the provided arguments match the expected types for each parameter.
         for (i, (param_name, param_type)) in self.parameters.iter().enumerate()
         {
             let arg = &args[i];
@@ -131,7 +131,7 @@ impl CallableTypeDefinition {
             }
         }
 
-        /// If there's a rest parameter, check the types of the remaining arguments.
+        // If there's a rest parameter, check the types of the remaining arguments.
         if let Some((rest_param_name, rest_param_type)) = &self.rest_parameter {
             for (i, arg) in args[self.parameters.len()..].iter().enumerate() {
                 if !rest_param_type.satisfies_value_container(&arg.value) {

@@ -7,7 +7,7 @@ use crate::{
 };
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
-use syn::{Item, ItemMod, LitStr, parse::Parse};
+use syn::{Item, ItemMod, LitStr, Visibility, parse::Parse};
 
 struct ModuleAttributes {
     name: Option<String>,
@@ -95,9 +95,7 @@ pub fn generate_mod_glue_code(
 fn map_to_datex_item(item: &mut Item, mod_name: &str) -> Option<TokenStream> {
     match item {
         // only register pub functions
-        Item::Fn(item_fn)
-            if item_fn.vis.to_token_stream().to_string().contains("pub") =>
-        {
+        Item::Fn(item_fn) if matches!(item_fn.vis, Visibility::Public(_)) => {
             let mapped = generate_native_callable_from_fn(item_fn);
             let name = item_fn.sig.ident.to_string();
 
