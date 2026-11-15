@@ -86,7 +86,10 @@ impl Default for CoreLibraryValues {
                     kind: CallableKind::Procedure,
                     requires_async: true,
                     parameters: vec![],
-                    rest_parameter: None,
+                    rest_parameter: Some((
+                        Some("values".to_string()),
+                        Box::new(Type::core(CoreLibBaseTypeId::Any)),
+                    )),
                     return_type: Some(Box::new(Type::core(
                         CoreLibBaseTypeId::Text,
                     ))),
@@ -176,7 +179,7 @@ impl CoreLibraryValues {
     }
 
     fn read_line_impl(
-        _args: Vec<ApplyArgument>,
+        mut args: Vec<ApplyArgument>,
         _runtime: &Runtime,
     ) -> Pin<
         Box<
@@ -190,12 +193,51 @@ impl CoreLibraryValues {
     > {
         // placeholder mirroring print
         Box::pin(async move {
-            // placeholder mirroring print
+            let mut output = String::new();
+
+            // if first argument is a string value, print it directly
+            if let Some(ValueContainer::Local(Value::Core(
+                CoreValueWithClassification {
+                    inner: CoreValue::Text(text),
+                    ..
+                },
+            ))) = args.first().map(|v| &v.value)
+            {
+                output.push_str(text.as_str());
+                // if there are still values after the string, add a space
+                if args.len() > 1 {
+                    output.push(' ');
+                };
+                // remove the first argument from the list of arguments to be printed
+                args.remove(0);
+            }
+
+            #[cfg(feature = "decompiler")]
+            let args_string = args
+                .iter()
+                .map(|v| {
+                    crate::decompiler::ast_to_source_code::value_to_source_code(
+                        &v.value,
+                        crate::decompiler::DecompileOptions::colorized(),
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+            #[cfg(not(feature = "decompiler"))]
+            let args_string = args
+                .iter()
+                .map(|v| v.value.to_string())
+                .collect::<Vec<_>>()
+                .join(" ");
+            output.push_str(&args_string);
+
             Ok((
                 Some(ValueContainer::Local(Value::Core(
                     CoreValueWithClassification {
                         inner: CoreValue::Text(
-                            crate::values::core_values::text::Text::from(""),
+                            crate::values::core_values::text::Text::from(
+                                output,
+                            ),
                         ),
                         classification: ValueClassification::new_unclassified(),
                     },
