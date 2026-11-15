@@ -17,9 +17,11 @@ use crate::{
 
 impl GetDatexType for ReferencedSharedContainer {
     fn datex_type(_context: &mut SharedReferencesCache) -> Type {
+        // TODO get the mutability and ownership information, do we want to use an union here
+        // or have a unspecified reference metadata here?
+
         Type::Definition(TypeDefinitionWithMetadata::new(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Any.into()),
-            // TODO
             TypeMetadata::Shared {
                 mutability: SharedContainerMutability::Mutable,
                 ownership: SharedContainerOwnership::Referenced(
