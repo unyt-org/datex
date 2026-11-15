@@ -1133,7 +1133,7 @@ pub fn ast_from_bytecode(
                         },
 
                         Instruction::Type(_type_instruction) => {
-                            // FIXME: Implement as from bytecode for type instruction
+                            // FIXME: Implement as from bytecode for nested type instruction
                             DatexExpressionData::TypeExpression(TypeExpression::new(TypeExpressionData::GetCoreLibType(CoreLibBaseTypeId::Never.into()), Default::default()))
                                 .with_default_span().into()
                         }
