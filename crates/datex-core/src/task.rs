@@ -61,7 +61,7 @@ cfg_if! {
             }
         }
     }
-    else if #[cfg(feature = "async_timers")] {
+    else {
         pub async fn sleep(duration: core::time::Duration) {
             let mut interval = async_timer::Interval::platform_new(duration);
             interval.wait().await;
@@ -76,7 +76,5 @@ cfg_if! {
 
             work.await.map_err(|_| ())
         }
-    } else {
-        compile_error!("No runtime feature enabled for task module");
     }
 }

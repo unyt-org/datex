@@ -98,7 +98,6 @@ hashbrown = { version = "0.16.0", features = ["serde"], optional = true }
 async-unsync = { version = "0.3.0", default-features = false, features = [
     "alloc",
 ], optional = true }
-
 async-timer = { version = "1.0.0-beta.15", default-features = false, optional = true }
 spin = { version = "0.10.0", default-features = false, features = [
     "spin_mutex",
@@ -194,7 +193,7 @@ flexi_logger = { version = "0.31.8" }
 
 # When using the "std" feature, the "default" feature should not be enabled since
 # it includes no_std-specific dependencies
-default = ["no_std", "async_timers", "disassembler"]
+default = ["no_std", "dep:async-timer", "disassembler"]
 
 no_std = ["dep:hashbrown", "dep:async-unsync", "dep:spin"]
 
@@ -242,9 +241,6 @@ embassy_runtime = [
     "dep:embassy-time",
     "dep:embassy-futures",
 ]
-
-### timers #####################################################################
-async_timers = ["dep:async-timer"]
 
 # only required for legacy syntax highlighting in decompiler, will be removed in the future
 syntax_highlighting_legacy = ["dep:syntect"]
