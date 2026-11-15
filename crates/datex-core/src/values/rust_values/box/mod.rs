@@ -22,22 +22,23 @@ mod tests {
         runtime::cache::shared_references_cache::SharedReferencesCache,
         traits::get_datex_type::GetDatexType,
         values::{
-            core_values::{endpoint::Endpoint, native::NativeCoreValue},
+            core_values::{
+                endpoint::Endpoint, integer::Integer, native::NativeCoreValue,
+            },
             value::Value,
         },
     };
-    // FIXME: how to handle Box<Value>
-    // #[test]
-    // fn boxed_integer() {
-    //     // if impl_datex_direct_via_value_container would be not implemented, for Value it definitely is (user defined types)
-    //     let value: Value = Integer::from(42).into();
-    //     let boxed_integer = Box::new(value);
-    //     let value: Value = Value::native(boxed_integer, &mut SharedReferencesCache::default());
-    //     assert!(matches!(
-    //         value.inner,
-    //         CoreValue::Integer(ref i) if i == &Integer::from(42)
-    //     ));
-    // }
+
+    #[test]
+    fn boxed_integer() {
+        let value: Value = Integer::from(42).into();
+        let boxed_integer = Box::new(value);
+        let value: Value = Value::native(boxed_integer);
+        assert_eq!(
+            *(value.try_as::<Box<Value>>()).expect("Expected Integer"),
+            Box::new(Integer::from(42).into())
+        );
+    }
 
     #[test]
     fn endpoint_boxed() {
