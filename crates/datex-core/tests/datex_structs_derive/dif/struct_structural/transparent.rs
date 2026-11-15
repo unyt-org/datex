@@ -2,7 +2,7 @@ use crate::datex_structs_derive;
 use datex_core::{
     libs::core::{
         core_lib_id::CoreLibIdIndex,
-        type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
+        type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
     },
     values::core_values::integer::typed_integer::IntegerTypeVariant,
 };

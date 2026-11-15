@@ -2,19 +2,14 @@ use datex_core::{
     core_compiler::{
         core_compilation_context::{CompileInput, CoreCompilationContext},
         to_instructions::ToInstructions,
-        value_compiler::compile_value,
     },
     disassembler::{
-        assertions::{
-            assert_instruction_lists_eq, assert_instructions_equal,
-            instructions,
-        },
-        disassemble_body, disassemble_instruction_tree_to_string,
-        options::DisassemblerOptions,
+        assertions::{assert_instruction_lists_eq, instructions},
+        disassemble_body,
     },
     global::stack_index::StackIndex,
     instruction::{
-        BytecodeItem, Instruction, NestedInstructionResolutionStrategy,
+        Instruction, NestedInstructionResolutionStrategy,
         instruction_data::{ClassifiedValueData, MapData, MoveWithValue},
         regular_instruction::RegularInstruction,
         type_instruction::TypeInstruction,
@@ -24,9 +19,7 @@ use datex_core::{
         cache::shared_references_cache::SharedReferencesCache,
         pointer_availability_lookup::PointerAvailabilityLookup,
     },
-    shared_values::{
-        PointerAddress, SelfOwnedPointerAddress, SharedContainerMutability,
-    },
+    shared_values::{PointerAddress, SharedContainerMutability},
     traits::get_datex_type::GetDatexType,
     types::{
         literal_type_definition::LiteralTypeDefinition, r#type::Type,

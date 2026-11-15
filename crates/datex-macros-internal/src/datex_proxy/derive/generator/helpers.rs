@@ -4,14 +4,17 @@ use quote::quote;
 use syn::{GenericArgument, Path, PathArguments, Type};
 
 /// Represents whether the self value is borrowed or moved in the context of generating code for struct or enum variants.
+// TODO Do we need [SelfAccess::BorrowedIdent] and [SelfAccess::Moved] still?
 pub enum SelfAccess {
     /// Indicates that the self value is borrowed, and field access should use references.
     Borrowed,
     /// Indicates that the self value is mutably borrowed, and field access should use mutable references.
     BorrowedMut,
     /// Indicates that the self value is borrowed, but accessed via a specific identifier (e.g., `value`), and field access should use references.
+    #[allow(dead_code)]
     BorrowedIdent { self_value: Ident, self_type: Path },
     /// Indicates that the self value is moved, and field access should take ownership of the fields.
+    #[allow(dead_code)]
     Moved,
     /// Indicates that the self is passed as a `Box<Self>`
     Boxed,

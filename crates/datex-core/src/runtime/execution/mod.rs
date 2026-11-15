@@ -470,7 +470,6 @@ mod tests {
         },
     };
     use core::assert_matches;
-    use indexmap::IndexMap;
     use log::{debug, info};
 
     fn execute_datex_script_debug(
@@ -1187,6 +1186,8 @@ mod tests {
     #[tokio::test]
     #[cfg(feature = "std")]
     async fn env_slot() {
+        use indexmap::IndexMap;
+
         let res = execute_datex_script_with_runtime(
             RuntimeConfig {
                 env: Some(IndexMap::from([(

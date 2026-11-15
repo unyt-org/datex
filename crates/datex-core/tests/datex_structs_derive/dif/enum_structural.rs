@@ -2,36 +2,16 @@ use crate::datex_structs_derive::dif::{
     deserialize_from_dif_default_ctx, serialize_to_json_value_default_ctx,
 };
 use datex_core::{
-    dif::{
-        deserialize_with_serde_context::DeserializeWithSerdeContext,
-        serde_context::SerdeContext,
-        serialize_with_serde_context::SerializeWithSerdeContext,
-        value_with_serde_context::ValueWithSerdeContext,
-    },
     libs::core::{
         core_lib_id::CoreLibIdIndex,
         type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
     },
     prelude::*,
-    runtime::cache::{
-        shared_references_cache::SharedReferencesCache,
-        shared_values_cache::SharedValuesCache,
-    },
-    traits::convert_value_container::ConvertValueContainer,
-    values::{
-        core_value::CoreValue,
-        core_values::{
-            boolean::Boolean,
-            endpoint::Endpoint,
-            integer::typed_integer::{IntegerTypeVariant, TypedInteger},
-            native::DatexNative,
-        },
-        value::Value,
-        value_container::ValueContainer,
+    values::core_values::{
+        endpoint::Endpoint, integer::typed_integer::IntegerTypeVariant,
     },
 };
 use datex_macros_internal::Datex;
-use serde::de::IntoDeserializer;
 
 #[derive(Datex, Debug, Clone, PartialEq)]
 #[datex(structural)]

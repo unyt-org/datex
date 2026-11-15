@@ -15,7 +15,6 @@
 #![feature(try_blocks)]
 #![rustfmt::skip::macros(assert_regular_instructions_equal)]
 #![feature(arbitrary_self_types)]
-#![feature(read_le)]
 // Allowances for various compiler features and warnings.
 #![allow(incomplete_features)]
 #![allow(static_mut_refs)]

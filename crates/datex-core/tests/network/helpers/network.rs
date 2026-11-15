@@ -1,4 +1,3 @@
-use async_select::select;
 use core::{
     fmt::{self, Debug, Display},
     str::FromStr,
@@ -397,6 +396,20 @@ struct Edge {
     pub priority: i16,
     pub endpoint: Option<String>,
 }
+impl Display for Edge {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Edge {{ id: {}, source: {}, target: {}, type: {}, priority: {}, endpoint: {:?} }}",
+            self.id,
+            self.source,
+            self.target,
+            self.edge_type,
+            self.priority,
+            self.endpoint
+        )
+    }
+}
 
 #[derive(Debug, Deserialize)]
 struct NetworkData {
@@ -544,7 +557,7 @@ impl Network {
             let runtime = runtime_runner.runtime.clone();
             node.runtime = Some(runtime.clone());
 
-            spawn_local(runtime_runner.run_forever(async move |runtime| {}));
+            spawn_local(runtime_runner.run_forever(async move |_runtime| {}));
 
             for connection in node.connections.iter() {
                 // save in channel pairs

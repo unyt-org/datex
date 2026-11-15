@@ -1,45 +1,26 @@
 use core::{cell::Ref, ops::DerefMut};
 use datex_core::{
-    datex_registry::{
-        all_datex_module_registrations, all_datex_type_registrations,
-        get_all_modules,
-    },
-    libs::core::type_id::{
-        CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
-    },
-    runtime::{Runtime, cache::shared_references_cache::SharedReferencesCache},
-    shared_values::{
-        SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
-    },
+    self,
+    libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId},
+    runtime::Runtime,
     traits::{
         apply::{Apply, ApplyArgument},
         classification::Classification,
-        convert_value_container::ConvertValueContainer,
         get_datex_type::GetDatexType,
         try_clone::TryClone,
         value_access::ValueAccess,
     },
     types::{
-        entities::{
-            entity_impls::{EntityImpl, EntityImplMethod},
-            entity_type_definition::EntityTypeDefinition,
-        },
-        entity_type::EntityType,
-        literal_type_definition::LiteralTypeDefinition,
+        entities::entity_type_definition::EntityTypeDefinition,
         r#type::Type,
-        type_definition::{
-            TypeDefinition,
-            callable::{CallableKind, CallableTypeDefinition},
-        },
+        type_definition::callable::{CallableKind, CallableTypeDefinition},
     },
     values::{
-        core_value::CoreValue,
         core_values::{
             callable::Callable,
             integer::typed_integer::{IntegerTypeVariant, TypedInteger},
-            native::{DatexNative, NativeCoreValue},
         },
-        value::{Value, value_classification::ValueClassification},
+        value::Value,
         value_container::ValueContainer,
     },
 };
@@ -110,7 +91,7 @@ fn try_clone() {
 #[test]
 fn call_instance_method_from_runtime() {
     let runtime = Runtime::stub();
-    let mut cache = runtime.shared_references_cache_refcell();
+    let cache = runtime.shared_references_cache_refcell();
 
     let example = Example::new(1, 2);
     let example_vc = Value::native(example);

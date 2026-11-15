@@ -1,6 +1,5 @@
 use crate::datex_structs_derive::dif::{
-    deserialize_from_dif, deserialize_from_dif_default_ctx,
-    serialize_to_json_value_default_ctx,
+    deserialize_from_dif, serialize_to_json_value_default_ctx,
 };
 use core::cell::RefCell;
 use datex_core::{

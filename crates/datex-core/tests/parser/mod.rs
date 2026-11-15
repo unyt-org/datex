@@ -248,28 +248,28 @@ fn nominal_type_declaration() {
 #[ignore = "WIP"]
 fn parse_error_unclosed_delimiter() {
     let src = r#"[1,,]"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     let src = r#"var x"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     let src = r#"var x = =1"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     let src = r#"var x = (1, 2, [10, 20, {1:2})] + 4"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     let src = r#"[1, )]"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     let src = r#"(1 + 2 + ])"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     let src = r#"{x: 1 + +}"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     let src = r#"(1: x, 2: 1 + +)"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     // let src = r#"
     // var x = (5 + 3;

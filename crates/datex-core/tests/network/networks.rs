@@ -205,8 +205,6 @@ async fn network_routing_with_four_nodes_1() {
             }
 
             let runtime_a = network.get_runtime(TEST_ENDPOINT_A.clone());
-            let runtime_b = network.get_runtime(TEST_ENDPOINT_B.clone());
-            let runtime_c = network.get_runtime(TEST_ENDPOINT_C.clone());
 
             // send trace from A to C
             let network_trace = runtime_a
@@ -248,8 +246,6 @@ async fn network_routing_with_four_nodes_2() {
                 }
             }
 
-            let runtime_a = network.get_runtime(TEST_ENDPOINT_A.clone());
-            let runtime_b = network.get_runtime(TEST_ENDPOINT_B.clone());
             let runtime_c = network.get_runtime(TEST_ENDPOINT_C.clone());
 
             // send trace from C to A
@@ -307,8 +303,6 @@ async fn network_routing_with_four_nodes_3() {
             }
 
             let runtime_a = network.get_runtime(TEST_ENDPOINT_A.clone());
-            let runtime_b = network.get_runtime(TEST_ENDPOINT_B.clone());
-            let runtime_c = network.get_runtime(TEST_ENDPOINT_C.clone());
 
             // send trace from A to D
             let network_trace = runtime_a
@@ -354,7 +348,6 @@ async fn network_routing_with_four_nodes_4() {
                 }
             }
 
-            let runtime_a = network.get_runtime(TEST_ENDPOINT_A.clone());
             let runtime_b = network.get_runtime(TEST_ENDPOINT_B.clone());
             let runtime_c = network.get_runtime(TEST_ENDPOINT_C.clone());
 
@@ -413,9 +406,7 @@ async fn network_routing_with_four_nodes_5_deterministic_priorities() {
                 }
             }
 
-            let runtime_a = network.get_runtime(TEST_ENDPOINT_A.clone());
             let runtime_b = network.get_runtime(TEST_ENDPOINT_B.clone());
-            let runtime_c = network.get_runtime(TEST_ENDPOINT_C.clone());
 
             // send trace from B to D
 

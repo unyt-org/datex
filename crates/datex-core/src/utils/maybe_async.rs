@@ -96,13 +96,6 @@ pub enum SyncOrAsyncResolved<SyncValue, AsyncValue> {
     Async(AsyncValue),
 }
 
-use core::marker::PhantomData;
-
-pub struct MapToResolvedAsync<SyncValue, Fut> {
-    fut: Fut,
-    _pd: PhantomData<SyncValue>,
-}
-
 pub struct ErrOptionFuture<Fut>(Fut);
 
 impl<AsyncOkValue, E, Fut> Future for ErrOptionFuture<Fut>
@@ -122,11 +115,6 @@ where
     }
 }
 
-pub struct OkOptionFuture<SyncOkValue, AsyncOkValue, E, Fut> {
-    fut: Fut,
-    _phantom: core::marker::PhantomData<(SyncOkValue, AsyncOkValue, E)>,
-}
-
 impl<SyncOkValue, E, F> MaybeAsyncResult<SyncOkValue, E, F>
 where
     F: Future<Output = Result<SyncOkValue, E>>,
@@ -137,24 +125,6 @@ where
         match self {
             MaybeAsyncResult::Sync(r) => Either::Left(ready(r.err())),
             MaybeAsyncResult::Async(fut) => Either::Right(ErrOptionFuture(fut)),
-        }
-    }
-
-    pub fn into_ok_future(
-        self,
-    ) -> Either<
-        Ready<Option<SyncOrAsyncResolved<SyncOkValue, SyncOkValue>>>,
-        OkOptionFuture<SyncOkValue, SyncOkValue, E, F>,
-    > {
-        match self {
-            MaybeAsyncResult::Sync(r) => {
-                let v = r.ok().map(SyncOrAsyncResolved::Sync);
-                Either::Left(ready(v))
-            }
-            MaybeAsyncResult::Async(fut) => Either::Right(OkOptionFuture {
-                fut,
-                _phantom: core::marker::PhantomData,
-            }),
         }
     }
 
@@ -241,9 +211,4 @@ where
             }),
         }
     }
-}
-
-pub struct MapAsyncResultToResolved<SyncOkValue, AsyncOkValue, E, Fut> {
-    fut: Fut,
-    _pd: PhantomData<(SyncOkValue, AsyncOkValue, E)>,
 }

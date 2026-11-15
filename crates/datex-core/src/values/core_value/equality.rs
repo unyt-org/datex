@@ -122,6 +122,7 @@ impl PartialEq for CoreValue {
 
 impl Eq for CoreValue {}
 impl CoreValue {
+    #[allow(unused)]
     fn dyn_eq_native(&self, native: &dyn DynEq) -> bool {
         match self {
             CoreValue::Boolean(v) => native.dyn_eq(v),

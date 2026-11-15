@@ -259,7 +259,6 @@ impl CoreLibrary {
 
 #[cfg(test)]
 mod tests {
-    use crate::libs::core::core_lib_id::CoreLibIdIndex;
 
     use super::*;
 
@@ -278,6 +277,7 @@ mod tests {
     /// `cargo test create_core_type_ts_mapping -- --show-output --ignored`
     fn create_core_type_ts_mapping() {
         println!("export const CoreLibTypeId = {{");
+        use crate::libs::core::core_lib_id::CoreLibIdIndex;
 
         for base_id in CoreLibBaseTypeId::iter() {
             println!("    {}: {},", base_id, CoreLibIdIndex::from(base_id).0);

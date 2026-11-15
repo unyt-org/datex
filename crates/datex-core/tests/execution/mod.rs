@@ -1,12 +1,10 @@
 use datex_core::{
-    compile,
     compiler::{
         CompileOptions, compilation_result::CompilationResult,
         compile_template, scope::CompilationScope,
     },
     disassembler::{
-        get_disassembled_with_options, options::DisassemblerOptions,
-        print_disassembled_with_options,
+        options::DisassemblerOptions, print_disassembled_with_options,
     },
     runtime::{
         Runtime,
@@ -15,9 +13,7 @@ use datex_core::{
             execution_input::ExecutionCallerMetadata,
         },
     },
-    shared_values::{
-        ReferenceMutability, ReferencedSharedContainer, SharedContainer,
-    },
+    shared_values::{ReferenceMutability, SharedContainer},
     values::{
         core_values::{endpoint::Endpoint, list::List},
         value_container::ValueContainer,

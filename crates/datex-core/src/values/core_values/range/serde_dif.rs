@@ -15,7 +15,7 @@ use num_traits::ToPrimitive;
 use serde::{
     Serializer,
     de::{Error, IgnoredAny, MapAccess, Visitor},
-    ser::{SerializeSeq, SerializeTuple},
+    ser::SerializeTuple,
 };
 
 struct InnerRange<'a>(&'a Range);

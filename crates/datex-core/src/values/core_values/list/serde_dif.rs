@@ -11,7 +11,7 @@ use crate::{
 };
 use erased_serde::__private::serde::ser::SerializeTuple;
 use num_traits::ToPrimitive;
-use serde::{Serializer, de::Visitor, ser::SerializeSeq};
+use serde::{Serializer, de::Visitor};
 
 impl SerializeWithSerdeContext for List {
     fn serialize_with_ctx<S>(

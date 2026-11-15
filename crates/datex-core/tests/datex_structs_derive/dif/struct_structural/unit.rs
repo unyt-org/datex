@@ -1,5 +1,4 @@
 use crate::datex_structs_derive;
-use datex_core::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
 use datex_macros_internal::Datex;
 
 #[derive(Datex, Debug, Clone, PartialEq)]

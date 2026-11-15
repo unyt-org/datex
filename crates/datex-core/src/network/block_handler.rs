@@ -507,13 +507,14 @@ mod tests {
         global::{
             dxb_block::{DXBBlock, IncomingSection},
             protocol_structures::{
-                block_header::{BlockHeader, BlockType, FlagsAndTimestamp},
+                block_header::{BlockHeader, FlagsAndTimestamp},
                 routing_header::{Receivers, RoutingHeader},
             },
         },
         values::core_values::endpoint::Endpoint,
     };
     use core::str::FromStr;
+    #[cfg(feature = "std")]
     use ntest_timeout::timeout;
 
     lazy_static::lazy_static! {
@@ -943,6 +944,7 @@ mod tests {
     #[timeout(2000)]
     #[cfg(feature = "std")]
     async fn await_response_block() {
+        use crate::global::protocol_structures::block_header::BlockType;
         let (incoming_sections_sender, _incoming_sections_receiver) =
             create_incoming_sections_channel();
 

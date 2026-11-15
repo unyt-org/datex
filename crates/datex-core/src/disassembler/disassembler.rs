@@ -597,7 +597,6 @@ mod tests {
             },
             regular_instruction::RegularInstruction,
         },
-        runtime::Runtime,
     };
     use test_case::test_case;
 
@@ -863,7 +862,10 @@ mod tests {
     #[cfg(all(feature = "std", feature = "compiler"))]
     #[test]
     fn disassemble_string_test() {
-        use crate::compiler::{CompileOptions, compile_script};
+        use crate::{
+            compiler::{CompileOptions, compile_script},
+            runtime::Runtime,
+        };
 
         let script = r#"
             var x = 5;

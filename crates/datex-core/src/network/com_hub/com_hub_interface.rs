@@ -182,16 +182,18 @@ impl ComHub {
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "std")]
+    use crate::global::{
+        dxb_block::{DXBBlock, IncomingSection},
+        protocol_structures::routing_header::SignatureType,
+    };
+    #[cfg(feature = "std")]
     use crate::network::com_hub::test_utils::{
         TEST_ENDPOINT_A, TEST_ENDPOINT_B, get_coupled_com_hubs,
         run_with_coupled_com_hubs,
     };
+
     use crate::{
         channel::mpsc::create_unbounded_channel,
-        global::{
-            dxb_block::{DXBBlock, IncomingSection},
-            protocol_structures::routing_header::SignatureType,
-        },
         network::{
             block_handler::{BlockHandler, create_incoming_sections_channel},
             com_hub::{
@@ -208,7 +210,7 @@ mod tests {
             },
         },
         prelude::*,
-        task::{sleep, timeout},
+        task::sleep,
         values::core_values::endpoint::Endpoint,
     };
     use alloc::vec::Vec;
@@ -361,7 +363,7 @@ mod tests {
         let (peer_a, peer_b, init_future) = get_coupled_com_hubs().await;
 
         // run task futures for 10ms to allow sockets to connect
-        let _ = timeout(Duration::from_millis(10), async {
+        let _ = crate::task::timeout(Duration::from_millis(10), async {
             tokio::join!(peer_a.task_future, peer_b.task_future, init_future,)
         })
         .await;

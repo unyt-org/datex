@@ -6,12 +6,9 @@ use datex_core::{
         serde_context::SerdeContext,
         serialize_with_serde_context::SerializeWithSerdeContext,
     },
-    runtime::{
-        Runtime,
-        cache::{
-            shared_references_cache::SharedReferencesCache,
-            shared_values_cache::SharedValuesCache,
-        },
+    runtime::cache::{
+        shared_references_cache::SharedReferencesCache,
+        shared_values_cache::SharedValuesCache,
     },
 };
 use serde::de::IntoDeserializer;

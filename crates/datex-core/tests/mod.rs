@@ -1,5 +1,3 @@
-#![feature(assert_matches)]
-#![feature(thread_local)]
 #![feature(deref_patterns)]
 #![feature(gen_blocks)]
 #![allow(static_mut_refs)]

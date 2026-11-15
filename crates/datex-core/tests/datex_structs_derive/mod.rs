@@ -6,11 +6,7 @@ mod to_datex_expression_data;
 #[cfg(feature = "disassembler")]
 mod to_instructions;
 
-use core::{
-    assert_matches,
-    cell::RefCell,
-    ops::{Deref, DerefMut},
-};
+use core::assert_matches;
 use datex_core::{
     prelude::*,
     traits::get_datex_type::GetDatexType,
@@ -82,9 +78,8 @@ use datex_core::{
         OwnedSharedContainer, SharedContainer, SharedContainerMutability,
     },
     traits::{
-        classification::Classification, convert_value::ConvertValue,
+        convert_value::ConvertValue,
         convert_value_container::ConvertValueContainer,
-        structural_eq::assert_structural_eq,
     },
     types::{
         literal_type_definition::LiteralTypeDefinition,
@@ -141,7 +136,6 @@ where
 
 #[test]
 fn struct_to_value_container() {
-    let cache = RefCell::new(SharedReferencesCache::default());
     let value_container: ValueContainer = Example {
         a: 42u8,
         b: "Test".to_string(),
@@ -167,8 +161,6 @@ fn struct_to_value_container() {
 
 #[test]
 fn skip() {
-    let cache = RefCell::new(SharedReferencesCache::default());
-
     #[derive(Datex, Debug, PartialEq)]
     #[datex(only_structural, no_deserialize)]
     struct SerdeDatexWithSkip {
@@ -232,8 +224,6 @@ fn skip2() {
 
 #[test]
 fn default() {
-    let cache = RefCell::new(SharedReferencesCache::default());
-
     #[derive(Datex, Debug, PartialEq)]
     #[datex(structural)]
     struct SerdeDatexWithDefault {
@@ -317,7 +307,6 @@ fn enum_to_value() {
 
 #[test]
 fn struct_to_value() {
-    let cache = RefCell::new(SharedReferencesCache::default());
     let value: Value = Example {
         a: 42u8,
         b: "Test".to_string(),
@@ -344,7 +333,6 @@ fn struct_to_value() {
 
 #[test]
 fn new_type_struct_to_value() {
-    let cache = RefCell::new(SharedReferencesCache::default());
     let value: Value = ExampleNewType(Example {
         a: 42u8,
         b: "Test".to_string(),

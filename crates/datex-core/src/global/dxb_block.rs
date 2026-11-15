@@ -559,13 +559,18 @@ impl Display for DXBBlock {
 #[cfg(test)]
 mod tests {
     use core::str::FromStr;
+    // TODO enable tests for no-std target
+    #[cfg(feature = "std")]
+    use crate::{
+        crypto::CryptoImpl, global::dxb_block::SignatureValidationError,
+    };
+
+    #[cfg(feature = "std")]
+    use datex_crypto_facade::crypto::Crypto;
 
     use crate::{
-        crypto::CryptoImpl,
         global::{
-            dxb_block::{
-                DXBBlock, DXBBlockParseError, SignatureValidationError,
-            },
+            dxb_block::{DXBBlock, DXBBlockParseError},
             protocol_structures::{
                 block_header::BlockType,
                 encrypted_header::{self, EncryptedHeader},
@@ -576,7 +581,6 @@ mod tests {
         values::core_values::endpoint::Endpoint,
     };
     use core::assert_matches;
-    use datex_crypto_facade::crypto::Crypto;
 
     #[test]
     pub fn recalculate() {

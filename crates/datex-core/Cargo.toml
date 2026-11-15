@@ -91,7 +91,6 @@ serde-big-array = { version = "0.5.1" }
 async-select = "0.3.0"
 foldhash = { version = "0.2.0", default-features = false }
 cfg-if = "1.0.1"
-async-trait = "0.1.87"
 strum_macros = { version = "0.27.1" }
 datex-macros-internal = { path = "../datex-macros-internal", version = "0.0.3" }
 
@@ -142,7 +141,7 @@ gloo-timers = { version = "0.3.0", features = ["futures"], optional = true }
 dotenvy = { version = "0.15.7", optional = true }
 
 # compiler/decompiler dependencies (optional)
-ariadne = { version = "0.5.1", optional = true }
+# ariadne = { version = "0.5.1", optional = true }
 syntect = { version = "5.2.0", default-features = false, optional = true, features = [
     "default-fancy",
 ] }
@@ -293,7 +292,7 @@ ast = ["datex-macros-internal/ast"]
 
 parser = ["dep:logos", "dep:stacker"]
 
-compiler = ["ast", "parser", "dep:ariadne", "dep:pretty"]
+compiler = ["ast", "parser", "dep:pretty"]
 
 decompiler = ["ast"]
 
