@@ -1747,6 +1747,7 @@ impl ComHub {
     ) {
         let interface_info = match reconnect_request {
             ComInterfaceReconnectRequest::RegisteredInterface { uuid } => {
+                // TODO handle the case, where the interface might not exist or has already been removed
                 self.remove_interface(&uuid).await.unwrap()
             }
             ComInterfaceReconnectRequest::NewInterface {
