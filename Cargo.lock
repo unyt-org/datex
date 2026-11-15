@@ -885,7 +885,6 @@ dependencies = [
  "async-unsync",
  "bigdecimal",
  "binrw",
- "bytes",
  "cfg-if",
  "chrono",
  "criterion",

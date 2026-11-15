@@ -12,11 +12,9 @@ cfg_if! {
                 .map_err(|_| ())
         }
 
-
         pub async fn sleep(dur: core::time::Duration) {
             tokio::time::sleep(dur).await;
         }
-
     }
 
     else if #[cfg(feature = "wasm_runtime")] {
@@ -63,7 +61,7 @@ cfg_if! {
             }
         }
     }
-    else {
+    else if #[cfg(feature = "async_timers")] {
         pub async fn sleep(duration: core::time::Duration) {
             let mut interval = async_timer::Interval::platform_new(duration);
             interval.wait().await;
@@ -78,5 +76,7 @@ cfg_if! {
 
             work.await.map_err(|_| ())
         }
+    } else {
+        compile_error!("No runtime feature enabled for task module");
     }
 }
