@@ -239,19 +239,14 @@ pub async fn test_routes(
         if route.hops[0].0 != start {
             panic!(
                 "Route start endpoints must all be the same. Found {} instead of {}",
-                route.hops[0].0,
-                start
+                route.hops[0].0, start
             );
         }
     }
 
     for end in ends {
         if start != end {
-            panic!(
-                "Route start {} does not match receiver {}",
-                start,
-                end
-            );
+            panic!("Route start {} does not match receiver {}", start, end);
         }
     }
 

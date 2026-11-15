@@ -10,9 +10,6 @@ impl TypeSuperset<ImplMarkers> for ImplMarkers {
             .iter()
             .all(|self_impl| other.impl_markers.contains(self_impl));
 
-        if !all_impls_in_self_are_in_other {
-            return false;
-        }
-        true
+        all_impls_in_self_are_in_other
     }
 }

@@ -48,11 +48,10 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
     let serde_dif = generate_serde_dif(&structure_data);
     let child_iterator = generate_child_iterator(&structure_data);
 
-    let datex_expression_data =
-        cfg_select! {
-            feature = "ast" => generate_datex_expression_data(&structure_data),
-            _ => quote! {},
-        };
+    let datex_expression_data = cfg_select! {
+        feature = "ast" => generate_datex_expression_data(&structure_data),
+        _ => quote! {},
+    };
 
     let prelude = derive_datex_prelude(
         structure_data.attributes.force_datex_core_namespace,

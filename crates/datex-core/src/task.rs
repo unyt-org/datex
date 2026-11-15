@@ -76,7 +76,7 @@ cfg_if! {
             duration: core::time::Duration,
             fut: impl Future<Output = T>,
         ) -> Result<T, ()> {
-            let mut pinned_fut = Box::pin(fut);
+            let mut pinned_fut = core::pin::pin!(fut);
             let work = async_timer::Timed::platform_new(pinned_fut.as_mut(), duration);
 
             work.await.map_err(|_| ())
