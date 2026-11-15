@@ -9,7 +9,6 @@ use crate::{
         },
     },
 };
-use core::ops::{Deref, DerefMut};
 
 impl<T: ValueAccess> ValueAccess for Box<T> {
     fn try_get_property(
