@@ -1,5 +1,6 @@
 use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::try_clone::TryClone,
     values::{core_values::map::Map, value_container::ValueContainer},
 };
 
@@ -23,7 +24,9 @@ impl InternalMutabilityUpdateHandler for Map {
             child.set_update_callback_data(
                 observe_data
                     .as_ref()
-                    .map(|data| data.with_child_path(key.clone())), // TODO: what happens if key can't be cloned here? (should not be allowed)
+                    .map(|data| data.with_child_path(key.try_clone().expect(
+                        "TODO: what happens if key can't be cloned here? (should not be allowed)"
+                    ))),
             );
         }
         // Update the update callback data for the list itself
