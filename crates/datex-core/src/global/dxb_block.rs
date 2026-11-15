@@ -423,11 +423,11 @@ mod tests {
     // TODO enable tests for no-std target
     #[cfg(feature = "std")]
     use crate::{
-        crypto::CryptoImpl, global::dxb_block::SignatureValidationError,
+        crypto::CryptoImpl, network::com_hub::errors::SignatureValidationError,
     };
 
     #[cfg(feature = "std")]
-    use datex_crypto_facade::crypto::Crypto;
+    use datex_facades::crypto::Crypto;
 
     use crate::{
         global::{
@@ -442,7 +442,6 @@ mod tests {
         values::core_values::endpoint::Endpoint,
     };
     use core::assert_matches;
-    use datex_facades::crypto::Crypto;
 
     #[test]
     pub fn recalculate() {
