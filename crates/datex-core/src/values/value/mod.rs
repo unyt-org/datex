@@ -42,8 +42,6 @@ use crate::{
     shared_values::errors::AccessError,
     traits::{
         classification::Classification, convert_parts::FromParts,
-        convert_value_container::ConvertValueContainer,
-        datex_native_only_structural::DatexNativeOnlyStructural,
         value_access::ValueAccess,
     },
     utils::impl_display_for_datex_value::impl_display_for_datex_value,
@@ -383,10 +381,7 @@ impl_display_for_datex_value!(
 mod tests {
     use super::*;
     use crate::{
-        libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
-        prelude::*,
         traits::structural_eq::assert_structural_eq,
-        types::{r#type::Type, type_definition::impl_type::ImplMarkers},
         values::core_values::{
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},

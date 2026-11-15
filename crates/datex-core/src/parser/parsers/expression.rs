@@ -716,11 +716,8 @@ mod tests {
             stack_index::StackIndex,
         },
         parser::{
-            errors::{ParserError, SpannedParserError},
-            tests::{
-                parse, try_parse_and_collect_errors,
-                try_parse_and_return_on_first_error,
-            },
+            errors::ParserError,
+            tests::{parse, try_parse_and_return_on_first_error},
         },
         prelude::*,
         shared_values::{

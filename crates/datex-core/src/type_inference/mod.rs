@@ -1561,27 +1561,21 @@ mod tests {
         },
         parser::Parser,
         prelude::*,
-        runtime::{
-            Runtime, cache::shared_references_cache::SharedReferencesCache,
-            pointer_address_provider::SelfOwnedPointerAddressProvider,
-        },
+        runtime::Runtime,
         shared_values::{
             ReferenceMutability, SharedContainerMutability,
             SharedContainerOwnership,
         },
         type_inference::{
-            InferOutcome,
-            error::{SimpleOrDetailedTypeError, SpannedTypeError},
+            InferOutcome, error::SpannedTypeError,
             infer_expression_type_detailed_errors,
             infer_expression_type_simple_error,
             infer_expression_type_with_errors,
         },
         types::{
             entities::entity_type_definition::EntityTypeDefinition,
-            entity_type::EntityType,
             error::TypeError,
             literal_type_definition::LiteralTypeDefinition,
-            shared_container_containing_type::SharedContainerContainingType,
             r#type::Type,
             type_definition::{
                 TypeDefinition,
@@ -1593,16 +1587,12 @@ mod tests {
                 TypeDefinitionWithMetadata, TypeMetadata,
             },
         },
-        values::{
-            core_value::CoreValue,
-            core_values::{
-                boolean::Boolean,
-                decimal::{Decimal, typed_decimal::TypedDecimal},
-                endpoint::Endpoint,
-                integer::{
-                    Integer,
-                    typed_integer::{IntegerTypeVariant, TypedInteger},
-                },
+        values::core_values::{
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
+            integer::{
+                Integer,
+                typed_integer::{IntegerTypeVariant, TypedInteger},
             },
         },
     };
@@ -1624,7 +1614,7 @@ mod tests {
         .expect("Precompilation failed");
         infer_expression_type_detailed_errors(
             &mut res,
-            &mut *runtime.shared_references_cache_refcell().borrow_mut(),
+            &runtime.shared_references_cache_refcell().borrow(),
         )
         .expect_err("Expected type errors")
         .errors
@@ -1647,7 +1637,7 @@ mod tests {
         .expect("Precompilation failed");
         infer_expression_type_detailed_errors(
             &mut rich_ast,
-            &mut *runtime.shared_references_cache_refcell().borrow_mut(),
+            &runtime.shared_references_cache_refcell().borrow(),
         )
         .expect_err("Expected type errors")
         .errors
@@ -1800,7 +1790,7 @@ mod tests {
         "#;
         let res = errors_for_script(src);
         assert_eq!(
-            *res.get(0).unwrap().error,
+            *res.first().unwrap().error,
             TypeError::SubvariantNotFound("x".into(), "whatever".into())
         );
     }
@@ -2568,8 +2558,7 @@ mod tests {
                         ]
                         .into_iter()
                         .collect()
-                    )
-                    .into(),
+                    ),
                     "X".to_string()
                 )
             )

@@ -10,13 +10,9 @@ mod to_instructions;
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,
     utils::impl_display_for_datex_value::impl_display_for_datex_value,
-    value_updates::update_handler::{
-        InternalMutabilityUpdateHandler, UpdateCallbackData,
-    },
-    values::value::Value,
+    value_updates::update_handler::UpdateCallbackData, values::value::Value,
 };
 use core::{
-    fmt::Display,
     ops::{Index, Range},
     result::Result,
 };

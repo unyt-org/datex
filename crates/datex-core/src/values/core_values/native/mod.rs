@@ -243,7 +243,7 @@ impl Debug for NativeCoreValue {
 mod tests {
     use crate::{
         runtime::cache::shared_references_cache::SharedReferencesCache,
-        values::{core_value::CoreValue, core_values::native::NativeCoreValue},
+        values::core_values::native::NativeCoreValue,
     };
 
     use crate::{

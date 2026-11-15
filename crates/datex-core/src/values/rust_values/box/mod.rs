@@ -22,12 +22,8 @@ mod tests {
         runtime::cache::shared_references_cache::SharedReferencesCache,
         traits::get_datex_type::GetDatexType,
         values::{
-            core_value::CoreValue,
-            core_values::{
-                endpoint::Endpoint, integer::Integer, native::NativeCoreValue,
-            },
+            core_values::{endpoint::Endpoint, native::NativeCoreValue},
             value::Value,
-            value_container::ValueContainer,
         },
     };
     // FIXME: how to handle Box<Value>

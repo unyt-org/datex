@@ -467,8 +467,6 @@ mod tests {
         network::com_interfaces::com_interface::factory::{
             SendCallback, SendSuccess, SocketConfiguration, SocketProperties,
         },
-        prelude::*,
-        runtime::cache::shared_references_cache::SharedReferencesCache,
         values::value::Value,
     };
     use datex_macros_internal::Datex;

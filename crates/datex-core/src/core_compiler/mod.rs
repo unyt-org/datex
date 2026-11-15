@@ -69,8 +69,6 @@ mod tests {
     use crate::{
         core_compiler::{
             core_compilation_context::{ByteCursor, default_compile_input},
-            shared_value_tracking::SharedValueTracking,
-            to_instructions::ToInstructions,
             value_compiler::compile_value,
         },
         disassembler::assertions::assert_instructions_equal,

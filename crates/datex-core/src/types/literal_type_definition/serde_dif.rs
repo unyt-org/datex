@@ -191,7 +191,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::*;
     use serde_json::{self, Value, json};
     use test_case::test_case;
     fn assert_json_string_roundtrip(value: LiteralTypeDefinition) {

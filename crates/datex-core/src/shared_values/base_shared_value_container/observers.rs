@@ -6,9 +6,7 @@ use crate::{
     },
     prelude::*,
     utils::freemap::{FreeHashMap, NextKey},
-    value_updates::{
-        update_data::Update, update_handler::InternalMutabilityUpdateHandler,
-    },
+    value_updates::update_data::Update,
     values::core_values::endpoint::Endpoint,
 };
 use core::{
@@ -19,7 +17,7 @@ use core::{
 use num_traits::ToPrimitive;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
-    de::{DeserializeSeed, Error, Visitor},
+    de::{Error, Visitor},
 };
 use serde_with::__private__::DeError;
 

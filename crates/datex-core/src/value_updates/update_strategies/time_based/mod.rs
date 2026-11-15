@@ -191,16 +191,12 @@ mod tests {
 
     use super::*;
     use crate::{
-        prelude::*,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
             SharedContainerMutability,
             base_shared_value_container::observers::TransceiverId,
-            traits::SharedContainerCommon,
         },
-        value_updates::update_data::{
-            ReplaceUpdateData, Update, UpdateData, UpdateOperation,
-        },
+        value_updates::update_data::{Update, UpdateData, UpdateOperation},
         values::{core_values::endpoint::Endpoint, value::Value},
     };
     fn shared<T>(

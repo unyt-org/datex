@@ -506,24 +506,15 @@ mod tests {
 
     use crate::{
         libs::core::type_id::CoreLibBaseTypeId,
-        runtime::cache::shared_references_cache::SharedReferencesCache,
         types::{
             literal_type_definition::LiteralTypeDefinition,
-            traits::type_match::{
-                TypeSatisfiesValueContainer, TypeSubset, TypeSuperset,
-            },
+            traits::type_match::{TypeSatisfiesValueContainer, TypeSubset},
             r#type::Type,
             type_definition::{TypeDefinition, union::UnionTypeDefinition},
-            type_definition_with_metadata::TypeDefinitionWithMetadata,
         },
-        values::{
-            core_value::CoreValue,
-            core_values::{
-                integer::{Integer, typed_integer::TypedInteger},
-                text::Text,
-            },
-            value::Value,
-            value_container::ValueContainer,
+        values::core_values::{
+            integer::{Integer, typed_integer::TypedInteger},
+            text::Text,
         },
     };
 

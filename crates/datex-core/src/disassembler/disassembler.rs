@@ -597,9 +597,8 @@ mod tests {
             },
             regular_instruction::RegularInstruction,
         },
-        runtime::{Runtime, RuntimeConfig, RuntimeRunner},
+        runtime::Runtime,
     };
-    use binrw::io::Cursor;
     use test_case::test_case;
 
     #[test_case(

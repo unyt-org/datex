@@ -29,7 +29,6 @@ use crate::{
 use alloc::rc::Rc;
 use core::{
     cell::RefCell,
-    fmt::Display,
     hash::{Hash, Hasher},
 };
 

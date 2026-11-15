@@ -21,8 +21,8 @@ mod tests {
     use crate::{
         traits::get_datex_type::GetDatexType,
         values::{
-            core_values::{endpoint::Endpoint, integer::Integer, map::Map},
-            value::{Value, value_classification::ValueClassification},
+            core_values::{endpoint::Endpoint, integer::Integer},
+            value::Value,
             value_container::ValueContainer,
         },
     };

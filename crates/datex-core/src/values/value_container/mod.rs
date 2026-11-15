@@ -3,7 +3,6 @@
 use crate::utils::sheep::Sheep;
 mod equality;
 mod identity;
-use core::ops::Deref;
 mod serde_dif;
 use super::value::Value;
 use crate::{
@@ -30,22 +29,14 @@ use crate::{
         },
         traits::SharedContainerCommon,
     },
-    traits::{
-        convert_parts::FromParts, convert_value::ConvertValue,
-        convert_value_container::ConvertValueContainer,
-    },
+    traits::convert_parts::FromParts,
     utils::{
         impl_display_for_datex_value::impl_display_for_datex_value,
         sheep_mut::SheepMut,
     },
     values::core_values::endpoint::Endpoint,
 };
-use core::{
-    fmt::Display,
-    hash::{Hash, Hasher},
-    ops::FnOnce,
-};
-use serde::Serialize;
+use core::{hash::Hasher, ops::FnOnce};
 
 pub mod classification;
 pub mod convert_parts;

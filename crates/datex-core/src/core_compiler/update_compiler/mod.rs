@@ -84,9 +84,7 @@ mod tests {
         shared_values::{
             ReferenceMutability, SharedContainer, SharedContainerMutability,
         },
-        value_updates::update_data::{
-            SetEntryUpdateData, UpdateData, UpdateOperation,
-        },
+        value_updates::update_data::{UpdateData, UpdateOperation},
         values::{core_values::map::Map, value_container::ValueContainer},
     };
 

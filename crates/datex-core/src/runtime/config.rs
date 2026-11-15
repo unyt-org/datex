@@ -132,10 +132,7 @@ pub mod tests {
     use crate::{
         network::com_hub::InterfacePriority,
         prelude::*,
-        runtime::{
-            Runtime, RuntimeConfig, RuntimeConfigInterface,
-            cache::shared_references_cache::SharedReferencesCache,
-        },
+        runtime::{Runtime, RuntimeConfig, RuntimeConfigInterface},
         traits::{
             convert_value_container::ConvertValueContainer, try_clone::TryClone,
         },

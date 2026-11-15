@@ -26,18 +26,14 @@ mod tests {
                 type_definition::ListCollectionTypeDefinition,
             },
         },
-        values::{core_values::list::List, value::Value},
+        values::value::Value,
     };
 
     use crate::{
-        libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+        libs::core::type_id::CoreLibBaseTypeId,
         traits::get_datex_type::GetDatexType,
         types::type_definition::TypeDefinition,
-        values::{
-            core_values::integer::Integer,
-            value::value_classification::ValueClassification,
-            value_container::ValueContainer,
-        },
+        values::core_values::integer::Integer,
     };
 
     #[test]

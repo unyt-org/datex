@@ -1,5 +1,4 @@
 use crate::{
-    prelude::*,
     shared_values::{
         PointerAddress, RemotePointerAddress, SelfOwnedPointerAddress,
     },

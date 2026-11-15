@@ -1938,8 +1938,6 @@ pub mod tests {
     use datex_macros_internal::Datex;
     use futures_util::FutureExt;
     use log::info;
-    use serde::Deserialize;
-    use tokio::task::yield_now;
 
     /// Creates a mock ComHub for testing without a connected channel
     async fn run_with_com_hub<AppReturn, AppFuture>(
@@ -2066,7 +2064,7 @@ pub mod tests {
         endpoint: Endpoint,
         blocks: &mut Vec<DXBBlock>,
     ) {
-        for mut block in blocks {
+        for block in blocks {
             block.set_receivers(vec![endpoint.clone()]);
 
             *block = com_hub

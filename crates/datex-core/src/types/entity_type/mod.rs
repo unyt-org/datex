@@ -5,7 +5,6 @@ mod to_type_expression_data;
 mod value_access;
 
 use crate::{
-    prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
         PointerAddress, SharedContainer, SharedContainerMutability,

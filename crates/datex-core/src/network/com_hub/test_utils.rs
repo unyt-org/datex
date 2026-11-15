@@ -1,6 +1,6 @@
 use crate::{
     channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
-    global::dxb_block::{DXBBlock, IncomingSection},
+    global::dxb_block::DXBBlock,
     network::{
         block_handler::{
             BlockHandler, IncomingSectionReceiver,
@@ -20,7 +20,6 @@ use crate::{
         },
     },
     prelude::*,
-    runtime::Runtime,
     std_sync::Mutex,
     values::core_values::endpoint::Endpoint,
 };

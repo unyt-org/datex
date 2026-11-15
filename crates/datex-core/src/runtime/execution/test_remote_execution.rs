@@ -11,9 +11,8 @@ use crate::{
         base_shared_value_container::observers::TransceiverId,
         traits::SharedContainerCommon,
     },
-    task::sleep,
     value_updates::{
-        update_data::{ReplaceUpdateData, Update, UpdateOperation},
+        update_data::{Update, UpdateOperation},
         update_handler::UpdateHandler,
     },
     values::{
@@ -23,11 +22,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{
-    assert_matches,
-    ops::{Deref, DerefMut},
-    time::Duration,
-};
+use core::{assert_matches, ops::DerefMut};
 use tokio::task::yield_now;
 
 #[tokio::test]

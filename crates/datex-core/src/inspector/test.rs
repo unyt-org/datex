@@ -6,13 +6,12 @@ use crate::{
     },
     shared_values::traits::SharedContainerCommon,
     traits::{
-        classification::Classification,
-        convert_value_container::ConvertValueContainer,
-        get_datex_type::GetDatexType, value_access::ValueAccess,
+        classification::Classification, get_datex_type::GetDatexType,
+        value_access::ValueAccess,
     },
     types::r#type::Type,
     values::{
-        core_values::{endpoint::Endpoint, integer::Integer, map::Map},
+        core_values::{endpoint::Endpoint, map::Map},
         value_container::ValueContainer,
     },
 };

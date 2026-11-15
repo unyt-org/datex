@@ -15,8 +15,6 @@ pub mod equality;
 use crate::shared_values::errors::KeyNotFoundError;
 use core::{
     fmt::{self, Display},
-    hash::{Hash, Hasher},
-    ops::Deref,
     result::Result,
 };
 
@@ -39,11 +37,9 @@ mod value_access;
 
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,
-    traits::convert_parts::{FromParts, IntoParts},
+    traits::convert_parts::FromParts,
     utils::impl_display_for_datex_value::impl_display_for_datex_value,
-    value_updates::update_handler::{
-        InternalMutabilityUpdateHandler, UpdateCallbackData,
-    },
+    value_updates::update_handler::UpdateCallbackData,
     values::core_value_with_classification::CoreValueWithClassification,
 };
 use indexmap::{IndexMap, map::MutableKeys};
@@ -575,10 +571,7 @@ mod tests {
     use crate::{
         prelude::*,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
-        shared_values::{
-            SelfOwnedPointerAddress, SelfOwnedSharedContainer, SharedContainer,
-            SharedContainerMutability,
-        },
+        shared_values::{SharedContainer, SharedContainerMutability},
         values::{
             core_values::{
                 decimal::{Decimal, typed_decimal::TypedDecimal},

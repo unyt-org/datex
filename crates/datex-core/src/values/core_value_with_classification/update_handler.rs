@@ -1,7 +1,6 @@
 use core::cell::RefCell;
 
 use crate::{
-    prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::base_shared_value_container::observers::TransceiverId,
     value_updates::{
@@ -9,8 +8,7 @@ use crate::{
         update_data::UpdateOperation,
         update_handler::{
             InternalMutabilityUpdateHandler, UpdateCallbackData,
-            UpdateCallbackDataAccess, UpdateHandler, UpdateHandlerImpl,
-            UpdateResult,
+            UpdateCallbackDataAccess, UpdateHandlerImpl, UpdateResult,
         },
     },
     values::{

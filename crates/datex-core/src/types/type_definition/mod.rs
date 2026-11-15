@@ -23,7 +23,6 @@ use crate::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
-    values::core_values::native::DatexNative,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref};
 

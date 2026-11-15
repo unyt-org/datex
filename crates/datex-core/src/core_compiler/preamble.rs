@@ -503,12 +503,11 @@ mod tests {
             assertions::{assert_instructions_equal, instructions},
         },
         global::stack_index::StackIndex,
-        instruction,
         instruction::{
             Instruction,
             instruction_data::{
-                Int32Data, ListData, MoveWithValue, SharedRefWithValue,
-                ShortListData, ShortMapData, ShortTextData, UInt32Data,
+                Int32Data, MoveWithValue, SharedRefWithValue, ShortListData,
+                ShortMapData, ShortTextData,
             },
             regular_instruction::RegularInstruction,
         },

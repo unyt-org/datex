@@ -361,7 +361,7 @@ mod tests {
         ast::{
             expressions::{
                 CloneExpression, DatexExpressionData, DeriveSharedRef,
-                RootPropertyAccess, Statements, TagExpression, ValueAccessType,
+                RootPropertyAccess, Statements, ValueAccessType,
             },
             spanned::Spanned,
             type_expressions::{TypeExpressionData, Union},
@@ -376,7 +376,7 @@ mod tests {
             },
         },
         prelude::*,
-        shared_values::{PointerAddress, ReferenceMutability},
+        shared_values::ReferenceMutability,
         values::core_values::{
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::{Endpoint, InvalidEndpointError},

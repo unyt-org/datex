@@ -175,9 +175,8 @@ mod tests {
         prelude::*,
         types::{
             literal_type_definition::LiteralTypeDefinition,
-            traits::type_match::TypeSatisfiesValueContainer,
-            r#type::Type,
-            type_definition::{TypeDefinition, map::MapTypeDefinition},
+            traits::type_match::TypeSatisfiesValueContainer, r#type::Type,
+            type_definition::TypeDefinition,
         },
         values::{
             core_value::CoreValue,

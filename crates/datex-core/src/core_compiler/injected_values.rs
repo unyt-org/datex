@@ -171,8 +171,8 @@ mod tests {
         instruction::{
             instruction_codes::InstructionCode,
             instruction_data::{
-                InstructionBlockData, Int32Data, ListData, MoveWithValue,
-                SharedRefWithValue, ShortListData, StatementsData, UInt32Data,
+                InstructionBlockData, Int32Data, MoveWithValue,
+                SharedRefWithValue,
             },
             regular_instruction::RegularInstruction,
         },

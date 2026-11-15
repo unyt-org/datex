@@ -428,41 +428,30 @@ fn get_local_pointer_value(
 mod tests {
     use super::*;
     use crate::{
-        collections::HashMap,
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
         core_compiler::core_compilation_context::DXBWithSharedValues,
         disassembler::print_disassembled,
         global::protocol_structures::serializable::Serializable,
-        instruction::Instruction,
         libs::core::type_id::CoreLibBaseTypeId,
-        prelude::*,
         runtime::{
             CustomRuntimeInfo, Runtime, RuntimeConfig, RuntimeRunner,
-            cache::shared_references_cache::SharedReferencesCache,
             execution::{
                 context::{ExecutionContext, LocalExecutionContext},
                 execution_input::{ExecutionCallerMetadata, ExecutionOptions},
             },
         },
         shared_values::{
-            OwnedSharedContainer, ReferencedSharedContainer, SharedContainer,
-            SharedContainerInner, SharedContainerMutability,
-            base_shared_value_container::BaseSharedValueContainer,
+            OwnedSharedContainer, SharedContainer, SharedContainerMutability,
             traits::SharedContainerCommon,
         },
         traits::{
-            classification::Classification,
             convert_value_container::ConvertValueContainer,
             structural_eq::{StructuralEq, assert_structural_eq},
-            value_eq::{ValueEq, assert_value_eq},
+            value_eq::assert_value_eq,
         },
         types::{
             r#type::Type,
-            type_definition::{
-                TypeDefinition,
-                callable::{CallableKind, CallableTypeDefinition},
-                tagged_type::TaggedTypeDefinition,
-            },
+            type_definition::callable::{CallableKind, CallableTypeDefinition},
         },
         values::{
             core_value::CoreValue,

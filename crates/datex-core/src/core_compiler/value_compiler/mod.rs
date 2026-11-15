@@ -113,26 +113,17 @@ mod tests {
                 default_core_compilation_context,
             },
             shared_value_tracking::TrackedValueMetadata,
-            to_instructions::ToInstructions,
             value_compiler::compile_value,
-            value_visitor::{ValueVisitor, compile_instructions_to_dxb},
+            value_visitor::compile_instructions_to_dxb,
         },
-        disassembler::{
-            assertions::{
-                assert_instructions_equal, instructions, instructions_with_span,
-            },
-            print_disassembled,
-        },
-        dxb_parser::body::InstructionWithSpan,
+        disassembler::assertions::{assert_instructions_equal, instructions},
         global::stack_index::StackIndex,
         instruction::{
             Instruction,
             instruction_data::{
-                CallableData, CallableDataBody, CallableDataBodyDebugFlat,
-                CallableDataBodyDebugTree, CallableDataDebugFlat,
-                CallableDataDebugTree, CallableSignatureData,
+                CallableData, CallableDataBody, CallableSignatureData,
                 ClassifiedValueData, Int32Data, MoveWithValue,
-                SharedRefWithValue, ShortListData, ShortTextData,
+                SharedRefWithValue, ShortTextData,
             },
             regular_instruction::RegularInstruction,
             type_instruction::TypeInstruction,
@@ -140,7 +131,7 @@ mod tests {
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
         runtime::{
-            Runtime, cache::shared_references_cache::SharedReferencesCache,
+            cache::shared_references_cache::SharedReferencesCache,
             pointer_address_provider::SelfOwnedPointerAddressProvider,
             pointer_availability_lookup::PointerAvailabilityLookup,
         },
@@ -153,7 +144,6 @@ mod tests {
             type_definition::{
                 TypeDefinition,
                 callable::{CallableKind, CallableTypeDefinition},
-                tagged_type::TaggedTypeDefinition,
             },
             type_definition_with_metadata::TypeMetadata,
         },
@@ -172,7 +162,6 @@ mod tests {
         },
     };
     use core::assert_matches;
-    use log::info;
 
     fn compile_value_assert_instructions(
         value: Value,

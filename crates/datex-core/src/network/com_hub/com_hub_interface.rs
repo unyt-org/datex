@@ -187,7 +187,7 @@ mod tests {
         run_with_coupled_com_hubs,
     };
     use crate::{
-        channel::mpsc::{UnboundedSender, create_unbounded_channel},
+        channel::mpsc::create_unbounded_channel,
         global::{
             dxb_block::{DXBBlock, IncomingSection},
             protocol_structures::routing_header::SignatureType,
@@ -211,12 +211,10 @@ mod tests {
         task::{sleep, timeout},
         values::core_values::endpoint::Endpoint,
     };
-    use alloc::{string::ToString, vec::Vec};
+    use alloc::vec::Vec;
 
     use core::time::Duration;
     use futures_util::future::select;
-    use log::info;
-
     fn get_metadata_sockets(
         com_hub_metadata: ComHubMetadata,
     ) -> Vec<(Option<Endpoint>, Option<i8>)> {

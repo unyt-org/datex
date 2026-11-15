@@ -35,7 +35,6 @@ use crate::{
 use alloc::rc::Rc;
 use core::{
     cell::{Ref, RefCell, RefMut},
-    fmt::Display,
     hash::{Hash, Hasher},
     mem,
 };
