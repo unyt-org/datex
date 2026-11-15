@@ -170,7 +170,7 @@ pub mod time {
                     .expect("System time is before UNIX_EPOCH")
                     .as_millis() as u64
             } else if #[cfg(feature = "target_esp_shared")] {
-                datex_crypto_esp32::now_ms()
+                datex_esp_impls::now_ms()
             } else {
                 Instant::now().elapsed().as_millis() as u64
             }
