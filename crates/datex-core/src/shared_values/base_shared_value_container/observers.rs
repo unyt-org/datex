@@ -1,9 +1,4 @@
 use crate::{
-    dif::{
-        deserialize_with_serde_context::DeserializeWithSerdeContext,
-        serde_context::SerdeContext,
-        serialize_with_serde_context::SerializeWithSerdeContext,
-    },
     prelude::*,
     utils::freemap::{FreeHashMap, NextKey},
     value_updates::update_data::Update,
@@ -145,25 +140,6 @@ impl Display for TransceiverId {
 pub struct ObserveOptions {
     /// If true, the transceiver will be notified of changes that originated from itself
     pub relay_own_updates: bool,
-}
-
-impl<'de> DeserializeWithSerdeContext<'de> for ObserveOptions {
-    fn deserialize_with_ctx<D: Deserializer<'de>>(
-        _ctx: &SerdeContext<'_>,
-        deserializer: D,
-    ) -> Result<Self, D::Error> {
-        ObserveOptions::deserialize(deserializer)
-    }
-}
-
-impl SerializeWithSerdeContext for ObserveOptions {
-    fn serialize_with_ctx<S: Serializer>(
-        &self,
-        _ctx: &SerdeContext<'_>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        self.serialize(serializer)
-    }
 }
 
 #[derive(
