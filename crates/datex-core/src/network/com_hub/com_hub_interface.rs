@@ -198,7 +198,6 @@ mod tests {
             block_handler::{BlockHandler, create_incoming_sections_channel},
             com_hub::{
                 ComHub, ComInterfaceReconnectRequest, InterfacePriority,
-                metadata::ComHubMetadata,
             },
             com_interfaces::com_interface::{
                 ComInterfaceUUID,
@@ -213,12 +212,13 @@ mod tests {
         task::sleep,
         values::core_values::endpoint::Endpoint,
     };
-    use alloc::vec::Vec;
 
     use core::time::Duration;
     use futures_util::future::select;
+
+    #[cfg(feature = "std")]
     fn get_metadata_sockets(
-        com_hub_metadata: ComHubMetadata,
+        com_hub_metadata: crate::network::com_hub::metadata::ComHubMetadata,
     ) -> Vec<(Option<Endpoint>, Option<i8>)> {
         com_hub_metadata
             .interfaces

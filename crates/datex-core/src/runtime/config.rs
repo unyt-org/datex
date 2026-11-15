@@ -127,8 +127,6 @@ impl RuntimeConfig {
 
 #[cfg(test)]
 pub mod tests {
-    use datex_macros_internal::Datex;
-
     use crate::{
         network::com_hub::InterfacePriority,
         prelude::*,
@@ -142,6 +140,7 @@ pub mod tests {
             value_container::ValueContainer,
         },
     };
+    use datex_macros_internal::Datex;
 
     #[derive(Datex, Clone)]
     #[datex(structural)]

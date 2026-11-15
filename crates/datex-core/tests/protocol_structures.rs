@@ -2,22 +2,18 @@ use binrw::{
     BinRead, BinWrite,
     io::{Cursor, Seek, SeekFrom},
 };
-use core::str::FromStr;
 use datex_core::{
     global::{
         dxb_block::DXBBlock,
         protocol_structures::{
-            block_header::{BlockHeader, BlockType},
+            block_header::BlockHeader,
             encrypted_header::{self, EncryptedHeader},
-            routing_header::{EncryptionType, RoutingHeader},
+            routing_header::RoutingHeader,
             serializable::Serializable,
         },
     },
-    shared_values::PointerAddress,
     values::core_values::endpoint::{Endpoint, EndpointInstance, EndpointType},
 };
-use serde::Serialize;
-use serde_json::ser::PrettyFormatter;
 
 #[test]
 pub fn parse_encrypted_header() {
@@ -92,7 +88,10 @@ pub fn parse_dxb_block() {
 
 #[cfg(feature = "std")]
 fn create_dxb_block_artifacts(block: &mut DXBBlock, name: &str) {
+    use serde::Serialize;
+    use serde_json::ser::PrettyFormatter;
     use std::{fs, path::Path};
+
     let dir_path = Path::new("tests").join("structs").join(name);
     fs::create_dir_all(&dir_path).unwrap();
     let bin_path = dir_path.join("block.bin");
@@ -116,6 +115,14 @@ fn create_dxb_block_artifacts(block: &mut DXBBlock, name: &str) {
 #[cfg(feature = "std")]
 #[ignore = "Only run to create artifacts"]
 pub fn dxb_blocks() {
+    use core::str::FromStr;
+    use datex_core::{
+        global::protocol_structures::{
+            block_header::BlockType, routing_header::EncryptionType,
+        },
+        shared_values::PointerAddress,
+    };
+
     {
         const NAME: &str = "simple";
         let mut block = DXBBlock::default();

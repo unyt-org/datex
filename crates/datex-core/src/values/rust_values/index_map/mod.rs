@@ -29,15 +29,14 @@ mod tests {
     use indexmap::IndexMap;
 
     #[test]
-    #[cfg(feature = "std")]
     fn to_value() {
-        let mut index_map = IndexMap::new();
+        let mut index_map = IndexMap::default();
         index_map.insert(Integer::from(1), Endpoint::new("@jonas"));
         let index_map_clone = index_map.clone();
         let value = Value::new(index_map);
         assert_eq!(
             value
-                .try_into_value::<IndexMap<Integer, Endpoint>>()
+                .try_into_value::<IndexMap<Integer, Endpoint, _>>()
                 .unwrap(),
             index_map_clone,
         );
@@ -45,47 +44,45 @@ mod tests {
 
     #[test]
     #[allow(clippy::mutable_key_type)]
-    #[cfg(feature = "std")]
     fn from_value() {
         // map with [Value], [Value] as key and value
-        let mut map = IndexMap::new();
+        let mut map = IndexMap::default();
         map.insert(
             Value::from(Integer::from(1)),
             Value::from(Endpoint::new("@jonas")),
         );
         let value: Value = Value::native(map.clone());
-        let map_from_value: IndexMap<Value, Value> =
+        let map_from_value: IndexMap<Value, Value, _> =
             value.try_into_value().unwrap();
         assert_eq!(map, map_from_value);
 
         // map with [ValueContainer], [ValueContainer] as key and value
-        let mut map = IndexMap::new();
+        let mut map = IndexMap::default();
         map.insert(
             ValueContainer::from(Integer::from(1)),
             ValueContainer::from(Endpoint::new("@jonas")),
         );
         let value: Value = Value::native(map.clone());
         let map_from_value = value
-            .try_into_value::<IndexMap<ValueContainer, ValueContainer>>()
+            .try_into_value::<IndexMap<ValueContainer, ValueContainer, _>>()
             .unwrap();
         assert_eq!(map, map_from_value);
 
         // map with [Integer, Endpoint] as key and value
-        let mut map = IndexMap::new();
+        let mut map = IndexMap::default();
         map.insert(Integer::from(1), Endpoint::new("@jonas"));
         let value: Value = Value::native(map.clone());
         let map_from_value = value
-            .try_into_value::<IndexMap<Integer, Endpoint>>()
+            .try_into_value::<IndexMap<Integer, Endpoint, _>>()
             .unwrap();
         assert_eq!(map, map_from_value);
     }
 
     #[test]
-    #[cfg(feature = "std")]
     fn datex_type() {
         use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
-        let map_type = IndexMap::<Integer, Endpoint>::datex_type(
+        let map_type = IndexMap::<Integer, Endpoint, _>::datex_type(
             &mut SharedReferencesCache::default(),
         );
         map_type.with_collapsed_type_definition(|d| {

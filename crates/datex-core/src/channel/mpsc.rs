@@ -1,6 +1,5 @@
 use cfg_if::cfg_if;
 use core::clone::Clone;
-use futures_util::{SinkExt, StreamExt};
 
 #[cfg(not(feature = "std"))]
 pub use async_unsync::{
@@ -27,6 +26,7 @@ impl<T> Receiver<T> {
     pub async fn next(&mut self) -> Option<T> {
         #[cfg(feature = "std")]
         {
+            use futures_util::StreamExt;
             self.0.next().await
         }
         #[cfg(not(feature = "std"))]
@@ -48,6 +48,7 @@ impl<T> UnboundedReceiver<T> {
     pub async fn next(&mut self) -> Option<T> {
         #[cfg(feature = "std")]
         {
+            use futures_util::StreamExt;
             self.0.next().await
         }
         #[cfg(not(feature = "std"))]
@@ -88,6 +89,7 @@ impl<T> Sender<T> {
     pub async fn send(&mut self, item: T) -> Result<(), ()> {
         #[cfg(feature = "std")]
         {
+            use futures_util::SinkExt;
             self.0.send(item).await.map_err(|_| ()).map(|_| ())
         }
         #[cfg(not(feature = "std"))]
@@ -139,6 +141,7 @@ impl<T> UnboundedSender<T> {
     pub async fn send(&mut self, item: T) -> Result<(), ()> {
         #[cfg(feature = "std")]
         {
+            use futures_util::SinkExt;
             self.0.send(item).await.map_err(|_| ()).map(|_| ())
         }
         #[cfg(not(feature = "std"))]

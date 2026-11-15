@@ -1184,16 +1184,16 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg(feature = "std")]
     async fn env_slot() {
         use indexmap::IndexMap;
 
         let res = execute_datex_script_with_runtime(
             RuntimeConfig {
-                env: Some(IndexMap::from([(
-                    "TEST_ENV_VAR".to_string(),
-                    "test_value".to_string(),
-                )])),
+                env: Some(
+                    [("TEST_ENV_VAR".to_string(), "test_value".to_string())]
+                        .into_iter()
+                        .collect(),
+                ),
                 ..Default::default()
             },
             "$.env",
@@ -1203,7 +1203,7 @@ mod tests {
         assert!(res.is_some());
         let env = res
             .unwrap()
-            .try_into_value::<IndexMap<String, String>>()
+            .try_into_value::<IndexMap<String, String, _>>()
             .unwrap();
         assert_eq!(env.get("TEST_ENV_VAR"), Some(&"test_value".into()));
     }

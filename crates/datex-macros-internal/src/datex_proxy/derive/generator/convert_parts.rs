@@ -18,7 +18,6 @@ use syn::Type;
 /// Generates the [FromParts] and [IntoParts] implementations
 pub fn generate_convert_parts(structure_data: &StructureData) -> TokenStream {
     let StructureData { .. } = structure_data;
-
     let into_parts_impl = generate_into_parts(structure_data);
     let from_parts_impl = generate_from_parts(structure_data);
 
