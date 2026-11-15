@@ -13,10 +13,10 @@ mod to_instructions;
 
 use crate::types::entities::entity_type_definition::dyn_deserialize::DeFn;
 use core::fmt::Display;
-
+mod equality;
 /// Represents a definition of an "entity" type,
 /// which describes a nominal type identified by a unique pointer id.
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, Eq, Clone, Hash)]
 pub struct EntityTypeDefinition {
     pub(crate) name: String,
     pub(crate) definition: TypeDefinition,

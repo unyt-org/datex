@@ -77,6 +77,7 @@ impl<'a> CompileInput<'a> {
 
 /// # Safety
 /// This function is unsafe because it creates a CompileInput with a static lifetime, which may lead to dangling references if used incorrectly. It should only be used in tests where the leaked memory is acceptable
+#[cfg(test)]
 pub(crate) unsafe fn default_compile_input<'a>() -> CompileInput<'a> {
     CompileInput {
         pointer_lookup: Box::leak(Box::new(
@@ -94,6 +95,7 @@ pub struct CoreCompilationContext<'a> {
 
 /// # Safety
 /// This function is unsafe because it creates a CoreCompilationContext
+#[cfg(test)]
 pub(crate) unsafe fn default_core_compilation_context<'a>()
 -> CoreCompilationContext<'a> {
     CoreCompilationContext::new(unsafe { default_compile_input() })

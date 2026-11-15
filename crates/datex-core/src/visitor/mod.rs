@@ -60,6 +60,9 @@ mod tests {
                 message: msg.to_string(),
             }
         }
+        pub fn message(&self) -> &str {
+            &self.message
+        }
     }
 
     struct MyAst;

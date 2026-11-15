@@ -47,9 +47,6 @@ mod tests {
     #[allow(clippy::mutable_key_type)]
     #[cfg(feature = "std")]
     fn from_value() {
-        use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-
-        let cache = &mut SharedReferencesCache::default();
         // map with [Value], [Value] as key and value
         let mut map = IndexMap::new();
         map.insert(

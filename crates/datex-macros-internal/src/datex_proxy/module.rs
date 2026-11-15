@@ -6,7 +6,7 @@ use crate::{
     utils::{derive_datex_prelude, get_datex_core_crate_name},
 };
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote};
+use quote::quote;
 use syn::{Item, ItemMod, LitStr, Visibility, parse::Parse};
 
 struct ModuleAttributes {

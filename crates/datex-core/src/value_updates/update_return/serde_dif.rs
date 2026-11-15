@@ -9,10 +9,7 @@ use crate::{
 use crate::dif::{
     dif_vec::DIFVec, value_with_serde_context::ValueWithSerdeContext,
 };
-use serde::{
-    Serializer,
-    ser::{SerializeSeq, SerializeStruct},
-};
+use serde::{Serializer, ser::SerializeSeq};
 
 impl SerializeWithSerdeContext for UpdateReturn {
     fn serialize_with_ctx<S: Serializer>(

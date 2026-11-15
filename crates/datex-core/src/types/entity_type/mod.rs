@@ -97,6 +97,7 @@ impl EntityType {
     }
 
     /// Replaces the inner [EntityTypeDefinition] contained in the [SharedContainer].
+    #[allow(unused)]
     pub(crate) fn replace_definition(&self, definition: EntityTypeDefinition) {
         let reference = self.0.clone().derive_reference_with_max_mutability();
         let mut inner = reference.get_rc_internal().borrow_mut();

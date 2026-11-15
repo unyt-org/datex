@@ -144,11 +144,6 @@ impl RuntimeExecutionStack {
         self.values.push(Some(value));
     }
 
-    /// Pushes multiple values to the stack
-    pub(crate) fn push_multiple(&mut self, values: Vec<ValueContainer>) {
-        self.values.extend(values.into_iter().map(Some));
-    }
-
     /// Returns the current index for the next value to be pushed to the stack, which is the length of the current stack values.
     pub(crate) fn current_index(&self) -> StackIndex {
         StackIndex(self.values.len() as u32)

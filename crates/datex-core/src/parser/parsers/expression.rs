@@ -378,6 +378,8 @@ impl Parser {
         }
     }
 
+    /// TODO: Do we need this still
+    #[allow(unused)]
     fn unary_operator_from_token(
         token: &SpannedToken,
     ) -> Result<UnaryOperator, SpannedParserError> {

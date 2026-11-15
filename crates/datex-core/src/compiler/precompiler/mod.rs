@@ -1285,7 +1285,7 @@ mod tests {
         let ast = Parser::parse_with_default_options("var x = 1; var x = 2;")
             .unwrap();
         let result = precompile(ast, options);
-        assert_matches!(result.unwrap_err(), SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst::Simple(SpannedCompilerError{span, error: CompilerError::InvalidRedeclaration(name)})  if name == "x");
+        assert_matches!(result.unwrap_err(), SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst::Simple(SpannedCompilerError{ error: CompilerError::InvalidRedeclaration(name), ..})  if name == "x");
     }
 
     #[test]
@@ -1299,7 +1299,7 @@ mod tests {
         assert!(result.is_err());
         assert_matches!(
             result,
-            Err(SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst::Simple(SpannedCompilerError{span, error: CompilerError::InvalidRedeclaration(name)})) if name == "A"
+            Err(SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst::Simple(SpannedCompilerError{ error: CompilerError::InvalidRedeclaration(name), ..})) if name == "A"
         );
     }
 

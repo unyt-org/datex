@@ -1,8 +1,4 @@
-use core::{
-    cell::Ref,
-    fmt::{Debug, Pointer},
-    ops::Deref,
-};
+use core::{cell::Ref, fmt::Debug, ops::Deref};
 
 /// A goat can be a Ref or a borrowed value
 pub enum Goat<'a, T: ?Sized> {

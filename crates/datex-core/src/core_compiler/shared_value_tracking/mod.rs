@@ -83,6 +83,7 @@ pub struct SharedValueTracking<'a> {
 }
 
 /// # Safety: This function is unsafe because it leaks memory and returns a reference with a static lifetime. It should only be used in tests where the leaked memory is acceptable.
+#[cfg(test)]
 pub(crate) unsafe fn default_tracking<'a>() -> SharedValueTracking<'a> {
     let lookup = Box::leak(Box::new(PointerAvailabilityLookup::default()));
     let receivers: &'a [Endpoint] = Box::leak(Box::new([]));

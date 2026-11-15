@@ -21,6 +21,7 @@ use crate::{
 
 /// Creates a new [ValueContainer] with a tagged type definition based on the provided [ValueContainer] and tag.
 /// It expects the input [ValueContainer] to be a local value; otherwise, it returns an [ExecutionError::ExpectedLocalValue].
+#[allow(unused)]
 pub fn create_tagged_value_container(
     value_container: ValueContainer,
     tag: String,

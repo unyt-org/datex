@@ -59,7 +59,11 @@ impl Runtime {
         }
     }
 
-    fn register_endpoint_property(&self, name: &str, value: ValueContainer) {
+    pub fn register_endpoint_property(
+        &self,
+        name: &str,
+        value: ValueContainer,
+    ) {
         self.internal.register_endpoint_property(name, value);
     }
 

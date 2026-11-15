@@ -1,6 +1,8 @@
 //! This module contains the implementation of the [ValueContainer] enum, which represents a container for values in the DATEX type system.
 //! A [ValueContainer] can either be a local value, which directly contains a [Value], or a shared value, which contains a reference to a [SharedContainer].
-use crate::utils::sheep::Sheep;
+use crate::{
+    traits::convert_value_container::ConvertValueContainer, utils::sheep::Sheep,
+};
 mod equality;
 mod identity;
 mod serde_dif;
@@ -36,7 +38,10 @@ use crate::{
     },
     values::core_values::endpoint::Endpoint,
 };
-use core::{hash::Hasher, ops::FnOnce};
+use core::{
+    hash::{Hash, Hasher},
+    ops::FnOnce,
+};
 
 pub mod classification;
 pub mod convert_parts;

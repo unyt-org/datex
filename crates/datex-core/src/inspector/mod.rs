@@ -179,7 +179,7 @@ mod tests {
             .unwrap()
             .try_as::<Callable>()
             .unwrap();
-        let (result, mut borrows) = name_fn
+        let (_result, mut borrows) = name_fn
             .try_apply_sync_checked(
                 &runtime,
                 vec![ApplyArgument::referenced(inspector_container)],

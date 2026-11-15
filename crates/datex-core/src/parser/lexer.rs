@@ -461,12 +461,6 @@ fn allocated_string(lex: &mut Lexer<Token>) -> String {
     lex.slice().to_owned()
 }
 
-fn numeric_parts(lex: &mut Lexer<Token>) -> NumericLiteralParts {
-    // 1. Remove underscores
-    let s = lex.slice().replace('_', "");
-    NumericLiteralParts::from(s)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

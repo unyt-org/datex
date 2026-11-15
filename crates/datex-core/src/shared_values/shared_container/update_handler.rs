@@ -66,7 +66,7 @@ mod tests {
     ) -> (SharedContainer, Rc<RefCell<Vec<Update>>>) {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
-        let mut shared = SharedContainer::new_owned_with_inferred_allowed_type(
+        let shared = SharedContainer::new_owned_with_inferred_allowed_type(
             val,
             SharedContainerMutability::Mutable,
             address_provider,

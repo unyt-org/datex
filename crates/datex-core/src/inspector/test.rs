@@ -30,7 +30,7 @@ pub async fn inspector_instantiation() {
     use_mock_setup_with_two_connected_runtimes(
         endpoint_a.clone(),
         endpoint_b.clone(),
-        async |runtime_a, runtime_b| {
+        async |runtime_a, _runtime_b| {
             // execute @test_b.inspector.create
             let result = runtime_a
                 .execute(

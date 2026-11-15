@@ -651,7 +651,7 @@ pub mod tests {
         )
         .unwrap();
         let input = unsafe { default_compile_input() };
-        let mut compilation_context = CompilationContext::new(
+        let compilation_context = CompilationContext::new(
             vec![],
             options.compile_scope.execution_mode,
             input,

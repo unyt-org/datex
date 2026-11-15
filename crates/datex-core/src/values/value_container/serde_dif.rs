@@ -2,7 +2,7 @@ use crate::{
     shared_values::SharedContainer,
     values::{value::Value, value_container::ValueContainer},
 };
-use serde::{Serializer, ser::SerializeSeq};
+use serde::Serializer;
 
 use crate::{
     dif::{

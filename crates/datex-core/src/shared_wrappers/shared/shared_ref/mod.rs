@@ -2,7 +2,6 @@ mod convert_value_container;
 mod get_datex_type;
 
 use crate::{
-    prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
         OwnedSharedContainer, ReferencedSharedContainer,

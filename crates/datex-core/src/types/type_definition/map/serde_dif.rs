@@ -10,7 +10,7 @@ use crate::{
 };
 use serde::{
     Deserializer, Serializer,
-    de::{SeqAccess, Visitor},
+    de::Visitor,
     ser::{SerializeSeq, SerializeTuple},
 };
 

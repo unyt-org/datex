@@ -16,7 +16,7 @@ use core::ops::Deref;
 use serde::{
     Deserializer, Serializer,
     de::{MapAccess, Visitor},
-    ser::{SerializeMap, SerializeSeq, SerializeTuple},
+    ser::{SerializeMap, SerializeTuple},
 };
 
 impl SerializeWithSerdeContext for CallableTypeDefinition {

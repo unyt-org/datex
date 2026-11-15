@@ -167,7 +167,7 @@ mod tests {
         let shared_values_cache = RefCell::new(SharedValuesCache::default());
         let shared_references_cache =
             RefCell::new(SharedReferencesCache::default());
-        let mut context =
+        let context =
             SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         let owned_shared_container =
@@ -199,7 +199,7 @@ mod tests {
         let shared_values_cache = RefCell::new(SharedValuesCache::default());
         let shared_references_cache =
             RefCell::new(SharedReferencesCache::default());
-        let mut context =
+        let context =
             SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         let owned_container =

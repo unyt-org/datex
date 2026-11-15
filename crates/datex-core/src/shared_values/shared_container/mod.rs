@@ -459,6 +459,7 @@ impl SharedContainer {
     }
 
     /// Marks the shared container as uninitialized.
+    #[allow(unused)]
     pub(crate) fn mark_uninitialized(&mut self) {
         match self {
             SharedContainer::Owned(owned) => owned.mark_uninitialized(),
@@ -566,7 +567,7 @@ mod tests {
             Err(ObserverError::ImmutableValue)
         );
 
-        let mut r = SharedContainer::new_owned_with_inferred_allowed_type(
+        let r = SharedContainer::new_owned_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Mutable,
             address_provider,

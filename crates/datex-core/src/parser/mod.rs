@@ -169,6 +169,8 @@ impl Parser {
 
     /// Collects the Err variant of the Result if detailed error collection is enabled,
     /// or returns the Result mapped to a MaybeAction.
+    /// TODO: Do we need this still
+    #[allow(unused)]
     fn collect_result<T>(
         &mut self,
         result: Result<T, SpannedParserError>,

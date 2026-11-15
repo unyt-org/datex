@@ -12,7 +12,7 @@ use datex_core::{
             execution_input::ExecutionCallerMetadata,
         },
     },
-    traits::structural_eq::{StructuralEq, assert_structural_eq},
+    traits::structural_eq::assert_structural_eq,
     values::{
         core_value::CoreValue,
         core_values::{

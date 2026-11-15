@@ -90,12 +90,7 @@ where
         }
     }
 }
-//
-// pub enum SyncOrAsync<SyncValue, AsyncValue, F: Future<Output = AsyncValue>> {
-//     Sync(SyncValue),
-//     Async(F),
-// }
-//
+
 pub enum SyncOrAsyncResolved<SyncValue, AsyncValue> {
     Sync(SyncValue),
     Async(AsyncValue),

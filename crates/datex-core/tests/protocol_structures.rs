@@ -13,7 +13,7 @@ use datex_core::{
             serializable::Serializable,
         },
     },
-    shared_values::{PointerAddress, RemotePointerAddress},
+    shared_values::PointerAddress,
     values::core_values::endpoint::{Endpoint, EndpointInstance, EndpointType},
 };
 use serde::Serialize;

@@ -52,10 +52,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{
-    ops::{Deref, DerefMut},
-    str::FromStr,
-};
+use core::{ops::Deref, str::FromStr};
 use log::info;
 
 macro yield_unwrap($expr:expr) {

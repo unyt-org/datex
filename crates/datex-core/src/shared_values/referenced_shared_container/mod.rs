@@ -138,6 +138,7 @@ impl ReferencedSharedContainer {
     /// Automatically infers the allowed type of the shared container from the provided [ValueContainer].
     /// # Safety
     /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [SharedReferencesCache]
+    #[allow(unused)]
     pub(crate) unsafe fn new_immutable_external_with_inferred_allowed_type(
         value_container: ValueContainer,
         address: RemotePointerAddress,
@@ -163,6 +164,7 @@ impl ReferencedSharedContainer {
     /// an error is returned
     /// # Safety
     /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [SharedReferencesCache]
+    #[allow(unused)]
     pub(crate) unsafe fn try_new_external(
         value_container: ValueContainer,
         address: RemotePointerAddress,

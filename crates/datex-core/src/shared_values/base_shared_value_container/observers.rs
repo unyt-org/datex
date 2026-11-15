@@ -288,6 +288,7 @@ impl ObserverData {
 
     /// Removes all observers from this reference.
     /// Returns an error if the reference is immutable.
+    #[allow(unused)]
     pub(crate) fn unobserve_all(&mut self) -> Result<(), ObserverError> {
         for id in self.observers_ids() {
             let _ = self.unobserve(id);

@@ -28,6 +28,8 @@ mod tests {
     #[test]
     fn test_create_channel() {
         let runtime = Runtime::stub();
-        let (sender, receiver_ref) = create_channel::<i32>(&runtime);
+        let (_sender, _receiver_ref) = create_channel::<i32>(&runtime);
     }
+
+    // TODO: Add more tests for create_channel if necessary
 }

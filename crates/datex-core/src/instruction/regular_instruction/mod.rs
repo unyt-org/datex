@@ -1110,6 +1110,8 @@ impl RegularInstruction {
         }
     }
 
+    /// TODO do we need this still?
+    #[allow(unused)]
     fn read_regular_instruction_code<R: Read + Seek>(
         mut reader: &mut R,
     ) -> Result<InstructionCode, DXBParserError> {

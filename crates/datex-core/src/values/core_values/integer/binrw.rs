@@ -1,6 +1,6 @@
 use crate::{prelude::*, values::core_values::integer::Integer};
 use binrw::{
-    BinRead, BinReaderExt, BinResult, BinWrite, Endian,
+    BinRead, BinResult, BinWrite, Endian,
     io::{Read, Seek, Write},
     meta::{EndianKind, ReadEndian},
 };

@@ -24,7 +24,7 @@ use crate::{
 use serde::{
     Deserializer, Serializer,
     de::{self, Visitor},
-    ser::{SerializeMap, SerializeSeq},
+    ser::SerializeMap,
 };
 use strum::VariantNames;
 
