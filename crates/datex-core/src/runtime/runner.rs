@@ -47,7 +47,7 @@ impl RuntimeRunner {
             com_interface_reconnect_request_receiver,
         ) = create_unbounded_channel::<ComInterfaceReconnectRequest>();
 
-        let (com_hub, com_hub_task_future) = ComHub::create(
+        let (com_hub, com_hub_task_future) = ComHub::create_with_vault(
             endpoint.clone(),
             incoming_sections_sender,
             com_interface_reconnect_request_sender,
