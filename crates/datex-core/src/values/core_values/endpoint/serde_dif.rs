@@ -32,18 +32,6 @@ impl<'de> Deserialize<'de> for Endpoint {
     }
 }
 
-/*
-TODO: handle
-   ctx.serialize_core_value(
-            self,
-            CoreLibBaseTypeId::Endpoint.into(),
-            &ValueClassification::default(),
-            serializer,
-            false,
-        )
-in macro
- */
-
 impl SerializeWithSerdeContext for Endpoint {
     fn serialize_with_ctx<S: Serializer>(
         &self,
