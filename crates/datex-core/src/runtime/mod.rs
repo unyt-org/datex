@@ -12,7 +12,7 @@ use crate::prelude::*;
 use core::{fmt::Debug, ops::Deref, result::Result};
 use execution::context::{ExecutionContext, ScriptExecutionError};
 pub mod cache;
-mod config;
+pub mod config;
 pub mod execution;
 mod incoming_sections;
 mod internal;
