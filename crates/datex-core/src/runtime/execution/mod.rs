@@ -1186,7 +1186,6 @@ mod tests {
     #[tokio::test]
     async fn env_slot() {
         use indexmap::IndexMap;
-
         let res = execute_datex_script_with_runtime(
             RuntimeConfig {
                 env: Some(
