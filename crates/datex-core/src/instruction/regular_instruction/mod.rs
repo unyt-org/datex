@@ -925,7 +925,7 @@ impl RegularInstruction {
                 NextExpectedInstructions::Regular(list.element_count)
             } // list elements
 
-            RegularInstruction::CompactList(list) => {
+            RegularInstruction::CompactList(_list) => {
                 NextExpectedInstructions::None
             } // compact list, elements are inlined
 
@@ -1229,7 +1229,6 @@ impl RegularInstruction {
                     .map(|b| format!("{:02x}", b))
                     .collect::<Vec<_>>()
                     .join(" ");
-                
                 write!(string, "[count: {}, type: {}, elements: <{}>]", data.element_count, CoreLibTypeId::try_from(data.core_lib_type).map(|id| id.to_string()).unwrap_or_else(|_| "<invalid>".to_string()), elements_hex)
             }
             RegularInstruction::Map(data) => {
@@ -1442,11 +1441,16 @@ impl RegularInstruction {
     }
 }
 
-use crate::instruction::instruction_data::{CallMethodData, CallableData, CallableDeclarationData, CompactListData, EntityTypeDefinitionData};
+use crate::{
+    instruction::instruction_data::{
+        CallMethodData, CallableData, CallableDeclarationData, CompactListData,
+        EntityTypeDefinitionData,
+    },
+    libs::core::type_id::CoreLibTypeId,
+};
 /// Serializes RegularInstruction to tuple (instruction code as string, optional metadata as string)
 #[cfg(feature = "disassembler")]
 use serde::{Serialize, Serializer, ser::SerializeTuple};
-use crate::libs::core::type_id::CoreLibTypeId;
 
 #[cfg(feature = "disassembler")]
 impl Serialize for RegularInstruction {

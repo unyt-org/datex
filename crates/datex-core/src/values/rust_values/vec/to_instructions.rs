@@ -2,15 +2,17 @@ use crate::{
     core_compiler::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::regular_instruction::RegularInstruction,
+    instruction::{
+        instruction_data::CompactListData,
+        regular_instruction::RegularInstruction,
+    },
+    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibVariantTypeId},
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    values::core_values::native::DatexNativeBase,
+    values::core_values::{
+        integer::typed_integer::IntegerTypeVariant, native::DatexNativeBase,
+    },
 };
-use crate::instruction::instruction_data::CompactListData;
-use crate::libs::core::core_lib_id::CoreLibIdIndex;
-use crate::libs::core::type_id::CoreLibVariantTypeId;
-use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
 
 impl<K> ToInstructions for Vec<K>
 where
@@ -36,17 +38,18 @@ where
 impl ToInstructions for Vec<u8> {
     fn to_instructions<'a>(
         &'a self,
-        visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache,
+        _visitor: &'a mut dyn ValueVisitor,
+        _cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield RegularInstruction::CompactList(CompactListData {
                 element_count: self.len() as u32,
-                core_lib_type: CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(
-                    IntegerTypeVariant::U8,
-                )),
+                core_lib_type: CoreLibIdIndex::from(
+                    CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8),
+                ),
                 elements: self.clone(),
-            }).into();
+            })
+            .into();
         })
     }
 }

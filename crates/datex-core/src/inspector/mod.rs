@@ -22,7 +22,6 @@ mod datex_inspector {
         values::core_values::{channel::create_channel, receiver::Receiver},
     };
     use core::cell::RefCell;
-    use log::info;
 
     #[derive(Datex, Debug, Clone)]
     #[datex(structural)]
@@ -67,20 +66,27 @@ mod datex_inspector {
             let uuid_clone = uuid.clone();
             let runtime_clone = runtime.clone();
 
-            *uuid.borrow_mut() = Some(runtime.com_hub().register_block_interceptor(BlockInterceptor::new(
-                move |block| {
-                    let captured_block = CapturedBlockData {
-                        block: block.block.to_bytes(),
-                        socket_uuid: block.socket_uuid.to_string(),
-                        direction: block.direction,
-                    };
-                    if sender.send(captured_block).is_err() {
-                        // remove interceptor
-                        runtime_clone.com_hub().unregister_block_interceptor(uuid_clone.borrow().as_ref().unwrap());
-                    }
-                },
-                false, // exclude debug blocks
-            )));
+            *uuid.borrow_mut() =
+                Some(runtime.com_hub().register_block_interceptor(
+                    BlockInterceptor::new(
+                        move |block| {
+                            let captured_block = CapturedBlockData {
+                                block: block.block.to_bytes(),
+                                socket_uuid: block.socket_uuid.to_string(),
+                                direction: block.direction,
+                            };
+                            if sender.send(captured_block).is_err() {
+                                // remove interceptor
+                                runtime_clone
+                                    .com_hub()
+                                    .unregister_block_interceptor(
+                                        uuid_clone.borrow().as_ref().unwrap(),
+                                    );
+                            }
+                        },
+                        false, // exclude debug blocks
+                    ),
+                ));
 
             receiver.mark_debug(true);
 

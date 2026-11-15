@@ -111,6 +111,7 @@ use crate::{
     instruction::instruction_data::{
         CallMethodData, CallableSignatureData, ImplMarkersData, ShortMapData,
     },
+    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibVariantTypeId},
     runtime::execution::macros::interrupt_with_borrowed_args_and_maybe_result,
     traits::apply::{ApplyArgument, into_apply_arguments_with_stack_indices},
     types::{
@@ -128,17 +129,15 @@ use crate::{
     },
     values::{
         core_values::{
-            callable::DatexBytecodeCallable, receiver::ValueContainerReceiver,
-            sender::Sender,
+            callable::DatexBytecodeCallable,
+            integer::typed_integer::IntegerTypeVariant,
+            receiver::ValueContainerReceiver, sender::Sender,
         },
         value::value_classification::{ValueClassification, ValueTag},
         value_container::borrowed_value_container::BorrowedValueContainer,
     },
 };
 use collected_execution_result::CollectedExecutionResult;
-use crate::libs::core::core_lib_id::CoreLibIdIndex;
-use crate::libs::core::type_id::CoreLibVariantTypeId;
-use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations

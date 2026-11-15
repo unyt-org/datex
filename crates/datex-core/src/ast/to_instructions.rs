@@ -1269,14 +1269,12 @@ impl AstNodeToInstructions for UnboxAssignment {
             };
 
             // compile assigned expression
-            yield_all!(
-                self.assigned_expression.ast_node_to_instructions(
-                    compilation_context,
-                    cache,
-                    ast_metadata,
-                    ctx_metadata.inner()
-                )
-            );
+            yield_all!(self.assigned_expression.ast_node_to_instructions(
+                compilation_context,
+                cache,
+                ast_metadata,
+                ctx_metadata.inner()
+            ));
 
             // compile unbox expression
             yield_all!(self.unbox_expression.ast_node_to_instructions(
@@ -1958,22 +1956,18 @@ impl AstNodeToInstructions for TypeExpression {
                 }
                 TypeExpressionData::Range(range) => {
                     yield Ok(TypeInstruction::Range.into());
-                    yield_all!(
-                        range.start.deref().ast_node_to_instructions(
-                            compilation_context,
-                            cache,
-                            ast_metadata,
-                            ctx_metadata.inner()
-                        )
-                    );
-                    yield_all!(
-                        range.end.deref().ast_node_to_instructions(
-                            compilation_context,
-                            cache,
-                            ast_metadata,
-                            ctx_metadata.inner()
-                        )
-                    );
+                    yield_all!(range.start.deref().ast_node_to_instructions(
+                        compilation_context,
+                        cache,
+                        ast_metadata,
+                        ctx_metadata.inner()
+                    ));
+                    yield_all!(range.end.deref().ast_node_to_instructions(
+                        compilation_context,
+                        cache,
+                        ast_metadata,
+                        ctx_metadata.inner()
+                    ));
                 }
                 e => todo!(
                     "Type expression to instruction not implemented for {:?}",

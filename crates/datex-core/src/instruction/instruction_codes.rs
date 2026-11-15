@@ -170,11 +170,11 @@ pub enum InstructionCode {
     INSTANT,     // ISO 8601 datetime stored as i128 milliseconds since epoch
 
     // lists and maps 0xe0 - 0xef
-    LIST,       // (1,2,3)
-    SHORT_LIST, // (1,2,3) - optimized short list with up to 255 elements
+    LIST,         // (1,2,3)
+    SHORT_LIST,   // (1,2,3) - optimized short list with up to 255 elements
     COMPACT_LIST, // optimized representation for a list containing core values of the same type (e.g. List<integer/u8>)
-    MAP,        // (a:1, b:2)
-    SHORT_MAP,  // {a:1, b:2} - optimized short map with up to 255 elements
+    MAP,          // (a:1, b:2)
+    SHORT_MAP,    // {a:1, b:2} - optimized short map with up to 255 elements
 
     KEY_VALUE_SHORT_TEXT,
     KEY_VALUE_DYNAMIC, // for object elements with dynamic key

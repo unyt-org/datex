@@ -29,11 +29,15 @@ use modular_bitfield::{bitfield, prelude::B4};
 
 #[cfg(feature = "disassembler")]
 mod disassembler_instruction_data;
+use crate::{
+    libs::core::{
+        core_lib_id::CoreLibIdIndex,
+        type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
+    },
+    values::core_values::integer::typed_integer::IntegerTypeVariant,
+};
 #[cfg(feature = "disassembler")]
 pub use disassembler_instruction_data::*;
-use crate::libs::core::core_lib_id::CoreLibIdIndex;
-use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId};
-use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
@@ -418,30 +422,47 @@ pub fn element_size(core_lib_type_id: CoreLibIdIndex) -> u32 {
             CoreLibTypeId::Base(base_id) => match base_id {
                 CoreLibBaseTypeId::Null => 0,
                 CoreLibBaseTypeId::Boolean => 1,
-                _ => unimplemented!("Core lib type does not support element size: {}", core_lib_type_id),
-            }
+                _ => unimplemented!(
+                    "Core lib type does not support element size: {}",
+                    core_lib_type_id
+                ),
+            },
             CoreLibTypeId::Variant(variant_id) => match variant_id {
-                CoreLibVariantTypeId::Integer(integer_variant) => match integer_variant {
-                    IntegerTypeVariant::U8 => 1,
-                    IntegerTypeVariant::U16 => 2,
-                    IntegerTypeVariant::U32 => 4,
-                    IntegerTypeVariant::U64 => 8,
-                    IntegerTypeVariant::U128 => 16,
-                    IntegerTypeVariant::I8 => 1,
-                    IntegerTypeVariant::I16 => 2,
-                    IntegerTypeVariant::I32 => 4,
-                    IntegerTypeVariant::I64 => 8,
-                    IntegerTypeVariant::I128 => 16,
-                    _ => unimplemented!("Core lib type does not support element size: {}", core_lib_type_id),
+                CoreLibVariantTypeId::Integer(integer_variant) => {
+                    match integer_variant {
+                        IntegerTypeVariant::U8 => 1,
+                        IntegerTypeVariant::U16 => 2,
+                        IntegerTypeVariant::U32 => 4,
+                        IntegerTypeVariant::U64 => 8,
+                        IntegerTypeVariant::U128 => 16,
+                        IntegerTypeVariant::I8 => 1,
+                        IntegerTypeVariant::I16 => 2,
+                        IntegerTypeVariant::I32 => 4,
+                        IntegerTypeVariant::I64 => 8,
+                        IntegerTypeVariant::I128 => 16,
+                        _ => unimplemented!(
+                            "Core lib type does not support element size: {}",
+                            core_lib_type_id
+                        ),
+                    }
                 }
-                _ => unimplemented!("Core lib type does not support element size: {}", core_lib_type_id),
-            }
-        }
-        Err(_) => unimplemented!("Core lib type does not support element size: {}", core_lib_type_id),
+                _ => unimplemented!(
+                    "Core lib type does not support element size: {}",
+                    core_lib_type_id
+                ),
+            },
+        },
+        Err(_) => unimplemented!(
+            "Core lib type does not support element size: {}",
+            core_lib_type_id
+        ),
     }
 }
 
-pub fn calculate_list_size(core_lib_type_id: CoreLibIdIndex, element_count: u32) -> u32 {
+pub fn calculate_list_size(
+    core_lib_type_id: CoreLibIdIndex,
+    element_count: u32,
+) -> u32 {
     let element_size = element_size(core_lib_type_id);
     element_size * element_count
 }

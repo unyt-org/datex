@@ -48,18 +48,18 @@ use crate::{
         regular_instruction::RegularInstruction,
         type_instruction::TypeInstruction,
     },
-    libs::core::type_id::CoreLibBaseTypeId,
+    libs::core::{
+        core_lib_id::CoreLibIdIndex,
+        type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
+    },
     prelude::*,
     shared_values::{
         PointerAddress, ReferenceMutability, SharedContainerMutability,
     },
+    values::core_values::integer::typed_integer::IntegerTypeVariant,
 };
 use alloc::format;
 use core::cell::RefCell;
-use crate::libs::core::core_lib_id::CoreLibIdIndex;
-use crate::libs::core::type_id::CoreLibVariantTypeId;
-use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
-use crate::values::value_container::ValueContainer;
 
 #[derive(Debug)]
 enum CollectedAstResult {

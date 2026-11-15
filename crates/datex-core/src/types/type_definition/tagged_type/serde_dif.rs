@@ -24,10 +24,7 @@ impl SerializeWithSerdeContext for TaggedTypeDefinition {
         seq.serialize_element(&self.tag)?;
         match &self.ty {
             Some(ty) => {
-                seq.serialize_element(&ValueWithSerdeContext::new(
-                    &**ty,
-                    ctx,
-                ))?;
+                seq.serialize_element(&ValueWithSerdeContext::new(&**ty, ctx))?;
             }
             None => seq.serialize_element(&ValueWithSerdeContext::new(
                 &TypeDefinition::CoreType(CoreLibTypeId::Base(

@@ -381,7 +381,7 @@ impl TypedDecimal {
             TypedDecimal::Decimal(value) => format!("{}dbig", value),
         }
     }
-    
+
     pub fn to_string_with_suffix_separated(&self) -> String {
         match self {
             TypedDecimal::F32(value) => format!("{}_f32", value.into_inner()),

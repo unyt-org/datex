@@ -897,7 +897,8 @@ impl ComHub {
                     .await;
                 }
                 _ => {
-                    if let Err(e) = self.redirect_block(block, socket_uuid.clone(), is_for_own)
+                    if let Err(e) = self
+                        .redirect_block(block, socket_uuid.clone(), is_for_own)
                         .await
                     {
                         error!("Failed to redirect block to endpoints {:?}", e);

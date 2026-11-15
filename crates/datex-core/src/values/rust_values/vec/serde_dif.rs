@@ -11,16 +11,18 @@ use crate::{
         },
         value_with_serde_context::ValueWithSerdeContext,
     },
-    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
+    libs::core::{
+        core_lib_id::CoreLibIdIndex,
+        type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
+    },
     prelude::*,
+    values::core_values::integer::typed_integer::IntegerTypeVariant,
 };
 use num_traits::ToPrimitive;
 use serde::{
     de::{SeqAccess, Visitor},
     ser::SerializeTuple,
 };
-use crate::libs::core::type_id::CoreLibVariantTypeId;
-use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
 
 impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for Vec<T> {
     default fn serialize_with_ctx<S: serde::Serializer>(

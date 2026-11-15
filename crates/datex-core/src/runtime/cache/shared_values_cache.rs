@@ -122,7 +122,7 @@ impl SharedValuesCache {
 
         ptr
     }
-    
+
     /// Removes a stored vector from the cache based on its handle.
     pub fn remove_stored_vec(&mut self, handle: usize) {
         self.vecs.remove(&handle);
