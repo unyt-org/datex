@@ -20,6 +20,7 @@ impl ToInstructions for CallableTypeDefinition {
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::Callable(CallableSignatureData {
+                // TODO shall we use an option here, or an Enum for unnamed or named methods?
                 name: ShortTextData::new("".to_string()),
                 kind: self.kind,
                 parameter_count: self.parameters.len() as u8,
