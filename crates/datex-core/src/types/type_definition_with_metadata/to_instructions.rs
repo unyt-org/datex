@@ -16,7 +16,7 @@ impl ToInstructions for TypeDefinitionWithMetadata {
         cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen {
-            yield TypeInstruction::DefinitionWithMetadata(self.metadata).into();
+            yield_all!(self.metadata.to_instructions(visitor, cache));
             yield_all!(self.definition.to_instructions(visitor, cache))
         })
     }
