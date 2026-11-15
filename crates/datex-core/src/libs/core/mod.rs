@@ -259,9 +259,7 @@ impl CoreLibrary {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        libs::core::core_lib_id::CoreLibIdIndex, shared_values::PointerAddress,
-    };
+    use crate::libs::core::core_lib_id::CoreLibIdIndex;
 
     use super::*;
 

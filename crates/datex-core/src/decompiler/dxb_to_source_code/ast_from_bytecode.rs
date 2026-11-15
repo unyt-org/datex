@@ -1204,16 +1204,10 @@ fn resolve_signature(
 mod tests {
     use super::*;
     use crate::{
-        ast::{
-            expressions::{
-                DatexExpressionData, PropertyAccess, PropertyAssignment,
-            },
-            spanned::Spanned,
-        },
-        global::operators::{ModificationOperator, binary::ArithmeticOperator},
+        ast::{expressions::DatexExpressionData, spanned::Spanned},
+        global::operators::binary::ArithmeticOperator,
         instruction::instruction_codes::InstructionCode,
-        prelude::*,
-        values::core_values::integer::{Integer, typed_integer::TypedInteger},
+        values::core_values::integer::typed_integer::TypedInteger,
     };
 
     #[test]

@@ -558,16 +558,13 @@ pub mod tests {
         parse_datex_script_to_rich_ast_simple_error,
     };
     use crate::{
-        ast::expressions::{CallableDeclaration, CallableSignature},
         compiler::scope::CompilationScope,
         core_compiler::core_compilation_context::{
-            CompileInput, DXBWithSharedValues, default_compile_input,
+            DXBWithSharedValues, default_compile_input,
         },
         instruction::{
             instruction_codes::InstructionCode,
-            instruction_data::{
-                CallableDeclarationData, CallableSignatureData,
-            },
+            instruction_data::CallableSignatureData,
             regular_instruction::RegularInstruction,
             type_instruction::TypeInstruction,
         },
@@ -597,7 +594,7 @@ pub mod tests {
         global::{
             protocol_structures::injected_values::{
                 InjectedValueDeclaration, InjectedValueType,
-                LocalInjectedValueType, SharedInjectedValueType,
+                SharedInjectedValueType,
             },
             root_properties::RootProperty,
             stack_index::StackIndex,
@@ -605,9 +602,7 @@ pub mod tests {
         instruction::{
             Instruction,
             instruction_data::{
-                InstructionBlockData, InstructionBlockDataDebugTree, ListData,
-                MapData, ShortListData, ShortMapData, ShortTextData,
-                StatementsData, UInt8Data,
+                InstructionBlockDataDebugTree, ShortMapData, ShortTextData,
             },
         },
         libs::core::{
@@ -615,9 +610,7 @@ pub mod tests {
             type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         },
         prelude::*,
-        runtime::{Runtime, RuntimeConfig, RuntimeRunner},
-        shared_values::PointerAddress,
-        traits::convert_value_container::ConvertValueContainer,
+        runtime::Runtime,
         values::core_values::integer::{Integer, typed_integer::TypedInteger},
     };
     use alloc::format;
