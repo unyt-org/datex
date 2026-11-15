@@ -19,7 +19,6 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
     de::{Error, Visitor},
 };
-use serde_with::__private__::DeError;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ObserverError {
@@ -108,18 +107,16 @@ impl<'de> Deserialize<'de> for TransceiverId {
 
             fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
             where
-                E: DeError,
+                E: serde::de::Error,
             {
                 Ok(TransceiverId::Dif(v.to_u8().ok_or_else(|| {
-                    DeError::custom(format!(
-                        "value {v} is too large to fit into u8"
-                    ))
+                    E::custom(format!("value {v} is too large to fit into u8"))
                 })?))
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
             where
-                E: Error,
+                E: serde::de::Error,
             {
                 if v == "local" {
                     Ok(TransceiverId::Local)
