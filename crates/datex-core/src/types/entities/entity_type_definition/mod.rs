@@ -16,7 +16,7 @@ use core::fmt::Display;
 mod equality;
 /// Represents a definition of an "entity" type,
 /// which describes a nominal type identified by a unique pointer id.
-#[derive(Debug, Eq, Clone, Hash)]
+#[derive(Debug, Eq, Clone)]
 pub struct EntityTypeDefinition {
     pub(crate) name: String,
     pub(crate) definition: TypeDefinition,

@@ -1,16 +1,14 @@
 //! The `datex-core` crate is the core library for the DATEX system.
 #![cfg_attr(not(feature = "std"), no_std)]
+// Features required for the crate.
 #![feature(gen_blocks)]
 #![feature(async_iterator)]
 #![feature(deref_patterns)]
 #![feature(negative_impls, with_negative_coherence)]
-// #![allow(unused_parens)]
 #![feature(core_float_math)]
-#![allow(static_mut_refs)]
 #![feature(variant_count)]
 #![feature(const_cmp)]
 #![feature(const_trait_impl)]
-#![allow(incomplete_features)]
 #![feature(specialization)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
@@ -18,6 +16,10 @@
 #![rustfmt::skip::macros(assert_regular_instructions_equal)]
 #![feature(arbitrary_self_types)]
 #![feature(read_le)]
+// Allowances for various compiler features and warnings.
+#![allow(incomplete_features)]
+#![allow(static_mut_refs)]
+#![allow(async_fn_in_trait)]
 
 extern crate alloc;
 extern crate num_integer;

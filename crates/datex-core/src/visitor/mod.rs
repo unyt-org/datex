@@ -52,6 +52,7 @@ mod tests {
 
     #[derive(Debug)]
     pub struct MyAstExpressionError {
+        #[allow(unused)]
         message: String,
     }
     impl MyAstExpressionError {
@@ -59,9 +60,6 @@ mod tests {
             Self {
                 message: msg.to_string(),
             }
-        }
-        pub fn message(&self) -> &str {
-            &self.message
         }
     }
 

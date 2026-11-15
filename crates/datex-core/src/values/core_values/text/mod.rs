@@ -100,33 +100,6 @@ impl Text {
         }
     }
 
-    #[inline]
-    fn wrap_index(&self, index: i64) -> usize {
-        if index < 0 {
-            let len = match self {
-                Text::String(s) => s.chars().count() as i64,
-                Text::StaticStr(s) => s.chars().count() as i64,
-            };
-            (len + index) as usize
-        } else {
-            index as usize
-        }
-    }
-    #[inline]
-    fn get_valid_index(
-        &self,
-        index: i64,
-    ) -> Result<usize, IndexOutOfBoundsError> {
-        let index = self.wrap_index(index);
-        if (index) < self.as_str().len() {
-            Ok(index)
-        } else {
-            Err(IndexOutOfBoundsError {
-                index: index as u32,
-            })
-        }
-    }
-
     pub fn substring(&self, start: usize, end: usize) -> Option<Text> {
         if start > end || end > self.len() {
             return None;

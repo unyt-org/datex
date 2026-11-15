@@ -67,6 +67,9 @@ pub struct BorrowedCoreValueWithClassificationMut<'a> {
 }
 
 impl<'a> BorrowedCoreValueWithClassificationMut<'a> {
+    #[allow(unused)]
+    /// Attempts to clone the borrowed core value with classification into an owned [CoreValueWithClassification].
+    /// Returns an error if the inner borrowed core value cannot be cloned.
     pub(crate) fn try_clone_to_core_value_with_classification(
         self,
     ) -> Result<CoreValueWithClassification, ()> {

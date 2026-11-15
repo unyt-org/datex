@@ -63,6 +63,7 @@ impl<'ctx> SerdeContext<'ctx> {
 
     /// This method is used to serialize a value that requires a context to be serialized (i.e. a value that implements [SerializeWithSerdeContext]).
     /// It will serialize the value as a tuple of [<core_lib_id>, <value>, <classification>], where the classification is optional.
+    #[allow(unused)]
     pub(crate) fn serialize_value_with_context<Se, T>(
         &self,
         inner: &T,

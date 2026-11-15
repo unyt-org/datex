@@ -135,19 +135,6 @@ impl List {
         }
     }
 
-    #[inline]
-    fn get_valid_index(
-        &self,
-        index: i64,
-    ) -> Result<u32, IndexOutOfBoundsError> {
-        let index = self.wrap_index(index);
-        if (index as usize) < self.items.len() {
-            Ok(index)
-        } else {
-            Err(IndexOutOfBoundsError { index })
-        }
-    }
-
     /// Sets the value at the specified index.
     /// If the index is equal to the current length of the list, the value is pushed to the end.
     /// If the index is greater than the current length, None is returned.

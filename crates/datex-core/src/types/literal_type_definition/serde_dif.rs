@@ -193,18 +193,19 @@ mod tests {
     use super::*;
     use serde_json::{self, Value, json};
     use test_case::test_case;
-    fn assert_json_string_roundtrip(value: LiteralTypeDefinition) {
-        let serialized = serde_json::to_string(&value).unwrap();
+
+    fn assert_json_string_roundtrip(value: &LiteralTypeDefinition) {
+        let serialized = serde_json::to_string(value).unwrap();
         let deserialized: LiteralTypeDefinition =
             serde_json::from_str(&serialized).unwrap();
-        assert_eq!(deserialized, value);
+        assert_eq!(&deserialized, value);
     }
-    fn assert_json_roundtrip(value: LiteralTypeDefinition, expected: Value) {
-        let serialized = serde_json::to_value(&value).unwrap();
+    fn assert_json_roundtrip(value: &LiteralTypeDefinition, expected: Value) {
+        let serialized = serde_json::to_value(value).unwrap();
         assert_eq!(serialized, expected);
         let deserialized: LiteralTypeDefinition =
             serde_json::from_value(serialized).unwrap();
-        assert_eq!(deserialized, value);
+        assert_eq!(&deserialized, value);
     }
 
     #[test_case(LiteralTypeDefinition::Boolean(true.into()), json!(true); "boolean_true")]
@@ -233,6 +234,8 @@ mod tests {
         value: LiteralTypeDefinition,
         expected: Value,
     ) {
-        assert_json_roundtrip(value, expected);
+        assert_json_roundtrip(&value, expected);
+
+        assert_json_string_roundtrip(&value);
     }
 }
