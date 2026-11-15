@@ -86,6 +86,7 @@ impl<'de, T: DeserializeWithSerdeContextDyn> DeserializeSeed<'de>
     }
 }
 
+// FIXME #847
 pub macro impl_serde_with_context($t:ty) {
     impl<'de> DeserializeWithSerdeContext<'de> for $t {
         fn deserialize_with_ctx<D: Deserializer<'de>>(
