@@ -64,7 +64,7 @@ use strum_macros::Display;
 use crate::{
     collections::HashSet,
     crypto::CryptoImpl,
-    global::dxb_block::{BlockId, SignatureValidationError},
+    global::dxb_block::{BlockId, CryptoValidationError},
     network::{
         block_handler::IncomingSectionSender,
         com_hub::managers::com_interface_manager::{
@@ -276,8 +276,7 @@ pub type PrepareOwnBlockFuture<'a> =
 pub type PrepareOwnBlockResult<'a> =
     MaybeAsyncResult<DXBBlock, ComHubError, PrepareOwnBlockFuture<'a>>;
 
-pub type ReceiveBlockResult =
-    Result<Option<DXBBlock>, SignatureValidationError>;
+pub type ReceiveBlockResult = Result<Option<DXBBlock>, CryptoValidationError>;
 
 impl ComHub {
     pub fn create(
