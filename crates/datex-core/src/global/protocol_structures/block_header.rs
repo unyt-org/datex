@@ -31,6 +31,9 @@ impl BlockType {
     pub fn is_response(&self) -> bool {
         core::matches!(self, BlockType::Response | BlockType::TraceBack)
     }
+    pub fn is_hello(&self) -> bool {
+        core::matches!(self, BlockType::Hello)
+    }
 }
 
 // 21 bit + 43 bit = 64 bit

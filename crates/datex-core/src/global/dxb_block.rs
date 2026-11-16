@@ -5,7 +5,6 @@ use super::protocol_structures::{
 };
 use crate::{
     channel::mpsc::UnboundedReceiver,
-    crypto::CryptoImpl,
     global::protocol_structures::{
         block_header::BlockType, routing_header::Receivers,
     },
@@ -17,11 +16,10 @@ use binrw::{
     io::{Cursor, Read},
 };
 use core::{fmt::Display, result::Result, unimplemented};
-use datex_facades::crypto::{Crypto, CryptoSync};
 use strum::Display;
 use thiserror::Error;
 
-use crate::{prelude::*, utils::maybe_async::MaybeAsync};
+use crate::prelude::*;
 
 #[derive(Debug, Display, Error)]
 pub enum HeaderParsingError {
@@ -340,165 +338,6 @@ impl DXBBlock {
         };
 
         Ok(block)
-    }
-
-    /// Validates the signature of the block based on the signature type specified in the routing header.
-    /// Returns Ok(self) if the signature is valid, or a CryptoValidationError if the signature is missing, cannot be parsed, or is invalid.
-    pub fn validate_signature(
-        mut self,
-        peer_pub_sig_key: [u8; 32],
-        peer_pub_cry_key: [u8; 32],
-        own_pri_cry_key: [u8; 32],
-    ) -> MaybeAsync<
-        Result<DXBBlock, CryptoValidationError>,
-        impl Future<Output = Result<DXBBlock, CryptoValidationError>>,
-    > {
-        cfg_select! {
-            // if not crypto_enabled, but allow_unsigned_blocks is set, just return Ok(()) for all blocks, as signature validation is not possible
-            all(
-                not(feature = "crypto_enabled"),
-                feature = "allow_unsigned_blocks"
-            ) => {
-                log::info!(
-                    "Crypto and signature validation are disabled, allowing block without signature validation"
-                );
-                MaybeAsync::<
-                    Result<DXBBlock, CryptoValidationError>,
-                    core::future::Ready<
-                        Result<DXBBlock, CryptoValidationError>,
-                    >,
-                >::Sync(Ok(self))
-            }
-
-            // if crypto is enabled, perform signature validation based on the signature type specified in the routing header
-            _ => {
-                // TODO #179 check for creation time, withdraw if too old (TBD) or in the future
-                match self.routing_header.flags.signature_type() {
-                    // TODO #180: verify signature and abort if invalid
-                    // Check if signature is following in some later block and add them to
-                    // a pool of incoming blocks awaiting some signature
-                    signature_type @ (SignatureType::Encrypted
-                    | SignatureType::Unencrypted) => {
-                        MaybeAsync::Async(async move {
-                            if self.block_type() != BlockType::Hello {
-                                // derive key encryption key
-                                let shared_sec = CryptoImpl::derive_x25519_cheat(
-                                &own_pri_cry_key,
-                                &peer_pub_cry_key,
-                            )
-                            .map_err(|_| CryptoValidationError::KeyDerivationError)?;
-                                let kek_bytes = CryptoImpl::hkdf_sha256(
-                                    &shared_sec,
-                                    &[0u8; 16],
-                                )
-                                .await
-                                .map_err(|_| {
-                                    CryptoValidationError::KeyDerivationError
-                                })?;
-                                // split wrapped key from following body
-                                let (wrapped_key, enc_body) =
-                                    self.body.split_at(40);
-                                let w_key: [u8; 40] =
-                                wrapped_key.try_into().map_err(|_| {
-                                    CryptoValidationError::KeyDerivationError
-                                })?;
-                                let data_key = CryptoImpl::key_unwrap_rfc3394(
-                                    &kek_bytes, &w_key,
-                                )
-                                .await
-                                .map_err(|_| {
-                                    CryptoValidationError::KeyDerivationError
-                                })?;
-                                log::info!("Decrypting encrypted block");
-                                let decrypted_body =
-                                    CryptoImpl::aes_ctr_encrypt(
-                                        &data_key, &[0u8; 16], enc_body,
-                                    )
-                                    .await
-                                    .map_err(|_| {
-                                        CryptoValidationError::DecryptionError
-                                    })?;
-
-                                self.body = decrypted_body;
-                            }
-                            let is_valid = match signature_type {
-                                SignatureType::Unencrypted => {
-                                    log::info!(
-                                        "Validating not encrypted signature"
-                                    );
-                                    let signature = self
-                                        .signature
-                                        .as_ref()
-                                        .ok_or(
-                                        CryptoValidationError::MissingSignature,
-                                    )?;
-
-                                    {
-                                        let data = CryptoImpl::hash_sha256(&self.body)
-                                        .await
-                                        .map_err(|_| {
-                                            CryptoValidationError::SignatureParseError
-                                        })?;
-
-                                        CryptoImpl::ver_ed25519(
-                                        &peer_pub_sig_key,
-                                        signature,
-                                        &data,
-                                    )
-                                    .await
-                                    .map_err(|_| {
-                                        CryptoValidationError::InvalidSignature
-                                    })?
-                                    }
-                                }
-                                SignatureType::Encrypted => {
-                                    log::info!(
-                                        "Validating encrypted signature"
-                                    );
-                                    unimplemented!("To be implemented...");
-                                }
-                                _ => unreachable!(),
-                            };
-
-                            match is_valid {
-                                true => Ok(self),
-                                false => {
-                                    Err(CryptoValidationError::InvalidSignature)
-                                }
-                            }
-                        })
-                    }
-
-                    SignatureType::None => {
-                        let is_valid = {
-                            cfg_if::cfg_if! {
-                                // if unsigned blocks are allowed, return true
-                                if #[cfg(feature = "allow_unsigned_blocks")] {
-                                    log::info!("Signature validation is disabled, allowing block without signature validation");
-                                    true
-                                }
-                                // otherwise, only allow unsigned Trace and TraceBack blocks,
-                                // as they are used for debugging and should not be used in production with real data
-                                else {
-                                    match self.block_type() {
-                                        BlockType::Trace | BlockType::TraceBack => true,
-                                        // TODO #181 Check if the sender is trusted (endpoint + interface) connection
-                                        _ => return MaybeAsync::Sync(Err(CryptoValidationError::MissingSignature))
-                                    }
-                                }
-                            }
-                        };
-
-                        MaybeAsync::Sync(match is_valid {
-                            true => Ok(self),
-                            false => {
-                                Err(CryptoValidationError::InvalidSignature)
-                            }
-                        })
-                    }
-                }
-            }
-        }
     }
 
     /// Get a list of all receiver endpoints from the routing header.

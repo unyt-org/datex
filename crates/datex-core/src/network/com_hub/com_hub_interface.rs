@@ -382,6 +382,7 @@ mod tests {
     #[tokio::test]
     #[cfg(feature = "std")]
     async fn interfaces_send_block() {
+        flexi_logger::init();
         run_with_coupled_com_hubs(|peer_a, mut peer_b| async move {
             // create block to send from A to B
             let block_a_to_b_body = [1, 2, 3];

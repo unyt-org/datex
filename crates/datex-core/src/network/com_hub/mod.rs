@@ -773,28 +773,12 @@ impl ComHub {
         let preprocess_result =
             self.receive_block_preprocess(&socket_uuid, block);
 
-        // get keys for decryption and validation from socketdata and vault
-        let (peer_pub_sig_key, peer_pub_cry_key, pri_cry_key) = {
-            let socket_properties = &self
-                .socket_manager()
-                .get_socket_by_uuid(&socket_uuid)
-                .unwrap()
-                .socket_properties;
-            let sig_key = socket_properties.pub_sig_key.unwrap();
-            let cry_key = socket_properties.pub_cry_key.unwrap();
-            let pri_cry_key = self.vault.try_lock().unwrap().pri_cry_key;
-            (sig_key, cry_key, pri_cry_key)
-        };
-
         // validate block signature if sent to own endpoint
         let validation_result = match preprocess_result.own_received_block {
             // if block is for own endpoint, validate signature if set
-            Some(block) => block
-                .validate_signature(
-                    peer_pub_sig_key,
-                    peer_pub_cry_key,
-                    pri_cry_key,
-                )
+            Some(block) => self
+                .clone()
+                .validate_signature(block, socket_uuid.clone())
                 .map(|validation| validation.map(Some)),
             // if block is not for own endpoint, don't validate signature and don't return own received block
             None => MaybeAsync::Sync(Ok(None)),
@@ -844,6 +828,183 @@ impl ComHub {
                 }
             })
             .flatten()
+    }
+
+    /// Validates the signature of the block based on the signature type specified in the routing header.
+    /// Returns Ok(self) if the signature is valid, or a CryptoValidationError if the signature is missing, cannot be parsed, or is invalid.
+    pub fn validate_signature(
+        self: Rc<Self>,
+        mut block: DXBBlock,
+        socket_uuid: ComInterfaceSocketUUID,
+    ) -> MaybeAsync<
+        Result<DXBBlock, CryptoValidationError>,
+        impl Future<Output = Result<DXBBlock, CryptoValidationError>>,
+    > {
+        cfg_select! {
+            // if not crypto_enabled, but allow_unsigned_blocks is set, just return Ok(()) for all blocks, as signature validation is not possible
+            all(
+                not(feature = "crypto_enabled"),
+                feature = "allow_unsigned_blocks"
+            ) => {
+                log::info!(
+                    "Crypto and signature validation are disabled, allowing block without signature validation"
+                );
+                MaybeAsync::<
+                    Result<DXBBlock, CryptoValidationError>,
+                    core::future::Ready<
+                        Result<DXBBlock, CryptoValidationError>,
+                    >,
+                >::Sync(Ok(block))
+            }
+
+            // if crypto is enabled, perform signature validation based on the signature type specified in the routing header
+            _ => {
+                // TODO #179 check for creation time, withdraw if too old (TBD) or in the future
+                match block.routing_header.flags.signature_type() {
+                    // TODO #180: verify signature and abort if invalid
+                    // Check if signature is following in some later block and add them to
+                    // a pool of incoming blocks awaiting some signature
+                    signature_type @ (SignatureType::Encrypted
+                    | SignatureType::Unencrypted) => {
+                        MaybeAsync::Async(async move {
+                            let own_pri_cry_key =
+                                self.vault.try_lock().unwrap().pri_cry_key;
+
+                            // get keys for decryption and validation from socketdata and vault
+                            let (peer_pub_sig_key, peer_pub_cry_key) = {
+                                let socket_properties = &self
+                                    .socket_manager()
+                                    .get_socket_by_uuid(&socket_uuid)
+                                    .unwrap()
+                                    .socket_properties;
+                                let sig_key =
+                                    socket_properties.pub_sig_key.unwrap();
+                                let cry_key =
+                                    socket_properties.pub_cry_key.unwrap();
+                                (sig_key, cry_key)
+                            };
+
+                            if block.routing_header.flags.encryption_type()
+                                == EncryptionType::Encrypted
+                            {
+                                // derive key encryption key
+                                let shared_sec = CryptoImpl::derive_x25519_cheat(
+                                &own_pri_cry_key,
+                                &peer_pub_cry_key,
+                            )
+                            .map_err(|_| CryptoValidationError::KeyDerivationError)?;
+                                let kek_bytes = CryptoImpl::hkdf_sha256(
+                                    &shared_sec,
+                                    &[0u8; 16],
+                                )
+                                .await
+                                .map_err(|_| {
+                                    CryptoValidationError::KeyDerivationError
+                                })?;
+                                // split wrapped key from following body
+                                let (wrapped_key, enc_body) =
+                                    block.body.split_at(40);
+                                let w_key: [u8; 40] =
+                                wrapped_key.try_into().map_err(|_| {
+                                    CryptoValidationError::KeyDerivationError
+                                })?;
+                                let data_key = CryptoImpl::key_unwrap_rfc3394(
+                                    &kek_bytes, &w_key,
+                                )
+                                .await
+                                .map_err(|_| {
+                                    CryptoValidationError::KeyDerivationError
+                                })?;
+                                log::info!("Decrypting encrypted block");
+                                let decrypted_body =
+                                    CryptoImpl::aes_ctr_encrypt(
+                                        &data_key, &[0u8; 16], enc_body,
+                                    )
+                                    .await
+                                    .map_err(|_| {
+                                        CryptoValidationError::DecryptionError
+                                    })?;
+
+                                block.body = decrypted_body;
+                            }
+                            let is_valid = match signature_type {
+                                SignatureType::Unencrypted => {
+                                    log::info!(
+                                        "Validating not encrypted signature"
+                                    );
+                                    let signature = block
+                                        .signature
+                                        .as_ref()
+                                        .ok_or(
+                                        CryptoValidationError::MissingSignature,
+                                    )?;
+
+                                    {
+                                        let data = CryptoImpl::hash_sha256(&block.body)
+                                        .await
+                                        .map_err(|_| {
+                                            CryptoValidationError::SignatureParseError
+                                        })?;
+
+                                        CryptoImpl::ver_ed25519(
+                                        &peer_pub_sig_key,
+                                        signature,
+                                        &data,
+                                    )
+                                    .await
+                                    .map_err(|_| {
+                                        CryptoValidationError::InvalidSignature
+                                    })?
+                                    }
+                                }
+                                SignatureType::Encrypted => {
+                                    log::info!(
+                                        "Validating encrypted signature"
+                                    );
+                                    unimplemented!("To be implemented...");
+                                }
+                                _ => unreachable!(),
+                            };
+
+                            match is_valid {
+                                true => Ok(block),
+                                false => {
+                                    Err(CryptoValidationError::InvalidSignature)
+                                }
+                            }
+                        })
+                    }
+
+                    SignatureType::None => {
+                        let is_valid = {
+                            cfg_if::cfg_if! {
+                                // if unsigned blocks are allowed, return true
+                                if #[cfg(feature = "allow_unsigned_blocks")] {
+                                    log::info!("Signature validation is disabled, allowing block without signature validation");
+                                    true
+                                }
+                                // otherwise, only allow unsigned Trace and TraceBack blocks,
+                                // as they are used for debugging and should not be used in production with real data
+                                else {
+                                    match block.block_type() {
+                                        BlockType::Trace | BlockType::TraceBack => true,
+                                        // TODO #181 Check if the sender is trusted (endpoint + interface) connection
+                                        _ => return MaybeAsync::Sync(Err(CryptoValidationError::MissingSignature))
+                                    }
+                                }
+                            }
+                        };
+
+                        MaybeAsync::Sync(match is_valid {
+                            true => Ok(block),
+                            false => {
+                                Err(CryptoValidationError::InvalidSignature)
+                            }
+                        })
+                    }
+                }
+            }
+        }
     }
 
     /// Preprocesses a received block and returns relay receivers and own received block if any
@@ -1608,9 +1769,17 @@ impl ComHub {
         // generate data key and encrypt the body
         let data_key: [u8; 32] =
             CryptoImpl::random_bytes(32).try_into().unwrap();
-        let encrypted_body =
+        // TODO avoid clones
+        let is_encrypted = matches!(
+            block.routing_header.flags.encryption_type(),
+            EncryptionType::Encrypted
+        );
+        let body = if is_encrypted {
             CryptoImpl::aes_cheat(&data_key, &[0u8; 16], block.body.as_ref())
-                .unwrap();
+                .unwrap()
+        } else {
+            block.body.clone()
+        };
 
         for (receiver_socket, endpoints) in outbound_receiver_groups {
             if let Some(socket_uuid) = receiver_socket {
@@ -1631,17 +1800,20 @@ impl ComHub {
                 )
                 .unwrap();
 
-                // derive key encryption key (kek) from shared secret
-                let kek_bytes =
-                    CryptoImpl::hkdf_cheat(&shared_sec, &[0u8; 16]).unwrap();
-                // wrap data_key with kek
-                let wrapped_key =
-                    CryptoImpl::aes_kw_wrap_cheat(&kek_bytes, &data_key)
-                        .unwrap();
+                // set body
+                if is_encrypted {
+                    // derive key encryption key (kek) from shared secret
+                    let kek_bytes =
+                        CryptoImpl::hkdf_cheat(&shared_sec, &[0u8; 16])
+                            .unwrap();
+                    // wrap data_key with kek
+                    let wrapped_key =
+                        CryptoImpl::aes_kw_wrap_cheat(&kek_bytes, &data_key)
+                            .unwrap();
 
-                // replace body with wrapped_key prepended to (a copy of) encrypted body
-                block.body =
-                    [wrapped_key.to_vec(), encrypted_body.clone()].concat();
+                    // replace body with wrapped_key prepended to (a copy of) encrypted body if encrypted
+                    block.body = [wrapped_key.to_vec(), body.clone()].concat();
+                }
 
                 results.push((
                     endpoints.clone(),
@@ -1980,6 +2152,11 @@ impl ComHub {
             .block_header
             .flags_and_timestamp
             .set_block_type(BlockType::Hello);
+
+        block
+            .routing_header
+            .flags
+            .set_encryption_type(EncryptionType::None);
         // TODO #182 include fingerprint of the own public key into body
 
         let block = self
@@ -2028,7 +2205,7 @@ pub mod tests {
             dxb_block::{DXBBlock, IncomingSection},
             protocol_structures::{
                 block_header::{BlockHeader, FlagsAndTimestamp},
-                routing_header::RoutingHeader,
+                routing_header::{EncryptionType, RoutingHeader},
             },
         },
         network::{
@@ -2512,6 +2689,10 @@ pub mod tests {
                         _| {
                 // create block and send it via the incoming data sender to the com hub
                 let mut block = DXBBlock::new_with_body(b"Hello world!");
+                block
+                    .routing_header
+                    .flags
+                    .set_encryption_type(EncryptionType::None);
                 block.set_receivers(vec![TEST_ENDPOINT_A.clone()]);
 
                 let block = com_hub
