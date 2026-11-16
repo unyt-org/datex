@@ -1,5 +1,5 @@
 use datex_facades::{
-    crypto::{AsyncCryptoResult, Crypto, CryptoSync, CryptoVault},
+    crypto::{AsyncCryptoResult, Crypto, CryptoSync},
     error::{
         AesCtrError, BackendError, Ed25519GenError, Ed25519SignError,
         Ed25519VerifyError, HkdfError, KeyUnwrapError, KeyWrapError,
@@ -98,6 +98,7 @@ impl CryptoSync for CryptoNative {
             })?;
         Ok((public_key, private_key))
     }
+
     // Derive shared secret on x255109
     fn derive_x25519_cheat(
         pri_key: &[u8; 32],
