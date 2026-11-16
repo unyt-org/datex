@@ -27,63 +27,116 @@ pub struct ReadmeDoctests;
 #[derive(Debug, Clone, PartialEq)]
 pub struct CryptoNative;
 impl CryptoSync for CryptoNative {
-    fn gen_ed25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError> {
-        let key = PKey::generate_ed25519()
-            .map_err(|_| BackendError::Unavailable("openssl ed25519 gen"))?;
+    fn gen_ed25519_cheat() -> Result<([u8; 32], [u8; 32]), Ed25519GenError> {
+        let key = PKey::generate_ed25519().map_err(|_| {
+            Ed25519GenError::Backend(BackendError::Unavailable(
+                "openssl ed25519 gen",
+            ))
+        })?;
 
         let public_key: [u8; 32] = key
             .raw_public_key()
-            .map_err(|_| BackendError::Unavailable("ed25519 pub der"))?
-            .try_into()
-            .map_err(|_| BackendError::Unavailable("ed25519 pub key length"))?;
-        let private_key: [u8; 32] = key
-            .raw_private_key()
-            .map_err(|_| BackendError::Unavailable("ed25519 priv pkcs8"))?
+            .map_err(|_| {
+                Ed25519GenError::Backend(BackendError::Unavailable(
+                    "openssl ed25519 pub key",
+                ))
+            })?
             .try_into()
             .map_err(|_| {
-                BackendError::Unavailable("ed25519 priv key length")
+                Ed25519GenError::Backend(BackendError::Unavailable(
+                    "openssl ed25519 pub key length",
+                ))
+            })?;
+        let private_key: [u8; 32] = key
+            .raw_private_key()
+            .map_err(|_| {
+                Ed25519GenError::Backend(BackendError::Unavailable(
+                    "openssl ed25519 priv key",
+                ))
+            })?
+            .try_into()
+            .map_err(|_| {
+                Ed25519GenError::Backend(BackendError::Unavailable(
+                    "openssl ed25519 priv key length",
+                ))
             })?;
 
         Ok((public_key, private_key))
     } // Generate encryption keypair
-    fn gen_x25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError> {
-        let key = PKey::generate_x25519()
-            .map_err(|_| BackendError::Unavailable("openssl x25519 gen"))?;
+    fn gen_x25519_cheat() -> Result<([u8; 32], [u8; 32]), X25519GenError> {
+        let key = PKey::generate_x25519().map_err(|_| {
+            X25519GenError::Backend(BackendError::Unavailable(
+                "openssl x25519 gen",
+            ))
+        })?;
 
         let public_key: [u8; 32] = key
             .raw_public_key()
-            .map_err(|_| BackendError::Unavailable("openssl x25519 gen"))?
+            .map_err(|_| {
+                X25519GenError::Backend(BackendError::Unavailable(
+                    "openssl x25519 pub key",
+                ))
+            })?
             .try_into()
-            .map_err(|_| BackendError::Unavailable("openssl x25519 gen"))?;
+            .map_err(|_| {
+                X25519GenError::Backend(BackendError::Unavailable(
+                    "openssl x25519 pub key length",
+                ))
+            })?;
         let private_key: [u8; 32] = key
             .raw_private_key()
-            .map_err(|_| BackendError::Unavailable("openssl x25519 gen"))?
+            .map_err(|_| {
+                X25519GenError::Backend(BackendError::Unavailable(
+                    "openssl x25519 gen",
+                ))
+            })?
             .try_into()
-            .map_err(|_| BackendError::Unavailable("openssl x25519 gen"))?;
+            .map_err(|_| {
+                X25519GenError::Backend(BackendError::Unavailable(
+                    "openssl x25519 gen",
+                ))
+            })?;
         Ok((public_key, private_key))
     }
     // Derive shared secret on x255109
     fn derive_x25519_cheat(
         pri_key: &[u8; 32],
         peer_raw: &[u8; 32],
-    ) -> Result<[u8; 32], BackendError> {
+    ) -> Result<[u8; 32], X25519DeriveError> {
         let my_priv = PKey::private_key_from_raw_bytes(pri_key, Id::X25519)
-            .map_err(|_| BackendError::Unavailable("x25519 derive cheat"))?;
+            .map_err(|_| {
+                X25519DeriveError::Backend(BackendError::Unavailable(
+                    "x25519 derive cheat",
+                ))
+            })?;
         let peer_pub = PKey::public_key_from_raw_bytes(peer_raw, Id::X25519)
-            .map_err(|_| BackendError::Unavailable("x25519 derive cheat"))?;
+            .map_err(|_| {
+                X25519DeriveError::Backend(BackendError::Unavailable(
+                    "x25519 derive cheat",
+                ))
+            })?;
 
-        let mut deriver = Deriver::new(&my_priv)
-            .map_err(|_| BackendError::Unavailable("x25519 deriver"))?;
-        deriver
-            .set_peer(&peer_pub)
-            .map_err(|_| BackendError::Unavailable("x25519 set_peer"))?;
+        let mut deriver = Deriver::new(&my_priv).map_err(|_| {
+            X25519DeriveError::Backend(BackendError::Unavailable(
+                "x25519 deriver",
+            ))
+        })?;
+        deriver.set_peer(&peer_pub).map_err(|_| {
+            X25519DeriveError::Backend(BackendError::Unavailable(
+                "x25519 set_peer",
+            ))
+        })?;
 
-        let shared = deriver
-            .derive_to_vec()
-            .map_err(|_| BackendError::Unavailable("x25519 derive"))?;
+        let shared = deriver.derive_to_vec().map_err(|_| {
+            X25519DeriveError::Backend(BackendError::Unavailable(
+                "x25519 derive",
+            ))
+        })?;
 
         if shared.len() != 32 {
-            return Err(BackendError::Unavailable("x25519 shared len"));
+            return Err(X25519DeriveError::Backend(BackendError::Unavailable(
+                "x25519 shared len",
+            )));
         }
 
         let mut out = [0u8; 32];
@@ -91,26 +144,37 @@ impl CryptoSync for CryptoNative {
         Ok(out)
     }
 
-    fn hkdf_cheat(ikm: &[u8], salt: &[u8]) -> Result<[u8; 32], BackendError> {
+    fn hkdf_cheat(ikm: &[u8], salt: &[u8]) -> Result<[u8; 32], HkdfError> {
         let info = b"";
-        let mut ctx = PkeyCtx::new_id(Id::HKDF)
-            .map_err(|_| BackendError::Unavailable("openssl hkdf ctx"))?;
-        ctx.derive_init()
-            .map_err(|_| BackendError::Unavailable("openssl hkdf init"))?;
+        let mut ctx = PkeyCtx::new_id(Id::HKDF).map_err(|_| {
+            HkdfError::Backend(BackendError::Unavailable("openssl hkdf ctx"))
+        })?;
+        ctx.derive_init().map_err(|_| {
+            HkdfError::Backend(BackendError::Unavailable("openssl hkdf init"))
+        })?;
         ctx.set_hkdf_mode(HkdfMode::EXTRACT_THEN_EXPAND)
-            .map_err(|_| BackendError::Unavailable("openssl hkdf mode"))?;
-        ctx.set_hkdf_md(Md::sha256())
-            .map_err(|_| BackendError::Unavailable("openssl hkdf md"))?;
-        ctx.set_hkdf_salt(salt)
-            .map_err(|_| BackendError::Unavailable("openssl hkdf salt"))?;
-        ctx.set_hkdf_key(ikm)
-            .map_err(|_| BackendError::Unavailable("openssl hkdf key"))?;
-        ctx.add_hkdf_info(info)
-            .map_err(|_| BackendError::Unavailable("openssl hkdf info"))?;
+            .map_err(|_| {
+                HkdfError::Backend(BackendError::Unavailable(
+                    "openssl hkdf mode",
+                ))
+            })?;
+        ctx.set_hkdf_md(Md::sha256()).map_err(|_| {
+            HkdfError::Backend(BackendError::Unavailable("openssl hkdf md"))
+        })?;
+        ctx.set_hkdf_salt(salt).map_err(|_| {
+            HkdfError::Backend(BackendError::Unavailable("openssl hkdf salt"))
+        })?;
+        ctx.set_hkdf_key(ikm).map_err(|_| {
+            HkdfError::Backend(BackendError::Unavailable("openssl hkdf key"))
+        })?;
+        ctx.add_hkdf_info(info).map_err(|_| {
+            HkdfError::Backend(BackendError::Unavailable("openssl hkdf info"))
+        })?;
 
         let mut okm = [0u8; 32];
-        ctx.derive(Some(&mut okm))
-            .map_err(|_| BackendError::Unavailable("openssl hkdf derive"))?;
+        ctx.derive(Some(&mut okm)).map_err(|_| {
+            HkdfError::Backend(BackendError::Unavailable("openssl hkdf derive"))
+        })?;
         Ok(okm)
     }
 
@@ -118,19 +182,23 @@ impl CryptoSync for CryptoNative {
         key: &[u8; 32],
         iv: &[u8; 16],
         data: &[u8],
-    ) -> Result<Vec<u8>, BackendError> {
+    ) -> Result<Vec<u8>, AesCtrError> {
         let cipher = Cipher::aes_256_ctr();
         let mut crypter = Crypter::new(cipher, Mode::Decrypt, key, Some(iv))
-            .map_err(|_| BackendError::Unavailable("openssl aes-ctr"))?;
+            .map_err(|_| {
+                AesCtrError::Backend(BackendError::Unavailable(
+                    "openssl aes-ctr",
+                ))
+            })?;
 
         let mut out = vec![0u8; data.len() + cipher.block_size()];
-        let mut count = crypter
-            .update(data, &mut out)
-            .map_err(|_| BackendError::Unavailable("aes-ctr update"))?;
+        let mut count = crypter.update(data, &mut out).map_err(|_| {
+            AesCtrError::Backend(BackendError::Unavailable("aes-ctr update"))
+        })?;
 
-        count += crypter
-            .finalize(&mut out[count..])
-            .map_err(|_| BackendError::Unavailable("aes-ctr finalize"))?;
+        count += crypter.finalize(&mut out[count..]).map_err(|_| {
+            AesCtrError::Backend(BackendError::Unavailable("aes-ctr finalize"))
+        })?;
 
         out.truncate(count);
         Ok(out)
@@ -139,10 +207,11 @@ impl CryptoSync for CryptoNative {
     fn aes_kw_wrap_cheat(
         kek_bytes: &[u8; 32],
         rb: &[u8; 32],
-    ) -> Result<[u8; 40], BackendError> {
+    ) -> Result<[u8; 40], KeyWrapError> {
         // Key encryption key
-        let kek = AesKey::new_encrypt(kek_bytes)
-            .map_err(|_| BackendError::Unavailable("openssl aes-kw"))?;
+        let kek = AesKey::new_encrypt(kek_bytes).map_err(|_| {
+            KeyWrapError::Backend(BackendError::Unavailable("openssl aes-kw"))
+        })?;
 
         // Key wrap
         let mut wrapped = [0u8; 40];
