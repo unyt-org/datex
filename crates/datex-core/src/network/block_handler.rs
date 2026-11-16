@@ -14,7 +14,7 @@ use crate::{
 };
 use alloc::rc::Weak;
 
-use crate::{disassembler::print_disassembled, prelude::*};
+use crate::prelude::*;
 use core::{cell::RefCell, fmt::Debug};
 use log::{info, warn};
 use ringmap::RingMap;
@@ -205,9 +205,9 @@ impl BlockHandler {
             .is_response();
 
         info!(
-            "Received block (context={context_id}, section={section_index}, block_nr={block_number})"
+            "Received block {} (context={context_id}, section={section_index}, block_nr={block_number})",
+            block.block_header.flags_and_timestamp.block_type()
         );
-        print_disassembled(&block.body);
 
         // handle observers if response block
         if is_response {

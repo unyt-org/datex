@@ -4,11 +4,12 @@ use crate::{
     core_compiler::core_compilation_context::{
         CompileInput, DXBWithSharedValues,
     },
+    disassembler::print_disassembled,
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{
             block_header::{BlockHeader, BlockType, FlagsAndTimestamp},
-            routing_header::RoutingHeader,
+            routing_header::{EncryptionType, RoutingHeader},
         },
     },
     network::{
@@ -538,6 +539,10 @@ impl ComHub {
             },
             ..DXBBlock::default()
         };
+        trace_block
+            .routing_header
+            .flags
+            .set_encryption_type(EncryptionType::None);
         self.set_trace_data_of_block(&mut trace_block, hops);
         trace_block.set_receivers(receiver_endpoint);
         trace_block
@@ -558,6 +563,7 @@ impl ComHub {
     ) -> Option<Vec<NetworkTraceHop>> {
         // convert DATEX to hops
         let dxb = block.body.clone();
+        log::info!("Trace data: {:?}", (&dxb));
         let runtime = self.get_runtime();
         let exec_input = ExecutionInput::new(
             DXBWithSharedValues::new(dxb, vec![]),
@@ -640,10 +646,7 @@ impl ComHub {
             CompileInput::new(&pointer_lookup, &[]),
             cache,
         );
-        // info!(
-        //     "Trace data: {}",
-        //     decompile_body(&dxb, DecompileOptions::default()).unwrap()
-        // );
+        print_disassembled(&dxb.dxb);
 
         block.body = dxb.dxb;
     }

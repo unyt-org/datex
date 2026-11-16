@@ -82,7 +82,7 @@ pub async fn get_coupled_com_hubs() -> (
         com_interface_reconnect_request_sender_a,
         com_interface_reconnect_request_receiver_a,
     ) = create_unbounded_channel::<ComInterfaceReconnectRequest>();
-    let (com_hub_a, task_future_a) = ComHub::create(
+    let (com_hub_a, task_future_a) = ComHub::create_with_vault(
         TEST_ENDPOINT_A.clone(),
         incoming_sections_sender_a,
         com_interface_reconnect_request_sender_a,
@@ -95,7 +95,7 @@ pub async fn get_coupled_com_hubs() -> (
         com_interface_reconnect_request_sender_b,
         com_interface_reconnect_request_receiver_b,
     ) = create_unbounded_channel::<ComInterfaceReconnectRequest>();
-    let (com_hub_b, task_future_b) = ComHub::create(
+    let (com_hub_b, task_future_b) = ComHub::create_with_vault(
         TEST_ENDPOINT_B.clone(),
         incoming_sections_sender_b,
         com_interface_reconnect_request_sender_b,
@@ -200,6 +200,7 @@ fn couple_com_hubs_internal(
                 }
             },
             SendCallback::new_async(move |block| {
+                println!("Sending block from A to B {:?}", block);
                 let send_a_to_b = send_a_to_b.clone();
                 async move {
                     send_a_to_b.try_lock().unwrap().start_send(block).unwrap();
