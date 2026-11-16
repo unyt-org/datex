@@ -8,10 +8,10 @@ use crate::values::{
 };
 use core::{ops::Add, result::Result};
 
-impl Add for CoreValue {
+impl Add for &CoreValue {
     type Output = Result<CoreValue, ValueError>;
-    fn add(self, rhs: CoreValue) -> Self::Output {
-        match (&self, &rhs) {
+    fn add(self, rhs: &CoreValue) -> Self::Output {
+        match (self, rhs) {
             // x + text or text + x (order does not matter)
             (CoreValue::Text(text), other) => {
                 let other = other.cast_to_text();
@@ -37,7 +37,6 @@ impl Add for CoreValue {
             (CoreValue::Decimal(lhs), CoreValue::Decimal(rhs)) => {
                 return Ok(CoreValue::Decimal(lhs + rhs));
             }
-
             _ => {}
         }
 
@@ -46,18 +45,18 @@ impl Add for CoreValue {
             // integer
             CoreValue::Integer(lhs) => match &rhs {
                 CoreValue::TypedInteger(rhs) => {
-                    Ok(CoreValue::Integer(lhs.clone() + rhs.as_integer()))
+                    Ok(CoreValue::Integer(lhs + &rhs.as_integer()))
                 }
                 CoreValue::Decimal(_) => {
                     let integer = rhs
                         ._cast_to_integer_internal()
                         .ok_or(ValueError::InvalidOperation)?;
-                    Ok(CoreValue::Integer(lhs.clone() + integer.as_integer()))
+                    Ok(CoreValue::Integer(lhs + &integer.as_integer()))
                 }
                 CoreValue::TypedDecimal(rhs) => {
                     let decimal = rhs.as_f64();
                     let integer = TypedInteger::from(decimal as i128);
-                    Ok(CoreValue::Integer(lhs.clone() + integer.as_integer()))
+                    Ok(CoreValue::Integer(lhs + &integer.as_integer()))
                 }
                 _ => Err(ValueError::InvalidOperation),
             },
@@ -113,7 +112,7 @@ impl Add for CoreValue {
             // typed decimal
             CoreValue::TypedDecimal(lhs) => match rhs {
                 CoreValue::Decimal(rhs) => Ok(CoreValue::TypedDecimal(
-                    lhs + &TypedDecimal::Decimal(rhs),
+                    lhs + &TypedDecimal::Decimal(rhs.clone()),
                 )),
                 CoreValue::TypedInteger(rhs) => {
                     let decimal = TypedDecimal::from(
@@ -137,9 +136,9 @@ impl Add for CoreValue {
     }
 }
 
-impl Add for &CoreValue {
+impl Add for CoreValue {
     type Output = Result<CoreValue, ValueError>;
-    fn add(self, rhs: &CoreValue) -> Self::Output {
-        CoreValue::add(self.clone(), rhs.clone())
+    fn add(self, rhs: CoreValue) -> Self::Output {
+        (&self).add(&rhs)
     }
 }

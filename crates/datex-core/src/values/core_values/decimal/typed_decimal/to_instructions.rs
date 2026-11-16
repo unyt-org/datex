@@ -1,35 +1,29 @@
 use crate::{
-    core_compiler::to_instructions::{
-        SharedValueTrackingProvider, ToInstructions,
+    core_compiler::{
+        to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
     instruction::regular_instruction::RegularInstruction,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     values::core_values::decimal::typed_decimal::TypedDecimal,
 };
 
-impl<'ctx, T> ToInstructions<'ctx, T> for TypedDecimal
-where
-    T: SharedValueTrackingProvider<'ctx>,
-{
-    type InstructionType = RegularInstruction;
-    fn to_instructions(
-        &self,
-        _ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+impl ToInstructions for TypedDecimal {
+    fn to_instructions<'a>(
+        &'a self,
+        _ctx: &'a mut dyn ValueVisitor,
+        _cache: &'a mut SharedReferencesCache,
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
-            todo!(
-                "TODO: append type cast with only id (no need to access shared container)"
-            );
-            // let id = CoreLibTypeId::from(self);
             yield match &self {
                 TypedDecimal::F32(val) => {
-                    RegularInstruction::decimal_f32(val.into_inner())
+                    RegularInstruction::decimal_f32(val.into_inner()).into()
                 }
                 TypedDecimal::F64(val) => {
-                    RegularInstruction::decimal_f64(val.into_inner())
+                    RegularInstruction::decimal_f64(val.into_inner()).into()
                 }
                 TypedDecimal::Decimal(val) => {
-                    RegularInstruction::decimal_big(val.clone())
+                    RegularInstruction::decimal_big(val.clone()).into()
                 }
             }
         })

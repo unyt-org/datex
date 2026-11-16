@@ -91,48 +91,10 @@ where
     }
 }
 
-pub enum SyncOrAsync<SyncValue, AsyncValue, F: Future<Output = AsyncValue>> {
-    Sync(SyncValue),
-    Async(F),
-}
-
 pub enum SyncOrAsyncResolved<SyncValue, AsyncValue> {
     Sync(SyncValue),
     Async(AsyncValue),
 }
-
-use core::marker::PhantomData;
-
-pub struct MapToResolvedAsync<SyncValue, Fut> {
-    fut: Fut,
-    _pd: PhantomData<SyncValue>,
-}
-
-impl<SyncValue, AsyncValue, Fut> core::future::Future
-    for MapToResolvedAsync<SyncValue, Fut>
-where
-    Fut: core::future::Future<Output = AsyncValue>,
-{
-    type Output = SyncOrAsyncResolved<SyncValue, AsyncValue>;
-
-    fn poll(
-        self: core::pin::Pin<&mut Self>,
-        cx: &mut core::task::Context<'_>,
-    ) -> core::task::Poll<Self::Output> {
-        unsafe {
-            let this = self.get_unchecked_mut();
-            match core::pin::Pin::new_unchecked(&mut this.fut).poll(cx) {
-                core::task::Poll::Pending => core::task::Poll::Pending,
-                core::task::Poll::Ready(v) => {
-                    core::task::Poll::Ready(SyncOrAsyncResolved::Async(v))
-                }
-            }
-        }
-    }
-}
-
-pub type SyncOrAsyncResult<SyncOkValue, AsyncOkValue, E, F> =
-    SyncOrAsync<Result<SyncOkValue, E>, Result<AsyncOkValue, E>, F>;
 
 pub struct ErrOptionFuture<Fut>(Fut);
 
@@ -153,70 +115,26 @@ where
     }
 }
 
-pub struct OkOptionFuture<SyncOkValue, AsyncOkValue, E, Fut> {
-    fut: Fut,
-    _phantom: core::marker::PhantomData<(SyncOkValue, AsyncOkValue, E)>,
-}
-
-impl<SyncOkValue, AsyncOkValue, E, Fut> Future
-    for OkOptionFuture<SyncOkValue, AsyncOkValue, E, Fut>
+impl<SyncOkValue, E, F> MaybeAsyncResult<SyncOkValue, E, F>
 where
-    Fut: Future<Output = Result<AsyncOkValue, E>>,
-{
-    type Output = Option<SyncOrAsyncResolved<SyncOkValue, AsyncOkValue>>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        unsafe {
-            let this = self.get_unchecked_mut();
-            match Pin::new_unchecked(&mut this.fut).poll(cx) {
-                Poll::Pending => Poll::Pending,
-                Poll::Ready(r) => {
-                    Poll::Ready(r.ok().map(SyncOrAsyncResolved::Async))
-                }
-            }
-        }
-    }
-}
-
-impl<SyncOkValue, AsyncOkValue, E, F>
-    SyncOrAsyncResult<SyncOkValue, AsyncOkValue, E, F>
-where
-    F: Future<Output = Result<AsyncOkValue, E>>,
+    F: Future<Output = Result<SyncOkValue, E>>,
 {
     pub fn into_error_future(
         self,
     ) -> Either<Ready<Option<E>>, ErrOptionFuture<F>> {
         match self {
-            SyncOrAsync::Sync(r) => Either::Left(ready(r.err())),
-            SyncOrAsync::Async(fut) => Either::Right(ErrOptionFuture(fut)),
+            MaybeAsyncResult::Sync(r) => Either::Left(ready(r.err())),
+            MaybeAsyncResult::Async(fut) => Either::Right(ErrOptionFuture(fut)),
         }
     }
 
-    pub fn into_ok_future(
-        self,
-    ) -> Either<
-        Ready<Option<SyncOrAsyncResolved<SyncOkValue, AsyncOkValue>>>,
-        OkOptionFuture<SyncOkValue, AsyncOkValue, E, F>,
-    > {
-        match self {
-            SyncOrAsync::Sync(r) => {
-                let v = r.ok().map(SyncOrAsyncResolved::Sync);
-                Either::Left(ready(v))
-            }
-            SyncOrAsync::Async(fut) => Either::Right(OkOptionFuture {
-                fut,
-                _phantom: core::marker::PhantomData,
-            }),
-        }
-    }
-
-    pub fn into_result(self) -> Either<Ready<Result<AsyncOkValue, E>>, F>
+    pub fn into_result(self) -> Either<Ready<Result<SyncOkValue, E>>, F>
     where
-        SyncOkValue: Into<AsyncOkValue>,
+        SyncOkValue: Into<SyncOkValue>,
     {
         match self {
-            SyncOrAsync::Sync(r) => Either::Left(ready(r.map(Into::into))),
-            SyncOrAsync::Async(fut) => Either::Right(fut),
+            MaybeAsyncResult::Sync(r) => Either::Left(ready(r)),
+            MaybeAsyncResult::Async(fut) => Either::Right(fut),
         }
     }
 }
@@ -291,60 +209,6 @@ where
             MaybeAsync::Async(outer_fut) => MaybeAsync::Async(FlattenFuture {
                 state: FlattenState::Outer(outer_fut),
             }),
-        }
-    }
-}
-
-pub struct MapAsyncResultToResolved<SyncOkValue, AsyncOkValue, E, Fut> {
-    fut: Fut,
-    _pd: PhantomData<(SyncOkValue, AsyncOkValue, E)>,
-}
-
-impl<SyncOkValue, AsyncOkValue, E, Fut> Future
-    for MapAsyncResultToResolved<SyncOkValue, AsyncOkValue, E, Fut>
-where
-    Fut: Future<Output = Result<AsyncOkValue, E>>,
-{
-    type Output =
-        SyncOrAsyncResolved<Result<SyncOkValue, E>, Result<AsyncOkValue, E>>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        unsafe {
-            let this = self.get_unchecked_mut();
-            match Pin::new_unchecked(&mut this.fut).poll(cx) {
-                Poll::Pending => Poll::Pending,
-                Poll::Ready(r) => Poll::Ready(SyncOrAsyncResolved::Async(r)),
-            }
-        }
-    }
-}
-
-impl<SyncOkValue, AsyncOkValue, E, F>
-    SyncOrAsyncResult<SyncOkValue, AsyncOkValue, E, F>
-where
-    F: Future<Output = Result<AsyncOkValue, E>>,
-{
-    pub fn into_future(
-        self,
-    ) -> Either<
-        Ready<
-            SyncOrAsyncResolved<
-                Result<SyncOkValue, E>,
-                Result<AsyncOkValue, E>,
-            >,
-        >,
-        MapAsyncResultToResolved<SyncOkValue, AsyncOkValue, E, F>,
-    > {
-        match self {
-            SyncOrAsync::Sync(r_sync) => {
-                Either::Left(ready(SyncOrAsyncResolved::Sync(r_sync)))
-            }
-            SyncOrAsync::Async(fut) => {
-                Either::Right(MapAsyncResultToResolved {
-                    fut,
-                    _pd: PhantomData,
-                })
-            }
         }
     }
 }

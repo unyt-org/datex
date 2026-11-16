@@ -1,0 +1,35 @@
+use crate::{
+    random::RandomState,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::get_datex_type::GetDatexType,
+    types::{
+        r#type::Type,
+        type_definition::{
+            TypeDefinition,
+            collection::{
+                CollectionTypeDefinition,
+                type_definition::MapCollectionTypeDefinition,
+            },
+        },
+    },
+};
+use core::hash::Hash;
+use indexmap::IndexMap;
+
+impl<K, V> GetDatexType for IndexMap<K, V, RandomState>
+where
+    K: GetDatexType + Eq + Hash,
+    V: GetDatexType,
+{
+    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
+        Type::Definition(
+            TypeDefinition::Collection(CollectionTypeDefinition::Map(
+                MapCollectionTypeDefinition::new(
+                    K::datex_type(memory),
+                    V::datex_type(memory),
+                ),
+            ))
+            .into(),
+        )
+    }
+}

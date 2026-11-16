@@ -1,0 +1,29 @@
+use crate::{
+    traits::local_child_path_resolver::LocalChildPathResolver,
+    values::core_values::{
+        native::{DatexNative, DatexNativeOps},
+        text::Text,
+    },
+};
+use core::any::Any;
+
+impl DatexNative for Text {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+impl DatexNativeOps for Text {}
+impl LocalChildPathResolver for Text {}
+use crate::traits::iter_parts::IterParts;
+impl IterParts for Text {}
+
+use crate::value_updates::update_handler::{
+    UpdateCallbackDataAccess, UpdateHandlerImpl,
+};
+
+impl UpdateHandlerImpl for Text {}
+impl UpdateCallbackDataAccess for Text {}

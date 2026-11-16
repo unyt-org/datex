@@ -47,6 +47,7 @@ pub enum CoreLibBaseTypeId {
     Decimal,  // #core.decimal
     Text,     // #core.text
     Endpoint, // #core.endpoint
+    Instant,  // #core.instant
     #[strum(serialize = "Unit")]
     Unit, // #core.Unit
     #[strum(serialize = "Never")]
@@ -65,6 +66,12 @@ pub enum CoreLibBaseTypeId {
     Type, // #core.Type
     #[strum(serialize = "Container")]
     Box, // #core.Container
+    #[strum(serialize = "EntityDefinition")]
+    EntityTypeDefinition,
+    #[strum(serialize = "Sender")]
+    Sender, // #core.Sender
+    #[strum(serialize = "Receiver")]
+    Receiver, // #core.Receiver
 }
 
 impl CoreLibBaseTypeId {
@@ -88,8 +95,15 @@ impl CoreLibBaseTypeId {
     }
 }
 
-const INTEGER_VARIANT_COUNT: u16 = variant_count::<IntegerTypeVariant>() as u16;
-const DECIMAL_VARIANT_COUNT: u16 = variant_count::<DecimalTypeVariant>() as u16;
+pub const INTEGER_VARIANT_COUNT: u16 =
+    variant_count::<IntegerTypeVariant>() as u16;
+pub const DECIMAL_VARIANT_COUNT: u16 =
+    variant_count::<DecimalTypeVariant>() as u16;
+
+pub const TOTAL_TYPE_VARIANT_COUNT: u16 =
+    INTEGER_VARIANT_COUNT + DECIMAL_VARIANT_COUNT;
+pub const TOTAL_CORE_LIB_TYPE_COUNT: u16 =
+    variant_count::<CoreLibBaseTypeId>() as u16 + TOTAL_TYPE_VARIANT_COUNT;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, EnumIter)]
 pub enum CoreLibVariantTypeId {

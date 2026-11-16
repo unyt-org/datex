@@ -8,13 +8,13 @@ use datex_core::{
         },
         type_expressions::StructuralMap,
     },
-    collections::HashMap,
     global::operators::{
         ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
         LogicalUnaryOperator, ModificationOperator, UnaryOperator,
         binary::{ArithmeticOperator, BitwiseOperator},
     },
     prelude::*,
+    random::RandomState,
     values::{
         core_values::{
             decimal::Decimal,
@@ -24,15 +24,15 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
+use indexmap::IndexMap;
 
 use datex_core::{
     ast::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-            Conditional, CreateMut, CreateShared, DatexExpression,
-            DatexExpressionData, DeriveRef, EntityDeclarationExpression,
-            GenericInstantiation, List, Map, PropertyAccess,
-            PropertyAssignment, RequestSharedRef, RootPropertyAccess,
+            Conditional, CreateShared, DatexExpression, DatexExpressionData,
+            EntityDeclarationExpression, GenericInstantiation, List, Map,
+            PropertyAccess, PropertyAssignment, RequestSharedRef,
             UnaryOperation, Unbox, ValueAccessType, VariableAssignment,
             VariableDeclaration, VariableKind,
         },
@@ -42,7 +42,6 @@ use datex_core::{
             TypeVariantAccess, Union,
         },
     },
-    global::stack_index::StackIndex,
     parser::{
         Parser,
         errors::{ParserError, SpannedParserError},
@@ -92,7 +91,7 @@ fn parse_print_error(
 fn parse_to_value_container(src: &str) -> ValueContainer {
     let expr = parse_unwrap_data(src);
     ValueContainer::try_from(&expr).unwrap_or_else(|_| {
-        core::panic!("Failed to convert expression to ValueContainer")
+        panic!("Failed to convert expression to ValueContainer")
     })
 }
 
@@ -203,7 +202,7 @@ fn type_expression() {
             )
         );
     } else {
-        core::panic!("Expected VariableDeclaration");
+        panic!("Expected VariableDeclaration");
     }
 }
 
@@ -249,28 +248,28 @@ fn nominal_type_declaration() {
 #[ignore = "WIP"]
 fn parse_error_unclosed_delimiter() {
     let src = r#"[1,,]"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     let src = r#"var x"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     let src = r#"var x = =1"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     let src = r#"var x = (1, 2, [10, 20, {1:2})] + 4"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     let src = r#"[1, )]"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     let src = r#"(1 + 2 + ])"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     let src = r#"{x: 1 + +}"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     let src = r#"(1: x, 2: 1 + +)"#;
-    let result = parse_print_error(src);
+    let _result = parse_print_error(src);
 
     // let src = r#"
     // var x = (5 + 3;
@@ -427,7 +426,7 @@ fn function_simple() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
+        DatexExpressionData::callable_declaration(CallableDeclaration {
             signature: CallableSignature {
                 name: Some("myFunction".to_string()),
                 kind: CallableKind::Function,
@@ -437,8 +436,8 @@ fn function_simple() {
                 return_type: None,
                 yeet_type: None,
             },
-            body: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span()),
+            body: DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span(),
             injected_variable_count: None,
         })
     );
@@ -454,7 +453,7 @@ fn function_with_params() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
+        DatexExpressionData::callable_declaration(CallableDeclaration {
             signature: CallableSignature {
                 name: Some("myFunction".to_string()),
                 kind: CallableKind::Function,
@@ -468,8 +467,8 @@ fn function_with_params() {
                 return_type: None,
                 yeet_type: None,
             },
-            body: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span()),
+            body: DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span(),
             injected_variable_count: None,
         })
     );
@@ -482,7 +481,7 @@ fn function_with_params() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
+        DatexExpressionData::callable_declaration(CallableDeclaration {
             signature: CallableSignature {
                 name: Some("myFunction".into()),
                 kind: CallableKind::Function,
@@ -503,22 +502,22 @@ fn function_with_params() {
                 return_type: None,
                 yeet_type: None,
             },
-            body: (DatexExpressionData::Statements(
-                Statements::new_terminated(vec![
+            body: DatexExpressionData::Statements(Statements::new_terminated(
+                vec![
                     DatexExpressionData::BinaryOperation(BinaryOperation {
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Add
                         ),
-                        left: (DatexExpressionData::Integer(Integer::from(1))
-                            .with_default_span()),
-                        right: (DatexExpressionData::Integer(Integer::from(2))
-                            .with_default_span()),
+                        left: DatexExpressionData::Integer(Integer::from(1))
+                            .with_default_span(),
+                        right: DatexExpressionData::Integer(Integer::from(2))
+                            .with_default_span(),
                         ty: None
                     })
                     .with_default_span()
-                ])
-            )
-            .with_default_span()),
+                ]
+            ))
+            .with_default_span(),
             injected_variable_count: None,
         })
     );
@@ -534,7 +533,7 @@ fn function_with_return_type() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
+        DatexExpressionData::callable_declaration(CallableDeclaration {
             signature: CallableSignature {
                 name: Some("myFunction".into()),
                 kind: CallableKind::Function,
@@ -556,8 +555,8 @@ fn function_with_return_type() {
                 ),
                 yeet_type: None,
             },
-            body: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span()),
+            body: DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span(),
             injected_variable_count: None,
         })
     );
@@ -577,8 +576,8 @@ fn type_var_declaration() {
                     .with_default_span()
             ),
             name: "x".to_string(),
-            init_expression: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span())
+            init_expression: DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span()
         })
     );
 
@@ -598,8 +597,8 @@ fn type_var_declaration() {
                 .with_default_span()
             ),
             name: "x".to_string(),
-            init_expression: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span())
+            init_expression: DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span()
         })
     );
 }
@@ -612,19 +611,19 @@ fn binary_operator_precedence() {
         val,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::Integer(Integer::from(1))
-                .with_default_span()),
-            right: (DatexExpressionData::BinaryOperation(BinaryOperation {
+            left: DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span(),
+            right: DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(
                     ArithmeticOperator::Multiply
                 ),
-                left: (DatexExpressionData::Integer(Integer::from(2))
-                    .with_default_span()),
-                right: (DatexExpressionData::Integer(Integer::from(3))
-                    .with_default_span()),
+                left: DatexExpressionData::Integer(Integer::from(2))
+                    .with_default_span(),
+                right: DatexExpressionData::Integer(Integer::from(3))
+                    .with_default_span(),
                 ty: None
             })
-            .with_default_span()),
+            .with_default_span(),
             ty: None
         })
     );
@@ -635,17 +634,17 @@ fn binary_operator_precedence() {
         val,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::Integer(Integer::from(1))
-                .with_default_span()),
-            right: (DatexExpressionData::BinaryOperation(BinaryOperation {
+            left: DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span(),
+            right: DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Bitwise(BitwiseOperator::And),
-                left: (DatexExpressionData::Integer(Integer::from(2))
-                    .with_default_span()),
-                right: (DatexExpressionData::Integer(Integer::from(3))
-                    .with_default_span()),
+                left: DatexExpressionData::Integer(Integer::from(2))
+                    .with_default_span(),
+                right: DatexExpressionData::Integer(Integer::from(3))
+                    .with_default_span(),
                 ty: None
             })
-            .with_default_span()),
+            .with_default_span(),
             ty: None
         })
     );
@@ -656,17 +655,17 @@ fn binary_operator_precedence() {
         val,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::Integer(Integer::from(1))
-                .with_default_span()),
-            right: (DatexExpressionData::BinaryOperation(BinaryOperation {
+            left: DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span(),
+            right: DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Bitwise(BitwiseOperator::Or),
-                left: (DatexExpressionData::Integer(Integer::from(2))
-                    .with_default_span()),
-                right: (DatexExpressionData::Integer(Integer::from(3))
-                    .with_default_span()),
+                left: DatexExpressionData::Integer(Integer::from(2))
+                    .with_default_span(),
+                right: DatexExpressionData::Integer(Integer::from(3))
+                    .with_default_span(),
                 ty: None
             })
-            .with_default_span()),
+            .with_default_span(),
             ty: None
         })
     );
@@ -676,8 +675,8 @@ fn binary_operator_precedence() {
 fn generic_accessor() {
     let generic_instantiation =
         DatexExpressionData::GenericInstantiation(GenericInstantiation {
-            base: (DatexExpressionData::Identifier("User".to_string())
-                .with_default_span()),
+            base: DatexExpressionData::Identifier("User".to_string())
+                .with_default_span(),
             generic_arguments: vec![
                 TypeExpressionData::VariantAccess(TypeVariantAccess {
                     base: None,
@@ -688,7 +687,7 @@ fn generic_accessor() {
             ],
         });
     let expected = DatexExpressionData::Apply(Apply {
-        base: (generic_instantiation.with_default_span()),
+        base: generic_instantiation.with_default_span(),
         arguments: vec![
             DatexExpressionData::Map(Map::new(vec![])).with_default_span(),
         ],
@@ -707,13 +706,13 @@ fn if_else() {
         assert_eq!(
             val,
             DatexExpressionData::Conditional(Conditional {
-                condition: (DatexExpressionData::Boolean(true.into())
-                    .with_default_span()),
-                then_branch: (DatexExpressionData::Integer(Integer::from(1))
-                    .with_default_span()),
+                condition: DatexExpressionData::Boolean(true.into())
+                    .with_default_span(),
+                then_branch: DatexExpressionData::Integer(Integer::from(1))
+                    .with_default_span(),
                 else_branch: Some(
-                    (DatexExpressionData::Integer(Integer::from(2))
-                        .with_default_span())
+                    DatexExpressionData::Integer(Integer::from(2))
+                        .with_default_span()
                 ),
             })
         );
@@ -725,36 +724,34 @@ fn if_else() {
         assert_eq!(
             val,
             DatexExpressionData::Conditional(Conditional {
-                condition: (DatexExpressionData::ComparisonOperation(
+                condition: DatexExpressionData::ComparisonOperation(
                     ComparisonOperation {
                         operator: ComparisonOperator::StructuralEqual,
-                        left: (DatexExpressionData::BinaryOperation(
+                        left: DatexExpressionData::BinaryOperation(
                             BinaryOperation {
                                 operator: BinaryOperator::Arithmetic(
                                     ArithmeticOperator::Add
                                 ),
-                                left: (DatexExpressionData::Boolean(
-                                    true.into()
-                                )
-                                .with_default_span()),
-                                right: (DatexExpressionData::Integer(
+                                left: DatexExpressionData::Boolean(true.into())
+                                    .with_default_span(),
+                                right: DatexExpressionData::Integer(
                                     Integer::from(1)
                                 )
-                                .with_default_span()),
+                                .with_default_span(),
                                 ty: None
                             }
                         )
-                        .with_default_span()),
-                        right: (DatexExpressionData::Integer(Integer::from(2))
-                            .with_default_span())
+                        .with_default_span(),
+                        right: DatexExpressionData::Integer(Integer::from(2))
+                            .with_default_span()
                     }
                 )
-                .with_default_span()),
-                then_branch: (DatexExpressionData::Integer(Integer::from(4))
-                    .with_default_span()),
+                .with_default_span(),
+                then_branch: DatexExpressionData::Integer(Integer::from(4))
+                    .with_default_span(),
                 else_branch: Some(
-                    (DatexExpressionData::Integer(Integer::from(2))
-                        .with_default_span())
+                    DatexExpressionData::Integer(Integer::from(2))
+                        .with_default_span()
                 ),
             })
         );
@@ -767,34 +764,32 @@ fn if_else() {
         assert_eq!(
             val,
             DatexExpressionData::Conditional(Conditional {
-                condition: (DatexExpressionData::ComparisonOperation(
+                condition: DatexExpressionData::ComparisonOperation(
                     ComparisonOperation {
                         operator: ComparisonOperator::StructuralEqual,
-                        left: (DatexExpressionData::BinaryOperation(
+                        left: DatexExpressionData::BinaryOperation(
                             BinaryOperation {
                                 operator: BinaryOperator::Arithmetic(
                                     ArithmeticOperator::Add
                                 ),
-                                left: (DatexExpressionData::Boolean(
-                                    true.into()
-                                )
-                                .with_default_span()),
-                                right: (DatexExpressionData::Integer(
+                                left: DatexExpressionData::Boolean(true.into())
+                                    .with_default_span(),
+                                right: DatexExpressionData::Integer(
                                     Integer::from(1)
                                 )
-                                .with_default_span()),
+                                .with_default_span(),
                                 ty: None
                             }
                         )
-                        .with_default_span()),
-                        right: (DatexExpressionData::Integer(Integer::from(2))
-                            .with_default_span())
+                        .with_default_span(),
+                        right: DatexExpressionData::Integer(Integer::from(2))
+                            .with_default_span()
                     }
                 )
-                .with_default_span()),
-                then_branch: (DatexExpressionData::Apply(Apply {
-                    base: (DatexExpressionData::Identifier("test".to_string())
-                        .with_default_span()),
+                .with_default_span(),
+                then_branch: DatexExpressionData::Apply(Apply {
+                    base: DatexExpressionData::Identifier("test".to_string())
+                        .with_default_span(),
                     arguments: vec![
                         DatexExpressionData::List(List::new(vec![
                             DatexExpressionData::Integer(Integer::from(1))
@@ -807,7 +802,7 @@ fn if_else() {
                         .with_default_span()
                     ]
                 })
-                .with_default_span()),
+                .with_default_span(),
                 else_branch: None,
             })
         );
@@ -828,39 +823,39 @@ fn if_else_if_else() {
     assert_eq!(
         val,
         DatexExpressionData::Conditional(Conditional {
-            condition: (DatexExpressionData::ComparisonOperation(
+            condition: DatexExpressionData::ComparisonOperation(
                 ComparisonOperation {
                     operator: ComparisonOperator::StructuralEqual,
-                    left: (DatexExpressionData::Identifier("x".to_string())
-                        .with_default_span()),
-                    right: (DatexExpressionData::Integer(Integer::from(4))
-                        .with_default_span())
+                    left: DatexExpressionData::Identifier("x".to_string())
+                        .with_default_span(),
+                    right: DatexExpressionData::Integer(Integer::from(4))
+                        .with_default_span()
                 }
             )
-            .with_default_span()),
-            then_branch: (DatexExpressionData::Text("4".into())
-                .with_default_span()),
+            .with_default_span(),
+            then_branch: DatexExpressionData::Text("4".into())
+                .with_default_span(),
             else_branch: Some(
-                (DatexExpressionData::Conditional(Conditional {
-                    condition: (DatexExpressionData::ComparisonOperation(
+                DatexExpressionData::Conditional(Conditional {
+                    condition: DatexExpressionData::ComparisonOperation(
                         ComparisonOperation {
                             operator: ComparisonOperator::StructuralEqual,
-                            left: (DatexExpressionData::Identifier(
+                            left: DatexExpressionData::Identifier(
                                 "x".to_string()
                             )
-                            .with_default_span()),
-                            right: (DatexExpressionData::Text("hello".into())
-                                .with_default_span())
+                            .with_default_span(),
+                            right: DatexExpressionData::Text("hello".into())
+                                .with_default_span()
                         }
                     )
-                    .with_default_span()),
-                    then_branch: (DatexExpressionData::Text("42".into())
-                        .with_default_span()),
+                    .with_default_span(),
+                    then_branch: DatexExpressionData::Text("42".into())
+                        .with_default_span(),
                     else_branch: Some(
-                        (DatexExpressionData::Null.with_default_span())
+                        DatexExpressionData::Null.with_default_span()
                     )
                 })
-                .with_default_span())
+                .with_default_span()
             ),
         })
     );
@@ -874,15 +869,15 @@ fn unary_operator() {
         val,
         DatexExpressionData::UnaryOperation(UnaryOperation {
             operator: UnaryOperator::Arithmetic(ArithmeticUnaryOperator::Plus),
-            expression: (DatexExpressionData::Apply(Apply {
-                base: (DatexExpressionData::Identifier("User".to_string())
-                    .with_default_span()),
+            expression: DatexExpressionData::Apply(Apply {
+                base: DatexExpressionData::Identifier("User".to_string())
+                    .with_default_span(),
                 arguments: vec![
                     DatexExpressionData::Map(Map::new(vec![]))
                         .with_default_span()
                 ]
             })
-            .with_default_span()),
+            .with_default_span(),
         })
     );
 
@@ -896,32 +891,32 @@ fn unary_operator() {
         val,
         DatexExpressionData::UnaryOperation(UnaryOperation {
             operator: UnaryOperator::Arithmetic(ArithmeticUnaryOperator::Plus),
-            expression: (DatexExpressionData::UnaryOperation(UnaryOperation {
+            expression: DatexExpressionData::UnaryOperation(UnaryOperation {
                 operator: UnaryOperator::Arithmetic(
                     ArithmeticUnaryOperator::Minus
                 ),
-                expression: (DatexExpressionData::UnaryOperation(
+                expression: DatexExpressionData::UnaryOperation(
                     UnaryOperation {
                         operator: UnaryOperator::Arithmetic(
                             ArithmeticUnaryOperator::Plus
                         ),
-                        expression: (DatexExpressionData::UnaryOperation(
+                        expression: DatexExpressionData::UnaryOperation(
                             UnaryOperation {
                                 operator: UnaryOperator::Arithmetic(
                                     ArithmeticUnaryOperator::Minus
                                 ),
-                                expression: (DatexExpressionData::Identifier(
+                                expression: DatexExpressionData::Identifier(
                                     "myVal".to_string()
                                 )
-                                .with_default_span())
+                                .with_default_span()
                             }
                         )
-                        .with_default_span())
+                        .with_default_span()
                     }
                 )
-                .with_default_span())
+                .with_default_span()
             })
-            .with_default_span())
+            .with_default_span()
         })
     );
 }
@@ -940,8 +935,8 @@ fn var_declaration_with_type_simple() {
                     .with_default_span()
             ),
             name: "x".to_string(),
-            init_expression: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span())
+            init_expression: DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span()
         })
     );
 
@@ -957,8 +952,8 @@ fn var_declaration_with_type_simple() {
                     .with_default_span()
             ),
             name: "x".to_string(),
-            init_expression: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span())
+            init_expression: DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span()
         })
     );
 
@@ -978,8 +973,8 @@ fn var_declaration_with_type_simple() {
                 .with_default_span()
             ),
             name: "x".to_string(),
-            init_expression: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span())
+            init_expression: DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span()
         })
     );
 }
@@ -1007,8 +1002,8 @@ fn var_declaration_with_type_union() {
                 .with_default_span()
             ),
             name: "x".to_string(),
-            init_expression: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span())
+            init_expression: DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span()
         })
     );
 }
@@ -1032,8 +1027,8 @@ fn var_declaration_with_type_intersection() {
                 .with_default_span()
             ),
             name: "x".to_string(),
-            init_expression: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span())
+            init_expression: DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span()
         })
     );
 }
@@ -1056,7 +1051,7 @@ fn var_declaration_with_type_intersection() {
 //                 .with_default_span()
 //             ),
 //             name: "x".to_string(),
-//             init_expression: (
+//             init_expression:
 //                 DatexExpressionData::Integer(Integer::from(42))
 //                     .with_default_span()
 //             )
@@ -1072,17 +1067,17 @@ fn equal_operators() {
         val,
         DatexExpressionData::ComparisonOperation(ComparisonOperation {
             operator: ComparisonOperator::StructuralEqual,
-            left: (DatexExpressionData::Integer(Integer::from(3))
-                .with_default_span()),
-            right: (DatexExpressionData::BinaryOperation(BinaryOperation {
+            left: DatexExpressionData::Integer(Integer::from(3))
+                .with_default_span(),
+            right: DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: (DatexExpressionData::Integer(Integer::from(1))
-                    .with_default_span()),
-                right: (DatexExpressionData::Integer(Integer::from(2))
-                    .with_default_span()),
+                left: DatexExpressionData::Integer(Integer::from(1))
+                    .with_default_span(),
+                right: DatexExpressionData::Integer(Integer::from(2))
+                    .with_default_span(),
                 ty: None
             })
-            .with_default_span())
+            .with_default_span()
         })
     );
 
@@ -1092,17 +1087,17 @@ fn equal_operators() {
         val,
         DatexExpressionData::ComparisonOperation(ComparisonOperation {
             operator: ComparisonOperator::Equal,
-            left: (DatexExpressionData::Integer(Integer::from(3))
-                .with_default_span()),
-            right: (DatexExpressionData::BinaryOperation(BinaryOperation {
+            left: DatexExpressionData::Integer(Integer::from(3))
+                .with_default_span(),
+            right: DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: (DatexExpressionData::Integer(Integer::from(1))
-                    .with_default_span()),
-                right: (DatexExpressionData::Integer(Integer::from(2))
-                    .with_default_span()),
+                left: DatexExpressionData::Integer(Integer::from(1))
+                    .with_default_span(),
+                right: DatexExpressionData::Integer(Integer::from(2))
+                    .with_default_span(),
                 ty: None
             })
-            .with_default_span())
+            .with_default_span()
         })
     );
 
@@ -1112,17 +1107,17 @@ fn equal_operators() {
         val,
         DatexExpressionData::ComparisonOperation(ComparisonOperation {
             operator: ComparisonOperator::NotStructuralEqual,
-            left: (DatexExpressionData::Integer(Integer::from(5))
-                .with_default_span()),
-            right: (DatexExpressionData::BinaryOperation(BinaryOperation {
+            left: DatexExpressionData::Integer(Integer::from(5))
+                .with_default_span(),
+            right: DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: (DatexExpressionData::Integer(Integer::from(1))
-                    .with_default_span()),
-                right: (DatexExpressionData::Integer(Integer::from(2))
-                    .with_default_span()),
+                left: DatexExpressionData::Integer(Integer::from(1))
+                    .with_default_span(),
+                right: DatexExpressionData::Integer(Integer::from(2))
+                    .with_default_span(),
                 ty: None
             })
-            .with_default_span())
+            .with_default_span(),
         })
     );
     let src = "5 !== 1 + 2";
@@ -1131,17 +1126,17 @@ fn equal_operators() {
         val,
         DatexExpressionData::ComparisonOperation(ComparisonOperation {
             operator: ComparisonOperator::NotEqual,
-            left: (DatexExpressionData::Integer(Integer::from(5))
-                .with_default_span()),
-            right: (DatexExpressionData::BinaryOperation(BinaryOperation {
+            left: DatexExpressionData::Integer(Integer::from(5))
+                .with_default_span(),
+            right: DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: (DatexExpressionData::Integer(Integer::from(1))
-                    .with_default_span()),
-                right: (DatexExpressionData::Integer(Integer::from(2))
-                    .with_default_span()),
+                left: DatexExpressionData::Integer(Integer::from(1))
+                    .with_default_span(),
+                right: DatexExpressionData::Integer(Integer::from(2))
+                    .with_default_span(),
                 ty: None
             })
-            .with_default_span())
+            .with_default_span(),
         })
     );
 
@@ -1151,17 +1146,17 @@ fn equal_operators() {
         val,
         DatexExpressionData::ComparisonOperation(ComparisonOperation {
             operator: ComparisonOperator::Is,
-            left: (DatexExpressionData::Integer(Integer::from(5))
-                .with_default_span()),
-            right: (DatexExpressionData::BinaryOperation(BinaryOperation {
+            left: DatexExpressionData::Integer(Integer::from(5))
+                .with_default_span(),
+            right: DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: (DatexExpressionData::Integer(Integer::from(1))
-                    .with_default_span()),
-                right: (DatexExpressionData::Integer(Integer::from(2))
-                    .with_default_span()),
+                left: DatexExpressionData::Integer(Integer::from(1))
+                    .with_default_span(),
+                right: DatexExpressionData::Integer(Integer::from(2))
+                    .with_default_span(),
                 ty: None
             })
-            .with_default_span())
+            .with_default_span(),
         })
     );
 }
@@ -1559,10 +1554,10 @@ fn add() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::Integer(Integer::from(1))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(2))
-                .with_default_span()),
+            left: DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(2))
+                .with_default_span(),
             ty: None
         })
     );
@@ -1577,24 +1572,24 @@ fn add_complex_values() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::BinaryOperation(BinaryOperation {
+            left: DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: (DatexExpressionData::List(List::new(vec![]))
-                    .with_default_span()),
-                right: (DatexExpressionData::Identifier("x".to_string())
-                    .with_default_span()),
+                left: DatexExpressionData::List(List::new(vec![]))
+                    .with_default_span(),
+                right: DatexExpressionData::Identifier("x".to_string())
+                    .with_default_span(),
                 ty: None
             })
-            .with_default_span()),
-            right: (DatexExpressionData::BinaryOperation(BinaryOperation {
+            .with_default_span(),
+            right: DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: (DatexExpressionData::Integer(Integer::from(1))
-                    .with_default_span()),
-                right: (DatexExpressionData::Integer(Integer::from(2))
-                    .with_default_span()),
+                left: DatexExpressionData::Integer(Integer::from(1))
+                    .with_default_span(),
+                right: DatexExpressionData::Integer(Integer::from(2))
+                    .with_default_span(),
                 ty: None
             })
-            .with_default_span()),
+            .with_default_span(),
             ty: None
         })
     );
@@ -1608,10 +1603,10 @@ fn subtract() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Subtract),
-            left: (DatexExpressionData::Integer(Integer::from(5))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(3))
-                .with_default_span()),
+            left: DatexExpressionData::Integer(Integer::from(5))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(3))
+                .with_default_span(),
             ty: None
         })
     );
@@ -1622,10 +1617,10 @@ fn subtract() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Subtract),
-            left: (DatexExpressionData::Integer(Integer::from(5))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(3))
-                .with_default_span()),
+            left: DatexExpressionData::Integer(Integer::from(5))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(3))
+                .with_default_span(),
             ty: None
         })
     );
@@ -1636,10 +1631,10 @@ fn subtract() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Subtract),
-            left: (DatexExpressionData::Integer(Integer::from(5))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(3))
-                .with_default_span()),
+            left: DatexExpressionData::Integer(Integer::from(5))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(3))
+                .with_default_span(),
             ty: None
         })
     );
@@ -1650,10 +1645,10 @@ fn subtract() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Subtract),
-            left: (DatexExpressionData::Integer(Integer::from(5))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(3))
-                .with_default_span()),
+            left: DatexExpressionData::Integer(Integer::from(5))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(3))
+                .with_default_span(),
             ty: None
         })
     );
@@ -1667,10 +1662,10 @@ fn multiply() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Multiply),
-            left: (DatexExpressionData::Integer(Integer::from(4))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(2))
-                .with_default_span()),
+            left: DatexExpressionData::Integer(Integer::from(4))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(2))
+                .with_default_span(),
             ty: None
         })
     );
@@ -1684,10 +1679,10 @@ fn divide() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Divide),
-            left: (DatexExpressionData::Integer(Integer::from(8))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(2))
-                .with_default_span()),
+            left: DatexExpressionData::Integer(Integer::from(8))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(2))
+                .with_default_span(),
             ty: None
         })
     );
@@ -1698,10 +1693,10 @@ fn divide() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Divide),
-            left: (DatexExpressionData::Integer(Integer::from(8))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(2))
-                .with_default_span()),
+            left: DatexExpressionData::Integer(Integer::from(8))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(2))
+                .with_default_span(),
             ty: None
         })
     );
@@ -1712,10 +1707,10 @@ fn divide() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Divide),
-            left: (DatexExpressionData::TypedInteger(TypedInteger::from(8u8))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(2))
-                .with_default_span()),
+            left: DatexExpressionData::TypedInteger(TypedInteger::from(8u8))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(2))
+                .with_default_span(),
             ty: None
         })
     );
@@ -1729,28 +1724,26 @@ fn complex_calculation() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::BinaryOperation(BinaryOperation {
+            left: DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: (DatexExpressionData::Integer(Integer::from(1))
-                    .with_default_span()),
-                right: (DatexExpressionData::BinaryOperation(
-                    BinaryOperation {
-                        operator: BinaryOperator::Arithmetic(
-                            ArithmeticOperator::Multiply
-                        ),
-                        left: (DatexExpressionData::Integer(Integer::from(2))
-                            .with_default_span()),
-                        right: (DatexExpressionData::Integer(Integer::from(3))
-                            .with_default_span()),
-                        ty: None
-                    }
-                )
-                .with_default_span()),
+                left: DatexExpressionData::Integer(Integer::from(1))
+                    .with_default_span(),
+                right: DatexExpressionData::BinaryOperation(BinaryOperation {
+                    operator: BinaryOperator::Arithmetic(
+                        ArithmeticOperator::Multiply
+                    ),
+                    left: DatexExpressionData::Integer(Integer::from(2))
+                        .with_default_span(),
+                    right: DatexExpressionData::Integer(Integer::from(3))
+                        .with_default_span(),
+                    ty: None
+                })
+                .with_default_span(),
                 ty: None
             })
-            .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(4))
-                .with_default_span()),
+            .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(4))
+                .with_default_span(),
             ty: None
         })
     );
@@ -1764,17 +1757,17 @@ fn nested_addition() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::Integer(Integer::from(1))
-                .with_default_span()),
-            right: (DatexExpressionData::BinaryOperation(BinaryOperation {
+            left: DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span(),
+            right: DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: (DatexExpressionData::Integer(Integer::from(2))
-                    .with_default_span()),
-                right: (DatexExpressionData::Integer(Integer::from(3))
-                    .with_default_span()),
+                left: DatexExpressionData::Integer(Integer::from(2))
+                    .with_default_span(),
+                right: DatexExpressionData::Integer(Integer::from(3))
+                    .with_default_span(),
                 ty: None
             })
-            .with_default_span()),
+            .with_default_span(),
             ty: None
         })
     );
@@ -1789,9 +1782,9 @@ fn add_statements_1() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::Integer(Integer::from(1))
-                .with_default_span()),
-            right: (DatexExpressionData::Statements(
+            left: DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span(),
+            right: DatexExpressionData::Statements(
                 Statements::new_unterminated(vec![
                     DatexExpressionData::Integer(Integer::from(2))
                         .with_default_span(),
@@ -1799,7 +1792,7 @@ fn add_statements_1() {
                         .with_default_span(),
                 ])
             )
-            .with_default_span()),
+            .with_default_span(),
             ty: None
         })
     );
@@ -1814,7 +1807,7 @@ fn add_statements_2() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::Statements(
+            left: DatexExpressionData::Statements(
                 Statements::new_unterminated(vec![
                     DatexExpressionData::Integer(Integer::from(1))
                         .with_default_span(),
@@ -1822,9 +1815,9 @@ fn add_statements_2() {
                         .with_default_span(),
                 ])
             )
-            .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(3))
-                .with_default_span()),
+            .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(3))
+                .with_default_span(),
             ty: None
         })
     );
@@ -1839,10 +1832,10 @@ fn nested_expressions() {
         DatexExpressionData::List(List::new(vec![
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: (DatexExpressionData::Integer(Integer::from(1))
-                    .with_default_span()),
-                right: (DatexExpressionData::Integer(Integer::from(2))
-                    .with_default_span()),
+                left: DatexExpressionData::Integer(Integer::from(1))
+                    .with_default_span(),
+                right: DatexExpressionData::Integer(Integer::from(2))
+                    .with_default_span(),
                 ty: None
             })
             .with_default_span()
@@ -1954,10 +1947,10 @@ fn variable_expression_with_operations() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::Identifier("myVar".to_string())
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(1))
-                .with_default_span()),
+            left: DatexExpressionData::Identifier("myVar".to_string())
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span(),
             ty: None
         })
     );
@@ -1970,8 +1963,8 @@ fn apply_expression() {
     assert_eq!(
         expr,
         DatexExpressionData::Apply(Apply {
-            base: (DatexExpressionData::Identifier("myFunc".to_string())
-                .with_default_span()),
+            base: DatexExpressionData::Identifier("myFunc".to_string())
+                .with_default_span(),
             arguments: vec![
                 DatexExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
@@ -1991,8 +1984,8 @@ fn apply_empty() {
     assert_eq!(
         expr,
         DatexExpressionData::Apply(Apply {
-            base: (DatexExpressionData::Identifier("myFunc".to_string())
-                .with_default_span()),
+            base: DatexExpressionData::Identifier("myFunc".to_string())
+                .with_default_span(),
             arguments: vec![],
         })
     );
@@ -2005,15 +1998,15 @@ fn apply_multiple() {
     assert_eq!(
         expr,
         DatexExpressionData::Apply(Apply {
-            base: (DatexExpressionData::Apply(Apply {
-                base: (DatexExpressionData::Identifier("myFunc".to_string())
-                    .with_default_span()),
+            base: DatexExpressionData::Apply(Apply {
+                base: DatexExpressionData::Identifier("myFunc".to_string())
+                    .with_default_span(),
                 arguments: vec![
                     DatexExpressionData::Integer(Integer::from(1))
                         .with_default_span(),
                 ],
             })
-            .with_default_span()),
+            .with_default_span(),
             arguments: vec![
                 DatexExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
@@ -2031,8 +2024,8 @@ fn apply_atom() {
     assert_eq!(
         expr,
         DatexExpressionData::Apply(Apply {
-            base: (DatexExpressionData::Identifier("print".to_string())
-                .with_default_span()),
+            base: DatexExpressionData::Identifier("print".to_string())
+                .with_default_span(),
             arguments: vec![
                 DatexExpressionData::Text("test".into()).with_default_span()
             ]
@@ -2047,42 +2040,38 @@ fn property_access() {
     assert_eq!(
         expr,
         DatexExpressionData::PropertyAccess(PropertyAccess {
-            base: (DatexExpressionData::PropertyAccess(PropertyAccess {
-                base: (DatexExpressionData::PropertyAccess(PropertyAccess {
-                    base: (DatexExpressionData::PropertyAccess(
-                        PropertyAccess {
-                            base: (DatexExpressionData::Identifier(
-                                "myObj".to_string()
-                            )
-                            .with_default_span()),
-                            property: (DatexExpressionData::Text(
-                                "myProp".into()
-                            )
-                            .with_default_span()),
-                        }
-                    )
-                    .with_default_span()),
-                    property: (DatexExpressionData::Integer(Integer::from(0))
-                        .with_default_span()),
+            base: DatexExpressionData::PropertyAccess(PropertyAccess {
+                base: DatexExpressionData::PropertyAccess(PropertyAccess {
+                    base: DatexExpressionData::PropertyAccess(PropertyAccess {
+                        base: DatexExpressionData::Identifier(
+                            "myObj".to_string()
+                        )
+                        .with_default_span(),
+                        property: DatexExpressionData::Text("myProp".into())
+                            .with_default_span(),
+                    })
+                    .with_default_span(),
+                    property: DatexExpressionData::Integer(Integer::from(0))
+                        .with_default_span(),
                 })
-                .with_default_span()),
-                property: (DatexExpressionData::BinaryOperation(
+                .with_default_span(),
+                property: DatexExpressionData::BinaryOperation(
                     BinaryOperation {
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Add
                         ),
-                        left: (DatexExpressionData::Integer(Integer::from(42))
-                            .with_default_span()),
-                        right: (DatexExpressionData::Integer(Integer::from(2))
-                            .with_default_span()),
+                        left: DatexExpressionData::Integer(Integer::from(42))
+                            .with_default_span(),
+                        right: DatexExpressionData::Integer(Integer::from(2))
+                            .with_default_span(),
                         ty: None
                     }
                 )
-                .with_default_span()),
+                .with_default_span(),
             })
-            .with_default_span()),
-            property: (DatexExpressionData::Text("test".into())
-                .with_default_span()),
+            .with_default_span(),
+            property: DatexExpressionData::Text("test".into())
+                .with_default_span(),
         })
     );
 }
@@ -2101,19 +2090,19 @@ fn property_access_assignment() {
         expr,
         DatexExpressionData::PropertyAssignment(PropertyAssignment {
             operator: None,
-            base: (DatexExpressionData::PropertyAccess(PropertyAccess {
-                base: (DatexExpressionData::Identifier("user".to_string())
-                    .with_default_span()),
-                property: (DatexExpressionData::Text("props".into())
-                    .with_default_span()),
+            base: DatexExpressionData::PropertyAccess(PropertyAccess {
+                base: DatexExpressionData::Identifier("user".to_string())
+                    .with_default_span(),
+                property: DatexExpressionData::Text("props".into())
+                    .with_default_span(),
             })
-            .with_default_span()),
-            property: (DatexExpressionData::Integer(Integer::from(0))
-                .with_default_span()),
-            assigned_expression: (DatexExpressionData::Integer(Integer::from(
+            .with_default_span(),
+            property: DatexExpressionData::Integer(Integer::from(0))
+                .with_default_span(),
+            assigned_expression: DatexExpressionData::Integer(Integer::from(
                 42
             ))
-            .with_default_span()),
+            .with_default_span(),
         })
     );
 }
@@ -2125,10 +2114,10 @@ fn property_access_getter() {
     assert_eq!(
         expr,
         DatexExpressionData::PropertyAccess(PropertyAccess {
-            base: (DatexExpressionData::Identifier("myObj".to_string())
-                .with_default_span()),
-            property: (DatexExpressionData::Text("myProp".into())
-                .with_default_span()),
+            base: DatexExpressionData::Identifier("myObj".to_string())
+                .with_default_span(),
+            property: DatexExpressionData::Text("myProp".into())
+                .with_default_span(),
         })
     );
 }
@@ -2140,10 +2129,10 @@ fn property_access_scoped() {
     assert_eq!(
         expr,
         DatexExpressionData::PropertyAccess(PropertyAccess {
-            base: (DatexExpressionData::Identifier("myObj".to_string())
-                .with_default_span()),
-            property: (DatexExpressionData::Integer(Integer::from(1))
-                .with_default_span()),
+            base: DatexExpressionData::Identifier("myObj".to_string())
+                .with_default_span(),
+            property: DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span(),
         })
     );
 }
@@ -2155,41 +2144,37 @@ fn property_access_multiple() {
     assert_eq!(
         expr,
         DatexExpressionData::PropertyAccess(PropertyAccess {
-            base: (DatexExpressionData::PropertyAccess(PropertyAccess {
-                base: (DatexExpressionData::PropertyAccess(PropertyAccess {
-                    base: (DatexExpressionData::PropertyAccess(
-                        PropertyAccess {
-                            base: (DatexExpressionData::Identifier(
-                                "myObj".to_string()
-                            )
-                            .with_default_span()),
-                            property: (DatexExpressionData::Text(
-                                "myProp".into()
-                            )
-                            .with_default_span()),
-                        }
-                    )
-                    .with_default_span()),
-                    property: (DatexExpressionData::Text("anotherProp".into())
-                        .with_default_span()),
+            base: DatexExpressionData::PropertyAccess(PropertyAccess {
+                base: DatexExpressionData::PropertyAccess(PropertyAccess {
+                    base: DatexExpressionData::PropertyAccess(PropertyAccess {
+                        base: DatexExpressionData::Identifier(
+                            "myObj".to_string()
+                        )
+                        .with_default_span(),
+                        property: DatexExpressionData::Text("myProp".into())
+                            .with_default_span(),
+                    })
+                    .with_default_span(),
+                    property: DatexExpressionData::Text("anotherProp".into())
+                        .with_default_span(),
                 })
-                .with_default_span()),
-                property: (DatexExpressionData::BinaryOperation(
+                .with_default_span(),
+                property: DatexExpressionData::BinaryOperation(
                     BinaryOperation {
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Add
                         ),
-                        left: (DatexExpressionData::Integer(Integer::from(1))
-                            .with_default_span()),
-                        right: (DatexExpressionData::Integer(Integer::from(2))
-                            .with_default_span()),
+                        left: DatexExpressionData::Integer(Integer::from(1))
+                            .with_default_span(),
+                        right: DatexExpressionData::Integer(Integer::from(2))
+                            .with_default_span(),
                         ty: None
                     }
                 )
-                .with_default_span()),
+                .with_default_span(),
             })
-            .with_default_span()),
-            property: (DatexExpressionData::Statements(
+            .with_default_span(),
+            property: DatexExpressionData::Statements(
                 Statements::new_unterminated(vec![
                     DatexExpressionData::Identifier("x".to_string())
                         .with_default_span(),
@@ -2197,7 +2182,7 @@ fn property_access_multiple() {
                         .with_default_span(),
                 ])
             )
-            .with_default_span()),
+            .with_default_span(),
         })
     );
 }
@@ -2209,13 +2194,13 @@ fn property_access_and_apply() {
     assert_eq!(
         expr,
         DatexExpressionData::Apply(Apply {
-            base: (DatexExpressionData::PropertyAccess(PropertyAccess {
-                base: (DatexExpressionData::Identifier("myObj".to_string())
-                    .with_default_span()),
-                property: (DatexExpressionData::Text("myProp".into())
-                    .with_default_span()),
+            base: DatexExpressionData::PropertyAccess(PropertyAccess {
+                base: DatexExpressionData::Identifier("myObj".to_string())
+                    .with_default_span(),
+                property: DatexExpressionData::Text("myProp".into())
+                    .with_default_span(),
             })
-            .with_default_span()),
+            .with_default_span(),
             arguments: vec![
                 DatexExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
@@ -2233,17 +2218,17 @@ fn apply_and_property_access() {
     assert_eq!(
         expr,
         DatexExpressionData::PropertyAccess(PropertyAccess {
-            base: (DatexExpressionData::Apply(Apply {
-                base: (DatexExpressionData::Identifier("myFunc".to_string())
-                    .with_default_span()),
+            base: DatexExpressionData::Apply(Apply {
+                base: DatexExpressionData::Identifier("myFunc".to_string())
+                    .with_default_span(),
                 arguments: vec![
                     DatexExpressionData::Integer(Integer::from(1))
                         .with_default_span()
                 ],
             })
-            .with_default_span()),
-            property: (DatexExpressionData::Text("myProp".into())
-                .with_default_span()),
+            .with_default_span(),
+            property: DatexExpressionData::Text("myProp".into())
+                .with_default_span(),
         })
     );
 }
@@ -2255,22 +2240,21 @@ fn nested_apply_and_property_access() {
     assert_eq!(
         expr,
         DatexExpressionData::PropertyAccess(PropertyAccess {
-            base: (DatexExpressionData::PropertyAccess(PropertyAccess {
-                base: (DatexExpressionData::Apply(Apply {
-                    base: (DatexExpressionData::Identifier("x".to_string())
-                        .with_default_span()),
+            base: DatexExpressionData::PropertyAccess(PropertyAccess {
+                base: DatexExpressionData::Apply(Apply {
+                    base: DatexExpressionData::Identifier("x".to_string())
+                        .with_default_span(),
                     arguments: vec![
                         DatexExpressionData::Integer(Integer::from(1))
                             .with_default_span()
                     ],
                 })
-                .with_default_span()),
-                property: (DatexExpressionData::Text("y".into())
-                    .with_default_span()),
+                .with_default_span(),
+                property: DatexExpressionData::Text("y".into())
+                    .with_default_span(),
             })
-            .with_default_span()),
-            property: (DatexExpressionData::Text("z".into())
-                .with_default_span()),
+            .with_default_span(),
+            property: DatexExpressionData::Text("z".into()).with_default_span(),
         })
     );
 }
@@ -2347,10 +2331,10 @@ fn variable_declaration_statement() {
                 kind: VariableKind::Const,
                 type_annotation: None,
                 name: "x".to_string(),
-                init_expression: (DatexExpressionData::Integer(Integer::from(
+                init_expression: DatexExpressionData::Integer(Integer::from(
                     42
                 ))
-                .with_default_span()),
+                .with_default_span(),
             })
             .with_default_span()
         ]))
@@ -2368,19 +2352,19 @@ fn variable_declaration_with_expression() {
             kind: VariableKind::Var,
             type_annotation: None,
             name: "x".to_string(),
-            init_expression: (DatexExpressionData::BinaryOperation(
+            init_expression: DatexExpressionData::BinaryOperation(
                 BinaryOperation {
                     operator: BinaryOperator::Arithmetic(
                         ArithmeticOperator::Add
                     ),
-                    left: (DatexExpressionData::Integer(Integer::from(1))
-                        .with_default_span()),
-                    right: (DatexExpressionData::Integer(Integer::from(2))
-                        .with_default_span()),
+                    left: DatexExpressionData::Integer(Integer::from(1))
+                        .with_default_span(),
+                    right: DatexExpressionData::Integer(Integer::from(2))
+                        .with_default_span(),
                     ty: None
                 }
             )
-            .with_default_span())
+            .with_default_span()
         })
     );
 }
@@ -2395,8 +2379,8 @@ fn variable_assignment() {
             id: None,
             operator: None,
             name: "x".to_string(),
-            expression: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span()),
+            expression: DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span(),
         })
     );
 }
@@ -2411,18 +2395,16 @@ fn variable_assignment_expression() {
             id: None,
             operator: None,
             name: "x".to_string(),
-            expression: (DatexExpressionData::VariableAssignment(
+            expression: DatexExpressionData::VariableAssignment(
                 VariableAssignment {
                     id: None,
                     operator: None,
                     name: "y".to_string(),
-                    expression: (DatexExpressionData::Integer(Integer::from(
-                        1
-                    ))
-                    .with_default_span()),
+                    expression: DatexExpressionData::Integer(Integer::from(1))
+                        .with_default_span(),
                 }
             )
-            .with_default_span()),
+            .with_default_span(),
         })
     );
 }
@@ -2438,8 +2420,8 @@ fn variable_assignment_expression_in_list() {
                 id: None,
                 operator: None,
                 name: "x".to_string(),
-                expression: (DatexExpressionData::Integer(Integer::from(1))
-                    .with_default_span()),
+                expression: DatexExpressionData::Integer(Integer::from(1))
+                    .with_default_span(),
             })
             .with_default_span()
         ]))
@@ -2454,8 +2436,8 @@ fn apply_in_list() {
         expr,
         DatexExpressionData::List(List::new(vec![
             DatexExpressionData::Apply(Apply {
-                base: (DatexExpressionData::Identifier("myFunc".to_string())
-                    .with_default_span()),
+                base: DatexExpressionData::Identifier("myFunc".to_string())
+                    .with_default_span(),
                 arguments: vec![
                     DatexExpressionData::Integer(Integer::from(1))
                         .with_default_span()
@@ -2488,12 +2470,12 @@ fn fraction() {
         res,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Divide),
-            left: (DatexExpressionData::Decimal(
+            left: DatexExpressionData::Decimal(
                 Decimal::try_from_string("42.4").unwrap()
             )
-            .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(3))
-                .with_default_span()),
+            .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(3))
+                .with_default_span(),
             ty: None
         })
     );
@@ -2503,10 +2485,10 @@ fn fraction() {
         res,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Divide),
-            left: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(3))
-                .with_default_span()),
+            left: DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(3))
+                .with_default_span(),
             ty: None
         })
     );
@@ -2516,10 +2498,10 @@ fn fraction() {
         res,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Divide),
-            left: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(3))
-                .with_default_span()),
+            left: DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(3))
+                .with_default_span(),
             ty: None
         })
     );
@@ -2545,18 +2527,16 @@ fn variable_assignment_multiple() {
             id: None,
             operator: None,
             name: "x".to_string(),
-            expression: (DatexExpressionData::VariableAssignment(
+            expression: DatexExpressionData::VariableAssignment(
                 VariableAssignment {
                     id: None,
                     operator: None,
                     name: "y".to_string(),
-                    expression: (DatexExpressionData::Integer(Integer::from(
-                        42
-                    ))
-                    .with_default_span()),
+                    expression: DatexExpressionData::Integer(Integer::from(42))
+                        .with_default_span(),
                 }
             )
-            .with_default_span()),
+            .with_default_span(),
         })
         .with_default_span()
     );
@@ -2573,10 +2553,10 @@ fn variable_declaration_and_assignment() {
                 id: None,
                 kind: VariableKind::Var,
                 name: "x".to_string(),
-                init_expression: (DatexExpressionData::Integer(Integer::from(
+                init_expression: DatexExpressionData::Integer(Integer::from(
                     42
                 ))
-                .with_default_span()),
+                .with_default_span(),
                 type_annotation: None
             })
             .with_default_span(),
@@ -2584,23 +2564,19 @@ fn variable_declaration_and_assignment() {
                 id: None,
                 operator: None,
                 name: "x".to_string(),
-                expression: (DatexExpressionData::BinaryOperation(
+                expression: DatexExpressionData::BinaryOperation(
                     BinaryOperation {
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Multiply
                         ),
-                        left: (DatexExpressionData::Integer(Integer::from(
-                            100
-                        ))
-                        .with_default_span()),
-                        right: (DatexExpressionData::Integer(Integer::from(
-                            10
-                        ))
-                        .with_default_span()),
+                        left: DatexExpressionData::Integer(Integer::from(100))
+                            .with_default_span(),
+                        right: DatexExpressionData::Integer(Integer::from(10))
+                            .with_default_span(),
                         ty: None
                     }
                 )
-                .with_default_span()),
+                .with_default_span(),
             })
             .with_default_span()
         ]))
@@ -2652,13 +2628,15 @@ fn text_to_value_container() {
 fn list_to_value_container() {
     let src = "[1, 2, 3, 4.5, \"text\"]";
     let val = parse_to_value_container(src);
-    let value_container_list: Vec<ValueContainer> = vec![
+    let value_container_vec: Vec<ValueContainer> = vec![
         Integer::from(1).into(),
         Integer::from(2).into(),
         Integer::from(3).into(),
         Decimal::try_from_string("4.5").unwrap().into(),
         "text".to_string().into(),
     ];
+    let value_container_list =
+        datex_core::values::core_values::list::List::new(value_container_vec);
     assert_eq!(val, ValueContainer::from(value_container_list));
 }
 
@@ -2677,17 +2655,19 @@ fn json_to_value_container() {
     "#;
 
     let val = parse_to_value_container(src);
-    let value_container_list: Vec<ValueContainer> = vec![
+    let value_container_vec: Vec<ValueContainer> = vec![
         Integer::from(1).into(),
         Integer::from(2).into(),
         Integer::from(3).into(),
         Decimal::try_from_string("0.5").unwrap().into(),
     ];
+    let value_container_list =
+        datex_core::values::core_values::list::List::new(value_container_vec);
     let value_container_inner_map: ValueContainer =
         ValueContainer::from(datex_core::values::core_values::map::Map::from(
             vec![("key".to_string(), "value".to_string().into())]
                 .into_iter()
-                .collect::<HashMap<String, ValueContainer>>(),
+                .collect::<IndexMap<String, ValueContainer, RandomState>>(),
         ));
     let value_container_map: ValueContainer =
         ValueContainer::from(datex_core::values::core_values::map::Map::from(
@@ -2699,7 +2679,7 @@ fn json_to_value_container() {
                 ("nested".to_string(), value_container_inner_map),
             ]
             .into_iter()
-            .collect::<HashMap<String, ValueContainer>>(),
+            .collect::<IndexMap<String, ValueContainer, RandomState>>(),
         ));
     assert_eq!(val, value_container_map);
 }
@@ -2755,10 +2735,10 @@ fn comment() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::Integer(Integer::from(1))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(2))
-                .with_default_span()),
+            left: DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(2))
+                .with_default_span(),
             ty: None
         })
     );
@@ -2769,10 +2749,10 @@ fn comment() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::Integer(Integer::from(1))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(2))
-                .with_default_span()),
+            left: DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(2))
+                .with_default_span(),
             ty: None
         })
     );
@@ -2786,10 +2766,10 @@ fn multiline_comment() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::Integer(Integer::from(1))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(2))
-                .with_default_span()),
+            left: DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(2))
+                .with_default_span(),
             ty: None
         })
     );
@@ -2800,10 +2780,10 @@ fn multiline_comment() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::Integer(Integer::from(1))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(2))
-                .with_default_span()),
+            left: DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(2))
+                .with_default_span(),
             ty: None
         })
     );
@@ -2817,10 +2797,10 @@ fn shebang() {
         expr,
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::Integer(Integer::from(1))
-                .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(2))
-                .with_default_span()),
+            left: DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span(),
+            right: DatexExpressionData::Integer(Integer::from(2))
+                .with_default_span(),
             ty: None
         })
     );
@@ -2841,10 +2821,10 @@ fn remote_execution() {
     assert_eq!(
         expr,
         DatexExpressionData::RemoteExecution(RemoteExecution {
-            left: (DatexExpressionData::Identifier("a".to_string())
-                .with_default_span()),
-            right: (DatexExpressionData::Identifier("b".to_string())
-                .with_default_span()),
+            left: DatexExpressionData::Identifier("a".to_string())
+                .with_default_span(),
+            right: DatexExpressionData::Identifier("b".to_string())
+                .with_default_span(),
             injected_variable_count: None,
         })
     );
@@ -2856,10 +2836,10 @@ fn remote_execution_no_space() {
     assert_eq!(
         expr,
         DatexExpressionData::RemoteExecution(RemoteExecution {
-            left: (DatexExpressionData::Identifier("a".to_string())
-                .with_default_span()),
-            right: (DatexExpressionData::Identifier("b".to_string())
-                .with_default_span()),
+            left: DatexExpressionData::Identifier("a".to_string())
+                .with_default_span(),
+            right: DatexExpressionData::Identifier("b".to_string())
+                .with_default_span(),
             injected_variable_count: None,
         })
     );
@@ -2872,30 +2852,26 @@ fn remote_execution_complex() {
     assert_eq!(
         expr,
         DatexExpressionData::RemoteExecution(RemoteExecution {
-            left: (DatexExpressionData::Identifier("a".to_string())
-                .with_default_span()),
-            right: (DatexExpressionData::BinaryOperation(BinaryOperation {
+            left: DatexExpressionData::Identifier("a".to_string())
+                .with_default_span(),
+            right: DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: (DatexExpressionData::Identifier("b".to_string())
-                    .with_default_span()),
-                right: (DatexExpressionData::BinaryOperation(
-                    BinaryOperation {
-                        operator: BinaryOperator::Arithmetic(
-                            ArithmeticOperator::Multiply
-                        ),
-                        left: (DatexExpressionData::Identifier(
-                            "c".to_string()
-                        )
-                        .with_default_span()),
-                        right: (DatexExpressionData::Integer(Integer::from(2))
-                            .with_default_span()),
-                        ty: None
-                    }
-                )
-                .with_default_span()),
+                left: DatexExpressionData::Identifier("b".to_string())
+                    .with_default_span(),
+                right: DatexExpressionData::BinaryOperation(BinaryOperation {
+                    operator: BinaryOperator::Arithmetic(
+                        ArithmeticOperator::Multiply
+                    ),
+                    left: DatexExpressionData::Identifier("c".to_string())
+                        .with_default_span(),
+                    right: DatexExpressionData::Integer(Integer::from(2))
+                        .with_default_span(),
+                    ty: None
+                })
+                .with_default_span(),
                 ty: None
             })
-            .with_default_span()),
+            .with_default_span(),
             injected_variable_count: None,
         },)
     );
@@ -2909,10 +2885,10 @@ fn remote_execution_statements() {
         expr,
         DatexExpressionData::Statements(Statements::new_unterminated(vec![
             DatexExpressionData::RemoteExecution(RemoteExecution {
-                left: (DatexExpressionData::Identifier("a".to_string())
-                    .with_default_span()),
-                right: (DatexExpressionData::Identifier("b".to_string())
-                    .with_default_span()),
+                left: DatexExpressionData::Identifier("a".to_string())
+                    .with_default_span(),
+                right: DatexExpressionData::Identifier("b".to_string())
+                    .with_default_span(),
                 injected_variable_count: None,
             })
             .with_default_span(),
@@ -2928,9 +2904,9 @@ fn remote_execution_inline_statements() {
     assert_eq!(
         expr,
         DatexExpressionData::RemoteExecution(RemoteExecution {
-            left: (DatexExpressionData::Identifier("a".to_string())
-                .with_default_span()),
-            right: (DatexExpressionData::Statements(
+            left: DatexExpressionData::Identifier("a".to_string())
+                .with_default_span(),
+            right: DatexExpressionData::Statements(
                 Statements::new_unterminated(vec![
                     DatexExpressionData::Integer(Integer::from(1))
                         .with_default_span(),
@@ -2938,16 +2914,16 @@ fn remote_execution_inline_statements() {
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Add
                         ),
-                        left: (DatexExpressionData::Integer(Integer::from(2))
-                            .with_default_span()),
-                        right: (DatexExpressionData::Integer(Integer::from(3))
-                            .with_default_span()),
+                        left: DatexExpressionData::Integer(Integer::from(2))
+                            .with_default_span(),
+                        right: DatexExpressionData::Integer(Integer::from(3))
+                            .with_default_span(),
                         ty: None
                     })
                     .with_default_span(),
                 ])
             )
-            .with_default_span()),
+            .with_default_span(),
             injected_variable_count: None,
         },)
     );
@@ -2960,8 +2936,8 @@ fn unbox() {
     assert_eq!(
         expr,
         DatexExpressionData::Unbox(Unbox {
-            expression: (DatexExpressionData::Identifier("x".to_string())
-                .with_default_span())
+            expression: DatexExpressionData::Identifier("x".to_string())
+                .with_default_span()
         })
     );
 }
@@ -2973,11 +2949,11 @@ fn unbox_multiple() {
     assert_eq!(
         expr,
         DatexExpressionData::Unbox(Unbox {
-            expression: (DatexExpressionData::Unbox(Unbox {
-                expression: (DatexExpressionData::Identifier("x".to_string())
-                    .with_default_span())
+            expression: DatexExpressionData::Unbox(Unbox {
+                expression: DatexExpressionData::Identifier("x".to_string())
+                    .with_default_span()
             })
-            .with_default_span())
+            .with_default_span()
         })
     );
 }
@@ -3026,8 +3002,8 @@ fn variable_add_assignment() {
             id: None,
             operator: Some(ModificationOperator::AddAssign),
             name: "x".to_string(),
-            expression: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span()),
+            expression: DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span(),
         })
     );
 }
@@ -3042,8 +3018,8 @@ fn variable_sub_assignment() {
             id: None,
             operator: Some(ModificationOperator::SubtractAssign),
             name: "x".into(),
-            expression: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span()),
+            expression: DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span(),
         })
     );
 }
@@ -3059,21 +3035,19 @@ fn variable_declaration_shared_mut() {
             kind: VariableKind::Const,
             name: "x".to_string(),
             type_annotation: None,
-            init_expression: (DatexExpressionData::CreateShared(
-                CreateShared {
-                    mutability: SharedContainerMutability::Mutable,
-                    expression: (DatexExpressionData::List(List::new(vec![
-                        DatexExpressionData::Integer(Integer::from(1))
-                            .with_default_span(),
-                        DatexExpressionData::Integer(Integer::from(2))
-                            .with_default_span(),
-                        DatexExpressionData::Integer(Integer::from(3))
-                            .with_default_span(),
-                    ]))
-                    .with_default_span())
-                }
-            )
-            .with_default_span()),
+            init_expression: DatexExpressionData::CreateShared(CreateShared {
+                mutability: SharedContainerMutability::Mutable,
+                expression: DatexExpressionData::List(List::new(vec![
+                    DatexExpressionData::Integer(Integer::from(1))
+                        .with_default_span(),
+                    DatexExpressionData::Integer(Integer::from(2))
+                        .with_default_span(),
+                    DatexExpressionData::Integer(Integer::from(3))
+                        .with_default_span(),
+                ]))
+                .with_default_span()
+            })
+            .with_default_span(),
         })
     );
 }
@@ -3089,21 +3063,19 @@ fn variable_declaration_shared() {
             kind: VariableKind::Const,
             name: "x".to_string(),
             type_annotation: None,
-            init_expression: (DatexExpressionData::CreateShared(
-                CreateShared {
-                    mutability: SharedContainerMutability::Immutable,
-                    expression: (DatexExpressionData::List(List::new(vec![
-                        DatexExpressionData::Integer(Integer::from(1))
-                            .with_default_span(),
-                        DatexExpressionData::Integer(Integer::from(2))
-                            .with_default_span(),
-                        DatexExpressionData::Integer(Integer::from(3))
-                            .with_default_span(),
-                    ]))
-                    .with_default_span())
-                }
-            )
-            .with_default_span()),
+            init_expression: DatexExpressionData::CreateShared(CreateShared {
+                mutability: SharedContainerMutability::Immutable,
+                expression: DatexExpressionData::List(List::new(vec![
+                    DatexExpressionData::Integer(Integer::from(1))
+                        .with_default_span(),
+                    DatexExpressionData::Integer(Integer::from(2))
+                        .with_default_span(),
+                    DatexExpressionData::Integer(Integer::from(3))
+                        .with_default_span(),
+                ]))
+                .with_default_span()
+            })
+            .with_default_span(),
         })
     );
 }
@@ -3118,8 +3090,8 @@ fn variable_declaration() {
             kind: VariableKind::Const,
             name: "x".to_string(),
             type_annotation: None,
-            init_expression: (DatexExpressionData::Integer(Integer::from(1))
-                .with_default_span()),
+            init_expression: DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span(),
         })
     );
 }
@@ -3132,8 +3104,8 @@ fn negation() {
         expr,
         DatexExpressionData::UnaryOperation(UnaryOperation {
             operator: UnaryOperator::Logical(LogicalUnaryOperator::Not),
-            expression: (DatexExpressionData::Identifier("x".to_string())
-                .with_default_span())
+            expression: DatexExpressionData::Identifier("x".to_string())
+                .with_default_span()
         })
     );
 
@@ -3143,8 +3115,8 @@ fn negation() {
         expr,
         DatexExpressionData::UnaryOperation(UnaryOperation {
             operator: UnaryOperator::Logical(LogicalUnaryOperator::Not),
-            expression: (DatexExpressionData::Boolean(true.into())
-                .with_default_span())
+            expression: DatexExpressionData::Boolean(true.into())
+                .with_default_span()
         })
     );
 
@@ -3186,6 +3158,6 @@ fn token_spans() {
         assert_eq!(right.span.start, 7);
         assert_eq!(right.span.end, 10);
     } else {
-        core::panic!("Expected BinaryOperation");
+        panic!("Expected BinaryOperation");
     }
 }

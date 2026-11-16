@@ -25,4 +25,5 @@ pub enum RootProperty {
     ENV = 0x02,
     CALLER = 0x03,
     CONFIG = 0x04,
+    NAME = 0x05,
 }

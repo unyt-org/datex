@@ -12,11 +12,9 @@ cfg_if! {
                 .map_err(|_| ())
         }
 
-
         pub async fn sleep(dur: core::time::Duration) {
             tokio::time::sleep(dur).await;
         }
-
     }
 
     else if #[cfg(feature = "wasm_runtime")] {
@@ -64,9 +62,6 @@ cfg_if! {
         }
     }
     else {
-        use alloc::boxed::Box;
-
-
         pub async fn sleep(duration: core::time::Duration) {
             let mut interval = async_timer::Interval::platform_new(duration);
             interval.wait().await;
@@ -76,7 +71,7 @@ cfg_if! {
             duration: core::time::Duration,
             fut: impl Future<Output = T>,
         ) -> Result<T, ()> {
-            let mut pinned_fut = Box::pin(fut);
+            let mut pinned_fut = core::pin::pin!(fut);
             let work = async_timer::Timed::platform_new(pinned_fut.as_mut(), duration);
 
             work.await.map_err(|_| ())

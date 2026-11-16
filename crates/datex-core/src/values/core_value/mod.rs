@@ -8,9 +8,8 @@ use crate::{
     },
     prelude::*,
     types::entities::entity_type_definition::EntityTypeDefinition,
-    values::core_values::native::{DatexNative, NativeCoreValue},
+    values::core_values::instant::Instant,
 };
-use datex_macros_internal::FromCoreValue;
 pub mod serde_dif;
 use crate::{
     types::r#type::Type,
@@ -30,23 +29,26 @@ use crate::{
             list::List,
             map::Map,
             range::Range,
+            receiver::ValueContainerReceiver,
+            sender::ValueContainerSender,
             text::Text,
         },
         value_container::ValueContainer,
     },
 };
-use binrw::error::CustomError;
 use core::fmt::{Debug, Display, Formatter};
 
-mod child_iterator;
-pub mod datex_proxy;
-pub mod equality;
-pub mod ops;
-#[cfg(feature = "decompiler")]
-mod to_datex_expression_data;
-pub mod try_clone;
+pub mod borrowed_core_value;
+pub mod convert_core_value;
+mod convert_parts;
+mod datex_hash;
+mod equality;
+mod iter_parts;
+mod ops;
+mod to_instructions;
+mod try_clone;
 
-#[derive(Default, Clone, Debug, FromCoreValue)]
+#[derive(Default, Clone, Debug)]
 pub enum CoreValue {
     #[default]
     Uninitialized,
@@ -64,30 +66,11 @@ pub enum CoreValue {
     EntityTypeDefinition(EntityTypeDefinition),
     Callable(Callable),
     Range(Range),
+    Instant(Instant),
+    Sender(ValueContainerSender),
+    Receiver(ValueContainerReceiver),
     /// Used for nested values, e.g. #Tagged (shared 42)
     Box(Box<ValueContainer>),
-    /// Native rust value with DATEX representation
-    Native(NativeCoreValue),
-}
-
-impl From<&str> for CoreValue {
-    fn from(value: &str) -> Self {
-        CoreValue::Text(value.into())
-    }
-}
-impl From<String> for CoreValue {
-    fn from(value: String) -> Self {
-        CoreValue::Text(Text(value))
-    }
-}
-
-impl<T> From<Vec<T>> for CoreValue
-where
-    T: Into<ValueContainer>,
-{
-    fn from(vec: Vec<T>) -> Self {
-        CoreValue::List(vec.into())
-    }
 }
 
 impl<T> FromIterator<T> for CoreValue
@@ -96,101 +79,6 @@ where
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         CoreValue::List(List::new(iter.into_iter().map(Into::into).collect()))
-    }
-}
-
-impl From<bool> for CoreValue {
-    fn from(value: bool) -> Self {
-        CoreValue::Boolean(value.into())
-    }
-}
-
-impl From<i8> for CoreValue {
-    fn from(value: i8) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<i16> for CoreValue {
-    fn from(value: i16) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<i32> for CoreValue {
-    fn from(value: i32) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<i64> for CoreValue {
-    fn from(value: i64) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<i128> for CoreValue {
-    fn from(value: i128) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-
-impl From<u8> for CoreValue {
-    fn from(value: u8) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<u16> for CoreValue {
-    fn from(value: u16) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<u32> for CoreValue {
-    fn from(value: u32) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<u64> for CoreValue {
-    fn from(value: u64) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<u128> for CoreValue {
-    fn from(value: u128) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-
-impl From<f32> for CoreValue {
-    fn from(value: f32) -> Self {
-        CoreValue::TypedDecimal(value.into())
-    }
-}
-impl From<f64> for CoreValue {
-    fn from(value: f64) -> Self {
-        CoreValue::TypedDecimal(value.into())
-    }
-}
-
-impl From<usize> for CoreValue {
-    fn from(value: usize) -> Self {
-        #[cfg(target_pointer_width = "64")]
-        {
-            CoreValue::TypedInteger((value as u64).into())
-        }
-        #[cfg(target_pointer_width = "32")]
-        {
-            CoreValue::TypedInteger((value as u32).into())
-        }
-    }
-}
-
-impl From<isize> for CoreValue {
-    fn from(value: isize) -> Self {
-        #[cfg(target_pointer_width = "64")]
-        {
-            CoreValue::TypedInteger((value as i64).into())
-        }
-        #[cfg(target_pointer_width = "32")]
-        {
-            CoreValue::TypedInteger((value as i32).into())
-        }
     }
 }
 
@@ -229,11 +117,19 @@ impl From<&CoreValue> for CoreLibTypeId {
             CoreValue::EntityTypeDefinition(_nominal_type) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never) // TODO: what is the type of nominal type? do we even need to handle this?
             }
+            CoreValue::Instant(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Instant)
+            }
             CoreValue::Uninitialized => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never)
             }
             CoreValue::Box(_) => CoreLibTypeId::Base(CoreLibBaseTypeId::Box),
-            CoreValue::Native(native) => native.core_lib_type_id(),
+            CoreValue::Sender(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Sender)
+            }
+            CoreValue::Receiver(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Receiver)
+            }
         }
     }
 }
@@ -246,14 +142,6 @@ impl CoreValue {
         value.into()
     }
 
-    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
-    pub fn native(value: impl DatexNative) -> CoreValue {
-        CoreValue::Native(NativeCoreValue::new(value))
-    }
-    pub fn native_boxed(value: Box<dyn DatexNative>) -> CoreValue {
-        CoreValue::Native(NativeCoreValue { value })
-    }
-
     /// Check if the CoreValue is a combined value type (List, Map)
     /// that contains inner ValueContainers.
     pub fn is_collection_value(&self) -> bool {
@@ -264,77 +152,22 @@ impl CoreValue {
     /// This method uses the CoreLibPointerId to retrieve the corresponding
     /// type reference from the core library.
     /// For example, a CoreValue::TypedInteger(i32) will return the type ref integer/i32
-    pub fn default_core_type(&self) -> CoreLibTypeId {
+    pub fn core_lib_type_id(&self) -> CoreLibTypeId {
         CoreLibTypeId::from(self)
     }
 
-    /// Tries to get a borrow of the current value as the specified type.
-    /// Does not perform any type conversion.
-    pub fn try_as<'a, T: 'a>(&'a self) -> Option<&'a T>
-    where
-        &'a T: TryFrom<&'a CoreValue>,
-    {
-        <&T>::try_from(self).ok()
-    }
-
-    pub fn try_as_mut<'a, T: 'a>(&'a mut self) -> Option<&'a mut T>
-    where
-        &'a mut T: TryFrom<&'a mut CoreValue>,
-    {
-        <&mut T>::try_from(self).ok()
-    }
-
-    /// Tries to convert the current value into the specific specified type.
-    /// Does not perform any type conversion.
-    pub fn try_into_value<T>(self) -> Option<T>
-    where
-        T: TryFrom<CoreValue>,
-    {
-        T::try_from(self).ok()
-    }
-
     /// Casts the value to a [Text] value
-    /// Note: in contrast to [try_cast_to], [Text] values are not wrapped in quotation marks.
+    /// Note: [Text] values are kept as is an not wrapped in quotes
     pub fn cast_to_text(&self) -> Text {
         match self {
             CoreValue::Text(text) => text.clone(),
-            _ => Text(self.to_string()),
-        }
-    }
-
-    /// Tries to downcast the CoreValue to a native value of type T.
-    /// This method will return Some(Box<T>) if the CoreValue is a Native variant and the underlying value can be downcast to T.
-    pub fn downcast_native<T: DatexNative>(self) -> Option<Box<T>> {
-        if let CoreValue::Native(native_value) = self {
-            native_value.into_any().downcast::<T>().ok()
-        } else {
-            None
-        }
-    }
-
-    /// Tries to downcast the CoreValue to a reference of a native value of type T.
-    /// This method will return Some(&T) if the CoreValue is a Native variant and the underlying value can be downcast to T.
-    pub fn downcast_native_ref<T: DatexNative>(&self) -> Option<&T> {
-        if let CoreValue::Native(native_value) = self {
-            native_value.as_any().downcast_ref::<T>()
-        } else {
-            None
-        }
-    }
-
-    /// Tries to downcast the CoreValue to a mutable reference of a native value of type T.
-    /// This method will return Some(&mut T) if the CoreValue is a Native variant and the underlying value can be downcast to T.
-    pub fn downcast_native_mut<T: DatexNative>(&mut self) -> Option<&mut T> {
-        if let CoreValue::Native(native_value) = self {
-            native_value.as_any_mut().downcast_mut::<T>()
-        } else {
-            None
+            _ => Text::String(self.to_string()),
         }
     }
 
     pub fn cast_to_bool(&self) -> Option<Boolean> {
         match self {
-            CoreValue::Text(text) => Some(Boolean(!text.0.is_empty())),
+            CoreValue::Text(text) => Some(Boolean(!text.as_str().is_empty())),
             CoreValue::Boolean(bool) => Some(bool.clone()),
             CoreValue::TypedInteger(int) => Some(Boolean(int.as_i128()? != 0)),
             CoreValue::Null => Some(Boolean(false)),
@@ -345,7 +178,7 @@ impl CoreValue {
     pub fn cast_to_decimal(&self) -> Option<Decimal> {
         match self {
             CoreValue::Text(text) => {
-                text.to_string().parse::<f64>().ok().map(Decimal::from)
+                text.as_string().parse::<f64>().ok().map(Decimal::from)
             }
             CoreValue::TypedInteger(int) => {
                 Some(Decimal::from(int.as_i128()? as f64))
@@ -407,7 +240,7 @@ impl CoreValue {
     pub fn _cast_to_integer_internal(&self) -> Option<TypedInteger> {
         match self {
             CoreValue::Text(text) => {
-                Integer::try_from_string(&text.to_string())
+                Integer::try_from_string(&text.as_string())
                     .map(|x| Some(x.to_smallest_fitting()))
                     .unwrap_or(None)
             }
@@ -433,7 +266,7 @@ impl CoreValue {
     pub fn cast_to_integer(&self) -> Option<Integer> {
         match self {
             CoreValue::Text(text) => {
-                Integer::try_from_string(&text.to_string()).ok()
+                Integer::try_from_string(&text.as_string()).ok()
             }
             CoreValue::TypedInteger(int) => Some(int.as_integer()),
             CoreValue::Integer(int) => Some(int.clone()),
@@ -495,6 +328,7 @@ impl CoreValue {
 impl Display for CoreValue {
     fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
         match self {
+            CoreValue::Instant(instant) => write!(f, "{instant}"),
             CoreValue::Type(ty) => write!(f, "{ty}"),
             CoreValue::Boolean(bool) => write!(f, "{bool}"),
             CoreValue::TypedInteger(int) => write!(f, "{int}"),
@@ -515,10 +349,93 @@ impl Display for CoreValue {
             }
             CoreValue::Uninitialized => write!(f, "[[ uninitialized ]]"),
             CoreValue::Box(inner) => write!(f, "({})", inner),
-            CoreValue::Native(_native) => {
-                write!(f, "[[ native value ]]")
-            }
+            CoreValue::Sender(_sender) => write!(f, "[[ sender ]]"),
+            CoreValue::Receiver(_receiver) => write!(f, "[[ receiver ]]"),
         }
+    }
+}
+
+impl From<Text> for CoreValue {
+    fn from(value: Text) -> Self {
+        CoreValue::Text(value)
+    }
+}
+
+impl From<Endpoint> for CoreValue {
+    fn from(value: Endpoint) -> Self {
+        CoreValue::Endpoint(value)
+    }
+}
+
+impl From<Range> for CoreValue {
+    fn from(value: Range) -> Self {
+        CoreValue::Range(value)
+    }
+}
+
+impl From<Callable> for CoreValue {
+    fn from(value: Callable) -> Self {
+        CoreValue::Callable(value)
+    }
+}
+
+impl From<Type> for CoreValue {
+    fn from(value: Type) -> Self {
+        CoreValue::Type(value)
+    }
+}
+
+impl From<EntityTypeDefinition> for CoreValue {
+    fn from(value: EntityTypeDefinition) -> Self {
+        CoreValue::EntityTypeDefinition(value)
+    }
+}
+
+impl From<Map> for CoreValue {
+    fn from(value: Map) -> Self {
+        CoreValue::Map(value)
+    }
+}
+
+impl From<List> for CoreValue {
+    fn from(value: List) -> Self {
+        CoreValue::List(value)
+    }
+}
+
+impl From<Decimal> for CoreValue {
+    fn from(value: Decimal) -> Self {
+        CoreValue::Decimal(value)
+    }
+}
+
+impl From<TypedDecimal> for CoreValue {
+    fn from(value: TypedDecimal) -> Self {
+        CoreValue::TypedDecimal(value)
+    }
+}
+
+impl From<Integer> for CoreValue {
+    fn from(value: Integer) -> Self {
+        CoreValue::Integer(value)
+    }
+}
+
+impl From<TypedInteger> for CoreValue {
+    fn from(value: TypedInteger) -> Self {
+        CoreValue::TypedInteger(value)
+    }
+}
+
+impl From<Boolean> for CoreValue {
+    fn from(value: Boolean) -> Self {
+        CoreValue::Boolean(value)
+    }
+}
+
+impl From<Instant> for CoreValue {
+    fn from(value: Instant) -> Self {
+        CoreValue::Instant(value)
     }
 }
 
@@ -530,27 +447,35 @@ mod tests {
     use log::{debug, info};
 
     use super::*;
+    use crate::traits::{
+        convert_value::ConvertValue, get_core_lib_type_id::GetCoreLibTypeId,
+    };
 
     #[test]
     fn type_construct() {
-        let a = CoreValue::from(42i32);
-        assert_eq!(a.default_core_type().to_string(), "integer/i32");
+        let a = 42i32.to_value();
+        assert_eq!(a.core_lib_type_id().to_string(), "integer/i32");
     }
 
     #[test]
     fn addition() {
-        let a = CoreValue::from(42i32);
-        let b = CoreValue::from(11i32);
+        let a = 42i32.to_value();
+        let b = 11i32.to_value();
 
         let a_plus_b = (a.clone() + b.clone()).unwrap();
-        assert_eq!(a_plus_b.clone(), CoreValue::from(53));
+        assert_eq!(a_plus_b.clone(), 53i32.to_value());
         info!("{} + {} = {}", a.clone(), b.clone(), a_plus_b.clone());
     }
 
     #[test]
     fn endpoint() {
-        let endpoint: Endpoint =
-            CoreValue::from("@test").cast_to_endpoint().unwrap();
+        let endpoint: Endpoint = "@test"
+            .to_string()
+            .to_value()
+            .try_into_core_value()
+            .unwrap()
+            .cast_to_endpoint()
+            .unwrap();
         debug!("Endpoint: {endpoint}");
         assert_eq!(endpoint.to_string(), "@test");
     }
@@ -558,17 +483,12 @@ mod tests {
     #[test]
     pub fn range_from_core() {
         assert_eq!(
-            CoreValue::from(Range {
-                start: Box::new(Integer::from(11).into()),
-                end: Box::new(Integer::from(13).into())
-            })
+            CoreValue::Range(Range::new(
+                CoreValue::Integer(Integer::from(11)).into(),
+                CoreValue::Integer(Integer::from(13)).into()
+            ))
             .to_string(),
             "11..13"
         );
-    }
-
-    #[test]
-    pub fn native_values() {
-        let native_string = CoreValue::native("Hello DATEX".to_string());
     }
 }

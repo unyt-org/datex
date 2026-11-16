@@ -1,5 +1,6 @@
 use crate::{
-    prelude::*, runtime::cache::shared_references_cache::SharedReferencesCache,
+    datex_registry::registry_collect, prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     values::core_values::map::Map,
 };
 
@@ -9,13 +10,11 @@ pub struct DatexModuleRegistration {
     pub create_module: fn(memory: &mut SharedReferencesCache) -> Map,
 }
 
-inventory::collect!(DatexModuleRegistration);
-
-/// Returns an iterator over all registered Datex modules.
-pub fn all_datex_module_registrations()
--> impl Iterator<Item = &'static DatexModuleRegistration> {
-    inventory::iter::<DatexModuleRegistration>.into_iter()
-}
+registry_collect!(
+    DatexModuleRegistration,
+    DATEX_MODULE_REGISTRATIONS,
+    all_datex_module_registrations
+);
 
 pub fn get_all_modules(
     memory: &mut SharedReferencesCache,

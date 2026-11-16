@@ -6,6 +6,7 @@ use crate::{
         cache::shared_values_cache::{
             SharedValuesCache, ValueNotFoundInCacheError,
         },
+        execution::ExecutionError,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     shared_values::{
@@ -37,7 +38,7 @@ use core::{cell::RefCell, result::Result};
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
 pub struct DIFInterface {
-    pub cache: SharedValuesCache,
+    pub cache: RefCell<SharedValuesCache>,
     address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
     transceiver_id: TransceiverId,
 }
@@ -48,7 +49,7 @@ impl DIFInterface {
         address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
     ) -> Self {
         DIFInterface {
-            cache: SharedValuesCache::default(),
+            cache: RefCell::new(SharedValuesCache::default()),
             address_provider,
             transceiver_id,
         }
@@ -63,13 +64,14 @@ impl DIFInterface {
     ) -> Result<Vec<ObserverCallback>, ValueNotFoundInCacheError> {
         let shared_container = self
             .cache
+            .borrow()
             .try_get_shared_container_immutable_reference(address)?;
         Ok(shared_container.get_current_observers(source_id))
     }
 
     /// Registers a native callable function in the DIFInterface as a shared value and returns its pointer address.
     pub fn register_callable(
-        &mut self,
+        &self,
         callable: NativeCallable,
         name: Option<String>,
         signature: CallableTypeDefinition,
@@ -79,6 +81,7 @@ impl DIFInterface {
             signature: signature.clone(),
             body: CallableBody::Native(callable),
             creator: Default::default(),
+            docs: None,
         };
         let shared_base = BaseSharedValueContainer::try_new(
             ValueContainer::from(callable),
@@ -94,25 +97,53 @@ impl DIFInterface {
         &self,
         runtime: &Runtime,
         callee: ValueContainer,
-        value: Vec<ApplyArgument>,
+        args: Vec<ApplyArgument>,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
-        callee.try_apply_sync_checked(runtime, value)
+        callee.try_apply_sync_checked(runtime, args)
     }
 
     /// Executes an async apply operation, applying the `value` to the `callee`.
     pub async fn apply_async(
+        self: Rc<Self>,
+        runtime: &Runtime,
+        callee: ValueContainer,
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
+        callee.try_apply_async_checked(runtime, args).await
+    }
+
+    /// Calls async method on a value
+    pub fn call_method_sync(
         &self,
         runtime: &Runtime,
         callee: ValueContainer,
-        value: Vec<ApplyArgument>,
-    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
-        callee.try_apply_async_checked(runtime, value).await
+        method: String,
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError>
+    {
+        let callee_arg = ApplyArgument::from(callee);
+        callee_arg.try_call_method_sync(&method, args, runtime)
+    }
+
+    /// Calls an async method on a value
+    pub async fn call_method_async(
+        self: Rc<Self>,
+        runtime: &Runtime,
+        callee: ValueContainer,
+        method: String,
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError>
+    {
+        let callee_arg = ApplyArgument::from(callee);
+        callee_arg
+            .try_call_method_async(&method, args, runtime)
+            .await
     }
 
     /// Creates a new owned local pointer and stores it in memory.
     /// Returns the [SelfOwnedPointerAddress] of the newly created pointer.
     pub fn create_pointer(
-        &mut self,
+        &self,
         value: BaseSharedValueContainer,
     ) -> SelfOwnedPointerAddress {
         let container = OwnedSharedContainer::new_from_self_owned_container(
@@ -124,6 +155,7 @@ impl DIFInterface {
 
         let pointer_address = container.pointer_address().clone();
         self.cache
+            .borrow_mut()
             .store_shared_container(SharedContainer::Owned(container));
         pointer_address
     }
@@ -131,10 +163,13 @@ impl DIFInterface {
     /// Resolves a pointer address of a pointer that is currently in memory to its [SharedContainer].
     /// Returns an error if the pointer is not found in memory.
     pub fn resolve_pointer_address(
-        &mut self,
+        &self,
         address: PointerAddress,
     ) -> Result<SharedContainer, ValueNotFoundInCacheError> {
-        self.cache.try_get_shared_container(&address).cloned()
+        self.cache
+            .borrow()
+            .try_get_shared_container(&address)
+            .cloned()
     }
 
     pub fn has_address_with_ownership(
@@ -143,6 +178,7 @@ impl DIFInterface {
         ownership: SharedContainerOwnership,
     ) -> bool {
         self.cache
+            .borrow()
             .has_address_with_ownership(pointer_address, ownership)
     }
 
@@ -154,8 +190,8 @@ impl DIFInterface {
         options: ObserveOptions,
         callback: impl Fn(&Update) + 'static,
     ) -> Result<ObserverId, DIFObserveError> {
-        let shared_container_ref = self
-            .cache
+        let cache = self.cache.borrow_mut();
+        let shared_container_ref = cache
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
         Ok(shared_container_ref.observe(Observer {
@@ -173,8 +209,8 @@ impl DIFInterface {
         observer_id: ObserverId,
         options: ObserveOptions,
     ) -> Result<(), DIFObserveError> {
-        let shared_container_ref = self
-            .cache
+        let cache = self.cache.borrow_mut();
+        let shared_container_ref = cache
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
         shared_container_ref.update_observer_options(observer_id, options)?;
@@ -188,8 +224,8 @@ impl DIFInterface {
         address: PointerAddress,
         observer_id: ObserverId,
     ) -> Result<(), DIFObserveError> {
-        let shared_container_ref = self
-            .cache
+        let cache = self.cache.borrow_mut();
+        let shared_container_ref = cache
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
         shared_container_ref.unobserve(observer_id)?;

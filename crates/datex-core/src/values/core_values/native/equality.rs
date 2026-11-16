@@ -1,0 +1,24 @@
+use crate::{
+    traits::{structural_eq::StructuralEq, value_eq::ValueEq},
+    values::core_values::native::NativeCoreValue,
+};
+use core::any::Any;
+
+impl ValueEq for NativeCoreValue {
+    fn value_eq(&self, other: &Self) -> bool {
+        self.value.dyn_eq(&*other.value as &dyn Any)
+    }
+}
+
+impl PartialEq for NativeCoreValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.value.dyn_eq(&*other.value as &dyn Any)
+    }
+}
+
+// TODO: distinguish between different equality traits for dyn equality
+impl StructuralEq for NativeCoreValue {
+    fn structural_eq(&self, other: &Self) -> bool {
+        self.value.dyn_eq(&*other.value as &dyn Any)
+    }
+}

@@ -1,9 +1,9 @@
-use core::any::TypeId;
-
 use crate::{
-    prelude::*, runtime::cache::shared_references_cache::SharedReferencesCache,
+    datex_registry::registry_collect, prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     types::entities::entity_impls::EntityImpl,
 };
+use core::any::TypeId;
 
 #[derive(Debug)]
 pub struct DatexImplRegistration {
@@ -13,13 +13,11 @@ pub struct DatexImplRegistration {
     pub owner_type_id: fn() -> TypeId,
 }
 
-inventory::collect!(DatexImplRegistration);
-
-/// Returns an iterator over all registered Datex types.
-pub fn all_datex_impl_registrations()
--> impl Iterator<Item = &'static DatexImplRegistration> {
-    inventory::iter::<DatexImplRegistration>.into_iter()
-}
+registry_collect!(
+    DatexImplRegistration,
+    DATEX_IMPL_REGISTRATIONS,
+    all_datex_impl_registrations
+);
 
 pub fn get_impls(
     name: &str,

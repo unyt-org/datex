@@ -1,27 +1,23 @@
 use crate::{
     prelude::*,
-    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::AccessError,
     traits::value_access::ValueAccess,
     types::r#type::Type,
-    values::{
-        borrowed_value_container::BorrowedValueContainer,
-        value_container::value_key::BorrowedValueKey,
+    values::value_container::{
+        ValueContainer, borrowed_value_container::BorrowedValueContainer,
     },
 };
 
 impl ValueAccess for Type {
     fn try_get_property(
         &self,
-        key: BorrowedValueKey,
-        cache: &mut SharedReferencesCache,
+        key: &ValueContainer,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
-        if let Type::Entity(container) = self {
-            container.try_get_property(key, cache)
-        } else {
-            Err(AccessError::InvalidOperation(
-                "Cannot get property from non-entity type".to_string(),
-            ))
+        match self {
+            Type::Entity(entity) => entity.try_get_property(key),
+            _ => Err(AccessError::InvalidOperation(
+                "Cannot get property".to_string(),
+            )),
         }
     }
 }

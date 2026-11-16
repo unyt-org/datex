@@ -1,5 +1,5 @@
 use binrw::{BinRead, BinWrite};
-use core::{fmt::Display, prelude::rust_2024::*};
+use core::fmt::Display;
 use num_enum::TryFromPrimitive;
 
 #[derive(

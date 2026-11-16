@@ -9,21 +9,26 @@ pub mod serde_dif;
 mod to_instructions;
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,
-    value_updates::update_handler::{
-        InternalMutabilityUpdateHandler, UpdateCallbackData,
-    },
-    values::value::Value,
+    utils::impl_display_for_datex_value::impl_display_for_datex_value,
+    value_updates::update_handler::UpdateCallbackData, values::value::Value,
 };
 use core::{
-    fmt::Display,
     ops::{Index, Range},
     result::Result,
 };
 
-mod child_iterator;
+mod classification;
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
+mod iter_parts;
 pub mod local_child_path_resolver;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod try_clone;
 pub mod update_handler;
 pub mod updates;
 mod value_access;
@@ -130,26 +135,13 @@ impl List {
         }
     }
 
-    #[inline]
-    fn get_valid_index(
-        &self,
-        index: i64,
-    ) -> Result<u32, IndexOutOfBoundsError> {
-        let index = self.wrap_index(index);
-        if (index as usize) < self.items.len() {
-            Ok(index)
-        } else {
-            Err(IndexOutOfBoundsError { index })
-        }
-    }
-
     /// Sets the value at the specified index.
     /// If the index is equal to the current length of the list, the value is pushed to the end.
     /// If the index is greater than the current length, None is returned.
     /// Returns the previous value at the index if it was replaced.
     pub fn try_set(
         &mut self,
-        index: i64,
+        index: u32,
         value: ValueContainer,
     ) -> Result<ValueContainer, IndexOutOfBoundsError> {
         self.try_set_with_source(index, value, Some(TransceiverId::Local))
@@ -159,7 +151,7 @@ impl List {
     /// If the index is out of bounds, an error is returned.
     pub fn try_delete(
         &mut self,
-        index: i64,
+        index: u32,
     ) -> Result<ValueContainer, IndexOutOfBoundsError> {
         self.try_delete_with_source(index, Some(TransceiverId::Local))
     }
@@ -185,18 +177,21 @@ impl List {
     }
 }
 
-impl Display for List {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        core::write!(f, "[")?;
-        for (i, value) in self.items.iter().enumerate() {
-            if i > 0 {
-                core::write!(f, ", ")?;
+impl_display_for_datex_value!(
+    List,
+    impl core::fmt::Display for List {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            core::write!(f, "[")?;
+            for (i, value) in self.items.iter().enumerate() {
+                if i > 0 {
+                    core::write!(f, ", ")?;
+                }
+                core::write!(f, "{value}")?;
             }
-            core::write!(f, "{value}")?;
+            core::write!(f, "]")
         }
-        core::write!(f, "]")
     }
-}
+);
 
 impl<T> From<Vec<T>> for List
 where

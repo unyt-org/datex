@@ -38,6 +38,7 @@ impl WeakSharedContainer {
             container_mutability: self.container_mutability,
             move_indicator: self.move_indicator,
             observer_data: self.observer_data.clone(),
+            is_uninitialized: false,
         })
     }
 }

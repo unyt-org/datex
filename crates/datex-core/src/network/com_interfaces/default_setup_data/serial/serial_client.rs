@@ -1,12 +1,14 @@
 use crate::{
-    network::com_interfaces::com_interface::properties::ComInterfaceProperties,
+    network::com_interfaces::com_interface::properties::{
+        ComInterfaceProperties, ReconnectionConfig,
+    },
     prelude::*,
 };
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
-#[derive(Datex, Serialize, Deserialize)]
-#[datex(structural_recursive)]
+#[derive(Datex, Clone, Serialize, Deserialize)]
+#[datex(structural)]
 pub struct SerialClientInterfaceSetupData {
     pub port_name: Option<String>,
     pub baud_rate: u32,
@@ -21,5 +23,8 @@ impl SerialClientInterfaceSetupData {
             max_bandwidth: 100,
             ..ComInterfaceProperties::default()
         }
+    }
+    pub fn get_reconnection_config() -> ReconnectionConfig {
+        ReconnectionConfig::reconnect()
     }
 }

@@ -1,85 +1,104 @@
 use crate::{
-    dif::serde_context::SerdeContext,
+    dif::{
+        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
+    },
     prelude::*,
     shared_values::base_shared_value_container::observers::TransceiverId,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     value_updates::update_data::{
         AppendEntryUpdateData, DecrementUpdateData, DeleteEntryUpdateData,
         IncrementUpdateData, ListSpliceUpdateData, ReplaceUpdateData,
         SetEntryUpdateData, Update, UpdateData, UpdateOperation,
+        UpdateOperationKind,
     },
-    values::value_container::value_key::ValueKey,
+    values::value_container::ValueContainer,
 };
-use core::fmt;
+use core::{fmt, str::FromStr};
 use serde::{
     Deserializer, Serializer,
-    de::{self, DeserializeSeed, SeqAccess, Visitor},
+    de::{self, SeqAccess, Visitor},
     ser::SerializeSeq,
 };
+use strum::VariantNames;
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Update> {
-    type Value = Update;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
+impl SerializeWithSerdeContext for Update {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(None)?;
         // serialize the transceiver id and the operation name as a string
-        seq.serialize_element(value.source_id())?;
+        seq.serialize_element(self.source_id())?;
 
         // serialize path, if the path is empty, we pack an empty vec, otherwise we pack the path as a sequence of ValueKeys
         {
-            let val = value.path();
-            let path_val = ValueWithSeed::new(&val, self.cast::<&[ValueKey]>());
+            let val = self.path();
+            let path_val = ValueWithSerdeContext::new(&val, ctx);
             seq.serialize_element(&path_val)?;
         }
 
         // this serializes the name of the operation (e.g. "set_entry", "replace", etc.) as a string
         {
-            seq.serialize_element(&&value.operation().as_ref().to_string())?;
-            match value.operation() {
-                UpdateOperation::SetEntry(data) => self
-                    .cast::<SetEntryUpdateData>()
-                    .serialize_fields(data, &mut seq)?,
-                UpdateOperation::Replace(data) => self
-                    .cast::<ReplaceUpdateData>()
-                    .serialize_fields(data, &mut seq)?,
-                UpdateOperation::DeleteEntry(data) => self
-                    .cast::<DeleteEntryUpdateData>()
-                    .serialize_fields(data, &mut seq)?,
+            seq.serialize_element(&&self.operation().as_ref().to_string())?;
+            match self.operation() {
+                UpdateOperation::SetEntry(data) => {
+                    ctx.serialize_set_entry_fields(data, &mut seq)?
+                }
+                UpdateOperation::Replace(data) => {
+                    ctx.serialize_replace_fields(data, &mut seq)?
+                }
+                UpdateOperation::DeleteEntry(data) => {
+                    ctx.serialize_delete_entry_fields(data, &mut seq)?
+                }
                 UpdateOperation::Clear => {}
-                UpdateOperation::AppendEntry(data) => self
-                    .cast::<AppendEntryUpdateData>()
-                    .serialize_fields(data, &mut seq)?,
-                UpdateOperation::ListSplice(data) => self
-                    .cast::<ListSpliceUpdateData>()
-                    .serialize_fields(data, &mut seq)?,
-                UpdateOperation::Increment(data) => self
-                    .cast::<IncrementUpdateData>()
-                    .serialize_fields(data, &mut seq)?,
-                UpdateOperation::Decrement(data) => self
-                    .cast::<DecrementUpdateData>()
-                    .serialize_fields(data, &mut seq)?,
+                UpdateOperation::AppendEntry(data) => {
+                    ctx.serialize_append_entry_fields(data, &mut seq)?
+                }
+                UpdateOperation::ListSplice(data) => {
+                    ctx.serialize_list_splice_fields(data, &mut seq)?
+                }
+                UpdateOperation::Increment(data) => {
+                    ctx.serialize_increment_fields(data, &mut seq)?
+                }
+                UpdateOperation::Decrement(data) => {
+                    ctx.serialize_decrement_fields(data, &mut seq)?
+                }
             };
         }
         seq.end()
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Update> {
-    type Value = Update;
-
-    fn deserialize<D: Deserializer<'de>>(
-        self,
-        deserializer: D,
-    ) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_seq(self)
+impl SerializeWithSerdeContext for &[ValueContainer] {
+    fn serialize_with_ctx<S: serde::Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let mut seq_serializer = serializer.serialize_seq(Some(self.len()))?;
+        for key in *self {
+            seq_serializer
+                .serialize_element(&ValueWithSerdeContext::new(key, ctx))?;
+        }
+        seq_serializer.end()
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Update> {
+impl<'de> DeserializeWithSerdeContext<'de> for Update {
+    fn deserialize_with_ctx<D: Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Self, D::Error> {
+        deserializer
+            .deserialize_seq(DeserializeSerdeContext::<Update>::new(ctx))
+    }
+}
+
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Update> {
     type Value = Update;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -87,7 +106,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Update> {
     }
 
     fn visit_seq<A: SeqAccess<'de>>(
-        mut self,
+        self,
         mut seq: A,
     ) -> Result<Self::Value, A::Error> {
         let transceiver_id: TransceiverId = seq
@@ -95,48 +114,53 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Update> {
             .ok_or_else(|| de::Error::invalid_length(1, &self))?;
 
         let path = seq
-            .next_element_seed(self.cast::<Vec<ValueKey>>())?
+            .next_element_seed(self.cast::<Vec<ValueContainer>>())?
             .ok_or_else(|| de::Error::invalid_length(2, &self))?;
 
         let kind: String = seq
             .next_element()?
             .ok_or_else(|| de::Error::invalid_length(0, &self))?;
 
-        let operation = match kind.as_str() {
-            "replace" => UpdateOperation::Replace(Box::new(
+        let operation = match UpdateOperationKind::from_str(kind.as_str())
+            .map_err(|_| {
+                de::Error::unknown_variant(
+                    kind.as_str(),
+                    UpdateOperationKind::VARIANTS,
+                )
+            })? {
+            UpdateOperationKind::Replace => UpdateOperation::Replace(Box::new(
                 self.cast::<ReplaceUpdateData>().visit_seq(&mut seq)?,
             )),
-
-            "set_entry" => UpdateOperation::SetEntry(Box::new(
-                self.cast::<SetEntryUpdateData>().visit_seq(&mut seq)?,
-            )),
-
-            "delete_entry" => UpdateOperation::DeleteEntry(Box::new(
-                self.cast::<DeleteEntryUpdateData>().visit_seq(&mut seq)?,
-            )),
-
-            "clear" => UpdateOperation::Clear,
-
-            "append_entry" => UpdateOperation::AppendEntry(Box::new(
-                self.cast::<AppendEntryUpdateData>().visit_seq(&mut seq)?,
-            )),
-
-            "list_splice" => UpdateOperation::ListSplice(Box::new(
-                self.cast::<ListSpliceUpdateData>().visit_seq(&mut seq)?,
-            )),
-
-            other => {
-                return Err(de::Error::unknown_variant(
-                    other,
-                    &[
-                        "replace",
-                        "set_entry",
-                        "delete_entry",
-                        "clear",
-                        "append_entry",
-                        "list_splice",
-                    ],
-                ));
+            UpdateOperationKind::SetEntry => {
+                UpdateOperation::SetEntry(Box::new(
+                    self.cast::<SetEntryUpdateData>().visit_seq(&mut seq)?,
+                ))
+            }
+            UpdateOperationKind::DeleteEntry => {
+                UpdateOperation::DeleteEntry(Box::new(
+                    self.cast::<DeleteEntryUpdateData>().visit_seq(&mut seq)?,
+                ))
+            }
+            UpdateOperationKind::Clear => UpdateOperation::Clear,
+            UpdateOperationKind::AppendEntry => {
+                UpdateOperation::AppendEntry(Box::new(
+                    self.cast::<AppendEntryUpdateData>().visit_seq(&mut seq)?,
+                ))
+            }
+            UpdateOperationKind::ListSplice => {
+                UpdateOperation::ListSplice(Box::new(
+                    self.cast::<ListSpliceUpdateData>().visit_seq(&mut seq)?,
+                ))
+            }
+            UpdateOperationKind::Increment => {
+                UpdateOperation::Increment(Box::new(
+                    self.cast::<IncrementUpdateData>().visit_seq(&mut seq)?,
+                ))
+            }
+            UpdateOperationKind::Decrement => {
+                UpdateOperation::Decrement(Box::new(
+                    self.cast::<DecrementUpdateData>().visit_seq(&mut seq)?,
+                ))
             }
         };
 

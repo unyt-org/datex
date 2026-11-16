@@ -35,6 +35,16 @@ pub struct ExecutionLoopState {
     pub dxb_body: Rc<RefCell<Vec<u8>>>,
     pub(crate) interrupt_provider: InterruptProvider,
 }
+
+impl PartialEq for ExecutionLoopState {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.dxb_body, &other.dxb_body)
+            && self.interrupt_provider == other.interrupt_provider
+    }
+}
+
+impl Eq for ExecutionLoopState {}
+
 impl ExecutionLoopState {
     pub fn new(
         dxb_body: Vec<u8>,
@@ -132,11 +142,6 @@ impl RuntimeExecutionStack {
     /// Pushes a value to the stack
     pub(crate) fn push(&mut self, value: ValueContainer) {
         self.values.push(Some(value));
-    }
-
-    /// Pushes multiple values to the stack
-    pub(crate) fn push_multiple(&mut self, values: Vec<ValueContainer>) {
-        self.values.extend(values.into_iter().map(Some));
     }
 
     /// Returns the current index for the next value to be pushed to the stack, which is the length of the current stack values.

@@ -1,5 +1,4 @@
 use crate::{
-    core_compiler::value_compiler::append_instruction,
     disassembler::InstructionTree,
     dxb_parser::body::InstructionWithSpan,
     global::protocol_structures::injected_values::InjectedValueDeclaration,
@@ -138,8 +137,11 @@ impl From<&InstructionBlockDataDebugTree> for InstructionBlockDataDebugFlat {
 impl From<&InstructionBlockDataDebugFlat> for InstructionBlockData {
     fn from(value: &InstructionBlockDataDebugFlat) -> Self {
         let mut cursor = Cursor::new(Vec::new());
-        for instruction in &value.body {
-            append_instruction(&mut cursor, instruction.instruction.clone());
+        for instruction_with_span in &value.body {
+            instruction_with_span
+                .instruction
+                .write(&mut cursor)
+                .unwrap();
         }
         Self {
             length: value.length,
@@ -163,8 +165,11 @@ impl From<&CallableDataBodyDebugTree> for CallableDataBodyDebugFlat {
 impl From<&CallableDataBodyDebugFlat> for CallableDataBody {
     fn from(value: &CallableDataBodyDebugFlat) -> Self {
         let mut cursor = Cursor::new(Vec::new());
-        for instruction in &value.body {
-            append_instruction(&mut cursor, instruction.instruction.clone());
+        for instruction_with_span in &value.body {
+            instruction_with_span
+                .instruction
+                .write(&mut cursor)
+                .unwrap();
         }
         CallableDataBody {
             injected_value_count: value.injected_value_count,

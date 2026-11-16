@@ -1,0 +1,34 @@
+use crate::{
+    prelude::*,
+    traits::{
+        iter_parts::IterParts,
+        local_child_path_resolver::LocalChildPathResolver,
+    },
+    values::core_values::{
+        decimal::typed_decimal::TypedDecimal,
+        native::{DatexNative, DatexNativeOps, add_native_impl},
+    },
+};
+use core::any::Any;
+
+impl DatexNative for TypedDecimal {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
+impl DatexNativeOps for TypedDecimal {
+    fn add_native(
+        &self,
+        rhs: &dyn DatexNative,
+    ) -> Option<Box<dyn DatexNative>> {
+        add_native_impl(self, rhs)
+    }
+}
+impl LocalChildPathResolver for TypedDecimal {}
+
+impl IterParts for TypedDecimal {}

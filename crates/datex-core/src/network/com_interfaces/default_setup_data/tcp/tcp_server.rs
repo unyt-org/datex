@@ -6,8 +6,8 @@ use crate::{
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
-#[derive(Datex, Serialize, Deserialize, Default)]
-#[datex(structural_recursive)]
+#[derive(Datex, Clone, Serialize, Deserialize, Default)]
+#[datex(structural)]
 pub struct TCPServerInterfaceSetupData {
     pub port: u16,
     pub host: Option<String>,

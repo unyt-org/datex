@@ -1,7 +1,7 @@
 use crate::instruction::{
     instruction_codes::InstructionCode, regular_instruction::RegularInstruction,
 };
-use core::{fmt::Display, prelude::rust_2024::*};
+use core::fmt::Display;
 
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum ComparisonOperator {

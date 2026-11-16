@@ -10,7 +10,7 @@ pub enum GoatMut<'a, T: ?Sized> {
     Borrowed(&'a mut T),
 }
 
-impl<'a, T> GoatMut<'a, T> {
+impl<'a, T: ?Sized> GoatMut<'a, T> {
     /// equivalent to [RefMut::map] function
     pub fn map<U: ?Sized, F>(self, f: F) -> GoatMut<'a, U>
     where
@@ -30,6 +30,31 @@ impl<'a, T> GoatMut<'a, T> {
         match self {
             GoatMut::Ref(r) => RefMut::filter_map(r, f).map(GoatMut::Ref).ok(),
             GoatMut::Borrowed(b) => f(b).map(GoatMut::Borrowed),
+        }
+    }
+
+    pub fn try_filter_map<U: ?Sized, F>(
+        self,
+        f: F,
+    ) -> Result<GoatMut<'a, U>, Self>
+    where
+        F: FnOnce(&mut T) -> Option<&mut U>,
+    {
+        match self {
+            GoatMut::Ref(r) => RefMut::filter_map(r, f)
+                .map(GoatMut::Ref)
+                .map_err(GoatMut::Ref),
+            GoatMut::Borrowed(b) => {
+                let ptr: *mut T = b;
+                // SAFETY: `F` is higher-ranked over the borrow's lifetime
+                // (`for<'x> FnOnce(&'x mut T) -> Option<&'x mut U>`), so `f`
+                // cannot keep the reference beyond the call. If it returns
+                // `None`, the reborrow is dead and we may create a new one.
+                match f(unsafe { &mut *ptr }) {
+                    Some(u) => Ok(GoatMut::Borrowed(u)),
+                    None => Err(GoatMut::Borrowed(unsafe { &mut *ptr })),
+                }
+            }
         }
     }
 }

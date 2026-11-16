@@ -1,35 +1,73 @@
 use crate::{
-    core_compiler::to_instructions::{
-        SharedValueTrackingProvider, ToInstructions,
+    core_compiler::{
+        to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
     instruction::regular_instruction::RegularInstruction,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     values::core_values::integer::typed_integer::TypedInteger,
 };
 
-impl<'ctx, T> ToInstructions<'ctx, T> for TypedInteger
-where
-    T: SharedValueTrackingProvider<'ctx>,
-{
-    type InstructionType = RegularInstruction;
-    fn to_instructions(
-        &self,
-        _ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+impl ToInstructions for TypedInteger {
+    fn to_instructions<'a>(
+        &'a self,
+        visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache,
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
-            yield match self {
-                TypedInteger::I8(val) => RegularInstruction::int8(*val),
-                TypedInteger::I16(val) => RegularInstruction::int16(*val),
-                TypedInteger::I32(val) => RegularInstruction::int32(*val),
-                TypedInteger::I64(val) => RegularInstruction::int64(*val),
-                TypedInteger::I128(val) => RegularInstruction::int128(*val),
-                TypedInteger::U8(val) => RegularInstruction::uint8(*val),
-                TypedInteger::U16(val) => RegularInstruction::uint16(*val),
-                TypedInteger::U32(val) => RegularInstruction::uint32(*val),
-                TypedInteger::U64(val) => RegularInstruction::uint64(*val),
-                TypedInteger::U128(val) => RegularInstruction::uint128(*val),
+            match self {
+                TypedInteger::I8(val) => {
+                    for i in val.to_instructions(visitor, cache) {
+                        yield i;
+                    }
+                }
+                TypedInteger::I16(val) => {
+                    for i in val.to_instructions(visitor, cache) {
+                        yield i;
+                    }
+                }
+                TypedInteger::I32(val) => {
+                    for i in val.to_instructions(visitor, cache) {
+                        yield i;
+                    }
+                }
+                TypedInteger::I64(val) => {
+                    for i in val.to_instructions(visitor, cache) {
+                        yield i;
+                    }
+                }
+                TypedInteger::I128(val) => {
+                    for i in val.to_instructions(visitor, cache) {
+                        yield i;
+                    }
+                }
+                TypedInteger::U8(val) => {
+                    for i in val.to_instructions(visitor, cache) {
+                        yield i;
+                    }
+                }
+                TypedInteger::U16(val) => {
+                    for i in val.to_instructions(visitor, cache) {
+                        yield i;
+                    }
+                }
+                TypedInteger::U32(val) => {
+                    for i in val.to_instructions(visitor, cache) {
+                        yield i;
+                    }
+                }
+                TypedInteger::U64(val) => {
+                    for i in val.to_instructions(visitor, cache) {
+                        yield i;
+                    }
+                }
+                TypedInteger::U128(val) => {
+                    for i in val.to_instructions(visitor, cache) {
+                        yield i;
+                    }
+                }
                 TypedInteger::IBig(val) => {
-                    RegularInstruction::big_integer(val.clone())
+                    yield RegularInstruction::big_integer(val.clone()).into()
                 }
             };
         })

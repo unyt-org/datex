@@ -42,8 +42,8 @@ impl TypeSuperset<TypeDefinition> for TypeDefinition {
 
             // union supersets, e.g. 1|2|3 >= 1|2
             (
-                TypeDefinition::ImplType(self_impl),
-                TypeDefinition::ImplType(other_impl),
+                TypeDefinition::ImplMarkers(self_impl),
+                TypeDefinition::ImplMarkers(other_impl),
             ) => self_impl.is_superset_of(other_impl),
 
             // union superset with any TypeDefinition, e.g. 1|2 >= 1

@@ -1,13 +1,7 @@
 use crate::{
-    dif::serde_context::SerdeContext,
     prelude::*,
-    utils::{
-        freemap::{FreeHashMap, NextKey},
-        serde_serialize_seed::SerializeSeed,
-    },
-    value_updates::{
-        update_data::Update, update_handler::InternalMutabilityUpdateHandler,
-    },
+    utils::freemap::{FreeHashMap, NextKey},
+    value_updates::update_data::Update,
     values::core_values::endpoint::Endpoint,
 };
 use core::{
@@ -18,11 +12,10 @@ use core::{
 use num_traits::ToPrimitive;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
-    de::{DeserializeSeed, Error, Visitor},
+    de::{Error, Visitor},
 };
-use serde_with::__private__::DeError;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ObserverError {
     ObserverNotFound,
     ImmutableValue,
@@ -109,18 +102,16 @@ impl<'de> Deserialize<'de> for TransceiverId {
 
             fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
             where
-                E: DeError,
+                E: serde::de::Error,
             {
                 Ok(TransceiverId::Dif(v.to_u8().ok_or_else(|| {
-                    DeError::custom(format!(
-                        "value {v} is too large to fit into u8"
-                    ))
+                    E::custom(format!("value {v} is too large to fit into u8"))
                 })?))
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
             where
-                E: Error,
+                E: serde::de::Error,
             {
                 if v == "local" {
                     Ok(TransceiverId::Local)
@@ -149,29 +140,6 @@ impl Display for TransceiverId {
 pub struct ObserveOptions {
     /// If true, the transceiver will be notified of changes that originated from itself
     pub relay_own_updates: bool,
-}
-
-impl<'de> DeserializeSeed<'de> for SerdeContext<'de, ObserveOptions> {
-    type Value = ObserveOptions;
-
-    fn deserialize<D: Deserializer<'de>>(
-        self,
-        deserializer: D,
-    ) -> Result<Self::Value, D::Error> {
-        ObserveOptions::deserialize(deserializer)
-    }
-}
-
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, ObserveOptions> {
-    type Value = ObserveOptions;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        value.serialize(serializer)
-    }
 }
 
 #[derive(
@@ -293,6 +261,7 @@ impl ObserverData {
 
     /// Removes all observers from this reference.
     /// Returns an error if the reference is immutable.
+    #[allow(unused)]
     pub(crate) fn unobserve_all(&mut self) -> Result<(), ObserverError> {
         for id in self.observers_ids() {
             let _ = self.unobserve(id);

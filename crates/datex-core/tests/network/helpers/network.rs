@@ -1,4 +1,3 @@
-use async_select::select;
 use core::{
     fmt::{self, Debug, Display},
     str::FromStr,
@@ -18,7 +17,7 @@ use datex_core::{
             properties::{ComInterfaceProperties, InterfaceDirection},
         },
     },
-    runtime::{Runtime, RuntimeConfig, RuntimeRunner},
+    runtime::{CustomRuntimeInfo, Runtime, RuntimeConfig, RuntimeRunner},
     values::core_values::endpoint::Endpoint,
 };
 use log::info;
@@ -237,21 +236,16 @@ pub async fn test_routes(
     // make sure the start endpoint for all routes is the same
     for route in routes {
         if route.hops[0].0 != start {
-            core::panic!(
+            panic!(
                 "Route start endpoints must all be the same. Found {} instead of {}",
-                route.hops[0].0,
-                start
+                route.hops[0].0, start
             );
         }
     }
 
     for end in ends {
         if start != end {
-            core::panic!(
-                "Route start {} does not match receiver {}",
-                start,
-                end
-            );
+            panic!("Route start {} does not match receiver {}", start, end);
         }
     }
 
@@ -402,6 +396,20 @@ struct Edge {
     pub priority: i16,
     pub endpoint: Option<String>,
 }
+impl Display for Edge {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Edge {{ id: {}, source: {}, target: {}, type: {}, priority: {}, endpoint: {:?} }}",
+            self.id,
+            self.source,
+            self.target,
+            self.edge_type,
+            self.priority,
+            self.endpoint
+        )
+    }
+}
 
 #[derive(Debug, Deserialize)]
 struct NetworkData {
@@ -526,7 +534,7 @@ impl Network {
 
     pub async fn start(&mut self) {
         if self.is_initialized {
-            core::panic!("Network already initialized");
+            panic!("Network already initialized");
         }
         self.is_initialized = true;
 
@@ -543,12 +551,13 @@ impl Network {
             info!("creating runtime for endpoint {}", node.endpoint);
             let runtime_runner = RuntimeRunner::new(
                 RuntimeConfig::new_with_endpoint(node.endpoint.clone()),
+                CustomRuntimeInfo::default(),
             );
 
             let runtime = runtime_runner.runtime.clone();
             node.runtime = Some(runtime.clone());
 
-            spawn_local(runtime_runner.run_forever(async move |runtime| {}));
+            spawn_local(runtime_runner.run_forever(async move |_runtime| {}));
 
             for connection in node.connections.iter() {
                 // save in channel pairs
@@ -746,6 +755,6 @@ impl Network {
                 return node.runtime.as_ref().unwrap();
             }
         }
-        core::panic!("Endpoint {endpoint} not found in network");
+        panic!("Endpoint {endpoint} not found in network");
     }
 }

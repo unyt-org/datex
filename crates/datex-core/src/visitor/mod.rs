@@ -52,6 +52,7 @@ mod tests {
 
     #[derive(Debug)]
     pub struct MyAstExpressionError {
+        #[allow(unused)]
         message: String,
     }
     impl MyAstExpressionError {

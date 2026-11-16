@@ -15,7 +15,7 @@ use core::{
     ops::Range,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompilerError {
     UnexpectedTerm(Box<DatexExpression>),
     SerializationError(String),
@@ -23,7 +23,6 @@ pub enum CompilerError {
     IntegerOutOfBoundsError,
     InvalidPlaceholderCount,
     TooManyApplyArguments, // more than 255 arguments
-    NonStaticValue,
     SharedRefToNonSharedValue,
     ExpectedOwnedSharedValue,
     ExpectedReferencedSharedValue,
@@ -44,6 +43,7 @@ pub enum CompilerError {
     InvalidConversionFromRefToOwnedValue,
     UnknownInterfaceMethod(String),
     InvalidInterfaceMethodCall(String),
+    InvalidJump,
 }
 impl CompilerError {
     pub fn unexpected_term(expr: DatexExpression) -> Self {
@@ -74,7 +74,7 @@ impl From<InjectedValueValidationError> for CompilerError {
 }
 
 /// A compiler error that can be linked to a specific span in the source code
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct SpannedCompilerError {
     pub error: CompilerError,
     pub span: Option<Range<usize>>,
@@ -322,9 +322,6 @@ impl Display for CompilerError {
             CompilerError::InvalidPlaceholderCount => {
                 core::write!(f, "Invalid placeholder count")
             }
-            CompilerError::NonStaticValue => {
-                core::write!(f, "Encountered non-static value")
-            }
             CompilerError::UndeclaredVariable(var) => {
                 core::write!(f, "Undeclared variable: {var}")
             }
@@ -411,6 +408,9 @@ impl Display for CompilerError {
                     f,
                     "Interface method \"{name}\" was called with wrong arguments"
                 )
+            }
+            CompilerError::InvalidJump => {
+                core::write!(f, "Invalid jump detected during compilation")
             }
         }
     }

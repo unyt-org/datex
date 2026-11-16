@@ -1,21 +1,23 @@
 use crate::{
-    core_compiler::to_instructions::{
-        SharedValueTrackingProvider, ToInstructions,
+    core_compiler::{
+        to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::regular_instruction::RegularInstruction,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     values::core_values::text::Text,
 };
 
-impl<'ctx, T> ToInstructions<'ctx, T> for Text
-where
-    T: SharedValueTrackingProvider<'ctx>,
-{
-    type InstructionType = RegularInstruction;
+impl ToInstructions for Text {
     fn to_instructions(
         &self,
-        _ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
-        Box::new(core::iter::once(RegularInstruction::text(self.0.clone())))
+        visitor: &mut dyn ValueVisitor,
+        cache: &mut SharedReferencesCache,
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction>> {
+        // FIXME: more efficient way to do this without collecting?
+        let instructions = self
+            .as_string()
+            .to_instructions(visitor, cache)
+            .collect::<Vec<_>>();
+        Box::new(instructions.into_iter())
     }
 }

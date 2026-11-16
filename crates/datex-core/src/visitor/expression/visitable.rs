@@ -500,6 +500,8 @@ impl<E> VisitableExpression<E> for DatexExpression {
             | DatexExpressionData::ResolveCoreLibId(_)
             | DatexExpressionData::Endpoint(_)
             | DatexExpressionData::MoveSharedValue(_)
+            | DatexExpressionData::Sender
+            | DatexExpressionData::Receiver
             | DatexExpressionData::Instant(_) => Ok(()),
         }
     }

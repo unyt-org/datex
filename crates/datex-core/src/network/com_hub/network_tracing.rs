@@ -25,27 +25,29 @@ use crate::{
         pointer_availability_lookup::PointerAvailabilityLookup,
     },
     values::{
-        core_value::CoreValue, core_values::endpoint::Endpoint, value::Value,
+        core_values::endpoint::Endpoint, value::Value,
         value_container::ValueContainer,
     },
 };
 
 use crate::{
     core_compiler::value_compiler::compile_value,
-    datex_proxy::{
-        DatexValueContainerProxyDeserialize,
-        DatexValueContainerProxyInfallibleSerialize,
-    },
     prelude::*,
-    runtime::{Runtime, execution::execution_input::ExecutionCallerMetadata},
+    runtime::{
+        Runtime, cache::shared_references_cache::SharedReferencesCache,
+        execution::execution_input::ExecutionCallerMetadata,
+    },
+    traits::convert_value_container::ConvertValueContainer,
+    utils::logger::log_info,
+    values::core_values::list::List,
 };
 use datex_macros_internal::Datex;
-use log::{error, info};
+use log::error;
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 pub struct NetworkTraceHopSocket {
     pub interface_type: String,
     pub interface_name: Option<String>,
@@ -76,7 +78,7 @@ impl NetworkTraceHopSocket {
     Clone,
     strum_macros::Display,
 )]
-#[datex(structural_recursive)]
+#[datex(structural)]
 pub enum NetworkTraceHopDirection {
     Outgoing,
     Incoming,
@@ -84,7 +86,7 @@ pub enum NetworkTraceHopDirection {
 
 #[serde_as]
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 pub struct NetworkTraceHop {
     pub endpoint: Endpoint,
     pub distance: i8,
@@ -96,13 +98,13 @@ pub struct NetworkTraceHop {
 
 #[serde_as]
 #[derive(Datex, Debug, Clone, Deserialize, Serialize)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 pub struct NetworkTraceResult {
     pub sender: Endpoint,
     pub receiver: Endpoint,
     pub hops: Vec<NetworkTraceHop>,
     #[serde_as(as = "DurationMilliSeconds")]
-    #[datex(serde_infallible)]
+    #[datex(serde)]
     pub round_trip_time: Duration,
 }
 
@@ -336,7 +338,7 @@ impl ComHub {
                     sender,
                     IncomingSection::SingleBlock((block, ..)),
                 )) => {
-                    info!(
+                    log_info!(
                         "Received trace block response from {}",
                         sender.clone()
                     );
@@ -347,7 +349,7 @@ impl ComHub {
                     let hops = self.get_trace_data_from_block(block);
                     if let Some(hops) = hops {
                         let result = NetworkTraceResult {
-                            sender: self.endpoint.clone(),
+                            sender: self.endpoint().clone(),
                             receiver: sender.clone(),
                             hops,
                             round_trip_time,
@@ -396,7 +398,7 @@ impl ComHub {
         original_socket: ComInterfaceSocketUUID,
     ) -> Option<()> {
         let sender = block.routing_header.sender.clone();
-        info!("Received trace block from {sender}");
+        log_info!("Received trace block from {sender}");
         let socket_data =
             self.socket_manager.get_socket_by_uuid(&original_socket)?;
 
@@ -409,7 +411,7 @@ impl ComHub {
 
         // add incoming socket hop
         hops.push(NetworkTraceHop {
-            endpoint: self.endpoint.clone(),
+            endpoint: self.endpoint().clone(),
             distance: block.routing_header.distance,
             socket: NetworkTraceHopSocket::new(
                 &socket_data.interface_properties,
@@ -446,7 +448,7 @@ impl ComHub {
 
         let mut block = block.clone();
         let sender = block.routing_header.sender.clone();
-        info!("Received trace back block from {sender}");
+        log_info!("Received trace back block from {sender}");
 
         let distance = block.routing_header.distance;
 
@@ -457,7 +459,7 @@ impl ComHub {
         self.add_hop_to_block_trace_data(
             &mut block,
             NetworkTraceHop {
-                endpoint: self.endpoint.clone(),
+                endpoint: self.endpoint().clone(),
                 distance,
                 socket: NetworkTraceHopSocket::new(
                     &socket_data.interface_properties,
@@ -482,12 +484,12 @@ impl ComHub {
     ) -> Option<()> {
         let mut block = block.clone();
         let sender = block.routing_header.sender.clone();
-        info!("Redirecting trace block from {sender}");
+        log_info!("Redirecting trace block from {sender}");
         let socket_data =
             self.socket_manager.get_socket_by_uuid(&original_socket)?;
 
         let hops = self.get_trace_data_from_block(&block).unwrap_or_default();
-        info!("{}", NetworkTraceResult::from_hops(hops));
+        log_info!("{}", NetworkTraceResult::from_hops(hops));
 
         // add incoming socket hop
         let distance = block.routing_header.distance;
@@ -498,7 +500,7 @@ impl ComHub {
         self.add_hop_to_block_trace_data(
             &mut block,
             NetworkTraceHop {
-                endpoint: self.endpoint.clone(),
+                endpoint: self.endpoint().clone(),
                 distance,
                 socket: NetworkTraceHopSocket::new(
                     &socket_data.interface_properties,
@@ -541,29 +543,37 @@ impl ComHub {
         trace_block
     }
 
+    /// Returns the linked runtime in the ComHub, or a stub runtime if none is linked.
+    fn get_runtime(&self) -> Runtime {
+        self.runtime
+            .borrow()
+            .as_ref()
+            .cloned()
+            .unwrap_or_else(Runtime::stub)
+    }
+
     pub(crate) fn get_trace_data_from_block(
         &self,
         block: &DXBBlock,
     ) -> Option<Vec<NetworkTraceHop>> {
         // convert DATEX to hops
         let dxb = block.body.clone();
-        let runtime_stub = Runtime::stub(); // FIXME
+        let runtime = self.get_runtime();
         let exec_input = ExecutionInput::new(
             DXBWithSharedValues::new(dxb, vec![]),
             ExecutionCallerMetadata::local_default(),
             ExecutionOptions::default(),
-            runtime_stub,
+            runtime,
         );
         let hops_datex =
             execute_dxb_sync(exec_input).expect("Failed to execute DATEX");
-        if let Some(ValueContainer::Local(Value {
-            inner: CoreValue::List(list),
-            ..
-        })) = hops_datex
+
+        if let Some(hops_datex) = hops_datex
+            && let Ok(list) = hops_datex.try_into_value::<List>()
         {
             let hops: Vec<NetworkTraceHop> = list
                 .into_iter()
-                .map(NetworkTraceHop::try_from_value_container)
+                .map(NetworkTraceHop::try_convert_from_value_container)
                 .collect::<Result<Vec<_>, _>>()
                 .ok()?;
             Some(hops)
@@ -620,13 +630,15 @@ impl ComHub {
         // convert hops to DATEX
         let hops_datex = hops
             .into_iter()
-            .map(|hop| hop.to_value_container_without_cache())
+            .map(|hop| ValueContainer::Local(Value::native(hop)))
             .collect::<Vec<ValueContainer>>();
 
         let pointer_lookup = PointerAvailabilityLookup::default();
+        let cache = &mut SharedReferencesCache::default(); // FIXME
         let dxb = compile_value(
             Value::from(hops_datex),
             CompileInput::new(&pointer_lookup, &[]),
+            cache,
         );
         // info!(
         //     "Trace data: {}",
@@ -661,6 +673,7 @@ pub mod tests {
     #[tokio::test]
     #[timeout(1000)]
     async fn create_network_trace() {
+        flexi_logger::init();
         run_with_coupled_com_hubs(async move |a, _b| {
             // send trace from A to B
             let network_trace =

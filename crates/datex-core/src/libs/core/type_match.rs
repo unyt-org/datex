@@ -1,5 +1,6 @@
 use crate::{
-    libs::core::type_id::CoreLibTypeId,
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    traits::get_core_lib_type_id::GetCoreLibTypeId,
     types::{
         traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
         type_definition::TypeDefinition,
@@ -10,8 +11,16 @@ use crate::{
 /// Type superset of core lib types, e.g. integer >= integer/u8
 impl TypeSuperset<CoreLibTypeId> for CoreLibTypeId {
     fn is_superset_of(&self, other: &CoreLibTypeId) -> bool {
+        // any type is superset of any other type
+        if *self == CoreLibTypeId::Base(CoreLibBaseTypeId::Any) {
+            true
+        }
+        // never type is not a superset of any other type
+        else if *self == CoreLibTypeId::Base(CoreLibBaseTypeId::Never) {
+            false
+        }
         // exact match
-        if self == other {
+        else if self == other {
             true
         }
         // other is subvariant of self
@@ -39,11 +48,11 @@ impl TypeSuperset<TypeDefinition> for CoreLibTypeId {
 
 impl TypeSatisfiesValueContainer for CoreLibTypeId {
     fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
-        // TODO: better way to get core lib type id for value here?
-        value.actual_type().core_lib_type_id().is_some_and(
-            |value_core_lib_type_id| {
-                self.is_superset_of(&value_core_lib_type_id)
-            },
-        )
+        match value {
+            ValueContainer::Local(local_value) => {
+                self.is_superset_of(&local_value.core_lib_type_id())
+            }
+            ValueContainer::Shared(_shared_value) => false,
+        }
     }
 }

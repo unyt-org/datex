@@ -127,4 +127,13 @@ impl SharedContainerCommon for SharedContainer {
             }
         }
     }
+
+    fn is_uninitialized(&self) -> bool {
+        match self {
+            SharedContainer::Owned(owned) => owned.is_uninitialized(),
+            SharedContainer::Referenced(referenced) => {
+                referenced.is_uninitialized()
+            }
+        }
+    }
 }

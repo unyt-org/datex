@@ -1,5 +1,6 @@
 use crate::{
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::base_shared_value_container::observers::{
         ObserverCallback, TransceiverId,
     },
@@ -12,12 +13,12 @@ use crate::{
             SetEntryUpdateData, Update, UpdateData, UpdateOperation,
         },
     },
-    values::{
-        value::Value,
-        value_container::{ValueContainer, value_key::ValueKey},
-    },
+    values::{value::Value, value_container::ValueContainer},
 };
-use core::fmt::{Debug, Formatter};
+use core::{
+    cell::RefCell,
+    fmt::{Debug, Formatter},
+};
 
 pub type UpdateResult = Result<UpdateReturn, UpdateError>;
 
@@ -32,13 +33,18 @@ pub fn into_update_result<T: Into<UpdateReturn>, E: Into<UpdateError>>(
 }
 
 pub trait UpdateHandler {
-    fn try_handle_update(&mut self, update: Update) -> UpdateResult;
+    fn try_handle_update(
+        &mut self,
+        update: Update,
+        cache: &RefCell<SharedReferencesCache>,
+    ) -> UpdateResult;
 
     fn try_set_entry(
         &mut self,
-        path: Vec<ValueKey>,
+        path: Vec<ValueContainer>,
         source_id: TransceiverId,
         data: SetEntryUpdateData,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<Option<ValueContainer>, UpdateError> {
         Ok(self.try_handle_update(
             Update::new(
@@ -47,15 +53,17 @@ pub trait UpdateHandler {
                     UpdateOperation::SetEntry(Box::new(data)),
                     path,
                 ),
-            )
+            ),
+            cache,
         )?.try_into().expect("UpdateReturn should be convertible into Result<Option<ValueContainer>, UpdateError>"))
     }
 
     fn try_delete_entry(
         &mut self,
-        path: Vec<ValueKey>,
+        path: Vec<ValueContainer>,
         source_id: TransceiverId,
         data: DeleteEntryUpdateData,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<Option<ValueContainer>, UpdateError> {
         Ok(self.try_handle_update(
             Update::new(
@@ -64,15 +72,17 @@ pub trait UpdateHandler {
                     UpdateOperation::DeleteEntry(Box::new(data)),
                     path,
                 ),
-            )
+            ),
+            cache,
         )?.try_into().expect("UpdateReturn should be convertible into Result<Option<ValueContainer>, UpdateError>"))
     }
 
     fn try_append_entry(
         &mut self,
-        path: Vec<ValueKey>,
+        path: Vec<ValueContainer>,
         source_id: TransceiverId,
         data: AppendEntryUpdateData,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<(), UpdateError> {
         let _: () = self.try_handle_update(
             Update::new(
@@ -81,7 +91,8 @@ pub trait UpdateHandler {
                     UpdateOperation::AppendEntry(Box::new(data)),
                     path,
                 ),
-            )
+            ),
+            cache,
         )?
         .try_into()
         .expect(
@@ -92,14 +103,16 @@ pub trait UpdateHandler {
 
     fn try_clear(
         &mut self,
-        path: Vec<ValueKey>,
+        path: Vec<ValueContainer>,
         source_id: TransceiverId,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<ValueContainer, UpdateError> {
         Ok(self.try_handle_update(
             Update::new(
                 source_id,
                 UpdateData::new_with_path(UpdateOperation::Clear, path),
-            )
+            ),
+            cache,
         )?
         .try_into()
         .expect(
@@ -109,9 +122,10 @@ pub trait UpdateHandler {
 
     fn try_list_splice(
         &mut self,
-        path: Vec<ValueKey>,
+        path: Vec<ValueContainer>,
         source_id: TransceiverId,
         data: ListSpliceUpdateData,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
         Ok(self.try_handle_update(
             Update::new(
@@ -120,7 +134,8 @@ pub trait UpdateHandler {
                     UpdateOperation::ListSplice(Box::new(data)),
                     path,
                 ),
-            )
+            ),
+            cache,
         )?
         .try_into()
         .expect(
@@ -130,9 +145,10 @@ pub trait UpdateHandler {
 
     fn try_increment(
         &mut self,
-        path: Vec<ValueKey>,
+        path: Vec<ValueContainer>,
         source_id: TransceiverId,
         data: IncrementUpdateData,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<(), UpdateError> {
         let _: () = self.try_handle_update(
             Update::new(
@@ -141,7 +157,8 @@ pub trait UpdateHandler {
                     UpdateOperation::Increment(Box::new(data)),
                     path,
                 ),
-            )
+            ),
+            cache,
         )?
         .try_into()
         .expect(
@@ -151,9 +168,10 @@ pub trait UpdateHandler {
     }
     fn try_decrement(
         &mut self,
-        path: Vec<ValueKey>,
+        path: Vec<ValueContainer>,
         source_id: TransceiverId,
         data: DecrementUpdateData,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<(), UpdateError> {
         let _: () = self.try_handle_update(
             Update::new(
@@ -162,7 +180,8 @@ pub trait UpdateHandler {
                     UpdateOperation::Decrement(Box::new(data)),
                     path,
                 ),
-            )
+            ),
+            cache,
         )?
         .try_into()
         .expect(
@@ -172,9 +191,10 @@ pub trait UpdateHandler {
     }
     fn try_replace(
         &mut self,
-        path: Vec<ValueKey>,
+        path: Vec<ValueContainer>,
         source_id: TransceiverId,
         data: ReplaceUpdateData,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<(), UpdateError> {
         let _: () = self.try_handle_update(
             Update::new(
@@ -183,7 +203,8 @@ pub trait UpdateHandler {
                     UpdateOperation::Replace(Box::new(data)),
                     path,
                 ),
-            )
+            ),
+            cache,
         )?
         .try_into()
         .expect(
@@ -197,12 +218,15 @@ pub trait UpdateHandler {
 /// by a shared container
 pub struct UpdateCallbackData {
     pub callback: ObserverCallback,
-    pub path: Vec<ValueKey>,
+    pub path: Vec<ValueContainer>,
 }
 impl UpdateCallbackData {
     /// Creates a new UpdateCallbackData with the same callback,
     /// appending the provided child_key to the path.
-    pub fn with_child_path(&self, child_key: impl Into<ValueKey>) -> Self {
+    pub fn with_child_path(
+        &self,
+        child_key: impl Into<ValueContainer>,
+    ) -> Self {
         let mut new_path = self.path.clone();
         new_path.push(child_key.into());
         UpdateCallbackData {
@@ -222,7 +246,9 @@ impl Debug for UpdateCallbackData {
 }
 
 pub trait UpdateCallbackDataAccess {
-    fn get_update_callback_data(&self) -> Option<&UpdateCallbackData>;
+    fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {
+        None
+    }
 }
 
 pub trait InternalMutabilityUpdateHandler: UpdateCallbackDataAccess {
@@ -234,7 +260,7 @@ pub trait InternalMutabilityUpdateHandler: UpdateCallbackDataAccess {
     /// Updates the update callback data for a child value based on the current update callback data of the parent.
     fn set_child_update_callback_data(
         &self,
-        child_key: impl Into<ValueKey>,
+        child_key: impl Into<ValueContainer>,
         child_value: &mut Value,
     ) {
         if let Some(callback_data) = self.get_update_callback_data() {
@@ -249,7 +275,7 @@ pub trait InternalMutabilityUpdateHandler: UpdateCallbackDataAccess {
     /// based on the current update callback data of the parent.
     fn set_child_update_callback_data_if_local(
         &self,
-        child_key: &(impl Into<ValueKey> + Clone),
+        child_key: &(impl Into<ValueContainer> + Clone),
         child_value: &mut ValueContainer,
     ) {
         if let ValueContainer::Local(child_value) = child_value {
@@ -280,12 +306,15 @@ pub trait InternalMutabilityUpdateHandler: UpdateCallbackDataAccess {
 
 pub trait UpdateHandlerImpl: UpdateCallbackDataAccess {
     /// Handles an update operation on the implementing type and returns an UpdateResult.
-    /// The replacement operation must be handled at a higher level, as it is not specific to the implementing type.
+    /// The replacement operation must be handled at a higher level, as it is not specific to the implementing type - there are special cases, such as Option / Box.
     /// If the optional source_id is provided, it should be used to notify observers of the internal update.
     fn try_update(
         &mut self,
         operation: UpdateOperation,
         source_id: Option<TransceiverId>,
+        // TODO - Do we really need cache here? Probably only for type checks, that can not be made on pointer addr only
+        // such as type impl constraint checks or sub type checks. TBD
+        cache: &RefCell<SharedReferencesCache>,
     ) -> UpdateResult {
         let maybe_callback_data = if let Some(callback_data) =
             self.get_update_callback_data()
@@ -307,25 +336,27 @@ pub trait UpdateHandlerImpl: UpdateCallbackDataAccess {
 
         let ret = match operation {
             UpdateOperation::SetEntry(data) => {
-                into_update_result(self.try_set_entry(*data))
+                into_update_result(self.try_set_entry(*data, cache))
             }
             UpdateOperation::DeleteEntry(data) => {
-                into_update_result(self.try_delete_entry(*data))
+                into_update_result(self.try_delete_entry(*data, cache))
             }
             UpdateOperation::AppendEntry(data) => {
-                into_update_result(self.try_append_entry(*data))
+                into_update_result(self.try_append_entry(*data, cache))
             }
-            UpdateOperation::Clear => into_update_result(self.try_clear()),
+            UpdateOperation::Clear => into_update_result(self.try_clear(cache)),
             UpdateOperation::ListSplice(data) => {
-                into_update_result(self.try_list_splice(*data))
+                into_update_result(self.try_list_splice(*data, cache))
             }
             UpdateOperation::Increment(data) => {
-                into_update_result(self.try_increment(*data))
+                into_update_result(self.try_increment(*data, cache))
             }
             UpdateOperation::Decrement(data) => {
-                into_update_result(self.try_decrement(*data))
+                into_update_result(self.try_decrement(*data, cache))
             }
-            UpdateOperation::Replace(_data) => Err(UpdateError::InvalidUpdate),
+            UpdateOperation::Replace(_data) => {
+                into_update_result(self.try_replace(*_data, cache))
+            }
         }?;
 
         // trigger callback
@@ -339,6 +370,7 @@ pub trait UpdateHandlerImpl: UpdateCallbackDataAccess {
     fn try_set_entry(
         &mut self,
         _data: SetEntryUpdateData,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<Option<ValueContainer>, UpdateError> {
         Err(UpdateError::InvalidUpdate)
     }
@@ -346,24 +378,30 @@ pub trait UpdateHandlerImpl: UpdateCallbackDataAccess {
     fn try_delete_entry(
         &mut self,
         _data: DeleteEntryUpdateData,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
+        _cache: &RefCell<SharedReferencesCache>,
+    ) -> Result<ValueContainer, UpdateError> {
         Err(UpdateError::InvalidUpdate)
     }
 
     fn try_append_entry(
         &mut self,
         _data: AppendEntryUpdateData,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<(), UpdateError> {
         Err(UpdateError::InvalidUpdate)
     }
 
-    fn try_clear(&mut self) -> Result<ValueContainer, UpdateError> {
+    fn try_clear(
+        &mut self,
+        _cache: &RefCell<SharedReferencesCache>,
+    ) -> Result<ValueContainer, UpdateError> {
         Err(UpdateError::InvalidUpdate)
     }
 
     fn try_list_splice(
         &mut self,
         _data: ListSpliceUpdateData,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
         Err(UpdateError::InvalidUpdate)
     }
@@ -371,12 +409,21 @@ pub trait UpdateHandlerImpl: UpdateCallbackDataAccess {
     fn try_increment(
         &mut self,
         _data: IncrementUpdateData,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<(), UpdateError> {
         Err(UpdateError::InvalidUpdate)
     }
     fn try_decrement(
         &mut self,
         _data: DecrementUpdateData,
+        _cache: &RefCell<SharedReferencesCache>,
+    ) -> Result<(), UpdateError> {
+        Err(UpdateError::InvalidUpdate)
+    }
+    fn try_replace(
+        &mut self,
+        _data: ReplaceUpdateData,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<(), UpdateError> {
         Err(UpdateError::InvalidUpdate)
     }

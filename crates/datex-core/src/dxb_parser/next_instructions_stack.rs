@@ -28,6 +28,7 @@ impl Display for NextScopeInstruction {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NextInstructionType {
     Regular,
     Type,

@@ -445,7 +445,7 @@ fn parse_typed_literal<T: TypeSuffix>(
         }
     }
     LiteralWithVariant {
-        value: number_part.to_string(),
+        value: number_part.replace('_', ""),
         variant,
     }
 }
@@ -459,12 +459,6 @@ impl fmt::Display for Token {
 #[inline(always)]
 fn allocated_string(lex: &mut Lexer<Token>) -> String {
     lex.slice().to_owned()
-}
-
-fn numeric_parts(lex: &mut Lexer<Token>) -> NumericLiteralParts {
-    // 1. Remove underscores
-    let s = lex.slice().replace('_', "");
-    NumericLiteralParts::from(s)
 }
 
 #[cfg(test)]
@@ -495,7 +489,7 @@ mod tests {
             assert_eq!(literal, "42u8".to_string());
             assert_eq!(format!("{}", literal), "42u8".to_string());
         } else {
-            core::panic!("Expected DecimalIntegerLiteral with variant U8");
+            panic!("Expected DecimalIntegerLiteral with variant U8");
         }
 
         let mut lexer = Token::lexer("42");
@@ -503,7 +497,7 @@ mod tests {
         if let Ok(Token::IntegerLiteral(literal)) = res {
             assert_eq!(literal, "42".to_string());
         } else {
-            core::panic!("Expected DecimalIntegerLiteral with no variant");
+            panic!("Expected DecimalIntegerLiteral with no variant");
         }
     }
 
@@ -695,7 +689,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::HexadecimalIntegerLiteral(IntegerWithVariant {
-                value: "0xFF_FF_FF".to_string(),
+                value: "0xFFFFFF".to_string(),
                 variant: None
             }))
         );
@@ -704,7 +698,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::BinaryIntegerLiteral(IntegerWithVariant {
-                value: "0b1010_1010".to_string(),
+                value: "0b10101010".to_string(),
                 variant: None
             }))
         );
@@ -717,7 +711,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::DecimalLiteral(DecimalWithVariant {
-                value: "10.234_567e-8".to_string(),
+                value: "10.234567e-8".to_string(),
                 variant: Some(DecimalTypeVariant::F32)
             }))
         );
@@ -727,7 +721,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::DecimalLiteral(DecimalWithVariant {
-                value: "10.234_567e-8".to_string(),
+                value: "10.234567e-8".to_string(),
                 variant: None
             }))
         );
@@ -737,7 +731,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::DecimalLiteral(DecimalWithVariant {
-                value: "0.123_456".to_string(),
+                value: "0.123456".to_string(),
                 variant: None
             }))
         );
@@ -747,7 +741,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::DecimalLiteral(DecimalWithVariant {
-                value: "1_000.123_456".to_string(),
+                value: "1000.123456".to_string(),
                 variant: Some(DecimalTypeVariant::F32)
             }))
         );

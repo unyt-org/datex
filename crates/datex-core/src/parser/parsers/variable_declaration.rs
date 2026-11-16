@@ -74,7 +74,7 @@ mod tests {
             spanned::Spanned,
             type_expressions::{TypeExpressionData, Union},
         },
-        parser::tests::{parse, try_parse_and_return_on_first_error},
+        parser::tests::parse,
         prelude::*,
     };
 

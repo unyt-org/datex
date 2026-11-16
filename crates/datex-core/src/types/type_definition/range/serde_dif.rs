@@ -1,51 +1,55 @@
 use crate::{
-    dif::serde_context::SerdeContext,
+    dif::{
+        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
+    },
     prelude::*,
     types::{r#type::Type, type_definition::range::RangeTypeDefinition},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
 };
 use serde::{
     Deserializer, Serializer,
-    de::{self, DeserializeSeed, SeqAccess, Visitor},
+    de::{self, SeqAccess, Visitor},
     ser::SerializeTuple,
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, RangeTypeDefinition> {
-    type Value = RangeTypeDefinition;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
+impl SerializeWithSerdeContext for RangeTypeDefinition {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut tuple = serializer.serialize_tuple(2)?;
-        tuple.serialize_element(&ValueWithSeed::new(
-            &*value.start,
-            self.cast::<Type>(),
+        tuple.serialize_element(&ValueWithSerdeContext::new(
+            &*self.start,
+            ctx,
         ))?;
-        tuple.serialize_element(&ValueWithSeed::new(
-            &*value.end,
-            self.cast::<Type>(),
-        ))?;
+        tuple
+            .serialize_element(&ValueWithSerdeContext::new(&*self.end, ctx))?;
         tuple.end()
     }
 }
 
 /// Deserialization implementations for [RangeTypeDefinition].
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, RangeTypeDefinition>
-{
-    type Value = RangeTypeDefinition;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+impl<'de> DeserializeWithSerdeContext<'de> for RangeTypeDefinition {
+    fn deserialize_with_ctx<D>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_seq(self)
+        deserializer.deserialize_seq(DeserializeSerdeContext::<
+            RangeTypeDefinition,
+        >::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, RangeTypeDefinition> {
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, RangeTypeDefinition>
+{
     type Value = RangeTypeDefinition;
 
     fn expecting(
@@ -56,7 +60,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, RangeTypeDefinition> {
             .write_str("a tuple of two Type definitions representing a range")
     }
 
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where
         A: SeqAccess<'de>,
     {

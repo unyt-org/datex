@@ -1,9 +1,38 @@
 use crate::{
-    core_compiler::buffer_provider::BufferProvider, types::r#type::Type,
-    values::value_container::ValueContainer,
+    core_compiler::{
+        core_compilation_context::ByteCursor, to_instructions::ToInstructions,
+    },
+    instruction::Instruction,
+    prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    shared_values::SharedContainer,
 };
+use binrw::BinWrite;
 
-pub trait ValueVisitor: BufferProvider {
-    fn visit_value_container(&mut self, value: &ValueContainer);
-    fn visit_type(&mut self, ty: &Type);
+pub trait ValueVisitor {
+    fn visit_shared_container<'a>(
+        &'a mut self,
+        value_container: &'a SharedContainer,
+        cache: &'a mut SharedReferencesCache,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>;
+}
+
+/// Compiles a [ToInstructions] value using the visitor and returns the final byte buffer.
+pub fn compile_instructions_to_dxb(
+    visitor: &mut impl ValueVisitor,
+    cache: &mut SharedReferencesCache,
+    input: &impl ToInstructions,
+) -> Vec<u8> {
+    compile_instruction_iterator_to_dxb(input.to_instructions(visitor, cache))
+}
+
+/// Compiles an iterator of [Instruction]s and returns the final byte buffer.
+pub fn compile_instruction_iterator_to_dxb(
+    iterator: impl Iterator<Item = Instruction>,
+) -> Vec<u8> {
+    let mut buffer = ByteCursor::new(Vec::new());
+    for instruction in iterator {
+        instruction.write(&mut buffer).unwrap();
+    }
+    buffer.into_inner()
 }
