@@ -2,12 +2,12 @@ use std::path::{Path, PathBuf};
 
 use crate::get_absolute_file_path;
 use datex_core::{
-    compiler::{CompileOptions, compile_template},
-    datex_proxy::{
-        DatexValueContainerProxyDeserialize,
-        DatexValueContainerProxyInfallibleSerialize,
+    compiler::{
+        CompileOptions, compilation_result::CompilationResult, compile_template,
     },
     runtime::{Runtime, RuntimeConfig},
+    traits::convert_value_container::ConvertValueContainer,
+    values::value_container::ValueContainer,
 };
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -81,24 +81,29 @@ fn get_config_path(
 }
 
 pub struct DatexMainInput<'a> {
-    /// attributes of the main macro, e.g. config path
+    /// Attributes of the main macro, e.g. config path
     pub parsed_attributes: ParsedAttributes,
-    /// the function annotated with the macro, containing the application logic
+    /// The function annotated with the macro, containing the application logic
     pub func: ItemFn,
-    /// custom namespace for datex_core
+    /// Custom namespace for datex_core
     pub datex_core_namespace: &'a str,
-    /// optional setup code to run before creating the runtime, e.g. for setting environment variables
+    /// Optional setup code to run before creating the runtime, e.g. for setting environment variables
     pub setup: Option<TokenStream>,
-    /// optional initialization code to run after creating, but before starting the runtime
-    pub init: Option<TokenStream>,
-    /// optional code to run before the main function body, after the runtime has been started
+    /// Optional initialization code to run after creating, but before starting the runtime.
+    /// Has access to the [Runtime] via "runtime" variable. Any variables created here will be dropped before entering the main function body.
+    pub init_scoped: Option<TokenStream>,
+    /// Optional initialization code to run after creating, but before starting the runtime.
+    /// Has access to the [Runtime] via "runtime" variable. Any variables created here can be accessed in the main function body.
+    pub init_unscoped: Option<TokenStream>,
+    /// Optional code to run before the main function body, after the runtime has been started
     pub pre_body: Option<TokenStream>,
-    /// additional attributes to add to the generated main function
+    /// Additional attributes to add to the generated main function
     pub additional_attributes: Vec<Attribute>,
-    /// custom input arguments for the main function, e.g. for providing additional dependencies
+    /// Custom input arguments for the main function, e.g. for providing additional dependencies
     pub custom_main_inputs: Vec<FnArg>,
-    /// whether to enforce that the main function is named `main`
+    /// Whether to enforce that the main function is named `main`
     pub enforce_main_name: bool,
+    pub custom_runtime_info: Option<TokenStream>,
 }
 
 /// Main implementation function for the datex_main macro
@@ -157,27 +162,66 @@ pub fn datex_main_impl_with_config(
 
     let additional_attributes = input.additional_attributes;
     let setup = input.setup;
-    let init = input.init;
+    let init_scoped = input.init_scoped;
+    let init_unscoped = input.init_unscoped;
     let pre_body = input.pre_body;
+
+    let runtime_clone = if init_unscoped.is_some() || init_scoped.is_some() {
+        quote! { let runtime = runner.runtime.clone(); }
+    } else {
+        quote! {}
+    };
+
+    let profiler = cfg_select! {
+        feature = "debug_dhat" => {
+            quote! {
+                let _profiler = #core_namespace::dhat::Profiler::new_heap();
+            }
+        }
+        _ => {
+            quote! {}
+        }
+    };
+
+    let custom_runtime_info = input.custom_runtime_info.unwrap_or_else(|| {
+        quote! { CustomRuntimeInfo::default() }
+    });
 
     quote! {
         #(#additional_attributes)*
         #(#attrs)*
         #vis #sig {
-            use #core_namespace::{runtime::{RuntimeRunner, RuntimeConfig, Runtime}, datex_proxy::DatexValueContainerProxyDeserialize};
+
+            #profiler
+
+            use #core_namespace::{
+                runtime::{RuntimeRunner, RuntimeConfig, Runtime, CustomRuntimeInfo},
+                traits::convert_value_container::ConvertValueContainer,
+            };
 
             #setup
 
+            // first init runner with default config
+            let mut runner = RuntimeRunner::new(RuntimeConfig::default(), #custom_runtime_info);
+
+            // resolve the actual config from bytes
             let config = match (#config_bytes) {
-                Some(bytes) => DatexValueContainerProxyDeserialize::try_from_bytes(bytes, &Runtime::stub()).unwrap(),
+                Some(bytes) => ConvertValueContainer::try_from_bytes(bytes, &runner.runtime).unwrap(),
                 None => RuntimeConfig::default(),
             };
-
-            let runner = RuntimeRunner::new(config);
-            {
-                let runtime = runner.runtime.clone();
-                #init
+            unsafe {
+                runner.runtime.set_config(config);
             }
+
+            #runtime_clone
+            {
+                #init_scoped
+            }
+            #init_unscoped
+
+            // make sure actual system time is used after init
+            runner.runtime.reset_running_since();
+
             runner.run(async move |#runtime_arg_ident: #runtime_arg_type| {
                 #pre_body
                 {
@@ -240,13 +284,16 @@ pub fn get_arg_ident_and_type(
 
 /// Compiles the given RuntimeConfig into DXB
 fn compile_datex_config(config: RuntimeConfig) -> Vec<u8> {
-    let (dxb, _) = compile_template(
+    let CompilationResult {
+        dxb_with_shared_values,
+        ..
+    } = compile_template(
         "?",
-        vec![Some(config.to_value_container())],
+        vec![Some(ValueContainer::from(config))],
         CompileOptions::default(),
         // FIXME: stub runtime for now
         Runtime::stub(),
     )
     .expect("failed to compile DATEX config file");
-    dxb.dxb
+    dxb_with_shared_values.dxb
 }

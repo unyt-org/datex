@@ -15,7 +15,7 @@ use core::{
     ops::Range,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompilerError {
     UnexpectedTerm(Box<DatexExpression>),
     SerializationError(String),
@@ -23,7 +23,6 @@ pub enum CompilerError {
     IntegerOutOfBoundsError,
     InvalidPlaceholderCount,
     TooManyApplyArguments, // more than 255 arguments
-    NonStaticValue,
     SharedRefToNonSharedValue,
     ExpectedOwnedSharedValue,
     ExpectedReferencedSharedValue,
@@ -38,10 +37,24 @@ pub enum CompilerError {
     AssignmentToImmutableReference(String),
     AssignmentToImmutableValue(String),
     OnceScopeUsedMultipleTimes,
-    TypeError(TypeError),
-    ParserError(ParserError),
+    TypeError(Box<TypeError>),
+    ParserError(Box<ParserError>),
     SharedMutRefToImmutableValue,
     InvalidConversionFromRefToOwnedValue,
+    UnknownInterfaceMethod(String),
+    InvalidInterfaceMethodCall(String),
+    InvalidJump,
+}
+impl CompilerError {
+    pub fn unexpected_term(expr: DatexExpression) -> Self {
+        CompilerError::UnexpectedTerm(Box::new(expr))
+    }
+    pub fn type_error(err: TypeError) -> Self {
+        CompilerError::TypeError(Box::new(err))
+    }
+    pub fn parser_error(err: ParserError) -> Self {
+        CompilerError::ParserError(Box::new(err))
+    }
 }
 
 impl From<InjectedValueValidationError> for CompilerError {
@@ -61,7 +74,7 @@ impl From<InjectedValueValidationError> for CompilerError {
 }
 
 /// A compiler error that can be linked to a specific span in the source code
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct SpannedCompilerError {
     pub error: CompilerError,
     pub span: Option<Range<usize>>,
@@ -97,7 +110,7 @@ impl From<SpannedTypeError> for SpannedCompilerError {
     fn from(value: SpannedTypeError) -> Self {
         SpannedCompilerError {
             span: value.span,
-            error: value.error.into(),
+            error: (*value.error).into(),
         }
     }
 }
@@ -106,7 +119,7 @@ impl From<SpannedParserError> for SpannedCompilerError {
     fn from(value: SpannedParserError) -> Self {
         SpannedCompilerError {
             span: Some(value.span),
-            error: CompilerError::ParserError(value.error),
+            error: CompilerError::ParserError(Box::new(value.error)),
         }
     }
 }
@@ -272,7 +285,7 @@ impl From<TypeError> for SimpleOrDetailedCompilerError {
 
 impl From<TypeError> for CompilerError {
     fn from(value: TypeError) -> Self {
-        CompilerError::TypeError(value)
+        CompilerError::TypeError(Box::new(value))
     }
 }
 
@@ -308,9 +321,6 @@ impl Display for CompilerError {
             }
             CompilerError::InvalidPlaceholderCount => {
                 core::write!(f, "Invalid placeholder count")
-            }
-            CompilerError::NonStaticValue => {
-                core::write!(f, "Encountered non-static value")
             }
             CompilerError::UndeclaredVariable(var) => {
                 core::write!(f, "Undeclared variable: {var}")
@@ -386,6 +396,21 @@ impl Display for CompilerError {
                     f,
                     "Cannot convert reference to owned value without cloning or moving"
                 )
+            }
+            CompilerError::UnknownInterfaceMethod(name) => {
+                core::write!(
+                    f,
+                    "Tried to call unknown interface method: {name}"
+                )
+            }
+            CompilerError::InvalidInterfaceMethodCall(name) => {
+                core::write!(
+                    f,
+                    "Interface method \"{name}\" was called with wrong arguments"
+                )
+            }
+            CompilerError::InvalidJump => {
+                core::write!(f, "Invalid jump detected during compilation")
             }
         }
     }

@@ -4,8 +4,20 @@
 use crate::values::value_container::ValueContainer;
 use alloc::boxed::Box;
 use core::fmt;
-mod child_iterator;
+mod classification;
+pub mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
+mod iter_parts;
 pub mod serde_dif;
+#[cfg(feature = "ast")]
+mod to_datex_expression_data;
+mod to_instructions;
+mod try_clone;
+mod value_access;
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct Range {
@@ -13,6 +25,15 @@ pub struct Range {
     pub start: Box<ValueContainer>,
     // upper bound (exclusive)
     pub end: Box<ValueContainer>,
+}
+
+impl Range {
+    pub fn new(start: ValueContainer, end: ValueContainer) -> Self {
+        Self {
+            start: Box::new(start),
+            end: Box::new(end),
+        }
+    }
 }
 
 impl fmt::Debug for Range {

@@ -12,9 +12,8 @@ use crate::{
         },
     },
     shared_values::SharedContainer,
+    values::core_values::endpoint::Endpoint,
 };
-
-use crate::values::core_values::endpoint::Endpoint;
 
 #[derive(Debug, Clone, Default)]
 pub struct ExecutionOptions {
@@ -152,10 +151,12 @@ impl ExecutionInput {
                         intermediate_result,
                         _,
                     )) => {
-                        yield Err(ExecutionError::IntermediateResultWithState(
-                            intermediate_result,
-                            Some(loop_state),
-                        ));
+                        yield Err(
+                            ExecutionError::intermediate_result_with_state(
+                                *intermediate_result,
+                                Some(loop_state),
+                            ),
+                        );
                         break;
                     }
                     _ => yield item,

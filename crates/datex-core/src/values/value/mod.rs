@@ -2,52 +2,278 @@
 //! A [Value] consists of a [CoreValue] representation and an optional custom type.
 use crate::{
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::convert_value::ConvertValue,
     types::type_definition::{
         TypeDefinition, callable::CallableTypeDefinition,
     },
     values::{
         core_value::CoreValue,
+        core_value_with_classification::CoreValueWithClassification,
         core_values::{
             callable::{Callable, CallableBody},
-            integer::typed_integer::TypedInteger,
+            native::DatexNative,
         },
-        value_container::{ValueContainer, value_key::BorrowedValueKey},
+        value_container::ValueContainer,
     },
 };
-pub mod apply;
-mod child_iterator;
-pub mod datex_proxy;
-pub mod equality;
-pub mod ops;
-pub mod serde_dif;
-pub mod update_handler;
+mod apply;
+pub mod borrowed_value;
+mod classification;
+mod convert_parts;
+mod convert_value;
+mod datex_hash;
+mod datex_native;
+mod equality;
+mod get_core_lib_type_id;
+mod get_datex_type;
+mod iter_parts;
+mod local_child_path_resolver;
+mod ops;
+mod serde_dif;
+#[cfg(feature = "ast")]
+mod to_datex_expression_data;
+mod to_instructions;
+mod update_handler;
+mod value_access;
+pub mod value_classification;
 
-use crate::shared_values::errors::AccessError;
+use crate::{
+    shared_values::errors::AccessError,
+    traits::{
+        classification::Classification, convert_parts::FromParts,
+        value_access::ValueAccess,
+    },
+    utils::impl_display_for_datex_value::impl_display_for_datex_value,
+    value_updates::update_handler::InternalMutabilityUpdateHandler,
+    values::{
+        core_values::{
+            endpoint::Endpoint, native::NativeCoreValue, text::Text,
+        },
+        value::value_classification::{
+            ValueClassification,
+            unresolved_value_classification::UnresolvedValueClassification,
+        },
+        value_container::borrowed_value_container::{
+            BorrowedValueContainer, BorrowedValueContainerMut,
+        },
+    },
+};
 use core::{
-    fmt::{Display, Formatter},
+    fmt::{Debug, Formatter},
     result::Result,
 };
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct Value {
-    pub inner: CoreValue,
-    // actual type of the value - if [None], use default type for given value
-    pub custom_type: Option<TypeDefinition>,
+mod try_clone;
+
+#[derive(Debug, Clone)]
+/// Represents a local DATEX value.
+/// This can either be a core value with classification or a
+/// native rust value that provides all trait implementations.
+pub enum Value {
+    /// Core value with classification
+    Core(CoreValueWithClassification),
+    /// Native rust value with DATEX representation
+    Native(NativeCoreValue),
 }
 
-impl<T: Into<CoreValue>> From<T> for Value {
+impl<T: ConvertValue> From<T> for Value {
     fn from(inner: T) -> Self {
-        let inner = inner.into();
-        Value {
-            inner,
-            custom_type: None,
-        }
+        inner.to_value()
+    }
+}
+
+impl From<&'static str> for Value {
+    fn from(value: &'static str) -> Self {
+        Value::core(CoreValue::Text(Text::StaticStr(value)))
     }
 }
 
 impl Value {
+    /// Creates a new [Value] from a native value that implements the [DatexNative] trait.
+    pub fn native(value: impl DatexNative) -> Value {
+        Value::Native(NativeCoreValue::new(value))
+    }
+    pub fn native_boxed(value: Box<dyn DatexNative>) -> Value {
+        Value::Native(NativeCoreValue { value })
+    }
+
+    pub fn core(inner: impl Into<CoreValueWithClassification>) -> Self {
+        Value::Core(inner.into())
+    }
+
+    pub fn core_with_classification(
+        inner: impl Into<CoreValue>,
+        classification: ValueClassification,
+    ) -> Self {
+        Value::Core(CoreValueWithClassification {
+            inner: inner.into(),
+            classification,
+        })
+    }
+
+    pub fn is_collection_value(&self) -> bool {
+        match self {
+            Value::Core(core_value_with_classification) => {
+                core_value_with_classification.is_collection_value()
+            }
+            Value::Native(_) => false,
+        }
+    }
+
     pub fn null() -> Self {
         CoreValue::Null.into()
+    }
+
+    pub fn uninitialized() -> Self {
+        CoreValue::Uninitialized.into()
+    }
+
+    /// Returns the classification of the value, which includes its entity type, impls, and tag.
+    pub fn classification(
+        &self,
+        cache: &mut SharedReferencesCache,
+    ) -> ValueClassification {
+        match self {
+            Value::Core(core_value_with_classification) => {
+                core_value_with_classification.classification.clone()
+            }
+            Value::Native(native) => native.classification(cache),
+        }
+    }
+
+    /// Returns the unresolved classification of the value, which includes its entity type, impls, and tag.
+    /// In contrast to `classification`, this method does not require a mutable reference to a cache
+    /// and only returns an address for an entity type if it is present, without resolving it to a full type.
+    pub fn unresolved_classification(&self) -> UnresolvedValueClassification {
+        match self {
+            Value::Core(core_value_with_classification) => {
+                core_value_with_classification.classification.clone().into()
+            }
+            Value::Native(native) => native.unresolved_classification(),
+        }
+    }
+
+    pub fn new(inner: impl ConvertValue) -> Self {
+        inner.to_value()
+    }
+
+    /// Checks if the inner [CoreValue] of the [Value] is a [CoreValue::Native].
+    pub fn is_native(&self) -> bool {
+        matches!(&self, Value::Native(_))
+    }
+
+    pub fn is_uninitialized(&self) -> bool {
+        match self {
+            Value::Core(core_value_with_classification) => {
+                core_value_with_classification.is_uninitialized()
+            }
+            Value::Native(_) => false,
+        }
+    }
+
+    /// Strips any local observers from the given value container.
+    /// This method should be called when a value is moved from its [SharedContainer] parent.
+    pub fn without_local_observers(mut self) -> Value {
+        self.set_update_callback_data(None);
+        self
+    }
+
+    /// Creates a new Value representing a boxed value.
+    /// This can be used to wrap a [ValueContainer] directly into a local [Value],
+    /// e.g. for #Tagged(shared X) or (X | null) | null
+    pub fn boxed(value: impl Into<ValueContainer>) -> Self {
+        Value::from(CoreValue::Box(Box::new(value.into())))
+    }
+    pub fn unbox(self) -> Result<ValueContainer, Value> {
+        match self {
+            Value::Core(core_value_with_classification) => {
+                match core_value_with_classification.inner {
+                    CoreValue::Box(boxed) => Ok(*boxed),
+                    _ => Err(Value::Core(core_value_with_classification)),
+                }
+            }
+            _ => Err(self),
+        }
+    }
+
+    /// Tries to get a borrow of the current value as the specified type.
+    /// Does not perform any type conversion.
+    pub fn try_as<T>(&self) -> Option<&T>
+    where
+        T: ConvertValue + ?Sized,
+    {
+        T::try_borrow_from_value(self).ok()
+    }
+
+    pub fn try_as_mut<T>(&mut self) -> Option<&mut T>
+    where
+        T: ConvertValue,
+    {
+        T::try_borrow_mut_from_value(self).ok()
+    }
+
+    /// Tries to get an immutable reference to the value as a string slice.
+    /// Does not perform any type conversion.
+    /// In contrast to [Value::try_as::<String>()], this method also works for [Text] values containing a static string slice.
+    pub fn try_as_str(&self) -> Option<&str> {
+        if let Some(string) = self.try_as::<String>() {
+            Some(string.as_str())
+        }
+        // FIXME: must be handled explicitly because 'static str cannot be converted to String
+        else if let Some(text) = self.try_as::<Text>() {
+            Some(text.as_str())
+        } else {
+            None
+        }
+    }
+
+    /// Tries to convert the current value into the specific specified type.
+    /// Does not perform any type conversion.
+    pub fn try_into_value<T>(self) -> Result<T, Value>
+    where
+        T: ConvertValue,
+    {
+        T::try_from_value(self)
+    }
+
+    /// Tries to convert the current value into the specific specified type.
+    /// Performs a cast between native and core values if necessary, e.g. converting a [CoreValue::Map] into a native rust struct.
+    pub fn try_convert_into_value<T>(self) -> Result<T, ()>
+    where
+        T: ConvertValue + FromParts,
+    {
+        T::try_convert_from_value(self)
+    }
+
+    /// Tries to get a reference to the inner [CoreValue] if the [Value] is a [Value::Core] variant.
+    pub fn try_as_core_value(&self) -> Option<&CoreValue> {
+        match self {
+            Value::Core(core_value_with_classification) => {
+                Some(&core_value_with_classification.inner)
+            }
+            Value::Native(_native) => None,
+        }
+    }
+
+    /// Tries to get a mutable reference to the inner [CoreValue] if the [Value] is a [Value::Core] variant.
+    pub fn try_as_core_value_mut(&mut self) -> Option<&mut CoreValue> {
+        match self {
+            Value::Core(core_value_with_classification) => {
+                Some(&mut core_value_with_classification.inner)
+            }
+            Value::Native(_native) => None,
+        }
+    }
+
+    /// Tries to convert the current value into a [CoreValue] if the [Value] is a [Value::Core] variant.
+    pub fn try_into_core_value(self) -> Result<CoreValue, Value> {
+        match self {
+            Value::Core(core_value_with_classification) => {
+                Ok(core_value_with_classification.inner)
+            }
+            Value::Native(native) => Err(Value::Native(native)),
+        }
     }
 }
 
@@ -56,257 +282,97 @@ impl Value {
         name: Option<String>,
         signature: CallableTypeDefinition,
         body: CallableBody,
+        creator: Endpoint,
     ) -> Self {
-        Value {
-            inner: CoreValue::Callable(Callable {
-                name,
-                signature: signature.clone(),
-                body,
-            }),
-            custom_type: Some(TypeDefinition::callable(signature)),
-        }
+        Value::new(CoreValue::Callable(Callable {
+            name,
+            signature,
+            body,
+            creator,
+            docs: None,
+        }))
     }
 
-    #[deprecated]
     pub fn is_null(&self) -> bool {
-        core::matches!(self.inner, CoreValue::Null)
-    }
-    #[deprecated]
-    pub fn is_text(&self) -> bool {
-        core::matches!(self.inner, CoreValue::Text(_))
-    }
-    #[deprecated]
-    pub fn is_integer_i8(&self) -> bool {
-        core::matches!(
-            &self.inner,
-            CoreValue::TypedInteger(TypedInteger::I8(_))
-        )
-    }
-    #[deprecated]
-    pub fn is_map(&self) -> bool {
-        core::matches!(self.inner, CoreValue::Map(_))
-    }
-
-    /// Tries to get a borrow of the current value as the specified type.
-    /// Does not perform any type conversion.
-    pub fn try_as<'a, T: 'a>(&'a self) -> Option<&'a T>
-    where
-        &'a T: TryFrom<&'a CoreValue>,
-    {
-        <&T>::try_from(&self.inner).ok()
-    }
-
-    pub fn try_as_mut<'a, T: 'a>(&'a mut self) -> Option<&'a mut T>
-    where
-        &'a mut T: TryFrom<&'a mut CoreValue>,
-    {
-        <&mut T>::try_from(&mut self.inner).ok()
-    }
-
-    /// Tries to convert the current value into the specific specified type.
-    /// Does not perform any type conversion.
-    pub fn try_into_value<T>(self) -> Option<T>
-    where
-        T: TryFrom<CoreValue>,
-    {
-        T::try_from(self.inner).ok()
-    }
-
-    /// Returns true if the current Value's actual type is the same as its default type
-    /// E.g. if the type is integer for an Integer value, or integer/u8 for a typed integer value
-    /// This will return false for an integer value if the actual type is one of the following:
-    /// * an ImplType<integer, x>
-    /// * a new nominal type containing an integer
-    /// TODO #604: this does not match all cases of default types from the point of view of the compiler -
-    /// integer variants (despite bigint) can be distinguished based on the instruction code, but for text variants,
-    /// the variant must be included in the compiler output - so we need to handle theses cases as well.
-    /// Generally speaking, all variants except the few integer variants should never be considered default types.
-    pub fn has_default_type(&self) -> bool {
-        match &self.custom_type {
-            None => true,
-            Some(TypeDefinition::CoreType(core_type)) => {
-                core_type == &self.default_core_type()
+        match self {
+            Value::Core(core_value_with_classification) => {
+                core_value_with_classification.is_null()
             }
-            Some(_) => false,
+            Value::Native(_native_core_value) => false, // TODO: handle native null values
         }
     }
 
-    /// Returns the actual type, generating the default type from the provided memory if no custom typoe is set
-    pub fn actual_type(&self) -> TypeDefinition {
-        match &self.custom_type {
-            Some(actual_type) => actual_type.clone(),
-            None => TypeDefinition::CoreType(self.default_core_type()),
+    /// Tries to downcast the CoreValue to a native value of type T.
+    /// This method will return Some(Box<T>) if the CoreValue is a Native variant and the underlying value can be downcast to T.
+    pub fn downcast_native<T: DatexNative>(self) -> Option<Box<T>> {
+        if let Value::Native(native_value) = self {
+            native_value.into_any().downcast::<T>().ok()
+        } else {
+            None
+        }
+    }
+
+    /// Tries to downcast the CoreValue to a reference of a native value of type T.
+    /// This method will return Some(&T) if the CoreValue is a Native variant and the underlying value can be downcast to T.
+    pub fn downcast_native_ref<T: DatexNative>(&self) -> Option<&T> {
+        if let Value::Native(native_value) = self {
+            native_value.as_any().downcast_ref::<T>()
+        } else {
+            None
+        }
+    }
+
+    /// Tries to downcast the CoreValue to a mutable reference of a native value of type T.
+    /// This method will return Some(&mut T) if the CoreValue is a Native variant and the underlying value can be downcast to T.
+    pub fn downcast_native_mut<T: DatexNative>(&mut self) -> Option<&mut T> {
+        if let Value::Native(native_value) = self {
+            native_value.as_any_mut().downcast_mut::<T>()
+        } else {
+            None
         }
     }
 
     /// Gets a property on the value if applicable (e.g. for map and structs)
-    pub fn try_get_property<'a>(
+    pub fn try_get_property(
         &self,
-        key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<ValueContainer, AccessError> {
-        match self.inner {
-            CoreValue::Map(ref map) => {
-                // If the value is a map, get the property
-                Ok(map.get(key)?.clone())
-            }
-            CoreValue::List(ref list) => {
-                if let Some(index) = key.into().try_as_index() {
-                    Ok(list.try_get(index)?.clone())
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            CoreValue::Text(ref text) => {
-                if let Some(index) = key.into().try_as_index() {
-                    let char = text.char_at(index)?;
-                    Ok(ValueContainer::from(char.to_string()))
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            _ => {
-                // If the value is not an map, we cannot get a property
-                Err(AccessError::InvalidOperation(
-                    "Cannot get property".to_string(),
-                ))
-            }
-        }
+        key: &ValueContainer,
+    ) -> Result<BorrowedValueContainer<'_>, AccessError> {
+        <Self as ValueAccess>::try_get_property(self, key)
     }
 
-    /// Takes (removes) a property from the value if applicable (e.g. for map and structs)
-    pub fn try_take_property<'a>(
+    pub fn try_get_property_mut(
         &mut self,
-        key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<ValueContainer, AccessError> {
-        match self.inner {
-            CoreValue::Map(ref mut map) => {
-                // If the value is a map, get the property
-                Ok(map.try_delete(key)?)
-            }
-            CoreValue::List(ref mut list) => {
-                if let Some(index) = key.into().try_as_index() {
-                    Ok(list.delete(index)?)
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            CoreValue::Text(ref text) => {
-                if let Some(index) = key.into().try_as_index() {
-                    let char = text.char_at(index)?;
-                    Ok(ValueContainer::from(char.to_string()))
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            _ => {
-                // If the value is not an map, we cannot get a property
-                Err(AccessError::InvalidOperation(
-                    "Cannot get property".to_string(),
-                ))
-            }
-        }
+        key: &ValueContainer,
+    ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
+        <Self as ValueAccess>::try_get_property_mut(self, key)
     }
 
-    pub fn try_delete_property<'a>(
-        &mut self,
-        key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<(), AccessError> {
-        match self.inner {
-            CoreValue::Map(ref mut map) => {
-                // If the value is a map, delete the property
-                map.try_delete(key)?;
-                Ok(())
+    /// Returns the actual current [TypeDefinition] of the value
+    pub fn actual_type(&self) -> TypeDefinition {
+        match self {
+            Value::Core(core_value_with_classification) => {
+                core_value_with_classification.actual_type()
             }
-            CoreValue::List(ref mut list) => {
-                if let Some(index) = key.into().try_as_index() {
-                    list.delete(index)?;
-                    Ok(())
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            CoreValue::Text(_) => Err(AccessError::InvalidOperation(
-                "Cannot delete property on text".to_string(),
-            )),
-            _ => {
-                // If the value is not a map, we cannot delete a property
-                Err(AccessError::InvalidOperation(
-                    "Cannot delete property".to_string(),
-                ))
-            }
+            Value::Native(_native) => todo!(),
         }
-    }
-
-    /// Sets a property on the value if applicable (e.g. for maps)
-    pub fn try_set_property<'a>(
-        &mut self,
-        key: impl Into<BorrowedValueKey<'a>>,
-        val: ValueContainer,
-    ) -> Result<(), AccessError> {
-        let key = key.into();
-
-        match self.inner {
-            CoreValue::Map(ref mut map) => {
-                // If the value is an map, set the property
-                map.try_set(key, val)?;
-            }
-            CoreValue::List(ref mut list) => {
-                if let Some(index) = key.try_as_index() {
-                    list.try_set(index, val)
-                        .map_err(AccessError::IndexOutOfBounds)?;
-                } else {
-                    return Err(AccessError::InvalidIndexKey);
-                }
-            }
-            CoreValue::Text(ref mut text) => {
-                if let Some(index) = key.try_as_index() {
-                    if let ValueContainer::Local(v) = &val
-                        && let CoreValue::Text(new_char) = &v.inner
-                        && new_char.0.len() == 1
-                    {
-                        let char = new_char.0.chars().next().unwrap_or('\0');
-                        text.set_char_at(index, char).map_err(|err| {
-                            AccessError::IndexOutOfBounds(err)
-                        })?;
-                    } else {
-                        return Err(AccessError::InvalidOperation(
-                            "Can only set char character in text".to_string(),
-                        ));
-                    }
-                } else {
-                    return Err(AccessError::InvalidIndexKey);
-                }
-            }
-            _ => {
-                // If the value is not a map, we cannot set a property
-                return Err(AccessError::InvalidOperation(format!(
-                    "Cannot set property '{}' on non-map value: {:?}",
-                    key, self
-                )));
-            }
-        }
-
-        Ok(())
     }
 }
 
-impl Display for Value {
-    fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
-        core::write!(f, "{}", self.inner)
-    }
-}
-
-impl<T> From<Option<T>> for Value
-where
-    T: Into<Value>,
-{
-    fn from(opt: Option<T>) -> Self {
-        match opt {
-            Some(v) => v.into(),
-            None => Value::null(),
+impl_display_for_datex_value!(
+    Value,
+    impl core::fmt::Display for Value {
+        fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
+            match self {
+                Value::Core(core_value_with_classification) => {
+                    core::write!(f, "{}", core_value_with_classification)
+                }
+                Value::Native(native) => {
+                    core::write!(f, "{}", native)
+                }
+            }
         }
     }
-}
+);
 
 #[cfg(test)]
 /// Tests for the Value struct and its methods.
@@ -315,23 +381,30 @@ where
 mod tests {
     use super::*;
     use crate::{
-        assert_structural_eq, datex_list,
-        libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
-        prelude::*,
-        types::{r#type::Type, type_definition::impl_type::ImplTypeDefinition},
+        traits::structural_eq::assert_structural_eq,
         values::core_values::{
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
-            list::List,
+            list::{List, datex_list},
         },
     };
-    use core::str::FromStr;
+    use core::assert_matches;
     use log::info;
 
     #[test]
     fn endpoint() {
-        let endpoint = Value::from(Endpoint::from_str("@test").unwrap());
-        assert_eq!(endpoint.to_string(), "@test");
+        let endpoint = Value::from(Endpoint::new("@test"));
+        assert!(!endpoint.is_native());
+
+        let endpoint_value = endpoint.try_into_value::<Endpoint>().unwrap();
+        assert_eq!(endpoint_value.to_string(), "@test");
+
+        let endpoint = Value::from(CoreValue::Endpoint(Endpoint::new("@test")));
+        assert!(!endpoint.is_native());
+        assert_eq!(
+            endpoint.try_into_value::<Endpoint>().unwrap().to_string(),
+            "@test"
+        );
     }
 
     #[test]
@@ -355,7 +428,7 @@ mod tests {
     #[test]
     fn list() {
         let mut a = List::from(vec![
-            Value::from("42"),
+            Value::from("42".to_string()),
             Value::from(42),
             Value::from(true),
         ]);
@@ -368,26 +441,26 @@ mod tests {
         let b = List::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
         assert_eq!(b.len(), 11);
 
-        let c = datex_list![1, "test", 3, true, false];
+        let c = datex_list![1, "test".to_string(), 3, true, false];
         assert_eq!(c.len(), 5);
         assert_eq!(c[0], 1.into());
-        assert_eq!(c[1], "test".into());
+        assert_eq!(c[1], "test".to_string().into());
         assert_eq!(c[2], 3.into());
     }
 
     #[test]
     fn boolean() {
-        let a = Value::from(true);
-        let b = Value::from(false);
-        let c = Value::from(false);
+        let a = Value::from(CoreValue::Boolean(true.into()));
+        let b = Value::from(CoreValue::Boolean(false.into()));
+        let c = Value::from(CoreValue::Boolean(false.into()));
         assert_ne!(a, b);
         assert_eq!(b, c);
 
-        let d = (!b.clone()).unwrap();
+        let d = (!&b).unwrap();
         assert_eq!(a, d);
 
         // We can't add two booleans together, so this should return None
-        let a_plus_b = a.clone() + b.clone();
+        let a_plus_b = &a + &b;
         assert!(a_plus_b.is_err());
     }
 
@@ -422,8 +495,11 @@ mod tests {
 
         let maybe_value: Option<i8> = None;
         let null_value = Value::from(maybe_value);
-        assert_eq!(null_value.to_string(), "null");
-        assert!(null_value.is_null());
+        // can only get None via cast
+        assert_eq!(
+            null_value.try_convert_into_value::<Option<i8>>().unwrap(),
+            None
+        );
     }
 
     #[test]
@@ -438,20 +514,28 @@ mod tests {
 
     #[test]
     fn string_concatenation() {
-        let a = Value::from("Hello ");
-        let b = Value::from(42i8);
+        let a = Value::from("Hello ".to_string());
+        let b = Value::from(TypedInteger::I8(42i8));
+        assert!(matches!(a.try_as_core_value().unwrap(), CoreValue::Text(_)));
+        assert!(matches!(
+            b.try_as::<TypedInteger>().unwrap(),
+            TypedInteger::I8(_)
+        ));
 
-        assert!(a.is_text());
-        assert!(b.is_integer_i8());
+        let a_plus_b = (&a + &b).unwrap();
+        let b_plus_a = (&b + &a).unwrap();
 
-        let a_plus_b = (a.clone() + b.clone()).unwrap();
-        let b_plus_a = (b.clone() + a.clone()).unwrap();
+        assert!(matches!(
+            a_plus_b.try_as_core_value().unwrap(),
+            CoreValue::Text(_)
+        ));
+        assert!(matches!(
+            b_plus_a.try_as_core_value().unwrap(),
+            CoreValue::Text(_)
+        ));
 
-        assert!(a_plus_b.is_text());
-        assert!(b_plus_a.is_text());
-
-        assert_eq!(a_plus_b, Value::from("Hello 42"));
-        assert_eq!(b_plus_a, Value::from("42Hello "));
+        assert_eq!(a_plus_b, Value::from("Hello 42".to_string()));
+        assert_eq!(b_plus_a, Value::from("42Hello ".to_string()));
 
         info!("{} + {} = {}", a.clone(), b.clone(), a_plus_b);
         info!("{} + {} = {}", b.clone(), a.clone(), b_plus_a);
@@ -461,7 +545,15 @@ mod tests {
     fn structural_equality() {
         let a = Value::from(42_i8);
         let b = Value::from(42_i32);
-        assert!(a.is_integer_i8());
+        assert_matches!(
+            a.try_as_core_value().unwrap(),
+            CoreValue::TypedInteger(TypedInteger::I8(_))
+        );
+        assert_matches!(
+            b.try_as_core_value().unwrap(),
+            CoreValue::TypedInteger(TypedInteger::I32(_))
+        );
+        assert_ne!(a, b);
 
         assert_structural_eq!(a, b);
 
@@ -474,35 +566,5 @@ mod tests {
             Value::from(42_i8),
             Value::from(Integer::from(42_i8))
         );
-    }
-
-    #[test]
-    fn default_types() {
-        let val = Value::from(Integer::from(42));
-        assert!(val.has_default_type());
-
-        let val = Value::from(42i8);
-        assert!(val.has_default_type());
-
-        let val = Value {
-            inner: CoreValue::Integer(Integer::from(42)),
-            custom_type: Some(TypeDefinition::CoreType(
-                CoreLibBaseTypeId::Integer.into(),
-            )),
-        };
-
-        assert!(val.has_default_type());
-
-        let val = Value {
-            inner: CoreValue::Integer(Integer::from(42)),
-            custom_type: Some(TypeDefinition::ImplType(
-                ImplTypeDefinition::new(
-                    Type::core(CoreLibBaseTypeId::Integer),
-                    vec![],
-                ),
-            )),
-        };
-
-        assert!(!val.has_default_type());
     }
 }

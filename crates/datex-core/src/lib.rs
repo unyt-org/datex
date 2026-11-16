@@ -1,27 +1,35 @@
 //! The `datex-core` crate is the core library for the DATEX system.
 #![cfg_attr(not(feature = "std"), no_std)]
-#![feature(assert_matches)]
+// Features required for the crate.
 #![feature(gen_blocks)]
 #![feature(async_iterator)]
-#![feature(type_alias_impl_trait)]
-#![feature(trait_alias)]
-#![feature(box_patterns)]
-#![feature(if_let_guard)]
-#![feature(try_trait_v2)]
-// #![allow(unused_parens)]
-#![feature(associated_type_defaults)]
+#![feature(deref_patterns)]
+#![feature(negative_impls, with_negative_coherence)]
 #![feature(core_float_math)]
-#![feature(thread_local)]
-#![feature(future_join)]
-#![allow(static_mut_refs)]
 #![feature(variant_count)]
 #![feature(const_cmp)]
 #![feature(const_trait_impl)]
-#![feature(custom_test_frameworks)]
 #![feature(specialization)]
-#![feature(const_default)]
+#![feature(custom_inner_attributes)]
+#![feature(decl_macro)]
+#![feature(try_blocks)]
+#![rustfmt::skip::macros(assert_regular_instructions_equal)]
+#![feature(arbitrary_self_types)]
+// Allowances for various compiler features and warnings.
+#![allow(incomplete_features)]
+#![allow(static_mut_refs)]
+#![allow(async_fn_in_trait)]
+
 extern crate alloc;
 extern crate num_integer;
+
+#[doc(hidden)]
+#[macro_use]
+mod preludes;
+
+#[doc = include_str!("../README.md")]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -33,11 +41,11 @@ pub mod prelude;
 pub mod ast;
 #[cfg(feature = "compiler")]
 pub mod compiler;
-#[cfg(feature = "decompiler")]
 pub mod decompiler;
 #[cfg(feature = "compiler")]
 pub mod fmt;
 pub mod global;
+pub mod instruction;
 pub mod libs;
 #[cfg(all(feature = "lsp", feature = "std"))]
 pub mod lsp;
@@ -52,7 +60,6 @@ pub mod type_inference;
 pub mod visitor;
 
 pub mod core_compiler;
-pub mod datex_proxy;
 pub mod dif;
 pub mod disassembler;
 pub mod dxb_parser;
@@ -69,23 +76,50 @@ pub use datex_macros_internal as macros;
 extern crate core;
 
 pub mod datex_registry;
+pub mod inspector;
+pub mod serde_compat;
+pub mod shared_wrappers;
+
 pub use inventory;
+pub use linkme;
+
+pub use serde;
+
+#[cfg(feature = "debug_dhat")]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
+
+#[cfg(feature = "debug_dhat")]
+pub use dhat;
 
 /// HashMap and HashSet that work in both std and no_std environments.
 pub mod collections {
-    #[cfg(feature = "std")]
-    pub use std::collections::{HashMap, HashSet, hash_map, hash_set};
-
-    #[cfg(not(feature = "std"))]
-    pub use hashbrown::{HashMap, HashSet, hash_map, hash_set};
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "std")] {
+            pub use std::collections::{HashMap, HashSet, hash_map, hash_set};
+            pub use std::collections::hash_map::DefaultHasher;
+            pub fn default_hasher() -> DefaultHasher {
+                DefaultHasher::new()
+            }
+        } else {
+            use core::hash::BuildHasher;
+            pub use hashbrown::{HashMap, HashSet, hash_map, hash_set, DefaultHashBuilder, DefaultHasher};
+            pub fn default_hasher() -> DefaultHasher {
+                DefaultHashBuilder::default().build_hasher()
+            }
+        }
+    }
 }
 
 /// Reexport of Mutex that works in both std and no_std environments.
 pub mod std_sync {
-    #[cfg(not(feature = "std"))]
-    pub use spin::Mutex;
-    #[cfg(feature = "std")]
-    pub use std::sync::Mutex;
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "std")] {
+            pub use std::sync::Mutex;
+        } else {
+            pub use spin::Mutex;
+        }
+    }
 }
 
 /// Crypto implementations selection based on target architecture and features.
@@ -104,7 +138,6 @@ pub mod crypto {
 }
 
 pub mod time {
-
     mod system_time {
         cfg_if::cfg_if! {
             if #[cfg(feature = "target_wasm")] {
@@ -146,8 +179,11 @@ pub mod time {
 }
 
 pub mod random {
-    #[cfg(not(feature = "std"))]
-    pub use foldhash::fast::RandomState;
-    #[cfg(feature = "std")]
-    pub use std::hash::RandomState;
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "std")] {
+            pub use std::hash::RandomState;
+        } else {
+            pub use foldhash::fast::RandomState;
+        }
+    }
 }

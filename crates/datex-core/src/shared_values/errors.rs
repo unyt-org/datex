@@ -79,9 +79,14 @@ impl Display for IndexOutOfBoundsError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeyNotFoundError {
-    pub key: ValueContainer,
+    pub key: Box<ValueContainer>,
+}
+impl KeyNotFoundError {
+    pub fn new(key: ValueContainer) -> Self {
+        KeyNotFoundError { key: Box::new(key) }
+    }
 }
 
 impl Display for KeyNotFoundError {
@@ -90,7 +95,7 @@ impl Display for KeyNotFoundError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AccessError {
     InvalidOperation(String),
     KeyNotFound(KeyNotFoundError),
@@ -139,7 +144,7 @@ impl Display for AccessError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum AssignmentError {
     ImmutableReference,
     TypeError(Box<TypeError>),

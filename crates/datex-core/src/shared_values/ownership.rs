@@ -1,3 +1,4 @@
+//! This module contains the definition of ownership and mutability for shared containers.
 use crate::shared_values::SharedContainerMutability;
 use binrw::{BinRead, BinWrite};
 use core::{

@@ -8,30 +8,57 @@ use crate::{
             UnexpectedImmutableReferenceError,
             UnexpectedSharedContainerOwnershipError,
         },
+        traits::SharedContainerCommon,
+    },
+    values::{
+        core_values::callable::Callable, value_container::ValueContainer,
     },
 };
-use core::fmt::Display;
-use strum_macros::Display;
+use core::{
+    fmt::Display,
+    hash::{Hash, Hasher},
+};
+
 /// Cache layer that stores references or owned and referenced shared containers
 #[derive(Debug, Default)]
 pub struct SharedValuesCache {
     values: HashMap<PointerAddress, SharedContainer>,
+    callables: HashMap<u64, Callable>,
+    vecs: HashMap<usize, Box<dyn core::any::Any>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ValueNotFoundInCacheError;
+pub struct ValueNotFoundInCacheError(pub PointerAddress);
 
 impl Display for ValueNotFoundInCacheError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Value not found in cache")
+        write!(f, "Value not found in cache: {}", self.0)
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Display)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CacheValueRetrievalError {
     UnexpectedImmutableReference(UnexpectedImmutableReferenceError),
     UnexpectedSharedContainerOwnership(UnexpectedSharedContainerOwnershipError),
     ValueNotFoundInCache(ValueNotFoundInCacheError),
+}
+
+impl Display for CacheValueRetrievalError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            CacheValueRetrievalError::UnexpectedImmutableReference(err) => {
+                write!(f, "Unexpected immutable reference: {}", err)
+            }
+            CacheValueRetrievalError::UnexpectedSharedContainerOwnership(
+                err,
+            ) => {
+                write!(f, "Unexpected shared container ownership: {}", err)
+            }
+            CacheValueRetrievalError::ValueNotFoundInCache(err) => {
+                write!(f, "{}", err)
+            }
+        }
+    }
 }
 
 impl From<UnexpectedImmutableReferenceError> for CacheValueRetrievalError {
@@ -63,6 +90,8 @@ impl SharedValuesCache {
                 .into_iter()
                 .map(|container| (container.pointer_address(), container))
                 .collect(),
+            callables: HashMap::new(),
+            vecs: HashMap::new(),
         }
     }
 
@@ -75,6 +104,38 @@ impl SharedValuesCache {
             return;
         }
         self.values.insert(container.pointer_address(), container);
+    }
+
+    /// Stores a callable in the cache and returns its hash value.
+    /// TODO: use different hash and HashMap<hash, callable> to reduce collisions?
+    pub fn store_callable(&mut self, callable: Callable) -> u64 {
+        let mut hasher = default_hasher();
+        callable.hash(&mut hasher);
+        let hash = hasher.finish();
+        self.callables.insert(hash, callable);
+        hash
+    }
+
+    pub fn store_vec<T: 'static>(&mut self, vec: Vec<T>) -> usize {
+        let ptr = vec.as_ptr() as usize;
+        self.vecs.insert(ptr, Box::new(vec));
+
+        ptr
+    }
+
+    /// Removes a stored vector from the cache based on its handle.
+    pub fn remove_stored_vec(&mut self, handle: usize) {
+        self.vecs.remove(&handle);
+    }
+
+    /// Retrieves a callable from the cache based on its hash value.
+    pub fn get_callable(&self, hash: u64) -> Option<Callable> {
+        self.callables.get(&hash).cloned()
+    }
+
+    /// Removes a callable from the cache based on its hash value.
+    pub fn remove_callable_with_hash(&mut self, hash: u64) {
+        self.callables.remove(&hash);
     }
 
     /// Removes the shared container for the given pointer address from the cache, if it exists.
@@ -120,7 +181,7 @@ impl SharedValuesCache {
                     }
                 }
             }
-            _ => Err(ValueNotFoundInCacheError.into()),
+            _ => Err(ValueNotFoundInCacheError(pointer_address.clone()).into()),
         }
     }
 
@@ -130,7 +191,25 @@ impl SharedValuesCache {
     ) -> Result<&SharedContainer, ValueNotFoundInCacheError> {
         self.values
             .get(pointer_address)
-            .ok_or(ValueNotFoundInCacheError)
+            .ok_or(ValueNotFoundInCacheError(pointer_address.clone()))
+    }
+
+    /// Tries to get a mutable reference to a shared container from the cache at the given pointer address.
+    /// If the container for the address is not in the cache, a [ValueNotFoundInCacheError] is returned.
+    pub fn try_get_shared_container_reference(
+        &self,
+        pointer_address: &PointerAddress,
+        mutability: ReferenceMutability,
+    ) -> Result<ReferencedSharedContainer, CacheValueRetrievalError> {
+        match mutability {
+            ReferenceMutability::Mutable => {
+                self.try_get_shared_container_mutable_reference(pointer_address)
+            }
+            ReferenceMutability::Immutable => Ok(self
+                .try_get_shared_container_immutable_reference(
+                    pointer_address,
+                )?),
+        }
     }
 
     /// Tries to get a mutable reference to a shared container from the cache at the given pointer address.
@@ -143,7 +222,7 @@ impl SharedValuesCache {
         Ok(self
             .values
             .get(pointer_address)
-            .ok_or(ValueNotFoundInCacheError)?
+            .ok_or(ValueNotFoundInCacheError(pointer_address.clone()))?
             .try_derive_mutable_reference()?)
     }
 
@@ -156,7 +235,7 @@ impl SharedValuesCache {
         Ok(self
             .values
             .get(pointer_address)
-            .ok_or(ValueNotFoundInCacheError)?
+            .ok_or(ValueNotFoundInCacheError(pointer_address.clone()))?
             .derive_immutable_reference())
     }
 
@@ -191,5 +270,28 @@ impl SharedValuesCache {
         self.values
             .get(pointer_address)
             .is_some_and(|container| container.ownership() >= ownership)
+    }
+}
+
+#[cfg(feature = "decompiler")]
+impl Display for SharedValuesCache {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        use crate::decompiler::{ast_to_source_code::value_to_source_code, *};
+
+        writeln!(f, "Values:")?;
+        for (address, value) in &self.values {
+            writeln!(
+                f,
+                "  {}: {}",
+                address,
+                value_to_source_code(
+                    &ValueContainer::Shared(
+                        value.clone_with_move_indicator_if_owned()
+                    ),
+                    DecompileOptions::default()
+                )
+            )?;
+        }
+        Ok(())
     }
 }

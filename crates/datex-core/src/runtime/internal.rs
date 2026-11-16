@@ -1,7 +1,11 @@
 use crate::{
     channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
     collections::HashMap,
-    core_compiler::core_compilation_context::DXBWithSharedValues,
+    core_compiler::{
+        core_compilation_context::DXBWithSharedValues, core_compile,
+        instruction_input::InstructionInput,
+    },
+    datex_registry::{all_datex_types, get_all_modules},
     dif::dif_interface::DIFInterface,
     disassembler::{
         options::DisassemblerOptions, print_disassembled_with_options,
@@ -12,104 +16,135 @@ use crate::{
             OutgoingContextId,
         },
         protocol_structures::{
-            block_header::BlockHeader, encrypted_header::EncryptedHeader,
+            block_header::{BlockHeader, FlagsAndTimestamp},
+            encrypted_header::EncryptedHeader,
             routing_header::RoutingHeader,
         },
     },
     libs::core::CoreLibrary,
     network::{
+        block_handler::{
+            IncomingSectionReceiver, create_incoming_sections_channel,
+        },
         com_hub::{
-            ComHub, InterfacePriority, network_response::ResponseOptions,
+            ComHub, ComInterfaceReconnectRequest, InterfacePriority,
+            network_response::ResponseOptions,
         },
         com_interfaces::local_loopback_interface::LocalLoopbackInterfaceSetupData,
     },
     prelude::*,
+    random::RandomState,
     runtime::{
         Runtime, RuntimeConfig, RuntimeConfigInterface,
         cache::shared_references_cache::SharedReferencesCache,
         execution::{
-            ExecutionError, InvalidProgramError,
+            ExecutionError,
             context::{
-                ExecutionContext, ExecutionMode, RemoteExecutionContext,
-                ScriptExecutionError,
+                ExecutionContext, ExecutionMode,
+                FinalOrPersistedExecutionContext, RemoteExecutionContext,
+                RemoteExecutionTarget, ScriptExecutionError,
             },
             execution_input::ExecutionCallerMetadata,
+            remote_execution_options::RemoteExecutionOptions,
         },
         pointer_address_provider::SelfOwnedPointerAddressProvider,
         pointer_availability_lookup::PointerAvailabilityLookup,
-        request_move::compile_request_move,
+        remote_value_sync::{
+            SubscriberError, synced_value_data::SyncedValueData,
+        },
     },
     shared_values::{
-        OwnedSharedContainer, PointerAddress, RemotePointerAddress,
-        SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
-        base_shared_value_container::observers::TransceiverId,
+        SharedContainer, base_shared_value_container::observers::TransceiverId,
     },
-    time::Instant,
+    time::{Instant, now_ms},
+    types::r#type::Type,
     utils::task_manager::TaskManager,
     values::{
-        core_value::CoreValue, core_values::endpoint::Endpoint, value::Value,
-        value_container::ValueContainer,
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
 use alloc::rc::Rc;
 use core::{
-    cell::{Ref, RefCell, RefMut},
+    cell::{Ref, RefCell, RefMut, UnsafeCell},
+    ops::DerefMut,
     pin::Pin,
-    slice,
 };
+use datex_macros_internal::Datex;
+use futures_util::future::join_all;
+use indexmap::IndexMap;
 use log::{debug, error, info};
+
+pub type RemoteExecutionResult = Result<Option<ValueContainer>, ExecutionError>;
+
+#[derive(Datex, Debug, Clone, PartialEq, Eq, Hash)]
+#[datex(structural)]
+pub struct HeapStats {
+    /// Total heap size
+    pub total: usize,
+    /// Currently used heap size
+    pub used: usize,
+    /// Maximum used heap size since startup
+    pub max_used: usize,
+}
+
+#[derive(Datex, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[datex(structural)]
+pub struct RuntimeStats {
+    pub heap: Option<HeapStats>,
+}
+
+#[derive(Datex, Debug, Clone)]
+#[datex(structural)]
+/// General static information about the runtime, e.g. version numbers.
+pub struct RuntimeInfo {
+    datex_version: String,
+    other_versions: IndexMap<String, String, RandomState>,
+    device_type: Option<String>,
+    running_since: u64,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct CustomRuntimeInfo {
+    pub device_type: Option<String>,
+    pub other_versions: IndexMap<String, String, RandomState>,
+}
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
-    version: String,
-    endpoint: Endpoint,
+    endpoint: UnsafeCell<Endpoint>,
+    info: RefCell<RuntimeInfo>,
 
     core_library: CoreLibrary,
 
-    memory: RefCell<SharedReferencesCache>,
+    shared_references_cache: RefCell<SharedReferencesCache>,
     pointer_address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
     com_hub: Rc<ComHub>,
-    config: RuntimeConfig,
+    config: UnsafeCell<RuntimeConfig>,
+
+    /// Public endpoint interface properties
+    endpoint_properties: RefCell<IndexMap<String, ValueContainer, RandomState>>,
 
     /// counter to keep track of transceiver ids
-    transceiver_counter: RefCell<u32>,
+    transceiver_counter: RefCell<u8>,
 
     task_manager: TaskManager,
 
-    // receiver for incoming sections from com hub
-    incoming_sections_receiver: RefCell<UnboundedReceiver<IncomingSection>>,
+    /// receiver for incoming sections from com hub
+    incoming_sections_receiver: RefCell<IncomingSectionReceiver>,
+
+    /// receiver for incoming interface reconnect requests from com hub
+    com_interface_reconnect_request_receiver:
+        RefCell<UnboundedReceiver<ComInterfaceReconnectRequest>>,
 
     /// active execution contexts, stored by context_id
     execution_contexts:
         RefCell<HashMap<IncomingEndpointContextSectionId, ExecutionContext>>,
 
-    /// list of currently owned shared values that were approved to be transfered to another endpoint
-    moving_pointers: RefCell<
-        HashMap<
-            Endpoint,
-            HashMap<SelfOwnedPointerAddress, OwnedSharedContainer>,
-        >,
-    >,
-
     pointer_availability_lookup: RefCell<PointerAvailabilityLookup>,
-}
 
-macro_rules! get_execution_context {
-    // take context and self_rc as parameters
-    ($self_rc:expr, $execution_context:expr) => {
-        match $execution_context {
-            Some(context) => {
-                // set current runtime in execution context if local execution context
-                if let &mut ExecutionContext::Local(ref mut local_context) = context {
-                    local_context.set_runtime_internal($self_rc.clone());
-                }
-                context
-            },
-            None => {
-               &mut ExecutionContext::local(ExecutionMode::Static, $self_rc.clone(), ExecutionCallerMetadata::local_default())
-            }
-        }
-    };
+    synced_value_data: RefCell<SyncedValueData>,
+
+    stats_provider: RefCell<fn() -> RuntimeStats>,
 }
 
 impl From<Rc<RuntimeInternal>> for Runtime {
@@ -121,47 +156,165 @@ impl From<Rc<RuntimeInternal>> for Runtime {
 impl RuntimeInternal {
     pub(crate) fn new(
         endpoint: Endpoint,
-        memory: RefCell<SharedReferencesCache>,
+        shared_references_cache: RefCell<SharedReferencesCache>,
         pointer_address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
         config: RuntimeConfig,
         com_hub: Rc<ComHub>,
         task_manager: TaskManager,
-        incoming_sections_receiver: UnboundedReceiver<IncomingSection>,
+        incoming_sections_receiver: IncomingSectionReceiver,
+        com_interface_reconnect_request_receiver: UnboundedReceiver<
+            ComInterfaceReconnectRequest,
+        >,
+        info: CustomRuntimeInfo,
     ) -> RuntimeInternal {
         let pointer_availability_lookup =
             PointerAvailabilityLookup::new(endpoint.clone());
-        RuntimeInternal {
-            version: env!("CARGO_PKG_VERSION").to_string(),
-            endpoint,
-            memory,
+        let internal = RuntimeInternal {
+            info: RefCell::new(RuntimeInfo {
+                device_type: info.device_type,
+                other_versions: info.other_versions,
+                datex_version: env!("CARGO_PKG_VERSION").to_string(),
+                running_since: now_ms(),
+            }),
+            endpoint: UnsafeCell::new(endpoint),
+            shared_references_cache,
             pointer_address_provider,
-            config,
+            config: UnsafeCell::new(config),
             com_hub,
             task_manager,
+            endpoint_properties: RefCell::new(IndexMap::default()),
             core_library: CoreLibrary::default(),
             incoming_sections_receiver: RefCell::new(
                 incoming_sections_receiver,
             ),
+            com_interface_reconnect_request_receiver: RefCell::new(
+                com_interface_reconnect_request_receiver,
+            ),
+            synced_value_data: RefCell::new(SyncedValueData::default()),
             execution_contexts: RefCell::new(HashMap::new()),
-            moving_pointers: RefCell::new(HashMap::new()),
             transceiver_counter: RefCell::new(0),
             pointer_availability_lookup: RefCell::new(
                 pointer_availability_lookup,
             ),
+            stats_provider: RefCell::new(RuntimeStats::default),
+        };
+
+        internal.register_static_data();
+
+        internal
+    }
+
+    /// Registers global modules and types in the cache
+    fn register_static_data(&self) {
+        let mut cache = self.shared_references_cache_mut();
+        let cache = cache.deref_mut();
+
+        // register all registered rust modules as datex endpoint properties
+        let modules = get_all_modules(cache);
+        for (name, value) in modules {
+            self.register_endpoint_property(&name, value.into());
+        }
+
+        // register all types in cache
+        let types = all_datex_types(cache);
+        for ty in types {
+            if let Type::Entity(ty) = ty
+                && let SharedContainer::Owned(container) = ty.shared_container()
+            {
+                cache.register_owned_shared_container(
+                    &container.derive_with_max_mutability(),
+                )
+            }
         }
     }
-    pub fn version(&self) -> &str {
-        &self.version
+
+    pub fn version(&self) -> Ref<'_, String> {
+        Ref::map(self.info.borrow(), |info| &info.datex_version)
     }
+
+    pub fn info(&self) -> Ref<'_, RuntimeInfo> {
+        self.info.borrow()
+    }
+
     pub fn config(&self) -> &RuntimeConfig {
-        &self.config
+        unsafe { &*self.config.get() }
     }
+
+    /// Updates the runtime config.
+    /// This might not have the expected effect when the runtime is already running.
+    ///
+    /// # Safety
+    /// The caller should only call this on an uninitialized runtime.
+    pub unsafe fn set_config(&self, config: RuntimeConfig) {
+        unsafe {
+            *self.config.get() = config;
+        }
+        // also update endpoint
+        unsafe {
+            let endpoint = self.config().endpoint.clone();
+            *self.endpoint.get() = endpoint.clone();
+            *self.com_hub.endpoint.get() = endpoint;
+        }
+    }
+
+    /// Updates the running_since timestamp in the runtime info to the current time.
+    pub fn reset_running_since(&self) {
+        self.info.borrow_mut().running_since = now_ms();
+    }
+
+    /// Registers a new callback that provides [RuntimeStats]
+    pub fn set_stats_provider(&self, stats_provider: fn() -> RuntimeStats) {
+        *self.stats_provider.borrow_mut() = stats_provider;
+    }
+
+    pub fn get_stats(&self) -> RuntimeStats {
+        self.stats_provider.borrow()()
+    }
+
     pub fn com_hub(&self) -> Rc<ComHub> {
         self.com_hub.clone()
     }
     pub fn endpoint(&self) -> &Endpoint {
-        &self.endpoint
+        unsafe { &*self.endpoint.get() }
     }
+    pub fn endpoint_properties(
+        &self,
+    ) -> Ref<'_, IndexMap<String, ValueContainer, RandomState>> {
+        self.endpoint_properties.borrow()
+    }
+    pub fn endpoint_properties_mut(
+        &self,
+    ) -> RefMut<'_, IndexMap<String, ValueContainer, RandomState>> {
+        self.endpoint_properties.borrow_mut()
+    }
+    pub fn get_endpoint_property_by_name(
+        &'_ self,
+        key: &str,
+    ) -> Option<Ref<'_, ValueContainer>> {
+        Ref::filter_map(self.endpoint_properties.borrow(), |props| {
+            props.get(key)
+        })
+        .ok()
+    }
+    pub fn get_endpoint_property_by_name_mut(
+        &'_ self,
+        key: &str,
+    ) -> Option<RefMut<'_, ValueContainer>> {
+        RefMut::filter_map(self.endpoint_properties.borrow_mut(), |props| {
+            props.get_mut(key)
+        })
+        .ok()
+    }
+
+    pub fn register_endpoint_property(
+        &self,
+        name: &str,
+        value: ValueContainer,
+    ) {
+        self.endpoint_properties_mut()
+            .insert(name.to_string(), value);
+    }
+
     pub fn pointer_availability_lookup(
         &self,
     ) -> Ref<'_, PointerAvailabilityLookup> {
@@ -172,34 +325,58 @@ impl RuntimeInternal {
     ) -> RefMut<'_, PointerAvailabilityLookup> {
         self.pointer_availability_lookup.borrow_mut()
     }
-    pub fn memory(&self) -> &RefCell<SharedReferencesCache> {
-        &self.memory
+    pub fn synced_value_data(&self) -> Ref<'_, SyncedValueData> {
+        self.synced_value_data.borrow()
     }
+    pub fn synced_value_data_mut(&self) -> RefMut<'_, SyncedValueData> {
+        self.synced_value_data.borrow_mut()
+    }
+
+    pub fn shared_references_cache_refcell(
+        &self,
+    ) -> &RefCell<SharedReferencesCache> {
+        &self.shared_references_cache
+    }
+
+    pub fn shared_references_cache(&self) -> Ref<'_, SharedReferencesCache> {
+        self.shared_references_cache.borrow()
+    }
+
+    pub fn shared_references_cache_mut(
+        &self,
+    ) -> RefMut<'_, SharedReferencesCache> {
+        self.shared_references_cache.borrow_mut()
+    }
+
     pub fn core_library(&self) -> &CoreLibrary {
         &self.core_library
     }
 
-    pub fn pointer_address_provider(
+    pub fn pointer_address_provider_mut(
         &self,
-    ) -> &RefCell<SelfOwnedPointerAddressProvider> {
-        &self.pointer_address_provider
+    ) -> RefMut<'_, SelfOwnedPointerAddressProvider> {
+        self.pointer_address_provider.borrow_mut()
     }
     pub fn incoming_sections_receiver_mut(
         &self,
-    ) -> RefMut<'_, UnboundedReceiver<IncomingSection>> {
+    ) -> RefMut<'_, IncomingSectionReceiver> {
         self.incoming_sections_receiver.borrow_mut()
     }
-    pub fn incoming_sections_receiver(
+    pub fn com_interface_reconnect_request_receiver_mut(
         &self,
-    ) -> Ref<'_, UnboundedReceiver<IncomingSection>> {
-        self.incoming_sections_receiver.borrow()
+    ) -> RefMut<'_, UnboundedReceiver<ComInterfaceReconnectRequest>> {
+        self.com_interface_reconnect_request_receiver.borrow_mut()
     }
     pub fn task_manager(&self) -> &TaskManager {
         &self.task_manager
     }
 
     pub fn stub() -> RuntimeInternal {
-        let (sender, receiver) = create_unbounded_channel();
+        let (incoming_sections_sender, incoming_sections_receiver) =
+            create_incoming_sections_channel();
+        let (reconnect_request_sender, reconnect_request_receiver) =
+            create_unbounded_channel();
+
         RuntimeInternal::new(
             Endpoint::default(),
             RefCell::new(SharedReferencesCache::default()),
@@ -207,15 +384,23 @@ impl RuntimeInternal {
                 Endpoint::default(),
             ))),
             RuntimeConfig::default(),
-            ComHub::create(Endpoint::default(), sender).0,
+            ComHub::create(
+                Endpoint::default(),
+                incoming_sections_sender,
+                reconnect_request_sender,
+                0,
+            )
+            .0,
             TaskManager::create().0,
-            receiver,
+            incoming_sections_receiver,
+            reconnect_request_receiver,
+            CustomRuntimeInfo::default(),
         )
     }
 
     /// Creates all interfaces configured in the runtime config
     async fn create_configured_interfaces(&self) {
-        if let Some(interfaces) = &self.config.interfaces {
+        if let Some(interfaces) = &self.config().interfaces {
             for RuntimeConfigInterface {
                 interface_type,
                 config,
@@ -231,7 +416,17 @@ impl RuntimeInternal {
                     Err(err) => {
                         error!(
                             "Failed to create interface \"{interface_type}\": {err}"
-                        )
+                        );
+                        // request reconnect attempts in background
+                        self.com_hub
+                            .reconnect_interface_sender
+                            .borrow_mut()
+                            .start_send(ComInterfaceReconnectRequest::new(
+                                interface_type.clone(),
+                                config.clone(),
+                                *priority,
+                            ))
+                            .unwrap();
                     }
                     Ok((_, ready_receiver)) => {
                         if let Some(ready_receiver) = ready_receiver {
@@ -269,21 +464,23 @@ impl RuntimeInternal {
     }
 
     #[cfg(feature = "compiler")]
-    pub async fn execute(
+    pub async fn execute<'a>(
         self: Rc<RuntimeInternal>,
-        script: &str,
-        inserted_values: &[ValueContainer],
-        execution_context: Option<&mut ExecutionContext>,
+        script: &'a str,
+        inserted_values: &'a [ValueContainer],
+        execution_context: Option<
+            impl Into<FinalOrPersistedExecutionContext<'a>>,
+        >,
+        mark_as_debug: bool,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
-        let execution_context = get_execution_context!(
-            Runtime::from(self.clone()),
-            execution_context
-        );
+        let mut execution_context = Runtime::from(self.clone())
+            .get_or_create_execution_context(execution_context);
         let compile_start = Instant::now();
-        let dxb = execution_context.compile(
+        let execution_context_mut = execution_context.as_mut();
+        let dxb = execution_context_mut.compile(
             script,
             inserted_values,
-            execution_context.receivers(),
+            execution_context_mut.receivers(),
         )?;
         debug!(
             "[Compilation took {} ms]",
@@ -293,8 +490,9 @@ impl RuntimeInternal {
         let result = RuntimeInternal::execute_dxb(
             self,
             dxb,
+            None,
             Some(execution_context),
-            true,
+            mark_as_debug,
         )
         .await
         .map_err(ScriptExecutionError::from);
@@ -306,21 +504,23 @@ impl RuntimeInternal {
     }
 
     #[cfg(feature = "compiler")]
-    pub fn execute_sync(
+    pub fn execute_sync<'a>(
         self: Rc<RuntimeInternal>,
-        script: &str,
-        inserted_values: &[ValueContainer],
-        execution_context: Option<&mut ExecutionContext>,
+        script: &'a str,
+        inserted_values: &'a [ValueContainer],
+        execution_context: Option<
+            impl Into<FinalOrPersistedExecutionContext<'a>>,
+        >,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
-        let execution_context = get_execution_context!(
-            Runtime::from(self.clone()),
-            execution_context
-        );
+        let mut execution_context = Runtime::from(self.clone())
+            .get_or_create_execution_context(execution_context);
+        let execution_context_mut = execution_context.as_mut();
+
         let compile_start = Instant::now();
-        let dxb = execution_context.compile(
+        let dxb = execution_context_mut.compile(
             script,
             inserted_values,
-            execution_context.receivers(),
+            execution_context_mut.receivers(),
         )?;
         debug!(
             "[Compilation took {} ms]",
@@ -330,8 +530,8 @@ impl RuntimeInternal {
         let result = RuntimeInternal::execute_dxb_sync(
             self,
             dxb,
+            None,
             Some(execution_context),
-            true,
         )
         .map_err(ScriptExecutionError::from);
         debug!(
@@ -344,8 +544,11 @@ impl RuntimeInternal {
     pub fn execute_dxb<'a>(
         self: Rc<RuntimeInternal>,
         input: DXBWithSharedValues,
-        execution_context: Option<&'a mut ExecutionContext>,
-        _end_execution: bool,
+        initial_stack_values: Option<Vec<ValueContainer>>,
+        execution_context: Option<
+            impl Into<FinalOrPersistedExecutionContext<'a>> + 'a,
+        >,
+        mark_as_debug: bool,
     ) -> Pin<
         Box<
             dyn Future<Output = Result<Option<ValueContainer>, ExecutionError>>
@@ -353,43 +556,64 @@ impl RuntimeInternal {
         >,
     > {
         Box::pin(async move {
-            let execution_context = get_execution_context!(
-                Runtime::from(self.clone()),
-                execution_context
-            );
-            match execution_context {
+            let mut execution_context = Runtime::from(self.clone())
+                .get_or_create_execution_context(execution_context);
+            let is_end_of_context = execution_context.is_end_of_context();
+            let execution_context_mut = execution_context.as_mut();
+
+            match execution_context_mut {
                 ExecutionContext::Remote(context) => {
-                    RuntimeInternal::execute_remote(self, context, input).await
+                    // initial stack values are not (yet) supported for remote execution
+                    if initial_stack_values.is_some() {
+                        return Err(ExecutionError::InvalidExecutionState);
+                    }
+                    RuntimeInternal::execute_remote_single_receiver(
+                        self,
+                        &context.target,
+                        input,
+                        RemoteExecutionOptions {
+                            is_end_of_context,
+                            mark_as_debug,
+                        },
+                    )
+                    .await
                 }
                 ExecutionContext::Local(_) => {
-                    execution_context.execute_dxb(input).await
+                    execution_context_mut
+                        .execute_dxb(input, initial_stack_values)
+                        .await
                 }
             }
         })
     }
 
-    pub fn execute_dxb_sync(
+    pub fn execute_dxb_sync<'a>(
         self: Rc<RuntimeInternal>,
         dxb: DXBWithSharedValues,
-        execution_context: Option<&mut ExecutionContext>,
-        _end_execution: bool,
+        initial_stack_values: Option<Vec<ValueContainer>>,
+        execution_context: Option<
+            impl Into<FinalOrPersistedExecutionContext<'a>>,
+        >,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let execution_context =
-            get_execution_context!(Runtime::from(self), execution_context);
-        match execution_context {
+        let mut execution_context = Runtime::from(self.clone())
+            .get_or_create_execution_context(execution_context);
+        // TODO: pass is_end_of_context to local execution?
+        // let is_end_of_context = execution_context.is_end_of_context();
+        let execution_context_mut = execution_context.as_mut();
+
+        match execution_context_mut {
             ExecutionContext::Remote(_) => {
                 Err(ExecutionError::RequiresAsyncExecution)
             }
-            ExecutionContext::Local(_) => {
-                execution_context.execute_dxb_sync(dxb)
-            }
+            ExecutionContext::Local(_) => execution_context_mut
+                .execute_dxb_sync(dxb, initial_stack_values),
         }
     }
 
     /// Returns the existing execution context for the given context_id,
     /// or creates a new one if it doesn't exist.
     /// To reuse the context later, the caller must store it back in the map after use.
-    fn take_execution_context(
+    fn take_or_create_execution_context(
         self: Rc<RuntimeInternal>,
         context_id: &IncomingEndpointContextSectionId,
         incoming_section: &IncomingSection,
@@ -412,26 +636,54 @@ impl RuntimeInternal {
         }
     }
 
+    /// Executes a remote block expecting a single receiver.
+    /// # Safety
+    /// The caller must ensure, to pass an remote execution context with a single receiver.
+    pub async fn execute_remote_single_receiver(
+        self: Rc<RuntimeInternal>,
+        remote_execution_target: &RemoteExecutionTarget,
+        input: DXBWithSharedValues,
+        options: RemoteExecutionOptions,
+    ) -> RemoteExecutionResult {
+        if remote_execution_target.endpoints().len() != 1 {
+            panic!(
+                "execute_remote_single_receiver called with remote_execution_context that has more than one endpoint"
+            );
+        }
+        self.execute_remote(remote_execution_target, input, options)
+            .await?
+            .remove(0)
+            .0
+    }
+
+    /// Execute a remote block, waiting for all the peers to send their response.
+    /// It might be, that a subset of the responses are errors
     pub async fn execute_remote(
         self: Rc<RuntimeInternal>,
-        remote_execution_context: &mut RemoteExecutionContext,
+        remote_execution_target: &RemoteExecutionTarget,
         input: DXBWithSharedValues,
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
+        options: RemoteExecutionOptions,
+    ) -> Result<Vec<(RemoteExecutionResult, Endpoint)>, SubscriberError> {
         let routing_header: RoutingHeader = RoutingHeader::default()
-            .with_sender(self.endpoint.clone())
+            .with_sender(self.endpoint().clone())
             .to_owned();
 
         // get existing context_id for context, or create a new one
-        let context_id =
-            remote_execution_context.context_id.unwrap_or_else(|| {
+        let context_id = {
+            let mut context_ref =
+                remote_execution_target.context_id.borrow_mut();
+            context_ref.unwrap_or_else(|| {
+                let id = self.com_hub.block_handler.get_new_context_id();
                 // if the context_id is not set, we create a new one
-                remote_execution_context.context_id =
-                    Some(self.com_hub.block_handler.get_new_context_id());
-                remote_execution_context.context_id.unwrap()
-            });
-
+                *context_ref = Some(id);
+                id
+            })
+        };
         let block_header = BlockHeader {
             context_id,
+            flags_and_timestamp: FlagsAndTimestamp::default()
+                .with_is_end_of_context(options.is_end_of_context)
+                .with_is_debug_block(options.mark_as_debug),
             ..BlockHeader::default()
         };
         let encrypted_header = EncryptedHeader::default();
@@ -443,22 +695,113 @@ impl RuntimeInternal {
             input.dxb,
         );
 
-        block
-            .set_receivers(slice::from_ref(&remote_execution_context.endpoint));
+        block.set_receivers(remote_execution_target.endpoints());
+        // TODO: ensure in remote_execution_context that endpoints are never empty
+        unsafe {
+            self.clone().register_shared_containers_for_endpoints(
+                &(remote_execution_target
+                    .endpoints()
+                    .iter()
+                    .collect::<Vec<_>>()),
+                input.shared_values,
+            )?;
+        }
 
-        let response = self
+        let responses = self
             .com_hub
             .send_own_block_await_response(block, ResponseOptions::default())
-            .await
-            .remove(0)?;
-        let incoming_section = response.take_incoming_section();
+            .await;
 
-        RuntimeInternal::execute_incoming_section(
-            self,
-            incoming_section,
-            Some(input.shared_values),
+        let self_clone = self.clone();
+
+        let futures_with_endpoint = responses
+            .into_iter()
+            .filter(|response| {
+                // pipe trought all response errors, and the ones with an specified endpoint
+                // to skip the [Response::Unspecified] cases to be executed
+                response.is_err()
+                    || matches!(response, Ok(re) if re.endpoint().is_some())
+            })
+            .map(|response| {
+                let self_clone = self_clone.clone();
+                let endpoint = response
+                    .as_ref()
+                    .map(|r| {
+                        r.endpoint()
+                            .cloned()
+                            .expect("Expected endpoint to be present")
+                    })
+                    .unwrap_or_else(|e| e.endpoint().clone());
+                (
+                    async move {
+                        let response = response?;
+                        let incoming_section = response.take_incoming_section();
+                        RuntimeInternal::execute_incoming_section(
+                            self_clone,
+                            incoming_section,
+                            None,
+                        )
+                        .await
+                        .0
+                    },
+                    endpoint,
+                )
+            });
+
+        let (future, endpoint) = futures_with_endpoint
+            .into_iter()
+            .unzip::<_, _, Vec<_>, Vec<_>>();
+
+        Ok(join_all(future)
+            .await
+            .into_iter()
+            .zip(endpoint)
+            .collect::<Vec<_>>())
+    }
+
+    pub async fn execute_instructions_remote(
+        self: Rc<RuntimeInternal>,
+        endpoints: Vec<Endpoint>,
+        instructions_input: Vec<InstructionInput>,
+        mark_as_debug: bool,
+    ) -> Result<Vec<(RemoteExecutionResult, Endpoint)>, SubscriberError> {
+        let dxb = core_compile(
+            &self.pointer_availability_lookup(),
+            &endpoints,
+            instructions_input,
+            self.shared_references_cache_mut().deref_mut(),
+        );
+
+        let remote_execution_context = RemoteExecutionContext::new(
+            endpoints,
+            ExecutionMode::Static,
+            Runtime::from(self.clone()),
+        );
+        self.execute_remote(
+            &remote_execution_context.target,
+            dxb,
+            RemoteExecutionOptions {
+                mark_as_debug,
+                is_end_of_context: true,
+            },
         )
         .await
+    }
+
+    pub async fn execute_instructions_remote_single_receiver(
+        self: Rc<RuntimeInternal>,
+        endpoint: Endpoint,
+        instructions_input: Vec<InstructionInput>,
+        mark_as_debug: bool,
+    ) -> RemoteExecutionResult {
+        RuntimeInternal::execute_instructions_remote(
+            self,
+            vec![endpoint],
+            instructions_input,
+            mark_as_debug,
+        )
+        .await?
+        .remove(0)
         .0
     }
 
@@ -470,10 +813,11 @@ impl RuntimeInternal {
         Result<Option<ValueContainer>, ExecutionError>,
         Endpoint,
         OutgoingContextId,
+        bool,
     ) {
         let section_context_id =
             incoming_section.get_section_context_id().clone();
-        let mut context = Self::take_execution_context(
+        let mut context = Self::take_or_create_execution_context(
             self.clone(),
             &section_context_id,
             &incoming_section,
@@ -503,6 +847,7 @@ impl RuntimeInternal {
                         Err(err),
                         block.sender().clone(),
                         block.block_header.context_id,
+                        block.block_header.flags_and_timestamp.is_debug_block(),
                     );
                 }
                 result = res.unwrap();
@@ -518,14 +863,21 @@ impl RuntimeInternal {
         let last_block = last_block.unwrap();
         let sender_endpoint = last_block.sender().clone();
         let context_id = last_block.block_header.context_id;
+        let is_end_of_context = last_block
+            .block_header
+            .flags_and_timestamp
+            .is_end_of_context();
+        let is_debug =
+            last_block.block_header.flags_and_timestamp.is_debug_block();
 
-        // insert the context back into the map for future use
-        // TODO #638: is this needed or can we drop the context after execution here?
-        self.execution_contexts
-            .borrow_mut()
-            .insert(section_context_id, context);
+        // insert the context back into the map for future use if not end of context
+        if !is_end_of_context {
+            self.execution_contexts
+                .borrow_mut()
+                .insert(section_context_id, context);
+        }
 
-        (Ok(result), sender_endpoint, context_id)
+        (Ok(result), sender_endpoint, context_id, is_debug)
     }
 
     async fn execute_dxb_block_local(
@@ -534,36 +886,37 @@ impl RuntimeInternal {
         execution_context: Option<&mut ExecutionContext>,
         shared_values: Option<Vec<SharedContainer>>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let execution_context = get_execution_context!(
-            Runtime::from(self.clone()),
-            execution_context
-        );
+        let mut execution_context = Runtime::from(self.clone())
+            .get_or_create_execution_context(execution_context);
+        let execution_context_mut = execution_context.as_mut();
+
         // assert that the execution context is local
-        if !core::matches!(execution_context, ExecutionContext::Local(_)) {
+        if !core::matches!(execution_context_mut, ExecutionContext::Local(_)) {
             unreachable!(
                 "Execution context must be local for executing a DXB block"
             );
         }
         let dxb = block.body;
-        info!("executing on {}:\n", self.endpoint,);
+        info!("executing on {}:\n", self.endpoint());
 
         print_disassembled_with_options(&dxb, DisassemblerOptions::default());
 
-        let end_execution =
+        let _end_execution =
             block.block_header.flags_and_timestamp.is_end_of_section();
 
         RuntimeInternal::execute_dxb(
             self,
             DXBWithSharedValues::new(dxb, shared_values.unwrap_or_default()),
+            None,
             Some(execution_context),
-            end_execution,
+            false,
         )
         .await
     }
 
     /// Registers a list of shared containers for a single endpoint.
     pub fn register_shared_containers_for_single_endpoint(
-        &self,
+        self: Rc<Self>,
         endpoint: &Endpoint,
         shared_containers: Vec<SharedContainer>,
     ) {
@@ -576,31 +929,44 @@ impl RuntimeInternal {
         }
     }
 
-    /// Registers a list of shared containers for a list of endpoints.
+    /// Registers a list of shared containers for a list of endpoints to subscribe.
+    /// Note: only self owned pointers are registered, others are skipped
+    ///
+    /// # Safety
     /// The caller must ensure that endpoints is not empty.
     pub unsafe fn register_shared_containers_for_endpoints(
-        &self,
+        self: Rc<Self>,
         endpoints: &[&Endpoint],
         shared_containers: Vec<SharedContainer>,
-    ) -> Result<(), ()> {
+    ) -> Result<(), SubscriberError> {
         if endpoints.is_empty() {
             panic!("endpoints must not be empty");
         }
 
         for shared_container in shared_containers {
-            match shared_container {
-                SharedContainer::Owned(owned_shared_container) => {
-                    if endpoints.len() == 1 {
-                        self.add_moving_shared_container(
-                            endpoints[0].clone(),
-                            owned_shared_container,
-                        );
-                    } else {
-                        return Err(());
+            // subscribe (remote) endpoints to own container
+            if shared_container.is_self_owned() {
+                for endpoint in endpoints {
+                    // SAFETY: We checked that the shared container is self-owned
+                    unsafe {
+                        self.clone()
+                            .subscribe_endpoint_to_owned_value(
+                                &shared_container,
+                                endpoint,
+                                shared_container
+                                    .derive_reference_with_max_mutability()
+                                    .reference_mutability(),
+                            )
+                            .map_err(SubscriberError::Observer)?
                     }
-                }
-                SharedContainer::Referenced(_referenced_shared_container) => {
-                    // TODO: Subscribe
+                    // also store the subscribed pointer in cache so that we can handle incoming
+                    // pointer updates from the subscribers
+                    self.shared_references_cache
+                        .borrow_mut()
+                        .register_owned_shared_container(
+                            &shared_container
+                                .derive_reference_with_max_mutability(),
+                        );
                 }
             }
         }
@@ -608,142 +974,20 @@ impl RuntimeInternal {
         Ok(())
     }
 
-    /// Request to move a list of external pointers from an endpoint to the local endpoint
-    /// This only works if the local endpoint has the permission to move the pointers, either because
-    /// it was allowed via a PERFORM_MOVE from the remote endpoint, or because the local endpoint has
-    /// extended permissions
-    pub(crate) async fn request_pointer_move(
-        self: Rc<RuntimeInternal>,
-        from_endpoint: &Endpoint,
-        pointers: Vec<(SharedContainerMutability, SelfOwnedPointerAddress)>,
-    ) -> Result<Vec<OwnedSharedContainer>, ExecutionError> {
-        let pointer_mapping = pointers
-            .into_iter()
-            .map(|original| {
-                (
-                    original,
-                    self.pointer_address_provider
-                        .borrow_mut()
-                        .get_new_self_owned_address(),
-                )
-            })
-            .collect::<Vec<_>>();
-        let body = compile_request_move(
-            pointer_mapping
-                .iter()
-                .map(|((_, original), new)| (original.clone(), new.clone()))
-                .collect::<Vec<_>>(),
-        );
-        let moved_values = self
-            .clone()
-            .execute_dxb(
-                DXBWithSharedValues::new(body, vec![]),
-                Some(&mut ExecutionContext::Remote(
-                    RemoteExecutionContext::new(
-                        from_endpoint.clone(),
-                        ExecutionMode::Static,
-                        Runtime::from(self),
-                    ),
-                )),
-                true,
-            )
-            .await?;
-
-        // moved values should be list
-        match moved_values {
-            Some(ValueContainer::Local(Value {
-                inner: CoreValue::List(list),
-                ..
-            })) => {
-                let pointer_values = list.into_vec();
-                let owned_values = pointer_values.into_iter()
-                    .zip(pointer_mapping)
-                    .map(|(value, ((mutability, _), new_address))| {
-                        // SAFETY: we got the new address from the pointer address provider above, is ensured to be unique
-                        unsafe {
-                            // TODO: also pass type information
-                            OwnedSharedContainer::new_with_inferred_allowed_type_unsafe(
-                                value,
-                                mutability,
-                                new_address,
-                            )
-                        }
-                }).collect::<Vec<_>>();
-                Ok(owned_values)
-            }
-            _ => Err(ExecutionError::InvalidProgram(
-                InvalidProgramError::ExpectedValue,
-            )),
-        }
+    pub fn get_env(&self) -> IndexMap<String, String, RandomState> {
+        self.config().env.clone().unwrap_or_default()
     }
 
-    /// Adds a pointer that is approved for move to a specific endpoint
-    /// Returns an error if any moving shared container is not an owned pointer
-    pub(crate) fn add_moving_shared_container(
-        &self,
-        new_owner: Endpoint,
-        moving_owned_container: OwnedSharedContainer,
-    ) {
-        let address = moving_owned_container.pointer_address().clone();
-
-        self.moving_pointers
-            .borrow_mut()
-            .entry(new_owner)
-            .or_default()
-            .insert(address, moving_owned_container);
-    }
-
-    pub(crate) fn handle_pointer_move_to_remote(
-        self: Rc<RuntimeInternal>,
-        from_endpoint: &Endpoint,
-        pointer_mapping: Vec<(
-            SelfOwnedPointerAddress,
-            SelfOwnedPointerAddress,
-        )>,
-        memory: &SharedReferencesCache,
-    ) -> Result<Vec<ValueContainer>, ExecutionError> {
-        let mut pointer_borrow = self.moving_pointers.borrow_mut();
-        let moving_pointers = pointer_borrow
-            .get_mut(from_endpoint)
-            .ok_or(ExecutionError::UnauthorizedMove)?;
-
-        let values = pointer_mapping
-            .into_iter()
-            .map(|(original_address, new)| {
-                let new_address =
-                    RemotePointerAddress::for_endpoint(from_endpoint, &new);
-                let shared_container = moving_pointers
-                    .remove(&original_address)
-                    .ok_or(ExecutionError::UnauthorizedMove)?;
-
-                let value = shared_container.value_container().clone();
-
-                // make sure external pointer does not already exist in memory
-                if memory
-                    .has_reference(&PointerAddress::Remote(new_address.clone()))
-                {
-                    return Err(ExecutionError::InvalidMove);
-                } else {
-                    // Note: safe because we checked before if address is already in memory
-                    unsafe {
-                        shared_container.move_to_remote(new_address, memory);
-                    }
-                }
-
-                Ok(value)
-            })
-            .collect::<Result<Vec<_>, ExecutionError>>()?;
-        Ok(values)
-    }
-
-    pub fn get_env(&self) -> HashMap<String, String> {
-        self.config.env.clone().unwrap_or_default()
+    /// Get the human-readable name of the endpoint (can be provided in config)
+    pub fn get_name(&self) -> Option<String> {
+        self.config().name.clone()
     }
 
     /// Creates a new [DIFInterface] with a unique transceiver id and the runtime's pointer address provider
     pub fn create_dif_interface(&self) -> DIFInterface {
-        let id = TransceiverId(*self.transceiver_counter.borrow());
-        self.transceiver_counter.replace(id.0 + 1);
+        let count = *self.transceiver_counter.borrow();
+        let id = TransceiverId::Dif(count);
+        self.transceiver_counter.replace(count + 1);
         DIFInterface::new(id, self.pointer_address_provider.clone())
     }
 }

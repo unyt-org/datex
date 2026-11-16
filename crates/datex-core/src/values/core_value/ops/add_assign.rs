@@ -7,7 +7,7 @@ impl AddAssign<CoreValue> for CoreValue {
         if let Ok(value) = res {
             *self = value;
         } else {
-            core::panic!("Failed to add value: {res:?}");
+            panic!("Failed to add value: {res:?}");
         }
     }
 }

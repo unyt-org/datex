@@ -2,6 +2,7 @@ use core::result::Result;
 pub mod rational;
 pub mod typed_decimal;
 use crate::prelude::*;
+mod to_instructions;
 
 use crate::values::core_values::{
     decimal::typed_decimal::TypedDecimal, error::NumberParseError,
@@ -16,8 +17,21 @@ use num_traits::{FromPrimitive, Zero};
 use rational::Rational;
 use serde::{Deserialize, Serialize};
 pub mod binrw;
+mod classification;
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
 pub mod ops;
 pub mod primitive;
+mod serde_dif;
+#[cfg(feature = "ast")]
+mod to_datex_expression_data;
+mod try_clone;
+pub mod update_handler;
+mod value_access;
 
 pub const DECIMAL_NAN: &str = "nan";
 pub const DECIMAL_INFINITY: &str = "infinity";
@@ -318,6 +332,11 @@ impl From<f32> for Decimal {
 
 impl From<TypedDecimal> for Decimal {
     fn from(value: TypedDecimal) -> Self {
+        Decimal::from(&value)
+    }
+}
+impl From<&TypedDecimal> for Decimal {
+    fn from(value: &TypedDecimal) -> Self {
         match value {
             TypedDecimal::F32(ordered_float) => {
                 Decimal::from(ordered_float.into_inner())
@@ -325,7 +344,7 @@ impl From<TypedDecimal> for Decimal {
             TypedDecimal::F64(ordered_float) => {
                 Decimal::from(ordered_float.into_inner())
             }
-            TypedDecimal::Decimal(big_decimal) => big_decimal,
+            TypedDecimal::Decimal(big_decimal) => big_decimal.clone(),
         }
     }
 }

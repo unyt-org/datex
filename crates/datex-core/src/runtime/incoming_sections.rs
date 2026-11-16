@@ -1,5 +1,5 @@
 use crate::{
-    core_compiler::core_compilation_context::CompileInput,
+    core_compiler::{core_compilation_context::CompileInput, panic::Panic},
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{
@@ -15,8 +15,7 @@ use crate::{
 };
 
 use crate::{
-    core_compiler::value_compiler::{compile_panic, compile_value_container},
-    prelude::*,
+    core_compiler::value_compiler::compile_value_container, prelude::*,
 };
 use core::result::Result;
 use log::info;
@@ -44,11 +43,39 @@ impl RuntimeInternal {
             }
         }
     }
+
+    pub(crate) async fn handle_reconnect_requests_task(
+        self: Rc<RuntimeInternal>,
+    ) {
+        let mut receiver = self.com_interface_reconnect_request_receiver_mut();
+
+        while let Some(reconnect_request) = receiver.next().await {
+            // for embassy, run all sections in the same task to avoid spawning too many tasks
+            #[cfg(feature = "embassy_runtime")]
+            {
+                self.com_hub()
+                    .clone()
+                    .try_reconnect_interface(reconnect_request)
+                    .await;
+            }
+            // otherwise, run each section in its own task
+            #[cfg(not(feature = "embassy_runtime"))]
+            {
+                // TODO #741: task
+                self.task_manager().register_task(
+                    self.com_hub()
+                        .clone()
+                        .try_reconnect_interface(reconnect_request),
+                );
+            }
+        }
+    }
+
     async fn handle_incoming_section_task(
         self: Rc<RuntimeInternal>,
         section: IncomingSection,
     ) {
-        let (result, endpoint, context_id) =
+        let (result, endpoint, context_id, mark_debug) =
             RuntimeInternal::execute_incoming_section(
                 self.clone(),
                 section,
@@ -56,34 +83,16 @@ impl RuntimeInternal {
             )
             .await;
         match &result {
-            Ok(Some(result)) => info!(
-                "Successful Execution result (on {} from {}): {}",
-                self.endpoint(),
-                endpoint,
-                {
-                    #[cfg(feature = "decompiler")]
-                    {
-                        crate::decompiler::decompile_value(
-                            result,
-                            crate::decompiler::DecompileOptions::colorized(),
-                        )
-                    }
-                    #[cfg(not(feature = "decompiler"))]
-                    {
-                        result
-                    }
-                }
-            ),
-            Ok(None) => info!(
-                "Successful Execution result (on {} from {}): None",
-                self.endpoint(),
+            Ok(Some(result)) => self.log_info(format!(
+                "Successful Execution result (from {}): {}",
+                endpoint, result
+            )),
+            Ok(None) => self.log_info(format!(
+                "Successful Execution result (from {}): None",
                 endpoint
-            ),
-            Err(e) => info!(
-                "Execution error (on {} from {}): {e}",
-                self.endpoint(),
-                endpoint
-            ),
+            )),
+            Err(e) => self
+                .log_info(format!("Execution error (from {}): {e}", endpoint)),
         }
 
         // send response back to the sender
@@ -92,6 +101,7 @@ impl RuntimeInternal {
             result,
             endpoint,
             context_id,
+            mark_debug,
         )
         .await;
         // TODO #231: handle errors in sending response
@@ -102,6 +112,7 @@ impl RuntimeInternal {
         result: Result<Option<ValueContainer>, ExecutionError>,
         receiver_endpoint: Endpoint,
         context_id: OutgoingContextId,
+        mark_debug: bool,
     ) -> Result<(), Vec<Endpoint>> {
         let routing_header: RoutingHeader = RoutingHeader::default()
             .with_sender(self.endpoint().clone())
@@ -111,7 +122,8 @@ impl RuntimeInternal {
             flags_and_timestamp: FlagsAndTimestamp::new()
                 .with_block_type(BlockType::Response)
                 .with_is_end_of_section(true)
-                .with_is_end_of_context(true),
+                .with_is_end_of_context(true)
+                .with_is_debug_block(mark_debug),
             ..BlockHeader::default()
         };
         let encrypted_header = EncryptedHeader::default();
@@ -120,35 +132,52 @@ impl RuntimeInternal {
             "send response, context_id: {context_id:?}, receiver: {receiver_endpoint}"
         );
 
-        let lookup = self.pointer_availability_lookup();
-        let receivers = vec![receiver_endpoint.clone()];
-        let compile_input = CompileInput::new(&lookup, &receivers);
+        let block = {
+            let lookup = self.pointer_availability_lookup();
+            let receivers = vec![receiver_endpoint.clone()];
+            let compile_input = CompileInput::new(&lookup, &receivers);
 
-        let dxb = match result {
-            Ok(value) => {
-                info!("Sending result value {:?}", value);
-                if let Some(value) = value {
-                    let res = compile_value_container(value, compile_input);
+            let dxb = match result {
+                Ok(value) => {
+                    // info!("Sending result value {:?}", value);
+                    if let Some(value) = &value {
+                        let mut cache = self.shared_references_cache_mut();
+                        let res = compile_value_container(
+                            value,
+                            compile_input,
+                            &mut cache,
+                        );
+                        drop(lookup);
+                        drop(cache);
 
-                    self.register_shared_containers_for_single_endpoint(
-                        &receiver_endpoint,
-                        res.shared_values,
-                    );
+                        self.clone()
+                            .register_shared_containers_for_single_endpoint(
+                                &receiver_endpoint,
+                                res.shared_values,
+                            );
 
-                    res.dxb
-                } else {
-                    vec![]
+                        res.dxb
+                    } else {
+                        vec![]
+                    }
                 }
-            }
-            Err(e) => {
-                info!("Execution error (on {}): {}", self.endpoint(), e);
-                compile_panic(e.to_string(), compile_input)
-            }
-        };
+                Err(e) => {
+                    info!("Execution error (on {}): {}", self.endpoint(), e);
+                    let mut cache = self.shared_references_cache_mut();
+                    Panic::new(e.to_string())
+                        .to_bytes(compile_input, &mut cache)
+                }
+            };
 
-        let mut block =
-            DXBBlock::new(routing_header, block_header, encrypted_header, dxb);
-        block.set_receivers(core::slice::from_ref(&receiver_endpoint));
+            let mut block = DXBBlock::new(
+                routing_header,
+                block_header,
+                encrypted_header,
+                dxb,
+            );
+            block.set_receivers(core::slice::from_ref(&receiver_endpoint));
+            block
+        };
 
         self.com_hub().send_own_block_async(block).await
     }

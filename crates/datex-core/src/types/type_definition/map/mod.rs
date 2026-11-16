@@ -1,7 +1,7 @@
 use core::ops::Deref;
 pub mod equality;
 mod serde_dif;
-
+mod to_instructions;
 use crate::{prelude::*, types::r#type::Type};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -9,13 +9,13 @@ pub struct MapTypeDefinition(pub Vec<(Type, Type)>);
 
 impl Default for MapTypeDefinition {
     fn default() -> Self {
-        Self::new()
+        Self::new(Vec::new())
     }
 }
 
 impl MapTypeDefinition {
-    pub fn new() -> Self {
-        Self(Vec::new())
+    pub fn new(vec: Vec<(Type, Type)>) -> Self {
+        Self(vec)
     }
 }
 

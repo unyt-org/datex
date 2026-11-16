@@ -1,10 +1,172 @@
 //! This module contains the core compiler logic for DATEX, including [value_compiler] and [type_compiler] needed for compilation.
 pub mod core_compilation_context;
 pub mod injected_values;
+pub mod instruction_input;
+pub mod panic;
 mod preamble;
 pub mod shared_value_tracking;
-mod traits;
-pub mod type_compiler;
+pub mod traits;
+pub mod update_compiler;
 pub mod value_compiler;
 
+use crate::{
+    core_compiler::{
+        core_compilation_context::{
+            CoreCompilationContext, DXBWithSharedValues,
+        },
+        instruction_input::InstructionInput,
+        to_instructions::{ToInstructions, yield_all_collected},
+        value_visitor::compile_instruction_iterator_to_dxb,
+    },
+    prelude::*,
+    runtime::{
+        cache::shared_references_cache::SharedReferencesCache,
+        pointer_availability_lookup::PointerAvailabilityLookup,
+    },
+    values::core_values::endpoint::Endpoint,
+};
 pub use traits::*;
+
+/// Compiles a [DXBWithSharedValues] from the provided [PointerAvailabilityLookup], [Endpoint]s, and [InstructionInput]s.
+pub fn core_compile(
+    pointer_availability_lookup: &PointerAvailabilityLookup,
+    endpoints: &[Endpoint],
+    instructions_input: Vec<InstructionInput>,
+    cache: &mut SharedReferencesCache,
+) -> DXBWithSharedValues {
+    let mut ctx = CoreCompilationContext::new_for_endpoints(
+        pointer_availability_lookup,
+        endpoints,
+    );
+
+    let dxb_gen = gen {
+        for input in instructions_input {
+            match input {
+                InstructionInput::Instruction(instruction) => {
+                    yield instruction;
+                }
+                InstructionInput::ValueContainer(value_container) => {
+                    yield_all_collected!(value_container.to_instructions(
+                        ctx.shared_value_tracking.get_mut(),
+                        cache
+                    ))
+                }
+            }
+        }
+    };
+
+    let dxb = compile_instruction_iterator_to_dxb(dxb_gen);
+
+    ctx.append_preamble_to_dxb(dxb, cache)
+}
+
+#[cfg(test)]
+#[cfg(feature = "disassembler")]
+/// Tests for Type compilation
+mod tests {
+    use binrw::BinRead;
+
+    use crate::{
+        core_compiler::{
+            core_compilation_context::{ByteCursor, default_compile_input},
+            value_compiler::compile_value,
+        },
+        disassembler::assertions::assert_instructions_equal,
+        instruction::{
+            Instruction, regular_instruction::RegularInstruction,
+            type_instruction::TypeInstruction,
+        },
+        libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+        prelude::*,
+        runtime::cache::shared_references_cache::SharedReferencesCache,
+        types::{
+            r#type::Type,
+            type_definition::TypeDefinition,
+            type_definition_with_metadata::{
+                LocalMutability, LocalOwnership, TypeDefinitionWithMetadata,
+                TypeMetadata,
+            },
+        },
+        values::{core_value::CoreValue, value::Value},
+    };
+
+    fn assert_type_instructions(
+        ty: Type,
+        expected_instruction: Vec<TypeInstruction>,
+    ) {
+        let cache = &mut SharedReferencesCache::default();
+        let compile_input = unsafe { default_compile_input() };
+        let vec =
+            vec![Instruction::Regular(RegularInstruction::type_expression())]
+                .into_iter()
+                .chain(expected_instruction.into_iter().map(Instruction::Type))
+                .collect::<Vec<_>>();
+
+        let compiled = compile_value(
+            Value::new(CoreValue::Type(ty)),
+            compile_input,
+            cache,
+        );
+        assert_eq!(compiled.shared_values.len(), 0);
+        assert_instructions_equal!(&compiled.dxb, vec)
+    }
+
+    fn assert_regular_instructions_equal(
+        val: Value,
+        expected_instructions: Vec<RegularInstruction>,
+    ) {
+        let cache = &mut SharedReferencesCache::default();
+        let compile_input = unsafe { default_compile_input() };
+        let compiled = compile_value(val, compile_input, cache);
+        let mut cursor = ByteCursor::new(compiled.dxb.to_vec());
+        for expected in expected_instructions {
+            let instruction = RegularInstruction::read(&mut cursor)
+                .expect("Failed to read instruction from compiled bytecode");
+            assert_eq!(instruction, expected);
+        }
+    }
+
+    #[test]
+    fn type_definition_with_metadata() {
+        let ty = Type::Definition(TypeDefinitionWithMetadata::new(
+            TypeDefinition::CoreType(CoreLibTypeId::Base(
+                CoreLibBaseTypeId::Boolean,
+            )),
+            TypeMetadata::Local {
+                mutability: LocalMutability::Mutable,
+                ownership: LocalOwnership::Owned,
+            },
+        ));
+        assert_type_instructions(
+            ty,
+            vec![
+                TypeInstruction::DefinitionWithMetadata(TypeMetadata::Local {
+                    mutability: LocalMutability::Mutable,
+                    ownership: LocalOwnership::Owned,
+                }),
+                TypeInstruction::CoreType(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Boolean,
+                )),
+            ],
+        );
+    }
+
+    #[test]
+    fn core_type() {
+        // [107, 1, 0, 0, 0, 0, 0, 59, 2, 0]
+        // We shortcut the type compilation for aliased core types, that don't have any metadata or a custom type
+        // to just directly return the core lib value instruction, since the execution will treat them as the same type anyway
+        let ty = Type::Definition(
+            TypeDefinition::CoreType(CoreLibTypeId::Base(
+                CoreLibBaseTypeId::Boolean,
+            ))
+            .into(),
+        );
+        assert_regular_instructions_equal(
+            Value::new(CoreValue::Type(ty)),
+            vec![RegularInstruction::GetCoreLibValue(
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Boolean).into(),
+            )],
+        );
+    }
+}

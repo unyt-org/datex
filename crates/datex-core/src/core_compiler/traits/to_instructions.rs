@@ -1,12 +1,44 @@
 use crate::{
-    core_compiler::shared_value_tracking::SharedValueTracking, prelude::*,
+    core_compiler::value_visitor::ValueVisitor, instruction::Instruction,
+    prelude::*, runtime::cache::shared_references_cache::SharedReferencesCache,
 };
 
-pub trait ToInstructions<'a> {
-    type InstructionType: Sized;
-
-    fn to_instructions(
+pub trait ToInstructions {
+    fn to_instructions<'a>(
         &'a self,
-        shared_value_tracking: &'a mut SharedValueTracking,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a>;
+        visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>;
 }
+
+/// A macro to yield instructions from a value that implements `ToInstructions`.
+/// This expands to a loop that iterates over the instructions produced by the `to_instructions` method of the value, yielding each instruction to the caller.
+pub macro yield_all($iterator:expr) {
+    for instruction in $iterator {
+        yield instruction;
+    }
+}
+
+/// A macro to yield all instructions from a value that implements `ToInstructions`, collecting them into a vector first.
+pub macro yield_all_collected($iter:expr) {{
+    let collected: Vec<_> = $iter.collect();
+    for instr in collected {
+        yield instr;
+    }
+}}
+
+/// A macro to yield `Ok` instructions from a value that implements `ToInstructions`.
+/// This expands to a loop that iterates over the instructions produced by the `to_instructions` method of the value, yielding each instruction wrapped in `Ok` to the caller.
+pub macro yield_all_ok($iterator:expr) {
+    for instruction in $iterator {
+        yield Ok(instruction.into());
+    }
+}
+
+/// A macro to yield all `Ok` instructions from a value that implements `ToInstructions`, collecting them into a vector first.
+pub macro yield_all_ok_collected($iter:expr) {{
+    let collected: Vec<_> = $iter.collect();
+    for instr in collected {
+        yield Ok(instr.into());
+    }
+}}

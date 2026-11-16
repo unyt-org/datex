@@ -1,6 +1,6 @@
 use crate::runtime::RuntimeConfigInterface;
 
-use crate::{prelude::*, time::now_ms};
+use crate::prelude::*;
 use core::time::Duration;
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
@@ -9,6 +9,7 @@ use strum::EnumString;
 #[derive(
     Datex, PartialEq, Eq, Debug, Clone, EnumString, Serialize, Deserialize,
 )]
+#[datex(structural)]
 pub enum InterfaceDirection {
     In,
     Out,
@@ -34,6 +35,7 @@ impl InterfaceDirection {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq, Eq)]
+#[datex(structural)]
 /// The properties of a communication interface, which are used to describe the capabilities and characteristics of the interface.
 pub struct ComInterfaceProperties {
     /// the type of the interface, by which it is identified
@@ -76,11 +78,6 @@ pub struct ComInterfaceProperties {
     /// that is end-to-end and not interceptable by third parties
     pub is_secure_channel: bool,
 
-    // TODO #728 move reconnection config to a separate struct and ot of properties
-    // Defines the reconnection strategy for the interface
-    // If the interface is not able to reconnect, it will be destroyed
-    pub reconnection_config: ReconnectionConfig,
-
     // If true, the interface sends Hello block identifications automatically
     // after socket connection establishment
     pub auto_identify: bool,
@@ -90,59 +87,54 @@ pub struct ComInterfaceProperties {
 }
 
 #[derive(Datex, Debug, PartialEq, Clone, Default, Eq)]
+#[datex(structural)]
 pub enum ReconnectionConfig {
     #[default]
     NoReconnect,
-    InstantReconnect,
-    ReconnectWithTimeout {
-        timeout: u64, // duration in milliseconds
-    },
-    ReconnectWithTimeoutAndAttempts {
-        timeout: u64, // duration in milliseconds
-        attempts: u8,
+    Reconnect {
+        /// number of reconnect attempts before aborting reconnect, default is unlimited
+        attempts: Option<u16>,
+        /// interval between reconnect attempts in ms, default is 3 seconds
+        interval: Option<u64>,
     },
 }
 
+#[derive(Debug, PartialEq, Clone, Default, Eq)]
+pub struct ReconnectAttempts {
+    pub(crate) max_attempts: Option<u16>,
+    pub(crate) interval: Duration,
+}
+
 impl ReconnectionConfig {
-    pub fn check_reconnect_timeout(
-        close_timestamp: Option<u64>,
-        timeout: &Duration,
-    ) -> bool {
-        let close_timestamp = match close_timestamp {
-            Some(ts) => ts,
-            None => return false,
-        };
-        let now = now_ms();
-        let elapsed = Duration::from_millis(now - close_timestamp);
-        if elapsed < *timeout {
-            return false;
+    const DEFAULT_RECONNECT_INTERVAL: Duration = Duration::from_secs(3);
+
+    pub fn reconnect() -> Self {
+        ReconnectionConfig::Reconnect {
+            attempts: None,
+            interval: None,
         }
-        true
     }
 
-    pub fn get_timeout(&self) -> Option<Duration> {
+    pub fn reconnect_with_interval(interval: Duration) -> Self {
+        ReconnectionConfig::Reconnect {
+            attempts: None,
+            interval: Some(interval.as_millis() as u64),
+        }
+    }
+
+    /// Returns a [ReconnectAttempts] struct if configured.
+    /// A [None] return value indicates that no form of reconnect was configured
+    pub fn get_reconnect_attempts(&self) -> Option<ReconnectAttempts> {
         match self {
             ReconnectionConfig::NoReconnect => None,
-            ReconnectionConfig::InstantReconnect => None,
-            ReconnectionConfig::ReconnectWithTimeout { timeout } => {
-                Some(Duration::from_millis(*timeout))
+            ReconnectionConfig::Reconnect { attempts, interval } => {
+                Some(ReconnectAttempts {
+                    max_attempts: *attempts,
+                    interval: interval
+                        .map(Duration::from_millis)
+                        .unwrap_or(Self::DEFAULT_RECONNECT_INTERVAL),
+                })
             }
-            ReconnectionConfig::ReconnectWithTimeoutAndAttempts {
-                timeout,
-                ..
-            } => Some(Duration::from_millis(*timeout)),
-        }
-    }
-
-    pub fn get_attempts(&self) -> Option<u8> {
-        match self {
-            ReconnectionConfig::NoReconnect => None,
-            ReconnectionConfig::InstantReconnect => None,
-            ReconnectionConfig::ReconnectWithTimeout { .. } => None,
-            ReconnectionConfig::ReconnectWithTimeoutAndAttempts {
-                attempts,
-                ..
-            } => Some(*attempts),
         }
     }
 }
@@ -154,13 +146,6 @@ impl ComInterfaceProperties {
             InterfaceDirection::Out => true,
             InterfaceDirection::InOut => true,
         }
-    }
-
-    pub fn shall_reconnect(&self) -> bool {
-        !core::matches!(
-            self.reconnection_config,
-            ReconnectionConfig::NoReconnect
-        )
     }
 
     pub fn can_receive(&self) -> bool {
@@ -185,7 +170,6 @@ impl Default for ComInterfaceProperties {
             continuous_connection: false,
             allow_redirects: true,
             is_secure_channel: false,
-            reconnection_config: ReconnectionConfig::default(),
             connectable_interfaces: None,
         }
     }

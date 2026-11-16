@@ -5,8 +5,8 @@ use crate::{
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
-#[derive(Datex, Debug, Serialize, Deserialize)]
-
+#[derive(Datex, Clone, Debug, Serialize, Deserialize)]
+#[datex(structural)]
 pub struct HTTPClientInterfaceSetupData {
     /// A websocket URL (http:// or https://).
     pub url: String,

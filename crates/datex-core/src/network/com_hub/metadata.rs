@@ -27,7 +27,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 #[derive(Datex, Debug, Clone)]
-
+#[datex(structural)]
 pub struct ComHubMetadataInterfaceSocket {
     pub uuid: String,
     pub direction: InterfaceDirection,
@@ -42,7 +42,8 @@ pub struct ComHubMetadataInterfaceSocketWithoutEndpoint {
     pub direction: InterfaceDirection,
 }
 
-#[derive(Debug, Datex, Clone)]
+#[derive(Datex, Debug, Clone)]
+#[datex(structural)]
 pub struct ComHubMetadataInterface {
     pub uuid: String,
     pub properties: ComInterfaceProperties,
@@ -50,10 +51,12 @@ pub struct ComHubMetadataInterface {
     pub is_waiting_for_socket_connections: bool,
 }
 
-#[derive(Debug, Datex, Clone)]
+#[derive(Datex, Debug, Clone)]
+#[datex(structural)]
 pub struct ComHubMetadata {
     pub endpoint: Endpoint,
     pub interfaces: Vec<ComHubMetadataInterface>,
+    pub reconnecting_interfaces: Vec<ComHubMetadataInterface>,
 }
 
 impl Display for ComHubMetadata {
@@ -125,8 +128,9 @@ impl ComHub {
     /// Generates metadata about the ComHub, its interfaces and sockets.
     pub fn get_metadata(&self) -> ComHubMetadata {
         let mut metadata = ComHubMetadata {
-            endpoint: self.endpoint.clone(),
+            endpoint: self.endpoint().clone(),
             interfaces: Vec::new(),
+            reconnecting_interfaces: Vec::new(),
         };
 
         let mut sockets_by_com_interface_uuid: HashMap<
@@ -185,24 +189,22 @@ impl ComHub {
             }
         }
 
-        for (
-            uuid,
-            InterfaceInfo {
-                properties,
-                is_waiting_for_socket_connections,
-                ..
-            },
-        ) in self.interfaces_manager.interfaces.borrow().iter()
-        {
-            metadata.interfaces.push(ComHubMetadataInterface {
-                uuid: uuid.to_string(),
-                properties: properties.as_ref().clone(),
-                sockets: sockets_by_com_interface_uuid
-                    .remove(uuid)
-                    .unwrap_or_default(),
-                is_waiting_for_socket_connections:
-                    *is_waiting_for_socket_connections,
-            });
+        for (uuid, info) in self.interfaces_manager.interfaces.borrow().iter() {
+            metadata.interfaces.push(interface_info_to_metadata(
+                uuid,
+                info,
+                &mut sockets_by_com_interface_uuid,
+            ));
+        }
+
+        for (uuid, info) in self.reconnecting_interfaces.borrow().iter() {
+            metadata
+                .reconnecting_interfaces
+                .push(interface_info_to_metadata(
+                    uuid,
+                    info,
+                    &mut sockets_by_com_interface_uuid,
+                ));
         }
 
         metadata
@@ -212,5 +214,29 @@ impl ComHub {
     pub fn print_metadata(&self) {
         let metadata = self.get_metadata();
         info!("ComHub Metadata:\n{metadata}");
+    }
+}
+
+fn interface_info_to_metadata(
+    uuid: &ComInterfaceUUID,
+    info: &InterfaceInfo,
+    sockets_by_com_interface_uuid: &mut HashMap<
+        ComInterfaceUUID,
+        Vec<ComHubMetadataInterfaceSocket>,
+    >,
+) -> ComHubMetadataInterface {
+    let InterfaceInfo {
+        properties,
+        is_waiting_for_socket_connections,
+        ..
+    } = info;
+
+    ComHubMetadataInterface {
+        uuid: uuid.to_string(),
+        properties: properties.as_ref().clone(),
+        sockets: sockets_by_com_interface_uuid
+            .remove(uuid)
+            .unwrap_or_default(),
+        is_waiting_for_socket_connections: *is_waiting_for_socket_connections,
     }
 }

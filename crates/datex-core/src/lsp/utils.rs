@@ -278,7 +278,7 @@ impl LanguageServerBackend {
             finder.visit_datex_expression(ast);
             finder.found_expr.map(|e| DatexExpression {
                 span: e.1,
-                data: e.0,
+                data: Box::new(e.0),
                 ty: None,
             })
         } else {
@@ -351,9 +351,9 @@ impl ExpressionFinder {
             } else {
                 self.found_expr = Some((expr_data, span.clone()));
             }
-            Ok(VisitAction::VisitChildren)
+            Ok(VisitAction::ContinueRecursion)
         } else {
-            Ok(VisitAction::SkipChildren)
+            Ok(VisitAction::AbortRecursion)
         }
     }
 }

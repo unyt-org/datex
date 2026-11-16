@@ -143,18 +143,19 @@ impl From<String> for NumericLiteralParts {
 #[derive(Logos, Debug, Clone, PartialEq, Eq)]
 #[logos(error = Range<usize>)]
 // single line comments
-#[logos(skip r"//[^\n]*")]
+#[logos(skip(r"//[^\n]*", allow_greedy = true))]
 // multiline comments
 #[logos(skip r"/\*[^*]*\*+(?:[^/*][^*]*\*+)*/")]
 // whitespace
 #[logos(skip r"[ \n\t\r\f]+")]
 #[rustfmt::skip]
+#[logos(export_dir = "./docs/diagrams/mmd/lexer.mmd")]
 pub enum Token {
-    #[regex(r"///[^\n]*", extract_line_doc)]
+    #[regex(r"///[^\n]*", extract_line_doc, allow_greedy = true)]
     LineDoc(String),
 
     // shebang
-    #[regex(r"#![^\n]*", allocated_string)]
+    #[regex(r"#![^\n]*", allocated_string, allow_greedy = true)]
     Shebang(String),
 
     // Operators & Separators
@@ -235,15 +236,16 @@ pub enum Token {
     #[token("else")] Else,
     #[token("compile")] Compile,
 
-    #[token("type")] TypeDeclaration,
+    #[token("entity")] EntityTypeDeclaration,
     #[token("type<")] TypeExpressionStart,
-    #[token("typealias")] TypeAlias,
+    #[token("type")] TypeAlias,
 
     #[token(".")]
     Dot,
     // pointer address (e.g. $1234ab, exactly 3, 5 or 26 bytes)
     #[regex(r"\$(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{10}|[0-9a-fA-F]{52})", allocated_string)] PointerAddress(String),
-
+    // ISO 8601 DateTime (e.g., 2026-04-13T18:28Z, 2026-04-13T18:28:09Z, or 2026-04-13T18:28:09.415Z)
+    #[regex(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(?::[0-9]{2}(?:\.[0-9]{3})?)?Z", allocated_string)] IsoDateTime(String),
     // decimal literals (infinity, nan)
     #[regex(r"infinity")] Infinity,
     #[regex(r"nan")] Nan,
@@ -301,7 +303,7 @@ pub enum Token {
 }
 
 impl Token {
-    pub fn as_const_str(&self) -> Option<&str> {
+    pub const fn as_const_str(&self) -> Option<&str> {
         match self {
             Token::LeftParen => Some("("),
             Token::RightParen => Some(")"),
@@ -358,10 +360,10 @@ impl Token {
             Token::Procedure => Some("procedure"),
             Token::Infinity => Some("infinity"),
             Token::Nan => Some("nan"),
-            Token::TypeDeclaration => Some("type"),
+            Token::EntityTypeDeclaration => Some("entity"),
             Token::Compile => Some("compile"),
             Token::TypeExpressionStart => Some("type<"),
-            Token::TypeAlias => Some("typealias"),
+            Token::TypeAlias => Some("type"),
             Token::Shared => Some("shared"),
             Token::RefMut => Some("&mut"),
             Token::SharedRef => Some("'"),
@@ -443,7 +445,7 @@ fn parse_typed_literal<T: TypeSuffix>(
         }
     }
     LiteralWithVariant {
-        value: number_part.to_string(),
+        value: number_part.replace('_', ""),
         variant,
     }
 }
@@ -457,12 +459,6 @@ impl fmt::Display for Token {
 #[inline(always)]
 fn allocated_string(lex: &mut Lexer<Token>) -> String {
     lex.slice().to_owned()
-}
-
-fn numeric_parts(lex: &mut Lexer<Token>) -> NumericLiteralParts {
-    // 1. Remove underscores
-    let s = lex.slice().replace('_', "");
-    NumericLiteralParts::from(s)
 }
 
 #[cfg(test)]
@@ -493,7 +489,7 @@ mod tests {
             assert_eq!(literal, "42u8".to_string());
             assert_eq!(format!("{}", literal), "42u8".to_string());
         } else {
-            core::panic!("Expected DecimalIntegerLiteral with variant U8");
+            panic!("Expected DecimalIntegerLiteral with variant U8");
         }
 
         let mut lexer = Token::lexer("42");
@@ -501,7 +497,7 @@ mod tests {
         if let Ok(Token::IntegerLiteral(literal)) = res {
             assert_eq!(literal, "42".to_string());
         } else {
-            core::panic!("Expected DecimalIntegerLiteral with no variant");
+            panic!("Expected DecimalIntegerLiteral with no variant");
         }
     }
 
@@ -693,7 +689,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::HexadecimalIntegerLiteral(IntegerWithVariant {
-                value: "0xFF_FF_FF".to_string(),
+                value: "0xFFFFFF".to_string(),
                 variant: None
             }))
         );
@@ -702,7 +698,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::BinaryIntegerLiteral(IntegerWithVariant {
-                value: "0b1010_1010".to_string(),
+                value: "0b10101010".to_string(),
                 variant: None
             }))
         );
@@ -715,7 +711,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::DecimalLiteral(DecimalWithVariant {
-                value: "10.234_567e-8".to_string(),
+                value: "10.234567e-8".to_string(),
                 variant: Some(DecimalTypeVariant::F32)
             }))
         );
@@ -725,7 +721,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::DecimalLiteral(DecimalWithVariant {
-                value: "10.234_567e-8".to_string(),
+                value: "10.234567e-8".to_string(),
                 variant: None
             }))
         );
@@ -735,7 +731,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::DecimalLiteral(DecimalWithVariant {
-                value: "0.123_456".to_string(),
+                value: "0.123456".to_string(),
                 variant: None
             }))
         );
@@ -745,7 +741,7 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Ok(Token::DecimalLiteral(DecimalWithVariant {
-                value: "1_000.123_456".to_string(),
+                value: "1000.123456".to_string(),
                 variant: Some(DecimalTypeVariant::F32)
             }))
         );

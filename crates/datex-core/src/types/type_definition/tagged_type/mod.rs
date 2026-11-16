@@ -1,11 +1,22 @@
 use crate::{prelude::*, types::r#type::Type};
 use core::fmt::Display;
-
 pub mod serde_dif;
+mod to_instructions;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TaggedTypeDefinition {
     pub tag: String,
     pub ty: Option<Box<Type>>,
+}
+impl TaggedTypeDefinition {
+    pub fn new(ty: Type, tag: String) -> Self {
+        TaggedTypeDefinition {
+            tag,
+            ty: Some(Box::new(ty)),
+        }
+    }
+    pub fn new_without_type(tag: String) -> Self {
+        TaggedTypeDefinition { tag, ty: None }
+    }
 }
 impl Display for TaggedTypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

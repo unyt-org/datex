@@ -1,94 +1,92 @@
+use core::ops::Deref;
+
 use crate::{
     collections::HashMap,
     core_compiler::{
-        buffer_provider::BufferProvider,
         core_compilation_context::ByteCursor,
-        shared_value_tracking::{
-            TrackedOwned, TrackedReference, TrackedValueCollection,
-        },
-        value_compiler::{append_regular_instruction, append_value},
+        shared_value_tracking::{TrackedValueCollection, TrackedValueMetadata},
+        to_instructions::{ToInstructions, yield_all, yield_all_collected},
         value_visitor::ValueVisitor,
     },
-    global::protocol_structures::{
-        instruction_data::{
-            PerformMoves, SharedRef, SharedRefWithValue, StackIndex,
-        },
-        regular_instructions::RegularInstruction,
+    global::stack_index::StackIndex,
+    instruction::{
+        instruction_data::{MoveWithValue, SharedRef, SharedRefWithValue},
+        regular_instruction::RegularInstruction,
     },
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{
-        OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
-        SharedContainer, SharedContainerMutability,
+        PointerAddress, ReferenceMutability, ReferencedSharedContainer,
+        SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
+        SharedContainerOwnership, traits::SharedContainerCommon,
     },
-    types::r#type::Type,
-    values::value_container::{ValueContainer, value_key::ValueKey},
+    values::value_container::ValueContainer,
 };
-use binrw::io::Write;
+use binrw::{BinWrite, io::Write};
 
 #[derive(Debug)]
-enum VisitedValue {
-    /// Indicates that the shared container was already inserted and is available at the given stack index
-    Inserted { stack_index: StackIndex },
-    /// Indicates that the shared container is referenced by one or multiple shared containers that were already inserted
-    Required {
-        partial_instantiations: Vec<DependantPartialInstantiations>,
-    },
-}
-
-#[derive(Debug)]
-struct DependantPartialInstantiations {
-    target_index: StackIndex,
-    assigned_property: ValueKey, // TODO: also support direct ref ("newtype" struct) assignments
-}
-
-#[derive(Debug)]
-struct PreambleContext<'a> {
-    cursor: &'a mut ByteCursor,
-    visited_refs: HashMap<ReferencedSharedContainer, VisitedValue>,
+struct PreambleContext {
+    self_referencing_containers: HashMap<SharedContainer, StackIndex>,
+    known_container: HashSet<SharedContainer>,
     current_stack_index: StackIndex,
 }
 
-impl BufferProvider for PreambleContext<'_> {
-    fn cursor_mut(&mut self) -> &mut ByteCursor {
-        self.cursor
-    }
-}
+// var x = shared {a: {b: null}};
+// x.a.b = x; /// #0.a.b = x;
 
-impl ValueVisitor for PreambleContext<'_> {
-    fn visit_value_container(&mut self, value_container: ValueContainer) {
-        match value_container {
-            ValueContainer::Local(value) => append_value(self, value),
-            ValueContainer::Shared(shared_container) => {
-                match self.visited_refs.get_mut(
-                    &shared_container.derive_reference_with_max_mutability(),
-                ) {
-                    // shared container was not yet inserted, keep track as required dependency
-                    None => {
-                        todo!();
-                    }
-                    Some(VisitedValue::Required {
-                        partial_instantiations: _,
-                    }) => {
-                        todo!()
-                    }
-                    // shared container was already inserted, use stack value
-                    Some(VisitedValue::Inserted { stack_index }) => {
-                        append_regular_instruction(
-                            self.cursor,
-                            RegularInstruction::BorrowStackValue(*stack_index),
-                        );
+impl ValueVisitor for PreambleContext {
+    fn visit_shared_container<'a>(
+        &'a mut self,
+        shared_container: &'a SharedContainer,
+        cache: &'a mut SharedReferencesCache,
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
+        match self.self_referencing_containers.get(shared_container) {
+            // not self referencing
+            None => {
+                // placeholder, will be later replaced via setter
+                Box::new(append_shared_container(
+                    self,
+                    cache,
+                    shared_container,
+                    self.known_container.contains(shared_container),
+                ))
+            }
+            // shared container has already been inserted, use stack value
+            // depending on the move flag, we either take the value or borrow it
+            Some(stack_index) => {
+                if shared_container.treat_as_move() {
+                    todo!("Create test case here!");
+                    // RegularInstruction::take_stack_value(*stack_index)
+                    //     .write(self.cursor)
+                    //     .unwrap();
+                } else {
+                    match shared_container.ownership() {
+                        // FIXME can we be sure, that this can not happen?
+                        SharedContainerOwnership::Owned => {
+                            unreachable!("Owned shared container")
+                        }
+                        SharedContainerOwnership::Referenced(
+                            reference_mut,
+                        ) => match reference_mut {
+                            ReferenceMutability::Immutable => {
+                                Box::new(core::iter::once(
+                                    RegularInstruction::get_stack_value_shared_ref(*stack_index).into()
+                                ))
+                            }
+                            ReferenceMutability::Mutable => {
+                                Box::new(core::iter::once(
+                                    RegularInstruction::get_stack_value_shared_ref_mut(*stack_index).into()
+                                ))
+                            }
+                        },
                     }
                 }
             }
         }
     }
-
-    fn visit_type(&mut self, _ty: Type) {
-        todo!()
-    }
 }
 
-impl<'a> PreambleContext<'a> {
+impl PreambleContext {
     fn get_next_stack_index(&mut self) -> StackIndex {
         let stack_index = self.current_stack_index;
         self.current_stack_index = StackIndex(self.current_stack_index.0 + 1);
@@ -99,311 +97,390 @@ impl<'a> PreambleContext<'a> {
 pub(super) fn append_injected_values_preamble(
     collection: TrackedValueCollection, // top level shared container roots
     body: Vec<u8>,
+    cache: &mut SharedReferencesCache,
 ) -> (Vec<u8>, Vec<SharedContainer>) {
     // no injected values
     if !collection.has_tracked_values() {
         return (body, vec![]);
     }
 
-    let mut byte_cursor = ByteCursor::new(vec![]);
-    let tracked_references = collection.tracked_referenced_values;
-    let tracked_owned = collection.tracked_owned_values;
+    let tracked_values = collection.tracked_values;
+    let mut cursor = ByteCursor::new(vec![]);
 
-    let context = &mut PreambleContext {
-        cursor: &mut byte_cursor,
-        visited_refs: HashMap::new(),
-        current_stack_index: StackIndex(0),
-    };
     let mut root_containers =
         Vec::<SharedContainer>::with_capacity(collection.root_count);
-
-    // statements (preamble + body) start
-    append_regular_instruction(
-        context.cursor,
-        RegularInstruction::statements(2, false),
-    );
-
-    // spread preamble injected value
-    append_regular_instruction(
-        context.cursor,
-        RegularInstruction::PushListToStack,
-    );
-
-    // statements (injected values [n] + short list [1])
-    let injection_statements_count = tracked_references.len()
-        + if !tracked_owned.is_empty() { 1 } else { 0 };
-    append_regular_instruction(
-        context.cursor,
-        RegularInstruction::statements(
-            1 + injection_statements_count as u32,
-            false,
-        ),
-    );
-
     let mut root_container_stack_indices: Vec<Option<StackIndex>> =
         vec![None; collection.root_count];
+    // This keeps track of the number of inner statements of the preamble.
+    // The count is the number of all stack values, plus the number of patches per stack value applied, plus one for the list return
+    let inner_statement_count = &mut 0u32;
 
-    // first compile all moves if there are any
-    if !tracked_owned.is_empty() {
-        append_shared_container_moves(
-            context,
-            &tracked_owned
-                .iter()
-                .rev()
-                .map(|v| v.container())
-                .collect::<Vec<_>>(),
-        );
-        for tracked_owned in tracked_owned.into_iter().rev() {
-            let index = context.get_next_stack_index();
-            if let TrackedOwned::Root {
-                index: root_stack_index,
-                ..
-            } = tracked_owned
+    {
+        let context = &mut PreambleContext {
+            self_referencing_containers: HashMap::new(),
+            current_stack_index: StackIndex(0),
+            known_container: HashSet::new(),
+        };
+
+        // loop through the tracked values in reverse order (as optimization)
+        for (tracked_value, metadata) in tracked_values.iter() {
+            if metadata.is_self_referencing() {
+                let new_index = context.get_next_stack_index();
+                for instruction in append_uninitialized_shared_container(
+                    context,
+                    cache,
+                    tracked_value,
+                    metadata,
+                    inner_statement_count,
+                )
+                .collect::<Vec<_>>()
+                {
+                    instruction.write(&mut cursor).unwrap();
+                }
+                context
+                    .self_referencing_containers
+                    .insert(tracked_value.clone(), new_index);
+            }
+            if metadata.is_known() {
+                context.known_container.insert(tracked_value.clone());
+            }
+        }
+        for (tracked_value, metadata) in tracked_values.into_iter() {
+            if let TrackedValueMetadata::Root {
+                index,
+                is_self_referencing,
+                is_known,
+            } = metadata
             {
-                // if it is a root tracked value, register in the root container list
-                root_container_stack_indices[root_stack_index.0 as usize] =
-                    Some(index);
-                root_containers.push(SharedContainer::Owned(
-                    tracked_owned.into_container(),
-                ));
+                let new_index = if is_self_referencing {
+                    let uninitialized_index = *context.self_referencing_containers.get(&tracked_value).expect("Self referencing container should have been inserted");
+                    for instruction in
+                        append_self_referencing_shared_container_to_stack(
+                            context,
+                            cache,
+                            &tracked_value,
+                            inner_statement_count,
+                            uninitialized_index,
+                        )
+                        .collect::<Vec<crate::instruction::Instruction>>()
+                    {
+                        instruction.write(&mut cursor).unwrap();
+                    }
+                    uninitialized_index
+                } else {
+                    let index = context.get_next_stack_index();
+                    for instruction in append_shared_container_to_stack(
+                        context,
+                        cache,
+                        &tracked_value,
+                        is_known,
+                        inner_statement_count,
+                    )
+                    .collect::<Vec<crate::instruction::Instruction>>()
+                    {
+                        instruction.write(&mut cursor).unwrap();
+                    }
+                    index
+                };
+                root_containers.push(tracked_value);
+                root_container_stack_indices[index.0 as usize] =
+                    Some(new_index);
+            }
+        }
+
+        // asserting that root stack index keys are a contiguous list of 0-n -> inner stack indices
+        let root_container_stack_indices_sorted = root_container_stack_indices
+            .iter()
+            .map(|index| {
+                index.expect("Root stack index should have been registered")
+            })
+            .collect::<Vec<_>>();
+
+        // Final root list
+        RegularInstruction::list(
+            root_container_stack_indices_sorted.len() as u32
+        )
+        .write(&mut cursor)
+        .unwrap();
+
+        // insert all root stack values into the list, which is the final value of the preamble
+        // append [#0,...#x]
+        for stack_index in root_container_stack_indices_sorted {
+            RegularInstruction::take_stack_value(stack_index)
+                .write(&mut cursor)
+                .unwrap();
+        }
+
+        // The final root list is also one inner statement.
+        *inner_statement_count += 1;
+    }
+    let mut byte_cursor = ByteCursor::new(vec![]);
+
+    // statements (preamble + body) start
+    RegularInstruction::statements(2, false)
+        .write(&mut byte_cursor)
+        .unwrap();
+
+    // the preamble pushes a list of the root shared containers to the stack
+    RegularInstruction::push_list_to_stack()
+        .write(&mut byte_cursor)
+        .unwrap();
+
+    // the inner preamble statements, which push the shared containers to the stack
+    // and apply the patches
+    RegularInstruction::statements(*inner_statement_count, false)
+        .write(&mut byte_cursor)
+        .unwrap();
+    // the inner preamble content, which pushes the shared containers to the stack and applies the patches
+    byte_cursor.write_all(&cursor.into_inner()).unwrap();
+
+    // append body
+    byte_cursor.write_all(&body).unwrap();
+    (byte_cursor.into_inner(), root_containers)
+}
+
+gen fn append_uninitialized_shared_container(
+    context: &mut PreambleContext,
+    cache: &mut SharedReferencesCache,
+    container: &SharedContainer,
+    metadata: &TrackedValueMetadata,
+    statements_count: &mut u32,
+) -> crate::instruction::Instruction {
+    *statements_count += 1;
+
+    // append push to stack
+    yield RegularInstruction::push_to_stack().into();
+    match container {
+        SharedContainer::Owned(owned_container) => {
+            for instruction in append_move_with_value(
+                context,
+                cache,
+                owned_container.container_mutability(),
+                owned_container.pointer_address().clone(),
+                None,
+            ) {
+                yield instruction;
+            }
+        }
+        SharedContainer::Referenced(referenced_container) => {
+            if referenced_container.treat_as_move() {
+                for instruction in append_move_with_value(
+                    context,
+                    cache,
+                    referenced_container.container_mutability(),
+                    match referenced_container.pointer_address() {
+                        PointerAddress::SelfOwned(address) => address.clone(),
+                        _ => unreachable!(
+                            "Referenced shared container should not have a remote pointer address"
+                        ),
+                    },
+                    None,
+                ) {
+                    yield instruction;
+                }
+            } else if !metadata.is_known() {
+                for instruction in append_referenced_shared_container_with_value(
+                    context,
+                    cache,
+                    referenced_container,
+                    true,
+                ) {
+                    yield instruction;
+                }
+            } else {
+                for instruction in
+                    append_referenced_shared_container(referenced_container)
+                {
+                    yield instruction;
+                }
+            }
+        }
+    };
+}
+
+gen fn append_self_referencing_shared_container_to_stack(
+    context: &mut PreambleContext,
+    cache: &mut SharedReferencesCache,
+    container: &SharedContainer,
+    statements_count: &mut u32,
+    uninitialized_index: StackIndex,
+) -> crate::instruction::Instruction {
+    *statements_count += 1;
+    yield RegularInstruction::set_shared_container_value().into();
+    yield_all_collected!(
+        container
+            .value_container()
+            .deref()
+            .to_instructions(context, cache)
+    );
+    yield RegularInstruction::borrow_stack_value(uninitialized_index).into();
+}
+
+gen fn append_shared_container_to_stack(
+    context: &mut PreambleContext,
+    cache: &mut SharedReferencesCache,
+    container: &SharedContainer,
+    is_known: bool,
+    statements_count: &mut u32,
+) -> crate::instruction::Instruction {
+    *statements_count += 1;
+
+    // append push to stack
+    yield RegularInstruction::push_to_stack().into();
+    for instruction in
+        append_shared_container(context, cache, container, is_known)
+    {
+        yield instruction;
+    }
+}
+
+gen fn append_shared_container(
+    context: &mut PreambleContext,
+    cache: &mut SharedReferencesCache,
+    container: &SharedContainer,
+    is_known: bool,
+) -> crate::instruction::Instruction {
+    match container {
+        SharedContainer::Owned(owned_container) => {
+            let value_container = owned_container.value_container();
+            for instruction in append_move_with_value(
+                context,
+                cache,
+                owned_container.container_mutability(),
+                owned_container.pointer_address().clone(),
+                Some(value_container.deref()),
+            )
+            .collect::<Vec<_>>()
+            {
+                yield instruction;
+            }
+        }
+        SharedContainer::Referenced(referenced_container) => {
+            if referenced_container.treat_as_move() {
+                let value_container = referenced_container.value_container();
+                for instruction in append_move_with_value(
+                    context,
+                    cache,
+                    referenced_container.container_mutability(),
+                    match referenced_container.pointer_address() {
+                        PointerAddress::SelfOwned(address) => address.clone(),
+                        _ => unreachable!(
+                            "Referenced shared container should not have a remote pointer address"
+                        ),
+                    },
+                    Some(value_container.deref()),
+                ).collect::<Vec<_>>() {
+                    yield instruction;
+                }
+            } else if !is_known {
+                for instruction in append_referenced_shared_container_with_value(
+                    context,
+                    cache,
+                    referenced_container,
+                    false,
+                ) {
+                    yield instruction;
+                }
+            } else {
+                for instruction in
+                    append_referenced_shared_container(referenced_container)
+                {
+                    yield instruction;
+                }
             }
         }
     }
-
-    // loop over all injected values
-    for tracked_ref in tracked_references.into_iter().rev() {
-        let index = append_injected_value(context, &tracked_ref);
-        if let TrackedReference::Root {
-            index: root_stack_index,
-            ..
-        } = tracked_ref
-        {
-            // if it is a root tracked value, register in the root container list
-            root_container_stack_indices[root_stack_index.0 as usize] =
-                Some(index);
-            root_containers.push(SharedContainer::Referenced(
-                tracked_ref.into_container(),
-            ));
-        }
-    }
-
-    // asserting that root stack index keys are a contiguous list of 0-n -> inner stack indices
-    let root_container_stack_indices_sorted = root_container_stack_indices
-        .iter()
-        .map(|opt| opt.expect("Root stack index should have been registered"))
-        .collect::<Vec<_>>();
-
-    // append [#0,...#x]
-    append_regular_instruction(
-        context.cursor,
-        RegularInstruction::list(
-            root_container_stack_indices_sorted.len() as u32
-        ),
-    );
-
-    for stack_index in root_container_stack_indices_sorted.iter() {
-        append_regular_instruction(
-            context.cursor,
-            RegularInstruction::TakeStackValue(*stack_index),
-        );
-    }
-
-    // append body
-    context.cursor.write_all(&body).unwrap();
-
-    (byte_cursor.into_inner(), root_containers)
-
-    // /**
-    //  *
-    //  * a = {}
-    //  * b = {}
-    //  * c = {}
-    //  * a.b = b
-    //  * b.c = c
-    //  * c.a = a
-    //  * c.b = b
-    //  *
-    //  * a = {b: b}
-    //  * b = {c: c}
-    //  * c = {b: b, a: a}
-    //  *
-    //  *
-    //  *
-    //  * c = {b: null, a: null} -> (c.b = ?b, c.a = ?a)
-    //  * a = {b: null} -> (a.b = ?b, ?b = ?c.b)
-    //  * b = {a: null}
-    //  *
-    //  *
-    //  *
-    //  *
-    //  *
-    // #0 = 42;
-    // #1 = shared 43;
-    // #2 = null
-    // #2.x = shared [34,43 ,344334#0, #2];
-    // #4 = {}; <---  #3 -> #4.(#5) = #3
-    // #3 = {a: #1, b: #4}
-    // #3.b = #4;
-    // **/
 }
 
-fn append_injected_value(
+/// Appends a move instruction to the preamble to move an owned shared containers
+gen fn append_move_with_value(
     context: &mut PreambleContext,
-    tracked_value: &TrackedReference,
-) -> StackIndex {
-    match context.visited_refs.get(tracked_value.container()) {
-        // value was not yet required or inserted, just add compilation to push new to stack
-        None => push_injected_referenced_container(
-            context,
-            tracked_value.container(),
-            tracked_value.is_known(),
-        ),
-        // value is required by other shared container that was already inserted,
-        // first push value, then init missing partial instantiations
-        Some(VisitedValue::Required {
-            partial_instantiations: _,
-        }) => {
-            // first push the value
-            let container = tracked_value.container();
-            push_injected_referenced_container(
-                context,
-                container,
-                tracked_value.is_known(),
-            );
-            // once instantiated, also init missing partial instantiations
-            todo!()
-        }
-        // this should never happen since all shared values are registered in tracked_values
-        // exactly once
-        Some(VisitedValue::Inserted { .. }) => {
-            unreachable!("Shared container already inserted");
-        }
-    }
-}
+    cache: &mut SharedReferencesCache,
+    container_mutability: SharedContainerMutability,
+    previous_address: SelfOwnedPointerAddress,
+    value_container: Option<&ValueContainer>,
+) -> crate::instruction::Instruction {
+    yield RegularInstruction::move_with_value(MoveWithValue {
+        mutability: container_mutability,
+        previous_address,
+    })
+    .into();
 
-fn push_injected_referenced_container(
-    context: &mut PreambleContext,
-    container: &ReferencedSharedContainer,
-    is_known: bool,
-) -> StackIndex {
-    let index = context.get_next_stack_index();
-    let container_clone = container.clone();
-
-    // append push to stack
-    append_regular_instruction(context.cursor, RegularInstruction::PushToStack);
-
-    if !is_known {
-        append_referenced_shared_container_with_value(context, container);
+    if let Some(value_container) = value_container {
+        yield_all!(value_container.to_instructions(context, cache));
     } else {
-        append_referenced_shared_container(context, container);
+        yield RegularInstruction::Uninitialized.into();
     }
-
-    // register as inserted value
-    context.visited_refs.insert(
-        container_clone,
-        VisitedValue::Inserted { stack_index: index },
-    );
-
-    index
 }
 
-/// Appends a PerformMoves instruction to the preamble to move all owned shared containers
-fn append_shared_container_moves(
-    context: &mut PreambleContext,
-    owned_containers: &[&OwnedSharedContainer],
-) {
-    // push all moved values to stack
-    append_regular_instruction(
-        context.cursor,
-        RegularInstruction::PushListToStack,
-    );
-
-    append_regular_instruction(
-        context.cursor,
-        RegularInstruction::PerformMoves(PerformMoves {
-            pointer_count: owned_containers.len() as u32,
-            pointers: owned_containers
-                .iter()
-                .map(|container| {
-                    (
-                        // mutability flag, TODO: improve
-                        if container.container_mutability()
-                            == SharedContainerMutability::Mutable
-                        {
-                            1
-                        } else {
-                            0
-                        },
-                        container.pointer_address().clone(),
-                    )
-                })
-                .collect(),
-        }),
-    );
-}
-
-fn append_referenced_shared_container(
-    context: &mut PreambleContext,
+gen fn append_referenced_shared_container(
     referenced_container: &ReferencedSharedContainer,
-) {
+) -> crate::instruction::Instruction {
     match referenced_container.pointer_address() {
         PointerAddress::SelfOwned(pointer_address) => {
-            append_regular_instruction(
-                context.cursor,
-                RegularInstruction::SharedRef(SharedRef {
-                    address: PointerAddress::SelfOwned(pointer_address),
-                    ref_mutability: referenced_container.reference_mutability(),
-                    container_mutability: referenced_container
-                        .container_mutability(),
-                }),
-            );
+            yield RegularInstruction::shared_ref(SharedRef {
+                address: PointerAddress::SelfOwned(pointer_address),
+                ref_mutability: referenced_container.reference_mutability(),
+                container_mutability: referenced_container
+                    .container_mutability(),
+                is_debug: referenced_container.is_debug(),
+            })
+            .into();
         }
         PointerAddress::Remote(pointer_address) => {
-            append_regular_instruction(
-                context.cursor,
-                RegularInstruction::SharedRef(SharedRef {
-                    address: PointerAddress::Remote(pointer_address),
-                    ref_mutability: referenced_container.reference_mutability(),
-                    container_mutability: referenced_container
-                        .container_mutability(),
-                }),
-            );
+            yield RegularInstruction::shared_ref(SharedRef {
+                address: PointerAddress::Remote(pointer_address),
+                ref_mutability: referenced_container.reference_mutability(),
+                container_mutability: referenced_container
+                    .container_mutability(),
+                is_debug: referenced_container.is_debug(),
+            })
+            .into();
         }
     }
 }
 
-fn append_referenced_shared_container_with_value(
+gen fn append_referenced_shared_container_with_value(
     context: &mut PreambleContext,
+    cache: &mut SharedReferencesCache,
     referenced_container: &ReferencedSharedContainer,
-) {
+    uninitialized: bool,
+) -> crate::instruction::Instruction {
     match referenced_container.pointer_address() {
         // insert with value for self owned references
         PointerAddress::SelfOwned(pointer_address) => {
-            append_regular_instruction(
-                context.cursor,
-                RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+            yield RegularInstruction::shared_ref_with_value(
+                SharedRefWithValue {
                     address: pointer_address,
                     ref_mutability: referenced_container.reference_mutability(),
                     container_mutability: referenced_container
                         .container_mutability(),
-                }),
-            );
-            // TODO: no clone?
-            context.visit_value_container(
-                referenced_container.value_container().clone(),
-            );
+                    is_debug: referenced_container.is_debug(),
+                },
+            )
+            .into();
+            if uninitialized {
+                yield RegularInstruction::Uninitialized.into();
+            } else {
+                // TODO: no collect?
+                yield_all_collected!(
+                    referenced_container
+                        .value_container()
+                        .deref()
+                        .to_instructions(context, cache)
+                );
+            }
         }
         // insert without value for non self owned references
         PointerAddress::Remote(pointer_address) => {
-            append_regular_instruction(
-                context.cursor,
-                RegularInstruction::SharedRef(SharedRef {
-                    address: PointerAddress::Remote(pointer_address),
-                    ref_mutability: referenced_container.reference_mutability(),
-                    container_mutability: referenced_container
-                        .container_mutability(),
-                }),
-            );
+            yield RegularInstruction::shared_ref(SharedRef {
+                address: PointerAddress::Remote(pointer_address),
+                ref_mutability: referenced_container.reference_mutability(),
+                container_mutability: referenced_container
+                    .container_mutability(),
+                is_debug: referenced_container.is_debug(),
+            })
+            .into();
         }
     }
 }
@@ -411,73 +488,73 @@ fn append_referenced_shared_container_with_value(
 #[cfg(test)]
 #[cfg(feature = "disassembler")]
 mod tests {
+    use binrw::BinWrite;
+
     use crate::{
-        assert_regular_instructions_equal,
         core_compiler::{
             core_compilation_context::ByteCursor,
             preamble::append_injected_values_preamble,
             shared_value_tracking::{
-                TrackedOwned, TrackedReference, TrackedValueCollection,
+                TrackedValueCollection, TrackedValueMetadata,
             },
-            value_compiler::append_regular_instruction,
         },
-        global::protocol_structures::{
+        disassembler::{
+            InstructionTree,
+            assertions::{assert_instructions_equal, instructions},
+        },
+        global::stack_index::StackIndex,
+        instruction::{
+            Instruction,
             instruction_data::{
-                Int32Data, ListData, SharedRefWithValue, ShortListData,
-                StackIndex,
+                Int32Data, MoveWithValue, SharedRefWithValue, ShortListData,
+                ShortMapData, ShortTextData,
             },
-            regular_instructions::RegularInstruction,
+            regular_instruction::RegularInstruction,
         },
         prelude::*,
-        runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
-        shared_values::{
-            OwnedSharedContainer, PointerAddress, ReferenceMutability,
-            ReferencedSharedContainer, SelfOwnedPointerAddress,
-            SelfOwnedSharedContainer, SharedContainer,
-            SharedContainerMutability, SharedContainerOwnership,
+        runtime::{
+            cache::shared_references_cache::SharedReferencesCache,
+            pointer_address_provider::SelfOwnedPointerAddressProvider,
         },
-        values::value_container::ValueContainer,
+        shared_values::{
+            OwnedSharedContainer, ReferenceMutability,
+            ReferencedSharedContainer, SelfOwnedPointerAddress,
+            SharedContainer, SharedContainerMutability,
+            SharedContainerOwnership, traits::SharedContainerCommon,
+        },
+        values::{
+            core_values::{list::List, map::Map},
+            value_container::ValueContainer,
+        },
     };
 
     fn assert_preamble_instructions(
-        tracked_owned_values: Vec<TrackedOwned>,
-        tracked_referenced_values: Vec<TrackedReference>,
-        instructions: Vec<RegularInstruction>,
+        tracked_values: Vec<(SharedContainer, TrackedValueMetadata)>,
+        instructions: Vec<impl Into<InstructionTree<Instruction>>>,
     ) {
+        let cache = &mut SharedReferencesCache::default();
         // mock body
         let mut cursor = ByteCursor::new(vec![]);
-        append_regular_instruction(&mut cursor, RegularInstruction::Null);
+        RegularInstruction::null().write(&mut cursor).unwrap();
 
-        let root_count = tracked_referenced_values
+        let root_count = tracked_values
             .iter()
-            .filter(|v| matches!(v, TrackedReference::Root { .. }))
-            .count()
-            + tracked_owned_values
-                .iter()
-                .filter(|v| matches!(v, TrackedOwned::Root { .. }))
-                .count();
+            .filter(|(_, metadata)| {
+                matches!(metadata, TrackedValueMetadata::Root { .. })
+            })
+            .count();
 
         let collection = TrackedValueCollection {
             root_count,
-            tracked_owned_values,
-            tracked_referenced_values,
+            tracked_values,
         };
-        let (bytes, _) =
-            append_injected_values_preamble(collection, cursor.into_inner());
+        let (bytes, _) = append_injected_values_preamble(
+            collection,
+            cursor.into_inner(),
+            cache,
+        );
 
-        // println!(
-        //     "{}",
-        //     disassemble_body_to_string(
-        //         &bytes,
-        //         DisassemblerOptions {
-        //             tree: true,
-        //             colorized: true,
-        //             recursive: false,
-        //         }
-        //     )
-        // );
-
-        assert_regular_instructions_equal!(&bytes, instructions);
+        assert_instructions_equal!(&bytes, instructions);
     }
 
     fn generate_shared_owned_value(
@@ -537,15 +614,12 @@ mod tests {
             _ => unreachable!(),
         };
 
-        match ownership {
-            SharedContainerOwnership::Referenced(mutability) => {
-                shared_container = SharedContainer::Referenced(
-                    shared_container
-                        .try_derive_reference_with_mutability(mutability)
-                        .unwrap(),
-                );
-            }
-            _ => {}
+        if let SharedContainerOwnership::Referenced(mutability) = ownership {
+            shared_container = SharedContainer::Referenced(
+                shared_container
+                    .try_derive_reference_with_mutability(mutability)
+                    .unwrap(),
+            );
         };
 
         (shared_container, address)
@@ -553,11 +627,7 @@ mod tests {
 
     #[test]
     fn preamble_no_injected_values() {
-        assert_preamble_instructions(
-            vec![],
-            vec![],
-            vec![RegularInstruction::Null],
-        );
+        assert_preamble_instructions(vec![], vec![RegularInstruction::Null]);
     }
 
     #[test]
@@ -571,32 +641,393 @@ mod tests {
         );
 
         assert_preamble_instructions(
-            vec![],
-            vec![TrackedReference::Root {
-                container: reference,
-                index: StackIndex(0),
-                is_known: false,
-            }],
+            vec![(
+                SharedContainer::Referenced(reference),
+                TrackedValueMetadata::Root {
+                    index: StackIndex(0),
+                    is_known: false,
+                    is_self_referencing: false,
+                },
+            )],
+            vec![RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    // preamble
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
+                        false,
+                        instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::SharedRefWithValue(
+                                SharedRefWithValue {
+                                    address,
+                                    ref_mutability:
+                                        ReferenceMutability::Immutable,
+                                    container_mutability:
+                                        SharedContainerMutability::Immutable,
+                                    is_debug: false,
+                                }
+                            ),
+                            RegularInstruction::Int32(Int32Data(42)),
+                            RegularInstruction::list_with_children(
+                                instructions!(
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(0)
+                                    )
+                                )
+                            ),
+                        )
+                    ),
+                    // body
+                    RegularInstruction::Null,
+                ),
+            )],
+        );
+    }
+
+    #[test]
+    fn preamble_single_recursive_ref() {
+        // var a = shared mut [];
+        // a.0 = 'a;
+
+        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+        let (owned, address) = generate_shared_owned_value(
+            address_provider,
+            ValueContainer::Local(List::default().into()),
+            SharedContainerMutability::Mutable,
+        );
+        let owned_container = SharedContainer::Owned(owned);
+
+        // self referencing list
+        {
+            let container_ref = SharedContainer::Referenced(
+                owned_container.derive_reference_with_max_mutability(),
+            );
+            let mut container_mut = owned_container.value_container_mut();
+            let list = container_mut.try_as_mut::<List>().unwrap();
+            list.push(ValueContainer::Shared(container_ref));
+        }
+
+        assert_preamble_instructions(
+            vec![(
+                owned_container,
+                TrackedValueMetadata::Root {
+                    index: StackIndex(0),
+                    is_known: false,
+                    is_self_referencing: true,
+                },
+            )],
+            vec![RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    // preamble
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
+                        false,
+                        instructions!(
+                            // shared mut a = [[Uninitialized]];
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability: SharedContainerMutability::Mutable,
+                                previous_address: address.clone(),
+                            })
+                            .with_children(instructions!(RegularInstruction::Uninitialized)),
+
+                            // *a = ['mut a];
+                            RegularInstruction::SetSharedContainerValue.with_children(
+                                instructions!(
+                                    RegularInstruction::ShortList(
+                                        ShortListData { element_count: 1 }
+                                    )
+                                    .with_children(instructions!(
+                                        RegularInstruction::GetStackValueSharedRefMut(
+                                            StackIndex(0)
+                                        )
+                                    )),
+                                    RegularInstruction::BorrowStackValue(StackIndex(0))
+                                )
+                            ),
+
+                            RegularInstruction::list_with_children(
+                                instructions!(
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(0)
+                                    )
+                                )
+                            ),
+                        )
+                    ),
+                    // body
+                    RegularInstruction::Null
+                ),
+            )],
+        );
+    }
+
+    #[test]
+    fn preamble_nested_recursive_ref() {
+        // var x = shared {a: {b: null}};
+        // x.a.b = 'x;
+
+        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+        let (owned, address) = generate_shared_owned_value(
+            address_provider,
+            ValueContainer::Local(Map::default().into()),
+            SharedContainerMutability::Mutable,
+        );
+        let owned_container = SharedContainer::Owned(owned);
+
+        // self referencing map
+        {
+            let container_ref = SharedContainer::Referenced(
+                owned_container.derive_reference_with_max_mutability(),
+            );
+            let mut container_mut = owned_container.value_container_mut();
+            let map = container_mut.try_as_mut::<Map>().unwrap();
+            map.set_unchecked(
+                "a",
+                Map::from(vec![(
+                    ValueContainer::from("b"),
+                    ValueContainer::Shared(container_ref),
+                )]),
+            );
+        }
+
+        assert_preamble_instructions(
+            vec![(
+                owned_container,
+                TrackedValueMetadata::Root {
+                    index: StackIndex(0),
+                    is_known: false,
+                    is_self_referencing: true,
+                },
+            )],
+            vec![RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    // preamble
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
+                        false,
+                        instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability: SharedContainerMutability::Mutable,
+                                previous_address: address.clone(),
+                            })
+                            .with_children(
+                                instructions!(
+                                    RegularInstruction::Uninitialized
+                                )
+                            ),
+                            RegularInstruction::SetSharedContainerValue.with_children(instructions!(
+                                RegularInstruction::ShortMap(ShortMapData {
+                                    element_count: 1,
+                                    allow_only_text_keys: false,
+                                })
+                                .with_children(instructions!(
+                                    RegularInstruction::KeyValueShortText(
+                                        ShortTextData("a".to_string())
+                                    )
+                                    .with_children(instructions!(
+                                        RegularInstruction::ShortMap(
+                                            ShortMapData { element_count: 1, allow_only_text_keys: false, }
+                                        )
+                                        .with_children(instructions!(
+                                            RegularInstruction::KeyValueShortText(
+                                                ShortTextData("b".to_string())
+                                            )
+                                            .with_children(instructions!(
+                                                RegularInstruction::GetStackValueSharedRefMut(StackIndex(0))
+                                            ))
+                                        ))
+                                    )))),
+                                RegularInstruction::BorrowStackValue(StackIndex(0))
+                            )),
+                            RegularInstruction::list_with_children(
+                                instructions!(
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(0)
+                                    )
+                                )
+                            )
+                        )
+                    ),
+                    // body
+                    RegularInstruction::Null
+                ),
+            )],
+        );
+    }
+
+    #[test]
+    fn preamble_triple_ref() {
+        // var a = shared {b: null};
+        // var b = shared {c: null};
+        // a.b = 'mut b;
+        // var c = shared {a: 'mut a};
+        // b.c = 'mut c;
+
+        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+        let (owned_container_a, address_a) = generate_shared_owned_value(
+            address_provider,
+            ValueContainer::Local(Map::default().into()),
+            SharedContainerMutability::Mutable,
+        );
+        let (owned_container_b, address_b) = generate_shared_owned_value(
+            address_provider,
+            ValueContainer::Local(Map::default().into()),
+            SharedContainerMutability::Mutable,
+        );
+        let (owned_container_c, address_c) = generate_shared_owned_value(
+            address_provider,
+            ValueContainer::Local(
+                Map::from(vec![(
+                    ValueContainer::from("a"),
+                    ValueContainer::Shared(SharedContainer::Referenced(
+                        owned_container_a.derive_with_max_mutability(),
+                    )),
+                )])
+                .into(),
+            ),
+            SharedContainerMutability::Mutable,
+        );
+        // set a.b = b;
+        {
+            let mut container_mut = owned_container_a.value_container_mut();
+            let map = container_mut.try_as_mut::<Map>().unwrap();
+            map.set_unchecked(
+                "b",
+                ValueContainer::Shared(SharedContainer::Referenced(
+                    owned_container_b.derive_with_max_mutability(),
+                )),
+            );
+        }
+        // set b.c = c;
+        {
+            let mut container_mut = owned_container_b.value_container_mut();
+            let map = container_mut.try_as_mut::<Map>().unwrap();
+            map.set_unchecked(
+                "c",
+                ValueContainer::Shared(SharedContainer::Referenced(
+                    owned_container_c.derive_with_max_mutability(),
+                )),
+            );
+        }
+
+        assert_preamble_instructions(
             vec![
-                RegularInstruction::statements(2, false),
-                // preamble
-                RegularInstruction::PushListToStack,
-                RegularInstruction::statements(2, false),
-                // ref
-                RegularInstruction::PushToStack,
-                RegularInstruction::SharedRefWithValue(SharedRefWithValue {
-                    address: address.into(),
-                    ref_mutability: ReferenceMutability::Immutable,
-                    container_mutability: SharedContainerMutability::Immutable,
-                }),
-                RegularInstruction::Int32(Int32Data(42)),
-                RegularInstruction::ShortList(ShortListData {
-                    element_count: 1,
-                }),
-                RegularInstruction::TakeStackValue(StackIndex(0)),
-                // body
-                RegularInstruction::Null,
+                (
+                    SharedContainer::Referenced(
+                        owned_container_c.derive_with_max_mutability(),
+                    ),
+                    TrackedValueMetadata::Child {
+                        is_known: false,
+                        is_self_referencing: true,
+                    },
+                ),
+                (
+                    SharedContainer::Referenced(
+                        owned_container_b.derive_with_max_mutability(),
+                    ),
+                    TrackedValueMetadata::Child {
+                        is_known: false,
+                        is_self_referencing: true,
+                    },
+                ),
+                (
+                    SharedContainer::Owned(owned_container_a),
+                    TrackedValueMetadata::Root {
+                        index: StackIndex(0),
+                        is_known: false,
+                        is_self_referencing: true,
+                    },
+                ),
             ],
+            vec![RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    // preamble
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
+                        false,
+                        instructions!(
+                            // push 1
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::SharedRefWithValue(
+                                SharedRefWithValue {
+                                    ref_mutability:
+                                        ReferenceMutability::Mutable,
+                                    address: address_c.clone(),
+                                    container_mutability:
+                                        SharedContainerMutability::Mutable,
+                                    is_debug: false,
+                                }
+                            )
+                            .with_children(
+                                instructions!(
+                                    RegularInstruction::Uninitialized
+                                )
+                            ),
+                            // push 2
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::SharedRefWithValue(
+                                SharedRefWithValue {
+                                    ref_mutability:
+                                        ReferenceMutability::Mutable,
+                                    address: address_b.clone(),
+                                    container_mutability:
+                                        SharedContainerMutability::Mutable,
+                                    is_debug: false,
+                                }
+                            )
+                            .with_children(
+                                instructions!(
+                                    RegularInstruction::Uninitialized
+                                )
+                            ),
+                            // push 3
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability: SharedContainerMutability::Mutable,
+                                previous_address: address_a.clone(),
+                            })
+                            .with_children(
+                                instructions!(
+                                    RegularInstruction::Uninitialized
+                                )
+                            ),
+                            RegularInstruction::SetSharedContainerValue.with_children(
+                                instructions!(
+                                    RegularInstruction::ShortMap(
+                                        ShortMapData { element_count: 1, allow_only_text_keys: false }
+                                    )
+                                    .with_children(instructions!(
+                                        RegularInstruction::KeyValueShortText(
+                                            ShortTextData("b".to_string())
+                                        )
+                                        .with_children(instructions!(
+                                            RegularInstruction::GetStackValueSharedRefMut(
+                                                StackIndex(1)
+                                            )
+                                        ))
+                                    )),
+                                    RegularInstruction::BorrowStackValue(StackIndex(2))
+                                )
+                            ),
+                            RegularInstruction::list_with_children(
+                                instructions!(
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(2)
+                                    )
+                                )
+                            )
+                        )
+                    ),
+                    // body
+                    RegularInstruction::Null
+                ),
+            )],
         );
     }
 }

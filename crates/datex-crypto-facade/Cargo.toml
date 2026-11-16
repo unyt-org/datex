@@ -1,6 +1,6 @@
 [package]
 name = "datex-crypto-facade"
-version = "0.0.3"
+version = "0.0.4"
 description = "DATEX Crypto Trait used by the datex crate"
 authors = [
     "Benedikt Strehle <benedikt@unyt.org>",

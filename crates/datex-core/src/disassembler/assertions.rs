@@ -4,39 +4,20 @@ use crate::{
         disassemble_instruction_tree_to_string, get_instruction_tree_from_list,
         options::DisassemblerOptions,
     },
-    global::protocol_structures::{
-        instructions::{
-            CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy,
-        },
-        regular_instructions::RegularInstruction,
+    dxb_parser::body::InstructionWithSpan,
+    instruction::{
+        CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy,
+        regular_instruction::RegularInstruction,
     },
     prelude::*,
 };
 use core::slice::Iter;
 
-#[macro_export]
-macro_rules! assert_instructions_equal {
-    ($dxb:expr, $expected:expr) => {{
-        use $crate::global::protocol_structures::instructions::NestedInstructionResolutionStrategy;
-        use $crate::disassembler::disassemble_body;
-
-        let (instructions, err) = disassemble_body($dxb, NestedInstructionResolutionStrategy::ResolveNestedScopesFlat);
-        if let Some(err) = err {
-            panic!("Parser error: {}", err);
-        }
-        assert_eq!(
-            &instructions.flatten(),
-            &$expected
-        );
-    }}
-}
-
-#[macro_export]
-macro_rules! assert_regular_instructions_equal {
+pub macro assert_instructions_equal {
     ($dxb:expr, ($($expr:expr),* $(,)?)) => {{
         use $crate::disassembler::assertions::{resolve_instructions, assert_instruction_lists_eq};
         use $crate::disassembler::{InstructionTree};
-        use $crate::global::protocol_structures::instructions::Instruction;
+        use $crate::instruction::Instruction;
 
         let dxb = $dxb;
         assert_instruction_lists_eq(
@@ -44,11 +25,11 @@ macro_rules! assert_regular_instructions_equal {
             InstructionTree::<Instruction>::from(vec![$(InstructionTree::<Instruction>::from($expr),)*]).flatten_instructions(),
             dxb,
         );
-    }};
+    }},
     ($dxb:expr, $vec:expr $(,)?) => {{
         use $crate::disassembler::assertions::{resolve_instructions, assert_instruction_lists_eq};
         use $crate::disassembler::{InstructionTree};
-        use $crate::global::protocol_structures::instructions::Instruction;
+        use $crate::instruction::Instruction;
 
         let dxb = $dxb;
         assert_instruction_lists_eq(
@@ -59,14 +40,45 @@ macro_rules! assert_regular_instructions_equal {
     }}
 }
 
+/// Asserts that two lists of instructions are equal.
+/// The expected instructions can be provided either as a tuple of nested instructions or as a vector of instructions.
+pub macro assert_instruction_lists_eq {
+    ($output:expr, ($($expected:expr),* $(,)?)) => {{
+        use $crate::disassembler::assertions::assert_instruction_lists_eq;
+        use $crate::core_compiler::value_visitor::compile_instruction_iterator_to_dxb;
+        let output_instructions = $output;
+        let output_dxb = compile_instruction_iterator_to_dxb(
+            output_instructions.iter().cloned(),
+        );
+        let expected_instructions = InstructionTree::<Instruction>::from(vec![$($expected),*]).flatten_instructions();
+        assert_instruction_lists_eq(output_instructions, expected_instructions, &output_dxb);
+    }},
+    ($output:expr, $vec:expr $(,)?) => {{
+        use $crate::disassembler::assertions::assert_instruction_lists_eq;
+        use $crate::core_compiler::value_visitor::compile_instruction_iterator_to_dxb;
+
+        let output_instructions = $output;
+        let output_dxb = compile_instruction_iterator_to_dxb(
+            output_instructions.iter().cloned(),
+        );
+        let expected_instructions = InstructionTree::<Instruction>::from($vec.into_iter().map(|i| i.into()).collect::<Vec<_>>()).flatten_instructions();
+        assert_instruction_lists_eq(output_instructions, expected_instructions, &output_dxb);
+    }}
+}
+
 pub fn assert_instruction_lists_eq(
     output_instructions: Vec<Instruction>,
     expected_instructions: Vec<Instruction>,
     output_dxb: &[u8],
 ) {
     if output_instructions != expected_instructions {
-        let (expected_tree, expected_err) =
-            get_instruction_tree_from_list(expected_instructions);
+        let (expected_tree, expected_err) = get_instruction_tree_from_list(
+            expected_instructions
+                .into_iter()
+                .map(InstructionWithSpan::from)
+                .collect::<Vec<_>>(),
+        );
+
         panic!(
             "Output did not match expected instructions:\n\nOutput:\n{}\n\nExpected:\n{}\n",
             disassemble_body_to_string(
@@ -82,15 +94,25 @@ pub fn assert_instruction_lists_eq(
     }
 }
 
+/// Resolves the instructions from a DXB byte slice, panicking if there is an error
+/// This is called by the [assert_instructions_equal!] macro to resolve the instructions from the DXB and compare them to the expected instructions
 pub fn resolve_instructions(dxb: &[u8]) -> Vec<Instruction> {
     let (instructions, err) = disassemble_body(
         dxb,
         NestedInstructionResolutionStrategy::ResolveNestedScopesFlat,
     );
     if let Some(err) = err {
-        panic!("Parser error: {}", err);
+        panic!(
+            "Disassembly error: {}:\n{}",
+            err,
+            disassemble_body_to_string(dxb, DisassemblerOptions::default())
+        );
     }
-    instructions.flatten()
+    instructions
+        .flatten()
+        .into_iter()
+        .map(Instruction::from)
+        .collect::<Vec<_>>()
 }
 
 impl RegularInstruction {
@@ -181,9 +203,14 @@ impl RegularInstruction {
     }
 }
 
-#[macro_export]
-macro_rules! instructions {
+pub macro instructions {
     ($($expr:expr),* $(,)?) => {vec![
         $($expr.into(),)*
-    ]};
+    ]}
+}
+
+pub macro instructions_with_span {
+    ($($expr:expr),* $(,)?) => {vec![
+        $(InstructionWithSpan::from($expr),)*
+    ]}
 }

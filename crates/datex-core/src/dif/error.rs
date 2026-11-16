@@ -1,4 +1,5 @@
 use crate::{
+    prelude::*,
     runtime::{
         cache::shared_values_cache::CacheValueRetrievalError,
         execution::ExecutionError,
@@ -78,7 +79,7 @@ impl From<CacheValueRetrievalError> for DIFUpdateError {
 
 #[derive(Debug)]
 pub enum DIFApplyError {
-    ExecutionError(ExecutionError),
+    ExecutionError(Box<ExecutionError>),
     ReferenceNotFound,
 }
 impl Display for DIFApplyError {

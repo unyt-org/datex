@@ -7,8 +7,12 @@ use crate::{
         error::NumberParseError,
     },
 };
+mod to_instructions;
 
-use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
+use crate::{
+    libs::core::type_id::CoreLibTypeId,
+    traits::get_core_lib_type_id::GetCoreLibTypeId,
+};
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, hash::Hash, num::ParseFloatError, result::Result};
 use num::ToPrimitive;
@@ -18,8 +22,22 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
+
+mod classification;
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
 pub mod equality;
+mod get_core_lib_type_id;
+mod get_datex_type;
 pub mod primitive;
+mod serde_dif;
+#[cfg(feature = "ast")]
+mod to_datex_expression_data;
+mod try_clone;
+pub mod update_handler;
+mod value_access;
 
 /// The decimal type variants to be used as a inline
 /// definition in DATEX (such as 42.4f32 or -42.4f32).
@@ -40,10 +58,12 @@ pub mod primitive;
     Serialize,
     Deserialize,
     Display,
+    Default,
 )]
 #[strum(serialize_all = "lowercase")]
 #[repr(u8)]
 pub enum DecimalTypeVariant {
+    #[default]
     F32,
     F64,
     DBig,
@@ -120,7 +140,7 @@ impl Hash for TypedDecimal {
 
 impl From<&TypedDecimal> for CoreLibTypeId {
     fn from(value: &TypedDecimal) -> Self {
-        CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(value.variant()))
+        value.core_lib_type_id()
     }
 }
 
@@ -212,6 +232,38 @@ impl TypedDecimal {
             TypedDecimal::F32(value) => value.into_inner() as f64,
             TypedDecimal::F64(value) => value.into_inner(),
             TypedDecimal::Decimal(value) => value.into_f64(),
+        }
+    }
+
+    /// Tries to borrow the inner f32 value if the TypedDecimal is of variant F32.
+    pub fn borrow_as_f32(&self) -> Option<&f32> {
+        match self {
+            TypedDecimal::F32(value) => Some(value.as_ref()),
+            _ => None,
+        }
+    }
+
+    /// Tries to borrow the inner f32 value if the TypedDecimal is of variant F32.
+    pub fn borrow_mut_as_f32(&mut self) -> Option<&mut f32> {
+        match self {
+            TypedDecimal::F32(value) => Some(value.as_mut()),
+            _ => None,
+        }
+    }
+
+    /// Tries to borrow the inner f64 value if the TypedDecimal is of variant F64.
+    pub fn borrow_as_f64(&self) -> Option<&f64> {
+        match self {
+            TypedDecimal::F64(value) => Some(value.as_ref()),
+            _ => None,
+        }
+    }
+
+    /// Tries to borrow the inner f64 value if the TypedDecimal is of variant F64.
+    pub fn borrow_mut_as_f64(&mut self) -> Option<&mut f64> {
+        match self {
+            TypedDecimal::F64(value) => Some(value.as_mut()),
+            _ => None,
         }
     }
 
@@ -329,6 +381,14 @@ impl TypedDecimal {
             TypedDecimal::Decimal(value) => format!("{}dbig", value),
         }
     }
+
+    pub fn to_string_with_suffix_separated(&self) -> String {
+        match self {
+            TypedDecimal::F32(value) => format!("{}_f32", value.into_inner()),
+            TypedDecimal::F64(value) => format!("{}_f64", value.into_inner()),
+            TypedDecimal::Decimal(value) => format!("{}_dbig", value),
+        }
+    }
 }
 
 impl Display for TypedDecimal {
@@ -367,9 +427,11 @@ impl From<f64> for TypedDecimal {
 #[cfg(test)]
 mod tests {
     use crate::{
-        assert_structural_eq, assert_value_eq,
         prelude::*,
-        traits::{structural_eq::StructuralEq, value_eq::ValueEq},
+        traits::{
+            structural_eq::{StructuralEq, assert_structural_eq},
+            value_eq::{ValueEq, assert_value_eq},
+        },
         values::core_values::{
             decimal::{
                 Decimal,
@@ -687,7 +749,38 @@ mod tests {
     }
 
     #[test]
-    fn nan_equality() {
+    fn try_from_string_and_variant() {
+        let a = TypedDecimal::try_from_string_and_variant(
+            "1e40",
+            DecimalTypeVariant::F32,
+        );
+        assert!(a.is_err());
+        assert_eq!(a.err().unwrap(), NumberParseError::OutOfRange);
+
+        let b = TypedDecimal::try_from_string_and_variant(
+            "-1e40",
+            DecimalTypeVariant::F32,
+        );
+        assert!(b.is_err());
+        assert_eq!(b.err().unwrap(), NumberParseError::OutOfRange);
+
+        let c = TypedDecimal::try_from_string_and_variant(
+            "1e1000",
+            DecimalTypeVariant::F64,
+        );
+        assert!(c.is_err());
+        assert_eq!(c.err().unwrap(), NumberParseError::OutOfRange);
+
+        let d = TypedDecimal::try_from_string_and_variant(
+            "-1e1000",
+            DecimalTypeVariant::F64,
+        );
+        assert!(d.is_err());
+        assert_eq!(d.err().unwrap(), NumberParseError::OutOfRange);
+    }
+
+    #[test]
+    fn test_nan_equality() {
         let nan_f32_a = TypedDecimal::from(f32::NAN);
         let nan_f32_b = TypedDecimal::from(f32::NAN);
         let nan_f64_a = TypedDecimal::from(f64::NAN);

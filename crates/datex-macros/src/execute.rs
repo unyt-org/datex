@@ -110,7 +110,8 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         )
         .to_compile_error();
     }
-    let DXBWithSharedValues { dxb, shared_values } = dxb.unwrap().0;
+    let DXBWithSharedValues { dxb, shared_values } =
+        dxb.unwrap().dxb_with_shared_values;
 
     if dxb.is_empty() {
         return syn::Error::new(
@@ -143,11 +144,6 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
             dxb: vec![#(#dxb),*],
             shared_values: vec![],
         };
-
-        // println!("runtime_execution_stack.values.len() = {}", datex_core::decompiler::decompile_body(
-        //     &dxb_with_shared_values.dxb,
-        //     datex_core::decompiler::DecompileOptions::colorized(),
-        // ).unwrap());
 
         let runtime = Runtime::stub();
         ExecutionInput::new_with_stack(

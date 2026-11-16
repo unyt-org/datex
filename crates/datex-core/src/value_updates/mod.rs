@@ -3,4 +3,6 @@ pub mod errors;
 pub mod update_data;
 pub mod update_handler;
 mod update_return;
+pub mod update_strategies;
+
 pub use update_return::*;

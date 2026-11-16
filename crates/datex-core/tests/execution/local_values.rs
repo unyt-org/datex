@@ -1,24 +1,14 @@
 /// Runtime execution tests that validate that values are consistent through
 /// the compile and execution process.
 /// Any value passed as input should be returned exactly as it was passed in after compilation and execution.
-use datex_core::compile;
-use datex_core::{
-    runtime::{
-        Runtime,
-        execution::{
-            ExecutionInput, ExecutionOptions, execute_dxb_sync,
-            execution_input::ExecutionCallerMetadata,
-        },
+use datex_core::values::{
+    core_values::{
+        decimal::{Decimal, typed_decimal::TypedDecimal},
+        integer::{Integer, typed_integer::TypedInteger},
+        list::List,
+        map::Map,
     },
-    values::{
-        core_values::{
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            integer::{Integer, typed_integer::TypedInteger},
-            list::List,
-            map::Map,
-        },
-        value_container::ValueContainer,
-    },
+    value_container::ValueContainer,
 };
 
 use crate::execution::compile_and_execute;
@@ -62,7 +52,7 @@ fn compile_and_execute_typed_decimals() {
 
 #[test]
 fn compile_and_execute_string() {
-    let input = ValueContainer::from("Hello, World!");
+    let input = ValueContainer::from("Hello, World!".to_string());
     let result = compile_and_execute(input.clone());
     assert_eq!(result, input);
 }
@@ -87,10 +77,10 @@ fn compile_and_execute_list() {
 
 #[test]
 fn compile_and_execute_map() {
-    let input = ValueContainer::from(Map::StructuralWithStringKeys(vec![
-        ("key1".to_string(), ValueContainer::from(Integer::from(1))),
-        ("key2".to_string(), ValueContainer::from("value")),
-        ("key3".to_string(), ValueContainer::from(true)),
+    let input = ValueContainer::from(Map::new_structural(vec![
+        ("key1".into(), ValueContainer::from(Integer::from(1))),
+        ("key2".into(), ValueContainer::from("value".to_string())),
+        ("key3".into(), ValueContainer::from(true)),
     ]));
     let result = compile_and_execute(input.clone());
     assert_eq!(result, input);

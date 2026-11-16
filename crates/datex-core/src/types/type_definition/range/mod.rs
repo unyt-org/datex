@@ -2,12 +2,20 @@ use crate::{prelude::*, types::r#type::Type};
 use core::fmt::Display;
 pub mod equality;
 mod serde_dif;
-
+mod to_instructions;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RangeTypeDefinition {
     pub start: Box<Type>,
     pub end: Box<Type>,
     // TODO inclusive / exclusive
+}
+impl RangeTypeDefinition {
+    pub fn new(start: Type, end: Type) -> Self {
+        Self {
+            start: Box::new(start),
+            end: Box::new(end),
+        }
+    }
 }
 
 impl Display for RangeTypeDefinition {

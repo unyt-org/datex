@@ -8,9 +8,10 @@ use datex_core::{
         core_compilation_context::{CompileInput, DXBWithSharedValues},
         value_compiler::compile_value_container,
     },
-    decompiler::{DecompileOptions, decompile_body},
+    decompiler::{DecompileOptions, dxb_to_source_code},
     runtime::{
         Runtime,
+        cache::shared_references_cache::SharedReferencesCache,
         execution::{
             ExecutionInput, ExecutionOptions, execute_dxb_sync,
             execution_input::ExecutionCallerMetadata,
@@ -74,7 +75,7 @@ pub fn json_to_runtime_value_baseline_json_syntax(json: &str) {
     assert!(json_value.is_object(), "Expected JSON to be an object");
 }
 
-pub fn json_to_runtime_value_datex<'a>(json: &'a str) {
+pub fn json_to_runtime_value_datex(json: &str) {
     let runtime = Runtime::stub();
 
     let (dxb, _) = compile_script(
@@ -92,7 +93,7 @@ pub fn json_to_runtime_value_datex<'a>(json: &'a str) {
         runtime,
     );
     let val = execute_dxb_sync(exec_input).unwrap().unwrap();
-    val.with_collapsed_value(|val| assert!(val.is_map()));
+    assert!(val.collapsed_value().borrow().is_collection_value());
 }
 
 pub fn json_to_runtime_value_datex_auto_static_detection(
@@ -109,7 +110,7 @@ pub fn json_to_runtime_value_datex_auto_static_detection(
     if let StaticValueOrDXB::StaticValue(value) = dxb {
         value.expect("Static Value should not be empty")
     } else {
-        core::panic!("Expected static value, but got DXB");
+        panic!("Expected static value, but got DXB");
     }
 }
 
@@ -120,7 +121,7 @@ pub fn json_to_runtime_value_datex_force_static_value(
     dxb.expect("Static Value should not be empty")
 }
 
-pub fn json_to_dxb<'a>(json: &'a str) {
+pub fn json_to_dxb(json: &str) {
     let (dxb, _) = compile_script(
         json,
         CompileOptions {
@@ -141,7 +142,7 @@ pub fn dxb_to_runtime_value(dxb: Vec<u8>) {
         Runtime::stub(),
     );
     let json_value = execute_dxb_sync(exec_input).unwrap().unwrap();
-    json_value.with_collapsed_value(|val| assert!(val.is_map()));
+    json_value.collapsed_value().borrow().is_collection_value();
 }
 
 // value -> JSON
@@ -161,21 +162,32 @@ pub fn runtime_value_to_json_baseline_json_syntax(value: &json_syntax::Value) {
 
 pub fn runtime_value_to_json_datex(value: &ValueContainer) {
     let pointer_lookup = PointerAvailabilityLookup::default();
+    let mut shared_references_cache = SharedReferencesCache::default();
     let input = CompileInput::new(&pointer_lookup, &[]);
-    let dxb = compile_value_container(value.clone(), input);
-    let string =
-        decompile_body(&dxb.dxb, DecompileOptions::json_compat()).unwrap();
+    let dxb =
+        compile_value_container(value, input, &mut shared_references_cache);
+    let string = dxb_to_source_code::dxb_to_source_code(
+        &dxb.dxb,
+        DecompileOptions::json_compat(),
+    )
+    .unwrap();
     assert!(!string.is_empty(), "Expected DATEX string to be non-empty");
 }
 
 pub fn runtime_value_to_dxb(value: &ValueContainer) {
     let pointer_lookup = PointerAvailabilityLookup::default();
+    let mut shared_references_cache = SharedReferencesCache::default();
     let input = CompileInput::new(&pointer_lookup, &[]);
-    let dxb = compile_value_container(value.clone(), input).dxb;
+    let dxb =
+        compile_value_container(value, input, &mut shared_references_cache).dxb;
     assert!(!dxb.is_empty(), "Expected DXB to be non-empty");
 }
 
 pub fn dxb_to_json(dxb: &[u8]) {
-    let string = decompile_body(dxb, DecompileOptions::json_compat()).unwrap();
+    let string = dxb_to_source_code::dxb_to_source_code(
+        dxb,
+        DecompileOptions::json_compat(),
+    )
+    .unwrap();
     assert!(!string.is_empty(), "Expected DATEX string to be non-empty");
 }

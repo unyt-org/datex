@@ -6,6 +6,7 @@ use crate::{
 
 /// Represents an ICE candidate initialization message in WebRTC.
 #[derive(Datex, Default, Debug)]
+#[datex(structural)]
 pub struct RTCIceCandidateInitDX {
     pub candidate: String,
     pub sdp_mid: Option<String>,
@@ -15,6 +16,7 @@ pub struct RTCIceCandidateInitDX {
 
 /// Represents the type of a WebRTC session description.
 #[derive(Datex, Default, Debug, PartialEq, Eq)]
+#[datex(structural)]
 pub enum RTCSdpTypeDX {
     #[default]
     Unspecified,
@@ -26,6 +28,7 @@ pub enum RTCSdpTypeDX {
 
 /// Represents a WebRTC session description.
 #[derive(Datex, Default, Debug, PartialEq, Eq)]
+#[datex(structural)]
 pub struct RTCSessionDescriptionDX {
     #[datex(rename = "type")]
     pub sdp_type: RTCSdpTypeDX,
@@ -34,6 +37,7 @@ pub struct RTCSessionDescriptionDX {
 
 /// Represents an ICE server configuration for WebRTC.
 #[derive(Datex, Default, Clone, Debug)]
+#[datex(structural)]
 pub struct RTCIceServerDX {
     pub urls: Vec<String>,
     pub username: Option<String>,
@@ -42,6 +46,7 @@ pub struct RTCIceServerDX {
 
 /// Represents the role of a WebRTC participant in a connection.
 #[derive(Datex, Debug, Default, PartialEq, Eq)]
+#[datex(structural)]
 pub enum WebRTCRoleDX {
     #[default]
     Offerer,
@@ -50,7 +55,9 @@ pub enum WebRTCRoleDX {
 
 /// Represents the setup data required for establishing a WebRTC interface.
 #[derive(Datex, Debug)]
+#[datex(structural)]
 pub struct WebRTCInterfaceSetupData {
+    // FIXME: must implement Clone
     /// The role of the WebRTC participant (Offerer or Answerer).
     pub role: WebRTCRoleDX,
     /// The label for the data channel to be used in the WebRTC connection (default is datex)
@@ -92,6 +99,7 @@ impl WebRTCInterfaceSetupData {
 }
 
 #[derive(Datex, Debug)]
+#[datex(structural)]
 pub enum WebRTCSignalDX {
     Description(RTCSessionDescriptionDX),
     IceCandidate(RTCIceCandidateInitDX),

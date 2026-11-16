@@ -1,39 +1,28 @@
 use crate::{
-    datex_proxy::DatexValueContainerProxyInfallibleSerialize,
-    global::{
-        protocol_structures::instruction_data::StackIndex,
-        root_properties::RootProperty,
+    global::root_properties::RootProperty,
+    runtime::{
+        Runtime,
+        execution::{ExecutionError, execution_input::ExecutionCallerMetadata},
     },
-    runtime::execution::{
-        ExecutionError, execution_loop::state::RuntimeExecutionState,
-    },
-    values::{core_values::map::Map, value_container::ValueContainer},
+    values::{value::Value, value_container::ValueContainer},
 };
 
-pub fn get_stack_value(
-    runtime_state: &RuntimeExecutionState,
-    index: StackIndex,
-) -> Result<&ValueContainer, ExecutionError> {
-    runtime_state.stack.get_stack_value(index)
-}
-
 pub fn get_root_property(
-    runtime_state: &RuntimeExecutionState,
+    runtime: &Runtime,
+    caller_metadata: &ExecutionCallerMetadata,
     root_property: RootProperty,
 ) -> Result<ValueContainer, ExecutionError> {
-    let runtime = &runtime_state.runtime;
     let res = match root_property {
         RootProperty::ENDPOINT => {
             ValueContainer::from(runtime.endpoint().clone())
         }
         RootProperty::CALLER => {
-            ValueContainer::from(runtime_state.caller_metadata.endpoint.clone())
+            ValueContainer::from(caller_metadata.endpoint.clone())
         }
-        RootProperty::ENV => {
-            ValueContainer::from(Map::from(runtime.internal.get_env()))
-        }
+        RootProperty::ENV => ValueContainer::from(runtime.internal.get_env()),
+        RootProperty::NAME => ValueContainer::from(runtime.internal.get_name()),
         RootProperty::CONFIG => {
-            runtime_state.runtime.config().clone().to_value_container()
+            ValueContainer::Local(Value::native(runtime.config().clone()))
         }
     };
     Ok(res)

@@ -17,8 +17,8 @@ use crate::{
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
-#[derive(Datex, Serialize, Deserialize)]
-
+#[derive(Datex, Clone, Serialize, Deserialize)]
+#[datex(structural)]
 pub struct HTTPServerInterfaceSetupData {
     /// The address to bind the HTTP server to (e.g., "0.0.0.0:8080").
     pub bind_address: String,

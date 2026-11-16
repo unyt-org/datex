@@ -1,15 +1,16 @@
-use strum::AsRefStr;
+use strum::{AsRefStr, EnumString, VariantNames};
 pub mod type_definition;
 use crate::types::type_definition::{
     collection::type_definition::{
-        list::ListCollectionTypeDefinition,
-        list_slice::ListSliceCollectionTypeDefinition,
-        map::MapCollectionTypeDefinition,
+        ListCollectionTypeDefinition, ListSliceCollectionTypeDefinition,
+        MapCollectionTypeDefinition, ReceiverTypeDefinition,
+        SenderTypeDefinition,
     },
     range::RangeTypeDefinition,
 };
 use core::fmt::Display;
 pub mod serde_dif;
+mod to_instructions;
 // TODO #377: Rename to Generic type definition?
 #[derive(Debug, Clone, PartialEq, Hash, Eq, AsRefStr)]
 #[strum(serialize_all = "snake_case")]
@@ -23,6 +24,24 @@ pub enum CollectionTypeDefinition {
     // e.g. {string: integer}
     Map(MapCollectionTypeDefinition),
     Range(RangeTypeDefinition),
+
+    // Sender<T>
+    Sender(SenderTypeDefinition),
+    // Receiver<T>
+    Receiver(ReceiverTypeDefinition),
+}
+
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, AsRefStr, EnumString, VariantNames,
+)]
+#[strum(serialize_all = "snake_case")]
+pub enum CollectionTypeDefinitionKind {
+    List,
+    ListSlice,
+    Map,
+    Range,
+    Sender,
+    Receiver,
 }
 
 impl Display for CollectionTypeDefinition {
@@ -36,6 +55,8 @@ impl Display for CollectionTypeDefinition {
             CollectionTypeDefinition::Range(range) => {
                 core::write!(f, "{}", range)
             }
+            CollectionTypeDefinition::Sender(ty) => core::write!(f, "{}", ty),
+            CollectionTypeDefinition::Receiver(ty) => core::write!(f, "{}", ty),
         }
     }
 }

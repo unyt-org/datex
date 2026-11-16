@@ -1,6 +1,9 @@
 use datex_core::{
     compiler::{CompileOptions, compile_script},
-    decompiler::{DecompileOptions, FormattingOptions, decompile_body},
+    decompiler::{
+        DecompileOptions, FormattingOptions,
+        dxb_to_source_code::dxb_to_source_code,
+    },
     runtime::Runtime,
 };
 use log::info;
@@ -11,8 +14,8 @@ fn compare_compiled_with_decompiled(datex_script: &str) {
         compile_script(datex_script, CompileOptions::default(), runtime)
             .unwrap();
 
-    let decompiled = decompile_body(&dxb, DecompileOptions::compact())
-        .unwrap_or_else(|err| core::panic!("Failed to decompile: {err:?}"));
+    let decompiled = dxb_to_source_code(&dxb, DecompileOptions::compact())
+        .unwrap_or_else(|err| panic!("Failed to decompile: {err:?}"));
 
     info!("original   : {datex_script}");
     info!("decompiled : {decompiled}");
@@ -26,16 +29,16 @@ fn compare_compiled(datex_script: &str, expected: &str) {
         compile_script(datex_script, CompileOptions::default(), runtime)
             .unwrap();
 
-    let decompiled_color = decompile_body(
+    let decompiled_color = dxb_to_source_code(
         &dxb,
         DecompileOptions {
             formatting_options: FormattingOptions::compact(),
             resolve_slots: true,
         },
     )
-    .unwrap_or_else(|err| core::panic!("Failed to decompile: {err:?}"));
-    let decompiled = decompile_body(&dxb, DecompileOptions::default())
-        .unwrap_or_else(|err| core::panic!("Failed to decompile: {err:?}"));
+    .unwrap_or_else(|err| panic!("Failed to decompile: {err:?}"));
+    let decompiled = dxb_to_source_code(&dxb, DecompileOptions::default())
+        .unwrap_or_else(|err| panic!("Failed to decompile: {err:?}"));
 
     info!("original   : {datex_script}");
     info!("expected : {expected}");
@@ -64,13 +67,16 @@ c";"#,
     compare_compiled_with_decompiled("true");
     compare_compiled_with_decompiled("false");
     compare_compiled_with_decompiled("null");
+    compare_compiled_with_decompiled("2026-04-13T18:28:09.415Z");
+    compare_compiled_with_decompiled("2026-04-13T18:28:09.000Z");
+    compare_compiled_with_decompiled("2026-04-13T18:28:00.000Z");
+    compare_compiled_with_decompiled("1970-01-01T00:00:00.000Z");
 }
 
 #[test]
 pub fn compile_expressions() {
     compare_compiled_with_decompiled("1+2;");
     compare_compiled_with_decompiled("[1,2]");
-    // ARR_START 1 2 3 SCOPE_END
     compare_compiled_with_decompiled("[1,2,3+4]");
     compare_compiled_with_decompiled("[1,2,[3,4,[5]]];");
     compare_compiled_with_decompiled("[1,2,[3],[4,5],6]");

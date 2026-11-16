@@ -3,7 +3,7 @@ use crate::values::core_values::endpoint::Endpoint;
 
 use crate::{prelude::*, shared_values::RemotePointerAddress};
 use binrw::{BinRead, BinWrite};
-use core::{fmt::Display, prelude::rust_2024::*};
+use core::fmt::Display;
 use itertools::Itertools;
 use modular_bitfield::prelude::*;
 

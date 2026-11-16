@@ -182,7 +182,7 @@ impl LanguageServer for LanguageServerBackend {
             .get_expression_at_position(&params.text_document_position_params);
 
         if let Some(expression) = expression {
-            Ok(match expression.data {
+            Ok(match *expression.data {
                 // show variable type info on hover
                 DatexExpressionData::VariableDeclaration(
                     VariableDeclaration {
@@ -201,7 +201,7 @@ impl LanguageServer for LanguageServerBackend {
                         variable_metadata.shape,
                         name,
                         variable_metadata.var_type.unwrap_or_else(|| {
-                            Type::core(CoreLibBaseTypeId::Unknown)
+                            Type::core(CoreLibBaseTypeId::Any)
                         })
                     )))
                 }
@@ -223,7 +223,7 @@ impl LanguageServer for LanguageServerBackend {
                         variable_metadata.shape,
                         name,
                         variable_metadata.var_type.unwrap_or_else(|| {
-                            Type::core(CoreLibBaseTypeId::Unknown)
+                            Type::core(CoreLibBaseTypeId::Any)
                         })
                     )))
                 }
@@ -302,7 +302,7 @@ impl LanguageServer for LanguageServerBackend {
         let expression = self
             .get_expression_at_position(&params.text_document_position_params);
         if let Some(expression) = expression {
-            match expression.data {
+            match *expression.data {
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id,
                     name: _,
@@ -439,7 +439,7 @@ mod tests {
     use super::*;
     use crate::{
         lsp::io::{Reader, Writer},
-        runtime::RuntimeRunner,
+        runtime::{CustomRuntimeInfo, RuntimeRunner},
     };
     use tokio::{
         task::LocalSet,
@@ -450,9 +450,12 @@ mod tests {
     async fn lsp_initialization() {
         LocalSet::new()
             .run_until(async move {
-                RuntimeRunner::new(RuntimeConfig::new_with_endpoint(
-                    Endpoint::from_str("@lspler").unwrap(),
-                ))
+                RuntimeRunner::new(
+                    RuntimeConfig::new_with_endpoint(
+                        Endpoint::from_str("@lspler").unwrap(),
+                    ),
+                    CustomRuntimeInfo::default(),
+                )
                 .run(async |runtime| {
                     let (tx_to_lsp, rx_from_client) =
                         mpsc::unbounded::<Vec<u8>>();

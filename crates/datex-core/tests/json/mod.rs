@@ -1,10 +1,9 @@
-use alloc::rc::Rc;
 use datex_core::{
-    assert_structural_eq,
     compiler::{CompileOptions, compile_script},
     core_compiler::core_compilation_context::DXBWithSharedValues,
     decompiler::{
-        DecompileOptions, FormattingMode, FormattingOptions, decompile_body,
+        DecompileOptions, FormattingMode, FormattingOptions,
+        dxb_to_source_code::dxb_to_source_code,
     },
     runtime::{
         Runtime,
@@ -13,10 +12,12 @@ use datex_core::{
             execution_input::ExecutionCallerMetadata,
         },
     },
-    traits::structural_eq::StructuralEq,
+    traits::structural_eq::assert_structural_eq,
     values::{
         core_value::CoreValue,
-        core_values::{decimal::Decimal, integer::Integer, map::Map},
+        core_values::{
+            decimal::Decimal, integer::Integer, list::List, map::Map,
+        },
         value::Value,
         value_container::ValueContainer,
     },
@@ -51,7 +52,7 @@ fn json_value_to_datex_value(json: &json_syntax::Value) -> Value {
         }
         json_syntax::Value::Boolean(b) => Value::from(*b),
         json_syntax::Value::Array(arr) => {
-            let mut vec = Vec::new();
+            let mut vec = List::default();
             for value in arr {
                 vec.push(json_value_to_datex_value(value));
             }
@@ -74,7 +75,6 @@ fn json_value_to_datex_value(json: &json_syntax::Value) -> Value {
 
 fn compare_datex_result_with_json(json_string: &str) {
     let runtime = Runtime::stub();
-    println!(" JSON String: {json_string}");
     let json_value = json_syntax::Value::parse_str(json_string).unwrap().0;
     let (dxb, _) =
         compile_script(json_string, CompileOptions::default(), runtime.clone())
@@ -94,9 +94,8 @@ fn compare_datex_result_with_json(json_string: &str) {
     println!(" JSON Value: {json_value}");
     println!(" DATEX Value: {datex_value}",);
     println!(" Converted JSON Value: {json_value_converted}",);
-    datex_value.with_collapsed_value(|v| {
-        assert_structural_eq!(json_value_converted, *v);
-    })
+    let collapsed = datex_value.collapsed_value();
+    assert_structural_eq!(json_value_converted, *collapsed.borrow());
 }
 
 fn get_datex_decompiled_from_json(json_string: &str) -> String {
@@ -104,7 +103,7 @@ fn get_datex_decompiled_from_json(json_string: &str) -> String {
     let (dxb, _) =
         compile_script(json_string, CompileOptions::default(), runtime)
             .unwrap();
-    let decompiled = decompile_body(
+    let decompiled = dxb_to_source_code(
         &dxb,
         DecompileOptions {
             formatting_options: FormattingOptions {
@@ -119,7 +118,7 @@ fn get_datex_decompiled_from_json(json_string: &str) -> String {
     // try to parse JSON, if failed, panic
     let parsed_json = json_syntax::Value::parse_str(&decompiled);
     if parsed_json.is_err() {
-        core::panic!(
+        panic!(
             "Decompiled JSON is not valid: {decompiled}, error: {:?}",
             parsed_json.unwrap_err()
         );
@@ -133,9 +132,6 @@ fn compare_datex_result_with_expected(
     path: PathBuf,
 ) {
     let datex_decompiled = get_datex_decompiled_from_json(json_string);
-
-    // println!(" Expected: {expected}");
-    // println!(" Decompiled: {datex_decompiled}");
     assert_eq!(
         normalize_newlines(&datex_decompiled),
         normalize_newlines(expected),

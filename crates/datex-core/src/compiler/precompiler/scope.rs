@@ -1,12 +1,18 @@
-use crate::collections::HashMap;
+use crate::{ast::expressions::ValueAccessType, collections::HashMap};
 
 use crate::prelude::*;
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum ExternalVariable {
+    Registered(usize),
+    UnresolvedPlaceholder(usize, ValueAccessType),
+}
 
 #[derive(Default, Debug, Clone)]
 pub struct PrecompilerScope {
     pub realm_index: usize,
     pub variable_ids_by_name: HashMap<String, usize>,
-    pub external_variables: HashSet<usize>,
+    pub external_variables: HashSet<ExternalVariable>,
 }
 
 impl PrecompilerScope {
@@ -19,8 +25,11 @@ impl PrecompilerScope {
     }
 
     /// Registers the use of an external variable in the current scope
-    pub fn register_external_variable(&mut self, variable_id: usize) {
-        self.external_variables.insert(variable_id);
+    pub fn register_external_variable(
+        &mut self,
+        external_variable: ExternalVariable,
+    ) {
+        self.external_variables.insert(external_variable);
     }
 }
 

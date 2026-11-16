@@ -2,16 +2,26 @@ use crate::{
     prelude::*,
     values::value_container::{ValueContainer, error::ValueError},
 };
+mod to_instructions;
 
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, result::Result};
-use serde::{Deserialize, Serialize};
+mod classification;
+pub mod convert_parts;
+mod datex_hash;
+pub mod datex_native;
+mod datex_native_structural;
 pub mod equality;
+pub mod get_core_lib_type_id;
+pub mod get_datex_type;
 pub mod ops;
+mod serde_dif;
+#[cfg(feature = "ast")]
+mod to_datex_expression_data;
+mod try_clone;
+mod value_access;
 
-#[derive(
-    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, BinRead, BinWrite,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, BinRead, BinWrite)]
 #[brw(little)]
 pub struct Boolean(
     #[br(map = |x: u8| x != 0)]
@@ -69,7 +79,7 @@ impl<T: Into<ValueContainer>> TryFrom<Option<T>> for Boolean {
                 let boolean: ValueContainer = v.into();
                 boolean
                     .try_into_value()
-                    .ok_or(ValueError::TypeConversionError)
+                    .map_err(|_| ValueError::TypeConversionError)
             }
             None => Err(ValueError::IsVoid),
         }

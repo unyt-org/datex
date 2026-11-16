@@ -1,5 +1,4 @@
 use crate::{
-    prelude::*,
     shared_values::{
         PointerAddress, RemotePointerAddress, SelfOwnedPointerAddress,
     },
@@ -31,7 +30,7 @@ impl SelfOwnedPointerAddressProvider {
         &self,
         raw_address: RemotePointerAddress,
     ) -> PointerAddress {
-        raw_address.normalize(&self.local_endpoint)
+        raw_address.normalize_for_local(&self.local_endpoint)
     }
 
     pub fn get_new_self_owned_address(&mut self) -> SelfOwnedPointerAddress {

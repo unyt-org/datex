@@ -12,10 +12,11 @@ use crate::{
     network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID,
     random::RandomState,
 };
+use alloc::rc::Weak;
 
 use crate::{disassembler::print_disassembled, prelude::*};
-use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
-use log::info;
+use core::{cell::RefCell, fmt::Debug};
+use log::{info, warn};
 use ringmap::RingMap;
 
 // TODO #170: store scope memory
@@ -49,6 +50,52 @@ impl Default for ScopeContext {
 // fn that gets a scope context as callback
 type SectionObserver = Box<dyn FnMut(IncomingSection)>;
 
+// FIXME: handle backpressure for incoming sections in block handler with optional bounded senders/receivers
+
+// pub type IncomingSectionSender = Sender<IncomingSection>;
+// pub type IncomingSectionReceiver = Receiver<IncomingSection>;
+//
+// const INCOMING_SECTIONS_CHANNEL_CAPACITY: usize = 2;
+//
+// pub fn create_incoming_sections_channel() -> (IncomingSectionSender, IncomingSectionReceiver) {
+//     create_bounded_channel(INCOMING_SECTIONS_CHANNEL_CAPACITY)
+// }
+
+pub type IncomingSectionSender = UnboundedSender<IncomingSection>;
+pub type IncomingSectionReceiver = UnboundedReceiver<IncomingSection>;
+pub fn create_incoming_sections_channel()
+-> (IncomingSectionSender, IncomingSectionReceiver) {
+    create_unbounded_channel()
+}
+
+/// A wrapper for the incoming section receiver that removes the observer from the block handler when dropped
+pub struct IncomingSectionReceiverWrapper {
+    rx: IncomingSectionReceiver,
+    key: (OutgoingContextId, OutgoingSectionIndex),
+    observers: Weak<
+        RefCell<
+            HashMap<
+                (OutgoingContextId, OutgoingSectionIndex),
+                Box<dyn FnMut(IncomingSection)>,
+            >,
+        >,
+    >,
+}
+
+impl IncomingSectionReceiverWrapper {
+    pub async fn next(&mut self) -> Option<IncomingSection> {
+        self.rx.next().await
+    }
+}
+
+impl Drop for IncomingSectionReceiverWrapper {
+    fn drop(&mut self) {
+        if let Some(observers) = self.observers.upgrade() {
+            observers.borrow_mut().remove(&self.key);
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct BlockHistoryData {
     /// if block originated from local endpoint, the socket uuid is None,
@@ -64,12 +111,14 @@ pub struct BlockHandler {
 
     /// a queue of incoming request scopes
     /// the scopes can be retrieved from the request_scopes map
-    pub incoming_sections_sender: RefCell<UnboundedSender<IncomingSection>>,
+    pub incoming_sections_sender: RefCell<IncomingSectionSender>,
 
     /// a map of observers for incoming response blocks (by context_id + block_index)
     /// contains an observer callback and an optional queue of blocks if the response block is a multi-block stream
-    pub section_observers: RefCell<
-        HashMap<(IncomingContextId, IncomingSectionIndex), SectionObserver>,
+    pub section_observers: Rc<
+        RefCell<
+            HashMap<(IncomingContextId, IncomingSectionIndex), SectionObserver>,
+        >,
     >,
 
     /// history of all incoming blocks
@@ -87,20 +136,21 @@ impl Debug for BlockHandler {
     }
 }
 
-const RING_MAP_CAPACITY: usize = 500;
-
 impl BlockHandler {
+    pub const DEFAULT_HISTORY_CAPACITY: usize = 200; // TODO: adjust for different targets;
+
     pub fn init(
-        incoming_sections_sender: UnboundedSender<IncomingSection>,
+        incoming_sections_sender: IncomingSectionSender,
+        history_capacity: usize,
     ) -> BlockHandler {
         BlockHandler {
             current_context_id: RefCell::new(0),
             block_cache: RefCell::new(HashMap::new()),
             incoming_sections_sender: RefCell::new(incoming_sections_sender),
-            section_observers: RefCell::new(HashMap::new()),
+            section_observers: Rc::new(RefCell::new(HashMap::new())),
             incoming_blocks_history: RefCell::new(
                 RingMap::with_capacity_and_hasher(
-                    RING_MAP_CAPACITY,
+                    history_capacity,
                     RandomState::default(),
                 ),
             ),
@@ -216,6 +266,7 @@ impl BlockHandler {
     ) -> Vec<IncomingSection> {
         let section_index = block.block_header.section_index;
         let block_number = block.block_header.block_number;
+        let skip_after_block = block.block_header.skip_after_block;
         let is_end_of_section =
             block.block_header.flags_and_timestamp.is_end_of_section();
         let is_end_of_context =
@@ -252,6 +303,30 @@ impl BlockHandler {
 
         // TODO #172: what happens if the endpoint has not received all blocks starting with block_number 0?
         // we should still potentially process those blocks
+
+        // special handling of skipped blocks:
+        if let Some(skip_after_block) = skip_after_block {
+            // if skip_after_block is set and is next_block_number is skip_after_block + 1
+            // set next_block_number to current block (skip all blocks up to the current block)
+            if scope_context.next_block_number == skip_after_block + 1 {
+                scope_context.next_block_number = block_number;
+            }
+            // if skip_after_block is set and next_block_number is less than or
+            // equal to skip_after_block, we still need to wait for some blocks
+            else if scope_context.next_block_number <= skip_after_block {
+                todo!()
+            }
+            // if skip_after_block is set and next_block_number is greater than skip_after_block + 1,
+            // we accidentally already received and handled blocks that should have been skipped.
+            else {
+                log::warn!(
+                    "Received block with skip_after_block={} but next_block_number is {}.",
+                    skip_after_block,
+                    scope_context.next_block_number
+                );
+                scope_context.next_block_number = block_number;
+            }
+        }
 
         // Case 2: if the block is the next expected block in the current section, put it into the
         // section block queue and try to drain blocks from the cache
@@ -374,21 +449,40 @@ impl BlockHandler {
         &self,
         context_id: OutgoingContextId,
         section_index: OutgoingSectionIndex,
-    ) -> UnboundedReceiver<IncomingSection> {
-        let (tx, rx) = create_unbounded_channel::<IncomingSection>();
+    ) -> IncomingSectionReceiverWrapper {
+        let (tx, rx) = create_incoming_sections_channel();
         let tx = Rc::new(RefCell::new(tx));
 
         // create observer callback for scope id + block index
         let observer = move |blocks: IncomingSection| {
-            tx.clone().borrow_mut().start_send(blocks).unwrap();
+            if let Err(_e) = tx.borrow_mut().start_send(blocks) {
+                warn!(
+                    "Failed to send incoming section to observer, receiver was dropped"
+                );
+            }
         };
+
+        // TODO: are multiple observers allowed?
+        if self
+            .section_observers
+            .borrow()
+            .contains_key(&(context_id, section_index))
+        {
+            panic!(
+                "Observer for incoming response block (scope={context_id}, block={section_index}) already exists"
+            );
+        }
 
         // add new scope observer
         self.section_observers
             .borrow_mut()
             .insert((context_id, section_index), Box::new(observer));
 
-        rx
+        IncomingSectionReceiverWrapper {
+            rx,
+            key: (context_id, section_index),
+            observers: Rc::downgrade(&self.section_observers),
+        }
     }
 
     /// Waits for incoming response block with a specific scope id and block index
@@ -413,13 +507,14 @@ mod tests {
         global::{
             dxb_block::{DXBBlock, IncomingSection},
             protocol_structures::{
-                block_header::{BlockHeader, BlockType, FlagsAndTimestamp},
+                block_header::{BlockHeader, FlagsAndTimestamp},
                 routing_header::{Receivers, RoutingHeader},
             },
         },
         values::core_values::endpoint::Endpoint,
     };
     use core::str::FromStr;
+    #[cfg(feature = "std")]
     use ntest_timeout::timeout;
 
     lazy_static::lazy_static! {
@@ -431,13 +526,16 @@ mod tests {
     #[tokio::test]
     async fn receive_single_block() {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
-            create_unbounded_channel::<IncomingSection>();
+            create_incoming_sections_channel();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender);
+        let block_handler = BlockHandler::init(
+            incoming_sections_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
         let context_id = block_handler.get_new_context_id();
 
         // Create a single DXB block
-        let mut block = DXBBlock {
+        let block = DXBBlock {
             block_header: BlockHeader {
                 context_id,
                 flags_and_timestamp: FlagsAndTimestamp::new()
@@ -474,9 +572,12 @@ mod tests {
     #[tokio::test]
     async fn receive_multiple_blocks() {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
-            create_unbounded_channel::<IncomingSection>();
+            create_incoming_sections_channel();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender);
+        let block_handler = BlockHandler::init(
+            incoming_sections_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
 
         let context_id = block_handler.get_new_context_id();
         let section_index = 42;
@@ -531,7 +632,7 @@ mod tests {
         let mut section = incoming_sections_receiver.next().await.unwrap();
         match &section {
             IncomingSection::BlockStream((
-                Some(blocks),
+                Some(_),
                 incoming_context_section_id,
             )) => {
                 // section must match
@@ -543,7 +644,7 @@ mod tests {
                 // blocks queue must contain the first block
                 assert!(section.next().await.is_some());
             }
-            _ => core::panic!("Expected a BlockStream section"),
+            _ => panic!("Expected a BlockStream section"),
         }
 
         // 2. Send second block
@@ -553,7 +654,7 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                Some(blocks),
+                Some(_),
                 incoming_context_section_id,
             )) => {
                 // section must match
@@ -564,7 +665,7 @@ mod tests {
                 // blocks queue length must be 2 (was not yet drained)
                 assert_eq!(section.drain().await.len(), 1);
             }
-            _ => core::panic!("Expected a BlockStream section"),
+            _ => panic!("Expected a BlockStream section"),
         }
     }
 
@@ -573,7 +674,10 @@ mod tests {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender);
+        let block_handler = BlockHandler::init(
+            incoming_sections_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
 
         let context_id = block_handler.get_new_context_id();
         let section_index = 42;
@@ -630,7 +734,7 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                Some(blocks),
+                Some(_),
                 incoming_context_section_id,
             )) => {
                 // section must match
@@ -650,16 +754,19 @@ mod tests {
                 let block = blocks.get(1).unwrap();
                 assert_eq!(block.block_header.block_number, 1);
             }
-            _ => core::panic!("Expected a BlockStream section"),
+            _ => panic!("Expected a BlockStream section"),
         }
     }
 
     #[tokio::test]
     async fn receive_multiple_sections() {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
-            create_unbounded_channel::<IncomingSection>();
+            create_incoming_sections_channel();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender);
+        let block_handler = BlockHandler::init(
+            incoming_sections_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
 
         let context_id = block_handler.get_new_context_id();
         let section_index_1 = 42;
@@ -754,7 +861,7 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                Some(blocks),
+                Some(_),
                 incoming_context_section_id,
             )) => {
                 // section must match
@@ -765,7 +872,7 @@ mod tests {
                 // block queue must contain the first block
                 assert!(section.next().await.is_some());
             }
-            _ => core::panic!("Expected a BlockStream section"),
+            _ => panic!("Expected a BlockStream section"),
         }
 
         // 2. Send second block
@@ -774,7 +881,7 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                Some(blocks),
+                Some(_),
                 incoming_context_section_id,
             )) => {
                 // section must match
@@ -786,7 +893,7 @@ mod tests {
                 // blocks queue length must be 1
                 assert_eq!(section.drain().await.len(), 1);
             }
-            _ => core::panic!("Expected a BlockStream section"),
+            _ => panic!("Expected a BlockStream section"),
         }
 
         // 3. Send third block
@@ -797,7 +904,7 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                Some(blocks),
+                Some(_),
                 incoming_context_section_id,
             )) => {
                 // section must match
@@ -808,7 +915,7 @@ mod tests {
                 // block queue must contain the first block
                 assert!(section.next().await.is_some());
             }
-            _ => core::panic!("Expected a BlockStream section"),
+            _ => panic!("Expected a BlockStream section"),
         }
 
         // 4. Send fourth block
@@ -818,7 +925,7 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                Some(blocks),
+                Some(_),
                 incoming_context_section_id,
             )) => {
                 // section must match
@@ -829,7 +936,7 @@ mod tests {
                 // blocks queue length must be 1
                 assert_eq!(section.drain().await.len(), 1);
             }
-            _ => core::panic!("Expected a BlockStream section"),
+            _ => panic!("Expected a BlockStream section"),
         }
     }
 
@@ -837,10 +944,14 @@ mod tests {
     #[timeout(2000)]
     #[cfg(feature = "std")]
     async fn await_response_block() {
-        let (incoming_sections_sender, mut incoming_sections_receiver) =
-            create_unbounded_channel::<IncomingSection>();
+        use crate::global::protocol_structures::block_header::BlockType;
+        let (incoming_sections_sender, _incoming_sections_receiver) =
+            create_incoming_sections_channel();
 
-        let block_handler = BlockHandler::init(incoming_sections_sender);
+        let block_handler = BlockHandler::init(
+            incoming_sections_sender,
+            BlockHandler::DEFAULT_HISTORY_CAPACITY,
+        );
 
         let context_id = block_handler.get_new_context_id();
         let section_index = 42;
@@ -882,7 +993,7 @@ mod tests {
                 assert_eq!(block.block_header.context_id, context_id);
                 assert_eq!(block.block_header.section_index, section_index);
             }
-            _ => core::panic!("Expected a SingleBlock section"),
+            _ => panic!("Expected a SingleBlock section"),
         }
     }
 }

@@ -15,7 +15,12 @@ use crate::{
     },
 };
 
-use crate::{prelude::*, runtime::Runtime};
+use crate::{
+    prelude::*,
+    runtime::{
+        Runtime, execution::execution_loop::state::RuntimeExecutionStack,
+    },
+};
 pub use local::*;
 use log::info;
 pub use remote::*;
@@ -24,6 +29,55 @@ pub use script::*;
 mod local;
 mod remote;
 mod script;
+
+/// Represents an execution context that can be either final (dropped after execution) or persisted (kept for future executions).
+/// Depending on this, the [is_end_of_context] flag is set to true or false on the DXB block
+pub enum FinalOrPersistedExecutionContext<'a> {
+    /// The execution is no longer used afterwards and will be dropped after the execution is finished
+    Final(ExecutionContext),
+    /// The execution context is only given as a reference and will be persisted after the execution is finished.
+    /// This allows reusing the same execution context for multiple executions.
+    Ongoing(&'a mut ExecutionContext),
+}
+
+impl FinalOrPersistedExecutionContext<'_> {
+    /// Returns true if the execution context is final and will be dropped after the execution is finished.
+    pub fn is_end_of_context(&self) -> bool {
+        matches!(self, FinalOrPersistedExecutionContext::Final(_))
+    }
+}
+
+impl AsRef<ExecutionContext> for FinalOrPersistedExecutionContext<'_> {
+    fn as_ref(&self) -> &ExecutionContext {
+        match self {
+            FinalOrPersistedExecutionContext::Final(context) => context,
+            FinalOrPersistedExecutionContext::Ongoing(context) => context,
+        }
+    }
+}
+
+impl AsMut<ExecutionContext> for FinalOrPersistedExecutionContext<'_> {
+    fn as_mut(&mut self) -> &mut ExecutionContext {
+        match self {
+            FinalOrPersistedExecutionContext::Final(context) => context,
+            FinalOrPersistedExecutionContext::Ongoing(context) => context,
+        }
+    }
+}
+
+impl From<ExecutionContext> for FinalOrPersistedExecutionContext<'_> {
+    fn from(context: ExecutionContext) -> Self {
+        FinalOrPersistedExecutionContext::Final(context)
+    }
+}
+
+impl<'a> From<&'a mut ExecutionContext>
+    for FinalOrPersistedExecutionContext<'a>
+{
+    fn from(context: &'a mut ExecutionContext) -> Self {
+        FinalOrPersistedExecutionContext::Ongoing(context)
+    }
+}
 
 /// An execution context holds the persistent state for executing multiple scripts sequentially within the same context.
 /// This can be either a local context, which is used for executing scripts in the same process, or a remote context,
@@ -40,7 +94,7 @@ impl ExecutionContext {
                 vec![Endpoint::LOCAL]
             }
             ExecutionContext::Remote(remote_context) => {
-                vec![remote_context.endpoint.clone()]
+                remote_context.endpoints().to_vec()
             }
         }
     }
@@ -95,6 +149,7 @@ impl ExecutionContext {
         inserted_values: &[ValueContainer],
         receivers: Vec<Endpoint>,
     ) -> Result<DXBWithSharedValues, SpannedCompilerError> {
+        use crate::compiler::compilation_result::CompilationResult;
         let compile_scope = self.compile_scope();
         // TODO #107: don't clone compile_scope if possible
         let res = compile_template(
@@ -108,9 +163,13 @@ impl ExecutionContext {
             self.runtime().clone(),
         );
         match res {
-            Ok((result, compile_scope)) => {
-                self.set_compile_scope(compile_scope);
-                Ok(result)
+            Ok(CompilationResult {
+                dxb_with_shared_values,
+                scope,
+                ..
+            }) => {
+                self.set_compile_scope(scope);
+                Ok(dxb_with_shared_values)
             }
             Err(err) => Err(err),
         }
@@ -127,10 +186,11 @@ impl ExecutionContext {
 
         #[cfg(feature = "decompiler")]
         {
-            let decompiled = crate::decompiler::decompile_body(
-                dxb,
-                crate::decompiler::DecompileOptions::colorized(),
-            );
+            let decompiled =
+                crate::decompiler::dxb_to_source_code::dxb_to_source_code(
+                    dxb,
+                    crate::decompiler::DecompileOptions::colorized(),
+                );
             if let Err(e) = decompiled {
                 info!("\x1b[31m[Decompiler Error] {e}\x1b[0m");
             } else {
@@ -145,6 +205,7 @@ impl ExecutionContext {
     fn get_local_execution_input(
         &mut self,
         input: DXBWithSharedValues,
+        initial_stack_values: Option<Vec<ValueContainer>>,
     ) -> Result<ExecutionInput, ExecutionError> {
         // show DXB and decompiled code if verbose is enabled
         if let ExecutionContext::Local(LocalExecutionContext {
@@ -157,7 +218,7 @@ impl ExecutionContext {
 
         match self {
             ExecutionContext::Remote(_) => {
-                core::panic!("Remote execution requires a Runtime");
+                panic!("Remote execution requires a Runtime");
             }
             ExecutionContext::Local(LocalExecutionContext {
                 runtime,
@@ -167,13 +228,28 @@ impl ExecutionContext {
                 caller_metadata,
                 ..
             }) => {
-                let input = ExecutionInput::new_with_loop_state(
-                    input,
-                    caller_metadata.clone(),
-                    (*execution_options).clone(),
-                    runtime.clone(),
-                    loop_state.take(),
-                );
+                let input =
+                    if let Some(initial_stack_values) = initial_stack_values {
+                        // if we already have a loop state but also provided new initial stack values, this is an invalid state
+                        if loop_state.is_some() {
+                            return Err(ExecutionError::InvalidExecutionState);
+                        }
+                        ExecutionInput::new_with_stack(
+                            input,
+                            caller_metadata.clone(),
+                            (*execution_options).clone(),
+                            runtime.clone(),
+                            RuntimeExecutionStack::new(initial_stack_values),
+                        )
+                    } else {
+                        ExecutionInput::new_with_loop_state(
+                            input,
+                            caller_metadata.clone(),
+                            (*execution_options).clone(),
+                            runtime.clone(),
+                            loop_state.take(),
+                        )
+                    };
 
                 Ok(input)
             }
@@ -184,8 +260,10 @@ impl ExecutionContext {
     pub fn execute_dxb_sync(
         &mut self,
         dxb: DXBWithSharedValues,
+        initial_stack_values: Option<Vec<ValueContainer>>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let execution_input = self.get_local_execution_input(dxb)?;
+        let execution_input =
+            self.get_local_execution_input(dxb, initial_stack_values)?;
         let res = execute_dxb_sync(execution_input);
         self.intercept_intermediate_result(res)
     }
@@ -197,28 +275,32 @@ impl ExecutionContext {
         script: &str,
         inserted_values: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
+        // TODO: insert values as stack values, don't compile?
         let dxb =
             self.compile(script, inserted_values, vec![Endpoint::LOCAL])?;
-        self.execute_dxb_sync(dxb)
+        self.execute_dxb_sync(dxb, None)
             .map_err(ScriptExecutionError::from)
     }
 
     pub async fn execute_dxb(
         &mut self,
         input: DXBWithSharedValues,
+        initial_stack_values: Option<Vec<ValueContainer>>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         match self {
             ExecutionContext::Local(..) => {
                 let res = {
-                    let execution_input =
-                        self.get_local_execution_input(input)?;
+                    let execution_input = self.get_local_execution_input(
+                        input,
+                        initial_stack_values,
+                    )?;
                     execute_dxb(execution_input).await
                 };
                 self.intercept_intermediate_result(res)
             }
             // remote execution is not supported directly in execution context
             ExecutionContext::Remote(..) => {
-                core::panic!("Remote execution requires a Runtime");
+                panic!("Remote execution requires a Runtime");
             }
         }
     }
@@ -241,7 +323,7 @@ impl ExecutionContext {
                         ..
                     }) => {
                         loop_state.replace(state);
-                        Ok(intermediate_result)
+                        Ok(*intermediate_result)
                     }
                     _ => unreachable!(), // note: this must be ensured by the caller
                 }
@@ -256,9 +338,10 @@ impl ExecutionContext {
         script: &str,
         inserted_values: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
+        // TODO: insert values as stack values, don't compile?
         let dxb =
             self.compile(script, inserted_values, vec![Endpoint::LOCAL])?;
-        self.execute_dxb(dxb)
+        self.execute_dxb(dxb, None)
             .await
             .map_err(ScriptExecutionError::from)
     }

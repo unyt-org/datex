@@ -1,6 +1,8 @@
 use datex_core::{
-    compile,
-    compiler::{CompileOptions, compile_template, scope::CompilationScope},
+    compiler::{
+        CompileOptions, compilation_result::CompilationResult,
+        compile_template, scope::CompilationScope,
+    },
     disassembler::{
         options::DisassemblerOptions, print_disassembled_with_options,
     },
@@ -11,9 +13,7 @@ use datex_core::{
             execution_input::ExecutionCallerMetadata,
         },
     },
-    shared_values::{
-        ReferenceMutability, ReferencedSharedContainer, SharedContainer,
-    },
+    shared_values::{ReferenceMutability, SharedContainer},
     values::{
         core_values::{endpoint::Endpoint, list::List},
         value_container::ValueContainer,
@@ -23,6 +23,7 @@ use datex_core::{
 pub mod local_values;
 pub mod shared_values;
 
+pub mod types;
 /// Compiles and executes a script that takes a single value input.
 /// Compiles local values and owned shared values as "?", and shared references as "'?" or "'mut ?" depending on their mutability.
 pub fn compile_and_execute(input: ValueContainer) -> ValueContainer {
@@ -63,7 +64,10 @@ fn compile_and_execute_multiple(
     );
     // FIXME can we make this cleaner, by using one of the other 10000 helper functions doing the same shit
 
-    let (dxb, _) = compile_template(
+    let CompilationResult {
+        dxb_with_shared_values,
+        ..
+    } = compile_template(
         &script,
         input.into_iter().map(Some).collect::<Vec<_>>(),
         CompileOptions::new(CompilationScope::default(), vec![Endpoint::LOCAL]),
@@ -71,10 +75,13 @@ fn compile_and_execute_multiple(
     )
     .unwrap();
 
-    print_disassembled_with_options(&dxb.dxb, DisassemblerOptions::default());
+    print_disassembled_with_options(
+        &dxb_with_shared_values.dxb,
+        DisassemblerOptions::default(),
+    );
 
     let result = execute_dxb_sync(ExecutionInput::new(
-        dxb,
+        dxb_with_shared_values,
         ExecutionCallerMetadata::local_default(),
         ExecutionOptions { verbose: true },
         runtime,

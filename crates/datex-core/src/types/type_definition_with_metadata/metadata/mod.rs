@@ -7,7 +7,9 @@ use crate::shared_values::{
     SharedContainerMutability, SharedContainerOwnership,
 };
 use serde::{Deserialize, Serialize};
+pub mod to_instructions;
 pub mod type_match;
+
 #[derive(
     Debug,
     Clone,
@@ -183,6 +185,11 @@ impl TypeMetadata {
             TypeMetadata::Shared { .. } => true,
             TypeMetadata::Local { .. } => false,
         }
+    }
+
+    /// Whether this is the default metadata without any prefix
+    pub fn is_default_metadata(&self) -> bool {
+        *self == TypeMetadata::default()
     }
 }
 

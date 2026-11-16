@@ -6,7 +6,7 @@ pub fn derive_core_string(input: DeriveInput) -> TokenStream {
     let name = input.ident;
 
     let Data::Enum(DataEnum { variants, .. }) = input.data else {
-        core::panic!("#[derive(CoreLibString)] only works on enums");
+        panic!("#[derive(CoreLibString)] only works on enums");
     };
 
     // Create match arms for Display and FromStr

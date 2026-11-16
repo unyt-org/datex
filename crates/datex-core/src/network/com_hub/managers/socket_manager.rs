@@ -10,7 +10,7 @@ use crate::{
 use core::cell::{Ref, RefCell, RefMut};
 use datex_macros_internal::Datex;
 use futures::channel::oneshot;
-use futures_util::{FutureExt, future::join_all};
+use futures_util::future::join_all;
 use itertools::Itertools;
 use log::{debug, error, info};
 
@@ -32,8 +32,8 @@ pub struct EndpointIterateOptions<'a> {
     pub exclude_sockets: &'a [ComInterfaceSocketUUID],
 }
 
-#[derive(Debug, Clone, Datex)]
-
+#[derive(Datex, Debug, Clone)]
+#[datex(structural)]
 pub struct DynamicEndpointProperties {
     pub known_since: u64,
     pub distance: i8,
@@ -53,6 +53,8 @@ pub struct SocketData {
     pub(crate) endpoints: HashSet<Endpoint>,
     pub(crate) close_sender: Option<oneshot::Sender<oneshot::Sender<()>>>,
     pub(crate) socket_ready_sender: Option<oneshot::Sender<Result<(), ()>>>,
+    /// Set to true when the parent [ComInterfaceConfiguration] has `has_single_socket` set to true
+    pub(crate) interface_has_single_socket: bool,
 }
 
 pub struct ComInterfaceSocketManager {
@@ -115,6 +117,21 @@ impl ComInterfaceSocketManager {
             .entry(endpoint)
             .or_default()
             .insert(socket_uuid.clone());
+    }
+
+    /// Removes a socket from the blocklist of a specific endpoint
+    pub fn remove_socket_from_endpoint_blocklist(
+        &self,
+        endpoint: &Endpoint,
+        socket_uuid: &ComInterfaceSocketUUID,
+    ) {
+        if let Some(list) = self
+            .endpoint_sockets_blacklist
+            .borrow_mut()
+            .get_mut(endpoint)
+        {
+            list.remove(socket_uuid);
+        }
     }
 
     /// Registers a new endpoint that is reachable over the socket if the socket is not
@@ -332,10 +349,7 @@ impl ComInterfaceSocketManager {
         let direct_endpoint = socket.socket_properties.direct_endpoint.clone();
 
         if self.has_socket(&socket_uuid) {
-            core::panic!(
-                "Socket {} already exists in SocketManager",
-                socket_uuid
-            );
+            panic!("Socket {} already exists in SocketManager", socket_uuid);
         }
 
         info!(
@@ -389,7 +403,7 @@ impl ComInterfaceSocketManager {
         let can_receive = socket.socket_properties.direction.can_receive();
         let socket_uuid = socket.socket_properties.uuid().clone();
         if self.has_socket(&socket_uuid) {
-            core::panic!("Socket {} already exists in ComHub", socket_uuid);
+            panic!("Socket {} already exists in ComHub", socket_uuid);
         }
 
         info!(
@@ -460,7 +474,7 @@ impl ComInterfaceSocketManager {
                 InterfaceDirection::InOut => 0,
                 InterfaceDirection::Out => 1,
                 InterfaceDirection::In => {
-                    core::panic!("Socket {socket_uuid} is not allowed to be used as fallback socket")
+                    panic!("Socket {socket_uuid} is not allowed to be used as fallback socket")
                 }
             };
             (dir_rank, core::cmp::Reverse(*priority))
@@ -476,7 +490,6 @@ impl ComInterfaceSocketManager {
             return Err(());
         }
         let remove_future = self.trigger_remove_socket(&socket_uuid);
-        self.cleanup_socket(&socket_uuid);
         let _ = remove_future.await;
 
         Ok(())
@@ -487,13 +500,16 @@ impl ComInterfaceSocketManager {
         socket_uuid: &ComInterfaceSocketUUID,
     ) -> oneshot::Receiver<()> {
         let (closed_sender, closed_receiver) = oneshot::channel();
-        let mut socket_data = self.get_socket_by_uuid_mut(socket_uuid);
-        socket_data
-            .close_sender
-            .take()
-            .unwrap()
-            .send(closed_sender)
-            .unwrap();
+        {
+            let mut socket_data = self.get_socket_by_uuid_mut(socket_uuid);
+            socket_data
+                .close_sender
+                .take()
+                .unwrap()
+                .send(closed_sender)
+                .unwrap();
+        }
+        self.cleanup_socket(socket_uuid);
 
         closed_receiver
     }
@@ -708,7 +724,7 @@ impl ComInterfaceSocketManager {
         // TODO #187: do we need the block here for additional information (match conditions),
         // otherwise receivers are enough
         local_endpoint: &Endpoint,
-        receiver_endpoints: &Vec<Endpoint>,
+        receiver_endpoints: &[Endpoint],
         mut exclude_sockets: Vec<ComInterfaceSocketUUID>,
     ) -> Option<Vec<(Option<ComInterfaceSocketUUID>, Vec<Endpoint>)>> {
         if !receiver_endpoints.is_empty() {

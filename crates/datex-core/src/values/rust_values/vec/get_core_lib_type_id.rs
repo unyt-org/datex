@@ -1,0 +1,11 @@
+use crate::{
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    prelude::*,
+    traits::get_core_lib_type_id::GetCoreLibTypeId,
+};
+
+impl<T> GetCoreLibTypeId for Vec<T> {
+    fn core_lib_type_id(&self) -> CoreLibTypeId {
+        CoreLibBaseTypeId::List.into()
+    }
+}

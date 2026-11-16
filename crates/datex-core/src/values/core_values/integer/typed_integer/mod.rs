@@ -1,6 +1,6 @@
 //! This module contains the implementation of the [TypedInteger] enum, which represents a typed integer value in the DATEX type system.
 //! It supports various integer types, including signed and unsigned integers of different sizes, as well as an arbitrary precision integer type (IBig).
-
+mod to_instructions;
 use crate::values::core_values::{
     error::NumberParseError,
     integer::{
@@ -9,9 +9,10 @@ use crate::values::core_values::{
     },
 };
 pub mod equality;
+pub mod update_handler;
 use crate::{
-    libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId},
-    prelude::*,
+    libs::core::type_id::CoreLibTypeId, prelude::*,
+    traits::get_core_lib_type_id::GetCoreLibTypeId,
 };
 use ::binrw::{BinRead, BinWrite};
 use core::{fmt::Display, hash::Hash, result::Result, unreachable};
@@ -19,7 +20,21 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
+
+mod classification;
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
 pub mod primitive;
+pub mod serde_dif;
+#[cfg(feature = "ast")]
+mod to_datex_expression_data;
+mod try_clone;
+mod value_access;
+
 /// The integer type variants to be used as a inline
 /// definition in DATEX (such as 42u32 or -42i64).
 /// Note that changing the enum variants will change
@@ -39,6 +54,7 @@ pub mod primitive;
     Serialize,
     Deserialize,
     Display,
+    Default,
 )]
 #[repr(u8)]
 #[strum(serialize_all = "lowercase")]
@@ -50,6 +66,7 @@ pub enum IntegerTypeVariant {
     U128,
     I8,
     I16,
+    #[default]
     I32,
     I64,
     I128,
@@ -83,30 +100,9 @@ pub enum TypedInteger {
     U128(u128),
 }
 
-impl Serialize for TypedInteger {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        match self {
-            TypedInteger::IBig(v) => v.serialize(serializer),
-            TypedInteger::I8(v) => v.serialize(serializer),
-            TypedInteger::I16(v) => v.serialize(serializer),
-            TypedInteger::I32(v) => v.serialize(serializer),
-            TypedInteger::I64(v) => v.serialize(serializer),
-            TypedInteger::I128(v) => v.serialize(serializer),
-            TypedInteger::U8(v) => v.serialize(serializer),
-            TypedInteger::U16(v) => v.serialize(serializer),
-            TypedInteger::U32(v) => v.serialize(serializer),
-            TypedInteger::U64(v) => v.serialize(serializer),
-            TypedInteger::U128(v) => v.serialize(serializer),
-        }
-    }
-}
-
 impl From<&TypedInteger> for CoreLibTypeId {
     fn from(value: &TypedInteger) -> Self {
-        CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(value.variant()))
+        value.core_lib_type_id()
     }
 }
 
@@ -196,7 +192,7 @@ impl TypedInteger {
             | core::num::IntErrorKind::NegOverflow => {
                 NumberParseError::OutOfRange
             }
-            _ => core::panic!("Unhandled integer parse error: {:?}", e.kind()),
+            _ => panic!("Unhandled integer parse error: {:?}", e.kind()),
         })
     }
 
@@ -370,6 +366,137 @@ impl TypedInteger {
         self.as_u128().and_then(|v| usize::try_from(v).ok())
     }
 
+    pub fn borrow_as_u8(&self) -> Option<&u8> {
+        match self {
+            TypedInteger::U8(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_u8(&mut self) -> Option<&mut u8> {
+        match self {
+            TypedInteger::U8(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn borrow_as_u16(&self) -> Option<&u16> {
+        match self {
+            TypedInteger::U16(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_u16(&mut self) -> Option<&mut u16> {
+        match self {
+            TypedInteger::U16(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn borrow_as_u32(&self) -> Option<&u32> {
+        match self {
+            TypedInteger::U32(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_u32(&mut self) -> Option<&mut u32> {
+        match self {
+            TypedInteger::U32(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn borrow_as_u64(&self) -> Option<&u64> {
+        match self {
+            TypedInteger::U64(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_u64(&mut self) -> Option<&mut u64> {
+        match self {
+            TypedInteger::U64(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn borrow_as_u128(&self) -> Option<&u128> {
+        match self {
+            TypedInteger::U128(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn borrow_mut_as_u128(&mut self) -> Option<&mut u128> {
+        match self {
+            TypedInteger::U128(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn borrow_as_i8(&self) -> Option<&i8> {
+        match self {
+            TypedInteger::I8(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_i8(&mut self) -> Option<&mut i8> {
+        match self {
+            TypedInteger::I8(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn borrow_as_i16(&self) -> Option<&i16> {
+        match self {
+            TypedInteger::I16(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_i16(&mut self) -> Option<&mut i16> {
+        match self {
+            TypedInteger::I16(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn borrow_as_i32(&self) -> Option<&i32> {
+        match self {
+            TypedInteger::I32(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_i32(&mut self) -> Option<&mut i32> {
+        match self {
+            TypedInteger::I32(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn borrow_as_i64(&self) -> Option<&i64> {
+        match self {
+            TypedInteger::I64(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_i64(&mut self) -> Option<&mut i64> {
+        match self {
+            TypedInteger::I64(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn borrow_as_i128(&self) -> Option<&i128> {
+        match self {
+            TypedInteger::I128(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_i128(&mut self) -> Option<&mut i128> {
+        match self {
+            TypedInteger::I128(v) => Some(v),
+            _ => None,
+        }
+    }
+
     /// Returns true if the integer is of a signed type.
     pub fn is_signed_variant(&self) -> bool {
         if let TypedInteger::IBig(_) = self {
@@ -455,6 +582,22 @@ impl TypedInteger {
             TypedInteger::U64(v) => format!("{v}u64"),
             TypedInteger::U128(v) => format!("{v}u128"),
             TypedInteger::IBig(v) => format!("{v}ibig"),
+        }
+    }
+
+    pub fn to_string_with_suffix_separated(&self) -> String {
+        match self {
+            TypedInteger::I8(v) => format!("{v}_i8"),
+            TypedInteger::I16(v) => format!("{v}_i16"),
+            TypedInteger::I32(v) => format!("{v}_i32"),
+            TypedInteger::I64(v) => format!("{v}_i64"),
+            TypedInteger::I128(v) => format!("{v}_i128"),
+            TypedInteger::U8(v) => format!("{v}_u8"),
+            TypedInteger::U16(v) => format!("{v}_u16"),
+            TypedInteger::U32(v) => format!("{v}_u32"),
+            TypedInteger::U64(v) => format!("{v}_u64"),
+            TypedInteger::U128(v) => format!("{v}_u128"),
+            TypedInteger::IBig(v) => format!("{v}_ibig"),
         }
     }
 }
