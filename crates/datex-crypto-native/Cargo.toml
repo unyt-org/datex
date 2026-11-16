@@ -1,6 +1,6 @@
 [package]
 name = "datex-crypto-native"
-version = "0.0.3"
+version = "0.0.4"
 description = "Native implementation of the DATEX Crypto facade"
 authors = [
     "Benedikt Strehle <benedikt@unyt.org>",
@@ -15,7 +15,7 @@ crate-type = ["lib"]
 
 [dependencies]
 rand = { version = "0.10.2" }
-datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.3" }
+datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.4" }
 uuid = { version = "1.15.1", features = ["v4"] }
 openssl = { version = "0.10.73" }
 

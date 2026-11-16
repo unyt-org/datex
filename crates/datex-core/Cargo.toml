@@ -149,10 +149,10 @@ logos = { version = "0.16.1", optional = true } # , features = ["debug"]
 stacker = { version = "0.1.24", optional = true }
 
 # crypto facade crates (optional)
-datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.3" }
-datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.3", optional = true }
-datex-crypto-esp32 = { path = "../datex-crypto-esp32", version = "0.0.3", optional = true, default-features = false }
-datex-crypto-web = { path = "../datex-crypto-web", version = "0.0.3", optional = true }
+datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.4" }
+datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.4", optional = true }
+datex-crypto-esp32 = { path = "../datex-crypto-esp32", version = "0.0.4", optional = true, default-features = false }
+datex-crypto-web = { path = "../datex-crypto-web", version = "0.0.4", optional = true }
 
 # webrtc features (optional)
 webrtc = { version = "0.13.0", optional = true }
@@ -177,7 +177,7 @@ indoc = "2.0.6"
 test-case = "3.3.1"
 
 # enable native crypto for tests
-datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.3" }
+datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.4" }
 # enable tokio for tests
 tokio = { version = "1.43.0", features = [
     "sync",
