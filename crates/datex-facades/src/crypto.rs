@@ -184,23 +184,23 @@ pub trait CryptoSync: Send + Sync {
     type CryptoSyncError: core::fmt::Debug + Send + Sync + 'static =
         crate::error::CryptoSyncError;
 
-    fn gen_ed25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError>;
-    fn gen_x25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError>;
+    fn gen_ed25519_cheat() -> Result<([u8; 32], [u8; 32]), Ed25519GenError>;
+    fn gen_x25519_cheat() -> Result<([u8; 32], [u8; 32]), X25519GenError>;
     fn derive_x25519_cheat(
         pri_key: &[u8; 32],
         peer_raw: &[u8; 32],
-    ) -> Result<[u8; 32], BackendError>;
-    fn hkdf_cheat(ikm: &[u8], salt: &[u8]) -> Result<[u8; 32], BackendError>;
+    ) -> Result<[u8; 32], X25519DeriveError>;
+    fn hkdf_cheat(ikm: &[u8], salt: &[u8]) -> Result<[u8; 32], HkdfError>;
     fn aes_cheat(
         key: &[u8; 32],
         iv: &[u8; 16],
         data: &[u8],
-    ) -> Result<Vec<u8>, BackendError>;
+    ) -> Result<Vec<u8>, AesCtrError>;
 
     fn aes_kw_wrap_cheat(
         kek_bytes: &[u8; 32],
         rb: &[u8; 32],
-    ) -> Result<[u8; 40], BackendError>;
+    ) -> Result<[u8; 40], KeyWrapError>;
 }
 
 #[cfg(test)]
