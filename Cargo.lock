@@ -939,7 +939,7 @@ checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
 
 [[package]]
 name = "datex-core"
-version = "0.0.13"
+version = "0.0.14"
 dependencies = [
  "async-select",
  "async-timer",
@@ -949,11 +949,11 @@ dependencies = [
  "cfg-if",
  "chrono",
  "criterion",
- "datex-crypto-esp32",
- "datex-crypto-native",
- "datex-crypto-web",
+ "datex-esp-impls",
  "datex-facades",
  "datex-macros-internal",
+ "datex-nat-impls",
+ "datex-web-impls",
  "dhat",
  "dotenvy",
  "embassy-executor",
@@ -1014,8 +1014,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "datex-crypto-esp32"
-version = "0.0.3"
+name = "datex-esp-impls"
+version = "0.0.1"
 dependencies = [
  "aes",
  "aes-kw",
@@ -1030,27 +1030,6 @@ dependencies = [
  "static_cell",
  "tokio",
  "x25519-dalek",
-]
-
-[[package]]
-name = "datex-crypto-native"
-version = "0.0.3"
-dependencies = [
- "datex-facades",
- "openssl",
- "rand 0.10.2",
- "tokio",
- "uuid",
-]
-
-[[package]]
-name = "datex-crypto-web"
-version = "0.0.3"
-dependencies = [
- "datex-facades",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]
@@ -1119,7 +1098,7 @@ dependencies = [
 
 [[package]]
 name = "datex_macros"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "datex-core",
  "datex-macro-utils",

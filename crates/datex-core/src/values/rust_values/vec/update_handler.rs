@@ -43,6 +43,7 @@ impl<T: DatexNativeBase + 'static> UpdateHandlerImpl for Vec<T> {
             .map(Some)
     }
 
+    /*
     fn try_delete_entry(
         &mut self,
         data: DeleteEntryUpdateData,
@@ -58,6 +59,7 @@ impl<T: DatexNativeBase + 'static> UpdateHandlerImpl for Vec<T> {
         })?;
         Ok(removed.to_value_container())
     }
+    */
 
     fn try_append_entry(
         &mut self,
