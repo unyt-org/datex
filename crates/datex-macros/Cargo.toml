@@ -1,6 +1,6 @@
 [package]
 name = "datex_macros"
-version = "0.1.10"
+version = "0.1.9"
 edition = "2024"
 description = "The public macros for the DATEX Core Rust implementation"
 authors = [

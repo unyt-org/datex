@@ -1065,7 +1065,7 @@ dependencies = [
 
 [[package]]
 name = "datex_macros"
-version = "0.1.10"
+version = "0.1.9"
 dependencies = [
  "datex-core",
  "datex-macro-utils",
