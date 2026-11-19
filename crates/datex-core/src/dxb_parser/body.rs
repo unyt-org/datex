@@ -281,7 +281,7 @@ pub gen fn iterate_instructions_with_seek(
                         .map_err(DXBParserError::BinRwError)?;
 
                     let instruction = cfg_select! {
-                        all(test, feature = "disassembler") => instruction
+                        feature = "disassembler" => instruction
                             .convert_to_nested(
                                 nested_instruction_resolution_strategy,
                             )?,

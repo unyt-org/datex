@@ -929,7 +929,7 @@ checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
 
 [[package]]
 name = "datex-core"
-version = "0.0.13"
+version = "0.0.14"
 dependencies = [
  "async-select",
  "async-timer",
@@ -1065,7 +1065,7 @@ dependencies = [
 
 [[package]]
 name = "datex_macros"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "datex-core",
  "datex-macro-utils",
