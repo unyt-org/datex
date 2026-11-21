@@ -6,7 +6,10 @@ use crate::{
         block_header::BlockType, routing_header::SignatureType,
     },
     network::com_hub::{
-        errors::{ComHubError, SocketEndpointRegistrationError},
+        errors::{
+            ComHubError, SignatureValidationError,
+            SocketEndpointRegistrationError,
+        },
         managers::com_interface_manager::ComInterfaceManager,
         network_response::{
             Response, ResponseError, ResponseOptions,
@@ -63,7 +66,7 @@ use strum_macros::Display;
 use crate::{
     collections::HashSet,
     crypto::CryptoImpl,
-    global::dxb_block::{BlockId, SignatureValidationError},
+    global::dxb_block::BlockId,
     network::{
         block_handler::IncomingSectionSender,
         com_hub::managers::com_interface_manager::{
@@ -686,6 +689,158 @@ impl ComHub {
         self.block_interceptors.borrow_mut().remove(uuid)
     }
 
+    /// Validates the signature of a dxblock based on the signature type specified in the routing header.
+    /// Returns Ok(dxb) if the signature is valid, or a SignatureValidationError if the signature is missing, cannot be parsed, or is invalid.
+    pub fn validate_signature(
+        mut dxb: DXBBlock,
+    ) -> MaybeAsync<
+        Result<DXBBlock, SignatureValidationError>,
+        impl Future<Output = Result<DXBBlock, SignatureValidationError>>,
+    > {
+        cfg_select! {
+            // if not crypto_enabled, but allow_unsigned_blocks is set, just return Ok(()) for all blocks, as signature validation is not possible
+            all(
+                not(feature = "crypto_enabled"),
+                feature = "allow_unsigned_blocks"
+            ) => {
+                log::info!(
+                    "Crypto and signature validation are disabled, allowing block without signature validation"
+                );
+                MaybeAsync::<
+                    Result<DXBBlock, SignatureValidationError>,
+                    core::future::Ready<
+                        Result<DXBBlock, SignatureValidationError>,
+                    >,
+                >::Sync(Ok(dxb))
+            }
+
+            // if crypto is enabled, perform signature validation based on the signature type specified in the routing header
+            _ => {
+                use crate::crypto::CryptoImpl;
+                use datex_crypto_facade::crypto::Crypto;
+
+                // TODO #179 check for creation time, withdraw if too old (TBD) or in the future
+                match dxb.routing_header.flags.signature_type() {
+                    // TODO #180: verify signature and abort if invalid
+                    // Check if signature is following in some later block and add them to
+                    // a pool of incoming blocks awaiting some signature
+                    signature_type @ (SignatureType::Encrypted
+                    | SignatureType::Unencrypted) => {
+                        MaybeAsync::Async(async move {
+                            let is_valid = match signature_type {
+                                SignatureType::Encrypted => {
+                                    info!("validating encrypted signature");
+                                    let raw_sign = dxb.signature.as_ref().ok_or(
+                                SignatureValidationError::MissingSignature,
+                            )?;
+                                    let (enc_sign, pub_key) =
+                                        raw_sign.split_at(64);
+                                    let hash = CryptoImpl::hkdf_sha256(pub_key, &[0u8; 16])
+                                .await
+                                .map_err(|_| {
+                                    SignatureValidationError::SignatureParseError
+                                })?;
+                                    let signature = CryptoImpl::aes_ctr_decrypt(
+                                &hash, &[0u8; 16], enc_sign,
+                            )
+                            .await
+                            .map_err(|_| {
+                                SignatureValidationError::SignatureParseError
+                            })?;
+
+                                    let raw_signed =
+                                        [pub_key, &dxb.body.clone()].concat();
+                                    let hashed_signed = CryptoImpl::hash_sha256(
+                                &raw_signed,
+                            )
+                            .await
+                            .map_err(|_| {
+                                SignatureValidationError::SignatureParseError
+                            })?;
+
+                                    CryptoImpl::ver_ed25519(
+                                pub_key,
+                                &signature,
+                                &hashed_signed,
+                            )
+                            .await
+                            .map_err(|_| {
+                                SignatureValidationError::InvalidSignature
+                            })?
+                                }
+
+                                SignatureType::Unencrypted => {
+                                    info!("validating not encrypted signature");
+                                    let raw_sign = dxb.signature.as_ref().ok_or(
+                                SignatureValidationError::MissingSignature,
+                            )?;
+                                    let (signature, pub_key) =
+                                        raw_sign.split_at(64);
+
+                                    let raw_signed =
+                                        [pub_key, &dxb.body.clone()].concat();
+                                    let hashed_signed = CryptoImpl::hash_sha256(
+                                &raw_signed,
+                            )
+                            .await
+                            .map_err(|_| {
+                                SignatureValidationError::SignatureParseError
+                            })?;
+
+                                    CryptoImpl::ver_ed25519(
+                                pub_key,
+                                signature,
+                                &hashed_signed,
+                            )
+                            .await
+                            .map_err(|_| {
+                                SignatureValidationError::InvalidSignature
+                            })?
+                                }
+                                _ => unreachable!(),
+                            };
+
+                            match is_valid {
+                                true => Ok(dxb),
+                                false => Err(
+                                    SignatureValidationError::InvalidSignature,
+                                ),
+                            }
+                        })
+                    }
+
+                    SignatureType::Unsigned => {
+                        let is_valid = {
+                            cfg_if::cfg_if! {
+                                // if unsigned blocks are allowed, return true
+                                if #[cfg(feature = "allow_unsigned_blocks")] {
+                                    log::info!("Signature validation is disabled, allowing block without signature validation");
+                                    true
+                                }
+                                // otherwise, only allow unsigned Trace and TraceBack blocks,
+                                // as they are used for debugging and should not be used in production with real data
+                                else {
+                                    match dxb.block_type() {
+                                        BlockType::Trace | BlockType::TraceBack => true,
+                                        // TODO #181 Check if the sender is trusted (endpoint + interface) connection
+                                        _ => return MaybeAsync::Sync(Err(SignatureValidationError::MissingSignature))
+                                    }
+                                }
+                            }
+                        };
+
+                        MaybeAsync::Sync(match is_valid {
+                            true => Ok(dxb),
+                            false => {
+                                Err(SignatureValidationError::InvalidSignature)
+                            }
+                        })
+                    }
+                }
+            }
+        }
+    }
+
     /// Receives a block from a socket and handles it accordingly
     /// Returns a MaybeAsync which is async in the following cases:
     /// * the block signature is validated because the block is for own endpoint and signature is set
@@ -707,8 +862,7 @@ impl ComHub {
         // validate block signature if sent to own endpoint
         let validation_result = match preprocess_result.own_received_block {
             // if block is for own endpoint, validate signature if set
-            Some(block) => block
-                .validate_signature()
+            Some(block) => ComHub::validate_signature(block)
                 .map(|validation| validation.map(Some)),
             // if block is not for own endpoint, don't validate signature and don't return own received block
             None => MaybeAsync::Sync(Ok(None)),
@@ -1152,7 +1306,7 @@ impl ComHub {
 
         match block.routing_header.flags.signature_type() {
             // SignatureType::None can be handled synchronously
-            SignatureType::None => MaybeAsyncResult::Sync(
+            SignatureType::Unsigned => MaybeAsyncResult::Sync(
                 update_sender_and_timestamp(block, self.endpoint().clone()),
             ),
 
@@ -1196,7 +1350,9 @@ impl ComHub {
                             .to_vec()
                         }
 
-                        SignatureType::None => unreachable!("handled above"),
+                        SignatureType::Unsigned => {
+                            unreachable!("handled above")
+                        }
                     };
 
                     block.signature = Some([sig_bytes, pub_key].concat());
@@ -2557,98 +2713,6 @@ pub mod tests {
         .await;
     }
 
-    // #[async_test]
-    // pub async fn unencrypted_signature_prepare_block_com_hub() {
-    //     let (com_hub, interface_proxy, mut incoming_sections_receiver) =
-    //         get_default_mock_setup_with_com_hub().await;
-    //
-    //     // receive block
-    //     let mut block = DXBBlock {
-    //         body: vec![0x01, 0x02, 0x03],
-    //         encrypted_header: EncryptedHeader {
-    //             flags: encrypted_header::Flags::new()
-    //                 .with_user_agent(encrypted_header::UserAgent::Unused11),
-    //             ..Default::default()
-    //         },
-    //         ..DXBBlock::default()
-    //     };
-    //     block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
-    //     block.recalculate_struct();
-    //     block
-    //         .routing_header
-    //         .flags
-    //         .set_signature_type(SignatureType::Unencrypted);
-    //     block = com_hub.prepare_own_block(block).await.unwrap();
-    //     let block_bytes = block.to_bytes();
-    //
-    //     let (_, mut incoming_blocks_sender) =
-    //         interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
-    //     yield_now().await;
-    //
-    //     incoming_blocks_sender
-    //         .start_send(block_bytes.as_slice().to_vec())
-    //         .unwrap();
-    //
-    //     yield_now().await;
-    //
-    //     let last_block = get_next_received_single_block_from_receiver(
-    //         &mut incoming_sections_receiver,
-    //     )
-    //     .await;
-    //     assert_eq!(last_block.raw_bytes.clone().unwrap(), block_bytes);
-    //     assert_eq!(block.signature, last_block.signature);
-    //
-    //     assert!(com_hub.validate_block(&last_block).await.unwrap());
-    // }
-    //
-    // #[async_test]
-    // pub async fn encrypted_signature_prepare_block_com_hub() {
-    //     let (com_hub, interface_proxy, mut incoming_sections_receiver) =
-    //         get_default_mock_setup_with_com_hub().await;
-    //
-    //     // receive block
-    //     let mut block = DXBBlock {
-    //         body: vec![0x01, 0x02, 0x03],
-    //         encrypted_header: EncryptedHeader {
-    //             flags: encrypted_header::Flags::new()
-    //                 .with_user_agent(encrypted_header::UserAgent::Unused11),
-    //             ..Default::default()
-    //         },
-    //         ..DXBBlock::default()
-    //     };
-    //
-    //     block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
-    //     block.recalculate_struct();
-    //
-    //     block
-    //         .routing_header
-    //         .flags
-    //         .set_signature_type(SignatureType::Encrypted);
-    //     block = com_hub.prepare_own_block(block).await.unwrap();
-    //     let block_bytes = block.to_bytes();
-    //
-    //     let (_, mut incoming_blocks_sender) =
-    //         interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
-    //     yield_now().await;
-    //
-    //     incoming_blocks_sender
-    //         .start_send(block_bytes.as_slice().to_vec())
-    //         .unwrap();
-    //
-    //     yield_now().await;
-    //
-    //     let last_block = get_next_received_single_block_from_receiver(
-    //         &mut incoming_sections_receiver,
-    //     )
-    //     .await;
-    //     assert_eq!(last_block.raw_bytes.clone().unwrap(), block_bytes);
-    //     assert_eq!(block.signature, last_block.signature);
-    //
-    //     assert!(com_hub.validate_block(&last_block).await.unwrap());
-    // }
-    //
-    //
-    //
     // #[async_test]
     // pub async fn reconnect() {
     //     let com_hub = create_mock_com_hub();

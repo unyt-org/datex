@@ -133,7 +133,7 @@ mod tests {
         block
             .routing_header
             .flags
-            .set_signature_type(SignatureType::None);
+            .set_signature_type(SignatureType::Unsigned);
         let block_bytes = block.to_bytes();
 
         let received_block = block_collector.receive_slice(&block_bytes).await;
@@ -152,7 +152,7 @@ mod tests {
         block
             .routing_header
             .flags
-            .set_signature_type(SignatureType::None);
+            .set_signature_type(SignatureType::Unsigned);
         let block_bytes = block.to_bytes();
         let part1 = &block_bytes[0..5]; // contains full magic number and block length
         let part2 = &block_bytes[5..];
@@ -181,7 +181,7 @@ mod tests {
         block
             .routing_header
             .flags
-            .set_signature_type(SignatureType::None);
+            .set_signature_type(SignatureType::Unsigned);
         let block_bytes = block.to_bytes();
 
         let part1 = &block_bytes[0..2]; // smaller than header
@@ -214,7 +214,7 @@ mod tests {
         block
             .routing_header
             .flags
-            .set_signature_type(SignatureType::None);
+            .set_signature_type(SignatureType::Unsigned);
 
         let valid_block_bytes = block.to_bytes();
         let received_block =

@@ -13,7 +13,7 @@ use modular_bitfield::prelude::*;
 )]
 #[bits = 2]
 pub enum SignatureType {
-    None = 0b00,
+    Unsigned = 0b00,
     Unencrypted = 0b10,
     Encrypted = 0b11,
 }
@@ -26,7 +26,7 @@ impl Default for SignatureType {
     fn default() -> Self {
         #[cfg(not(feature = "crypto_enabled"))]
         {
-            SignatureType::None
+            SignatureType::Unsigned
         }
         #[cfg(feature = "crypto_enabled")]
         {
@@ -266,7 +266,7 @@ impl Serializable for RoutingHeader {}
 impl RoutingHeader {
     pub fn unsigned() -> Self {
         RoutingHeader {
-            flags: Flags::new().with_signature_type(SignatureType::None),
+            flags: Flags::new().with_signature_type(SignatureType::Unsigned),
             ..RoutingHeader::default()
         }
     }
