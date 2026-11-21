@@ -16,7 +16,6 @@ use binrw::{
     io::{Cursor, Read},
 };
 use core::{fmt::Display, result::Result, unimplemented};
-use datex_facades::crypto::Crypto;
 use strum::Display;
 use thiserror::Error;
 
@@ -29,9 +28,6 @@ pub enum HeaderParsingError {
 }
 
 // TODO #110: RawDXBBlock that is received in com_hub, only containing RoutingHeader, BlockHeader and raw bytes
-
-// TODO #429 @Norbert
-// Add optional raw signature, and encrypted part
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct DXBBlock {
     pub routing_header: RoutingHeader,
@@ -254,8 +250,7 @@ impl DXBBlock {
 
         let signature = match routing_header.flags.signature_type() {
             SignatureType::Encrypted => {
-                // extract next 255 bytes as the signature
-                let mut signature = Vec::from([0u8; 108]);
+                let mut signature = Vec::from([0u8; 96]);
                 reader.read_exact(&mut signature).map_err(|e| {
                     DXBBlockParseError::IOError(format!(
                         "Failed to read encrypted signature: {}",
@@ -263,12 +258,10 @@ impl DXBBlock {
                     ))
                 })?;
 
-                // TODO #111: decrypt the signature
                 Some(signature)
             }
             SignatureType::Unencrypted => {
-                // extract next 255 bytes as the signature
-                let mut signature = Vec::from([0u8; 108]);
+                let mut signature = Vec::from([0u8; 96]);
                 reader.read_exact(&mut signature).map_err(|e| {
                     DXBBlockParseError::IOError(format!(
                         "Failed to read unencrypted signature: {}",
@@ -282,9 +275,8 @@ impl DXBBlock {
 
         let decrypted_bytes = match routing_header.flags.encryption_type() {
             EncryptionType::Encrypted => {
-                // TODO #113: decrypt the body
-                let mut decrypted_bytes = Vec::from([0u8; 255]);
-                reader.read_exact(&mut decrypted_bytes).map_err(|e| {
+                let mut decrypted_bytes = Vec::new();
+                reader.read_to_end(&mut decrypted_bytes).map_err(|e| {
                     DXBBlockParseError::IOError(format!(
                         "Failed to read encrypted body: {}",
                         e
@@ -490,7 +482,7 @@ mod tests {
             .routing_header
             .flags
             .set_signature_type(SignatureType::Unencrypted);
-        block.signature = Some(vec![0u8; 108]);
+        block.signature = Some(vec![0u8; 96]);
 
         let block_bytes = block.to_bytes();
         let parse_result = DXBBlock::from_bytes(&block_bytes);

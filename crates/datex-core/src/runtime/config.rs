@@ -51,6 +51,7 @@ impl RuntimeConfigInterface {
 pub struct RuntimeConfig {
     pub endpoint: Endpoint,
     pub name: Option<String>,
+    pub key: Option<String>,
     pub interfaces: Option<Vec<RuntimeConfigInterface>>,
     pub env: Option<IndexMap<String, String, RandomState>>,
 }
@@ -60,6 +61,7 @@ impl RuntimeConfig {
         RuntimeConfig {
             endpoint,
             name: None,
+            key: None,
             interfaces: None,
             env: None,
         }
@@ -251,6 +253,7 @@ pub mod tests {
         let config_source = r#"{
             endpoint: @test,
             name: "Example",
+            key: "PlaceholderKey",
             interfaces: [
                 {
                     type: "websocket-client",
@@ -269,6 +272,7 @@ pub mod tests {
             Ok(RuntimeConfig {
                 endpoint: Endpoint::new("@test"),
                 name: Some("Example".to_string()),
+                key: Some("PlaceholderKey".to_string()),
                 interfaces: Some(vec![RuntimeConfigInterface {
                     interface_type: "websocket-client".to_string(),
                     config: Map::from(vec![(

@@ -17,6 +17,7 @@ use crate::{
         },
         options::ComHubOptions,
     },
+    std_sync::Mutex,
     task,
 };
 
@@ -206,6 +207,15 @@ pub struct ComHub {
 
     /// Optional runtime for the ComHub, required for network tracing. TODO: find a better solution, comhub should not need to reference runtime
     pub(crate) runtime: RefCell<Option<Runtime>>,
+
+    pub keys: Option<String>,
+
+    pub vault: Option<Mutex<Vault>>,
+}
+
+struct Vault {
+    pub_key: [u8; 32],
+    pri_key: [u8; 32],
 }
 
 impl Debug for ComHub {
@@ -305,8 +315,48 @@ impl ComHub {
             reconnecting_interfaces: RefCell::new(HashMap::new()),
             task_manager,
             runtime: RefCell::new(None),
+            keys: None,
+            vault: None,
         });
 
+        info!("Comhub created!");
+        (com_hub, task_future)
+    }
+
+    pub fn create_with_keys(
+        endpoint: impl Into<Endpoint>,
+        incoming_sections_sender: IncomingSectionSender,
+        com_interface_reconnect_request_sender: UnboundedSender<
+            ComInterfaceReconnectRequest,
+        >,
+        block_history_capacity: usize,
+        keys: Option<String>,
+    ) -> (Rc<ComHub>, impl Future<Output = ()>) {
+        let (task_manager, task_future) = TaskManager::create();
+
+        let block_handler = BlockHandler::init(
+            incoming_sections_sender,
+            block_history_capacity,
+        );
+
+        let com_hub = Rc::new(ComHub {
+            endpoint: UnsafeCell::new(endpoint.into()),
+            options: ComHubOptions::default(),
+            block_handler,
+            socket_manager: ComInterfaceSocketManager::new(),
+            interfaces_manager: ComInterfaceManager::default(),
+            block_interceptors: RefCell::new(HashMap::new()),
+            reconnect_interface_sender: RefCell::new(
+                com_interface_reconnect_request_sender,
+            ),
+            reconnecting_interfaces: RefCell::new(HashMap::new()),
+            task_manager,
+            runtime: RefCell::new(None),
+            keys,
+            vault: None,
+        });
+
+        info!("Comhub with keys created!");
         (com_hub, task_future)
     }
 
@@ -642,6 +692,13 @@ impl ComHub {
         block: DXBBlock,
         socket_uuid: ComInterfaceSocketUUID,
     ) {
+        if block.block_type() == BlockType::Hello {
+            // preprocess hello block by setting up peers pub keys
+            let x = block.body.clone();
+            info!("HelloBlock Content: {:?}", x);
+            let y = block.routing_header.sender.clone();
+            info!("HelloBlock Sender: {:?}", y);
+        }
         // handle incoming block
         let receive_block_result = self
             .clone()
@@ -717,7 +774,7 @@ impl ComHub {
             // if crypto is enabled, perform signature validation based on the signature type specified in the routing header
             _ => {
                 use crate::crypto::CryptoImpl;
-                use datex_crypto_facade::crypto::Crypto;
+                use datex_facades::crypto::Crypto;
 
                 // TODO #179 check for creation time, withdraw if too old (TBD) or in the future
                 match dxb.routing_header.flags.signature_type() {
@@ -1304,6 +1361,12 @@ impl ComHub {
             Ok(block)
         }
 
+        if block.block_type() == BlockType::Hello {
+            // alternating series as placeholder for development
+            let x: [u8; 32] = core::array::from_fn(|i| (i % 2) as u8);
+            block.body = x.to_vec();
+        };
+
         match block.routing_header.flags.signature_type() {
             // SignatureType::None can be handled synchronously
             SignatureType::Unsigned => MaybeAsyncResult::Sync(
@@ -1320,7 +1383,7 @@ impl ComHub {
                         .map_err(|_| ComHubError::SignatureCreationError)?;
 
                     let raw_signed =
-                        [pub_key.clone(), block.body.clone()].concat();
+                        [pub_key.to_vec(), block.body.clone()].concat();
 
                     let hashed_signed = CryptoImpl::hash_sha256(&raw_signed)
                         .await
@@ -1355,7 +1418,8 @@ impl ComHub {
                         }
                     };
 
-                    block.signature = Some([sig_bytes, pub_key].concat());
+                    block.signature =
+                        Some([sig_bytes, pub_key.to_vec()].concat());
                     update_sender_and_timestamp(block, endpoint)
                 }))
             }
