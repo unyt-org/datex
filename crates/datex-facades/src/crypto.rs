@@ -2,7 +2,7 @@ use alloc::{boxed::Box, string::String, vec::Vec};
 use bs58;
 use core::{pin::Pin, result::Result};
 
-use crate::error::*;
+use crate::error::B58DecodeError;
 
 pub type AsyncCryptoResult<'a, T, E> =
     Pin<Box<dyn Future<Output = Result<T, E>> + 'a>>;
@@ -14,14 +14,13 @@ pub trait Crypto: Send + Sync {
     /// Generate `length` random bytes.
     fn random_bytes(length: usize) -> Vec<u8>;
 
-    // Hash
-    type Sha256Error: core::fmt::Debug + Send + Sync + 'static =
-        crate::error::Sha256Error;
+    type CryptoError: core::fmt::Debug + Send + Sync + 'static =
+        crate::error::CryptoError;
 
     /// Compute the SHA-256 hash of the input data. Returns the 32-byte hash.
     fn hash_sha256<'a>(
         to_digest: &'a [u8],
-    ) -> AsyncCryptoResult<'a, [u8; 32], Self::Sha256Error>;
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError>;
 
     /// Decode the given Base58 string into a 32-byte array.
     /// Returns an error if the input is not valid Base58 or does not decode to exactly 32 bytes.
@@ -42,36 +41,21 @@ pub trait Crypto: Send + Sync {
         Ok(out)
     }
 
-    // HKDF
-    type HkdfError: core::fmt::Debug + Send + Sync + 'static =
-        crate::error::HkdfError;
-
     /// Derive a 32-byte key from the input keying material and salt using HKDF-SHA256.
     fn hkdf_sha256<'a>(
         ikm: &'a [u8],
         salt: &'a [u8],
-    ) -> AsyncCryptoResult<'a, [u8; 32], Self::HkdfError>;
-
-    // Ed25519
-    type Ed25519GenError: core::fmt::Debug + Send + Sync + 'static =
-        crate::error::Ed25519GenError;
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError>;
 
     /// Generate a new Ed25519 key pair. Returns the public and private keys.
     fn gen_ed25519<'a>()
-    -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>), Self::Ed25519GenError>;
-
-    type Ed25519SignError: core::fmt::Debug + Send + Sync + 'static =
-        crate::error::Ed25519SignError;
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::CryptoError>;
 
     /// Sign the given data using the provided Ed25519 private key. Returns the signature.
     fn sig_ed25519<'a>(
         pri_key: &'a [u8],
         data: &'a [u8],
-    ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError>;
-
-    // Verify should not “error” for signature mismatch, only for malformed inputs
-    type Ed25519VerifyError: core::fmt::Debug + Send + Sync + 'static =
-        crate::error::Ed25519VerifyError;
+    ) -> AsyncCryptoResult<'a, [u8; 64], Self::CryptoError>;
 
     /// Verify the given Ed25519 signature against the provided public key and data.
     /// Returns true if the signature is valid, false if it is invalid.
@@ -79,63 +63,45 @@ pub trait Crypto: Send + Sync {
         pub_key: &'a [u8],
         sig: &'a [u8],
         data: &'a [u8],
-    ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError>;
-
-    // AES-CTR (generally only invalid input / backend unavailable)
-    type AesCtrError: core::fmt::Debug + Send + Sync + 'static =
-        crate::error::AesCtrError;
+    ) -> AsyncCryptoResult<'a, bool, Self::CryptoError>;
 
     /// Encrypt the plaintext using AES-256 in CTR mode with the given key and IV. Returns the ciphertext.
     fn aes_ctr_encrypt<'a>(
         key: &'a [u8; 32],
         iv: &'a [u8; 16],
         plaintext: &'a [u8],
-    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError>;
+    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::CryptoError>;
 
     /// Decrypt the ciphertext using AES-256 in CTR mode with the given key and IV. Returns the plaintext.
     fn aes_ctr_decrypt<'a>(
         key: &'a [u8; 32],
         iv: &'a [u8; 16],
         cipher: &'a [u8],
-    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError>;
-
-    // RFC3394 wrap/unwrap: unwrap has a unique failure mode (integrity fail)
-    type KeyWrapError: core::fmt::Debug + Send + Sync + 'static =
-        crate::error::KeyWrapError;
+    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::CryptoError>;
 
     /// Wrap the given 32-byte key using the provided 32-byte KEK with the RFC3394 algorithm. Returns the wrapped key.
     fn key_wrap_rfc3394<'a>(
         kek: &'a [u8; 32],
         key_to_wrap: &'a [u8; 32],
-    ) -> AsyncCryptoResult<'a, [u8; 40], Self::KeyWrapError>;
-
-    type KeyUnwrapError: core::fmt::Debug + Send + Sync + 'static =
-        crate::error::KeyUnwrapError;
+    ) -> AsyncCryptoResult<'a, [u8; 40], Self::CryptoError>;
 
     /// Unwrap the given 40-byte wrapped key using the provided 32-byte KEK with the RFC3394 algorithm.
     /// Returns the unwrapped key.
     fn key_unwrap_rfc3394<'a>(
         kek: &'a [u8; 32],
         wrapped: &'a [u8; 40],
-    ) -> AsyncCryptoResult<'a, [u8; 32], Self::KeyUnwrapError>;
-
-    // X25519
-    type X25519GenError: core::fmt::Debug + Send + Sync + 'static =
-        crate::error::X25519GenError;
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError>;
 
     /// Generate a new X25519 key pair. Returns the public key as a base58 string and the private key as bytes.
     fn gen_x25519<'a>()
-    -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48]), Self::X25519GenError>;
-
-    type X25519DeriveError: core::fmt::Debug + Send + Sync + 'static =
-        crate::error::X25519DeriveError;
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::CryptoError>;
 
     /// Derive a shared secret using the X25519 key agreement protocol with the given private key and peer's public key.
     /// Returns the derived 32-byte shared secret.
     fn derive_x25519<'a>(
-        pri_key: &'a [u8; 48],
-        peer_pub: &'a [u8; 44],
-    ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError>;
+        pri_key: &'a [u8; 32],
+        peer_pub: &'a [u8; 32],
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError>;
 
     // Base58
     /// Encode the given bytes into a Base58 string.
@@ -170,19 +136,19 @@ mod tests {
 
         fn hash_sha256<'a>(
             _to_digest: &'a [u8],
-        ) -> AsyncCryptoResult<'a, [u8; 32], Self::Sha256Error> {
+        ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError> {
             unimplemented!()
         }
 
         fn hkdf_sha256<'a>(
             _ikm: &'a [u8],
             _salt: &'a [u8],
-        ) -> AsyncCryptoResult<'a, [u8; 32], Self::HkdfError> {
+        ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError> {
             unimplemented!()
         }
 
         fn gen_ed25519<'a>()
-        -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>), Self::Ed25519GenError>
+        -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::CryptoError>
         {
             unimplemented!()
         }
@@ -190,7 +156,7 @@ mod tests {
         fn sig_ed25519<'a>(
             _pri_key: &'a [u8],
             _data: &'a [u8],
-        ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
+        ) -> AsyncCryptoResult<'a, [u8; 64], Self::CryptoError> {
             unimplemented!()
         }
 
@@ -198,7 +164,7 @@ mod tests {
             _pub_key: &'a [u8],
             _sig: &'a [u8],
             _data: &'a [u8],
-        ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError> {
+        ) -> AsyncCryptoResult<'a, bool, Self::CryptoError> {
             unimplemented!()
         }
 
@@ -206,7 +172,7 @@ mod tests {
             _key: &'a [u8; 32],
             _iv: &'a [u8; 16],
             _plaintext: &'a [u8],
-        ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
+        ) -> AsyncCryptoResult<'a, Vec<u8>, Self::CryptoError> {
             unimplemented!()
         }
 
@@ -214,34 +180,34 @@ mod tests {
             _key: &'a [u8; 32],
             _iv: &'a [u8; 16],
             _cipher: &'a [u8],
-        ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
+        ) -> AsyncCryptoResult<'a, Vec<u8>, Self::CryptoError> {
             unimplemented!()
         }
 
         fn key_wrap_rfc3394<'a>(
             _kek: &'a [u8; 32],
             _key_to_wrap: &'a [u8; 32],
-        ) -> AsyncCryptoResult<'a, [u8; 40], Self::KeyWrapError> {
+        ) -> AsyncCryptoResult<'a, [u8; 40], Self::CryptoError> {
             unimplemented!()
         }
 
         fn key_unwrap_rfc3394<'a>(
             _kek: &'a [u8; 32],
             _wrapped: &'a [u8; 40],
-        ) -> AsyncCryptoResult<'a, [u8; 32], Self::KeyUnwrapError> {
+        ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError> {
             unimplemented!()
         }
 
         fn gen_x25519<'a>()
-        -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48]), Self::X25519GenError>
+        -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::CryptoError>
         {
             unimplemented!()
         }
 
         fn derive_x25519<'a>(
-            _pri_key: &'a [u8; 48],
-            _peer_pub: &'a [u8; 44],
-        ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
+            _pri_key: &'a [u8; 32],
+            _peer_pub: &'a [u8; 32],
+        ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError> {
             unimplemented!()
         }
     }

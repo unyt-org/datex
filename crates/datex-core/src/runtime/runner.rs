@@ -47,11 +47,12 @@ impl RuntimeRunner {
             com_interface_reconnect_request_receiver,
         ) = create_unbounded_channel::<ComInterfaceReconnectRequest>();
 
-        let (com_hub, com_hub_task_future) = ComHub::create(
+        let (com_hub, com_hub_task_future) = ComHub::create_with_keys(
             endpoint.clone(),
             incoming_sections_sender,
             com_interface_reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
+            config.key.clone(),
         );
         let memory = RefCell::new(SharedReferencesCache::default());
         let pointer_address_provider = Rc::new(RefCell::new(
