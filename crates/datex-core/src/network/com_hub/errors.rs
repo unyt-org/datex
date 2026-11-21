@@ -135,3 +135,13 @@ impl Display for ComHubError {
 pub enum SocketEndpointRegistrationError {
     SocketEndpointAlreadyRegistered,
 }
+
+#[derive(Debug)]
+pub enum SignatureValidationError {
+    /// The block is expected to have a signature, but no signature was found.
+    MissingSignature,
+    /// The signature could not be parsed correctly (e.g. wrong length).
+    SignatureParseError,
+    /// The signature is invalid (e.g. does not match the expected value).
+    InvalidSignature,
+}
