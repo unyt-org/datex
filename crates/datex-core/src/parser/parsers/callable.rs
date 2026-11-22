@@ -269,10 +269,8 @@ mod tests {
                     operator: BinaryOperator::Arithmetic(
                         ArithmeticOperator::Add
                     ),
-                    right: (DataExpressionData::Identifier(
-                        "name".to_string()
-                    )
-                    .with_default_span()),
+                    right: (DataExpressionData::Identifier("name".to_string())
+                        .with_default_span()),
                     ty: None,
                 })
                 .with_default_span()),

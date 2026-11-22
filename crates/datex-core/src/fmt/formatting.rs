@@ -36,9 +36,7 @@ impl<'a> Formatter<'a> {
                 self.typed_decimal_to_source_code(td, &expr.span)
             }
             DataExpressionData::Boolean(b) => a.as_string(b),
-            DataExpressionData::Text(t) => {
-                self.text_to_source_code(t.as_str())
-            }
+            DataExpressionData::Text(t) => self.text_to_source_code(t.as_str()),
             DataExpressionData::Endpoint(e) => a.text(e.to_string()),
             DataExpressionData::Null => a.text("null"),
             DataExpressionData::Identifier(_l) => unreachable!(
@@ -156,8 +154,7 @@ impl<'a> Formatter<'a> {
                     .group()
             }
             DataExpressionData::VariableAccess(VariableAccess {
-                name,
-                ..
+                name, ..
             }) => a.text(name),
             e => panic!("Formatter not implemented for {:?}", e),
         }

@@ -1,8 +1,6 @@
 use crate::{
     ast::{
-        expressions::{
-            CompileExpression, DataExpression, DataExpressionData,
-        },
+        expressions::{CompileExpression, DataExpression, DataExpressionData},
         spanned::Spanned,
     },
     parser::{Parser, SpannedParserError, lexer::Token},

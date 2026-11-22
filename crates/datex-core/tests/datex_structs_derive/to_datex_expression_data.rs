@@ -104,10 +104,8 @@ fn test_to_datex_expression_data_nested() {
                     (
                         DataExpressionData::Text("field1".into())
                             .with_default_span(),
-                        DataExpressionData::TypedInteger(TypedInteger::I32(
-                            42
-                        ))
-                        .with_default_span()
+                        DataExpressionData::TypedInteger(TypedInteger::I32(42))
+                            .with_default_span()
                     ),
                     (
                         DataExpressionData::Text("field2".into())

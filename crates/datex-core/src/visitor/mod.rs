@@ -83,8 +83,7 @@ mod tests {
             &mut self,
             error: MyAstExpressionError,
             expression: &DataExpression,
-        ) -> Result<VisitAction<DataExpression>, MyAstExpressionError>
-        {
+        ) -> Result<VisitAction<DataExpression>, MyAstExpressionError> {
             log::error!(
                 "Expression error: {:?} at {:?}. Aborting...",
                 error,
@@ -156,20 +155,16 @@ mod tests {
                                 ArithmeticOperator::Add,
                             ),
                             left: (DataExpression {
-                                data: Box::new(
-                                    DataExpressionData::Identifier(
-                                        "x".to_string(),
-                                    ),
-                                ),
+                                data: Box::new(DataExpressionData::Identifier(
+                                    "x".to_string(),
+                                )),
                                 span: 0..1,
                                 ty: None,
                             }),
                             right: (DataExpression {
-                                data: Box::new(
-                                    DataExpressionData::Identifier(
-                                        "y".to_string(),
-                                    ),
-                                ),
+                                data: Box::new(DataExpressionData::Identifier(
+                                    "y".to_string(),
+                                )),
                                 span: 2..3,
                                 ty: None,
                             }),
