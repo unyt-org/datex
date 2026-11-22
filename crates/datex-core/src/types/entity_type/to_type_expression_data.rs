@@ -1,5 +1,5 @@
 use crate::{
-    ast::type_expressions::{IdentifierWithPointerAddress, TypeExpressionData},
+    ast::expressions::{IdentifierWithPointerAddress, TypeExpressionData},
     traits::to_type_expression_data::ToTypeExpressionData,
     types::entity_type::EntityType,
 };

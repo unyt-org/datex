@@ -1,9 +1,11 @@
-//! This module defines the AST representation for expressions in Datex.
+//! This module defines the representation for [DatexExpressionData] that can hold the various kinds of data used in expressions.
 pub use crate::prelude::*;
 use crate::{
     ast::{
-        expressions::DatexExpression, spanned::Spanned,
-        type_expressions::TypeExpression,
+        expressions::{
+            DatexExpression, TypeExpression, expression::Expression,
+        },
+        spanned::Spanned,
     },
     global::{
         operators::{ArithmeticUnaryOperator, UnaryOperator},
@@ -108,9 +110,8 @@ pub use variable_declaration::*;
 mod variant_access;
 pub use variant_access::*;
 
-#[derive(Clone, Debug, PartialEq)]
 /// The different kinds of type expressions in the AST
-#[derive(Default)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum DatexExpressionData {
     /// This is a marker for recovery from parse errors.
     /// We should never use this manually.

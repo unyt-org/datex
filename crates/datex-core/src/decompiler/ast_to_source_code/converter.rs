@@ -1,29 +1,21 @@
 use crate::{
-    ast::{
-        expressions::{
-            Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-            Conditional, DatexExpression, DatexExpressionData, List, Map,
-            PropertyAccess, PropertyAssignment, RangeDeclaration,
-            RemoteExecution, StackAssignment, TypeDeclarationExpression,
-            UnboxAssignment, VariableAccess, VariableAssignment,
-            VariableDeclaration, VariantAccess,
-        },
-        type_expressions::{
-            CallableTypeExpression, TypeExpression, TypeExpressionData,
-            TypeVariantAccess,
-        },
+    ast::expressions::{
+        Apply, BinaryOperation, CallableDeclaration, CallableTypeExpression,
+        ComparisonOperation, Conditional, DatexExpression, DatexExpressionData,
+        List, Map, PropertyAccess, PropertyAssignment, RangeDeclaration,
+        RemoteExecution, StackAssignment, TypeDeclarationExpression,
+        TypeExpression, TypeExpressionData, TypeVariantAccess, UnboxAssignment,
+        VariableAccess, VariableAssignment, VariableDeclaration, VariantAccess,
+        expression::Expression,
     },
     values::core_values::text::Text,
 };
 
 use crate::{
-    ast::{
-        expressions::{
-            CallableSignature, EntityDeclarationExpression,
-            InterfaceMethodCall, RootPropertyAccess, StackListAssignment,
-            UnboxSlotAssignment, ValueAccessType,
-        },
-        type_expressions::IdentifierWithPointerAddress,
+    ast::expressions::{
+        CallableSignature, EntityDeclarationExpression,
+        IdentifierWithPointerAddress, InterfaceMethodCall, RootPropertyAccess,
+        StackListAssignment, UnboxSlotAssignment, ValueAccessType,
     },
     decompiler::{FormattingMode, FormattingOptions, IndentType},
     prelude::*,
@@ -1045,12 +1037,11 @@ mod tests {
         ast::{
             expressions::{
                 Apply, DatexExpression, DatexExpressionData, List, Map,
-                PropertyAccess, RangeDeclaration, Unbox, UnboxAssignment,
-                ValueAccessType, VariableAccess, VariableDeclaration,
-                VariableKind,
+                PropertyAccess, RangeDeclaration, TypeExpressionData, Unbox,
+                UnboxAssignment, ValueAccessType, VariableAccess,
+                VariableDeclaration, VariableKind,
             },
             spanned::Spanned,
-            type_expressions::TypeExpressionData,
         },
         decompiler::options::FormattingOptions,
         global::operators::ModificationOperator,

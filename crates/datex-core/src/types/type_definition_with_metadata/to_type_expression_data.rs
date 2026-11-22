@@ -1,5 +1,5 @@
 use crate::{
-    ast::{spanned::Spanned, type_expressions::TypeExpressionData},
+    ast::{expressions::TypeExpressionData, spanned::Spanned},
     prelude::*,
     shared_values::SharedContainerMutability,
     traits::to_type_expression_data::ToTypeExpressionData,

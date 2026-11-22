@@ -1,9 +1,7 @@
 use crate::{
     ast::{
+        expressions::{StructuralList, TypeExpression, TypeExpressionData},
         spanned::Spanned,
-        type_expressions::{
-            StructuralList, TypeExpression, TypeExpressionData,
-        },
     },
     parser::{Parser, SpannedParserError, lexer::Token},
 };
@@ -35,8 +33,10 @@ mod tests {
 
     use crate::{
         ast::{
+            expressions::{
+                StructuralList, TypeExpressionData, expression::Expression,
+            },
             spanned::Spanned,
-            type_expressions::{StructuralList, TypeExpressionData},
         },
         parser::parsers::type_expressions::tests::parse_type_expression,
         prelude::*,

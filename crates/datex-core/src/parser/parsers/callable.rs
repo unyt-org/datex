@@ -2,9 +2,9 @@ use crate::{
     ast::{
         expressions::{
             CallableDeclaration, DatexExpression, DatexExpressionData,
+            TypeExpression,
         },
         spanned::Spanned,
-        type_expressions::TypeExpression,
     },
     parser::{Parser, SpannedParserError, lexer::Token},
 };
@@ -107,10 +107,10 @@ mod tests {
         ast::{
             expressions::{
                 BinaryOperation, CallableDeclaration, CallableSignature,
-                DatexExpressionData, Statements,
+                DatexExpressionData, Statements, TypeExpressionData,
+                expression::Expression,
             },
             spanned::Spanned,
-            type_expressions::TypeExpressionData,
         },
         global::operators::{BinaryOperator, binary::ArithmeticOperator},
         parser::tests::parse,

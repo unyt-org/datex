@@ -1,4 +1,4 @@
-use crate::ast::type_expressions::TypeExpressionData;
+use crate::ast::expressions::TypeExpressionData;
 
 pub trait ToTypeExpressionData {
     /// Converts the implementing type into a [TypeExpressionData] representation.

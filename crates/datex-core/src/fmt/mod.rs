@@ -2,12 +2,10 @@
 use core::ops::Range;
 
 use crate::{
-    ast::{
-        expressions::{DatexExpression, VariableAccess},
-        type_expressions::{
-            CallableTypeExpression, IdentifierWithPointerAddress,
-            TypeExpression, TypeExpressionData, TypeVariantAccess,
-        },
+    ast::expressions::{
+        CallableTypeExpression, DatexExpression, IdentifierWithPointerAddress,
+        TypeExpression, TypeExpressionData, TypeVariantAccess, VariableAccess,
+        expression::Expression,
     },
     compiler::{
         CompileOptions, parse_datex_script_to_rich_ast_simple_error,

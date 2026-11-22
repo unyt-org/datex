@@ -1,10 +1,10 @@
 use crate::{
     ast::{
-        spanned::Spanned,
-        type_expressions::{
+        expressions::{
             Intersection, RangeTypeExpr, StructuralList, StructuralMap,
             TypeExpression, TypeExpressionData, Union,
         },
+        spanned::Spanned,
     },
     prelude::*,
     traits::to_type_expression_data::ToTypeExpressionData,

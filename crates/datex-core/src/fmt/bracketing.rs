@@ -1,7 +1,7 @@
 use crate::{
     ast::expressions::{
         BinaryOperation, ComparisonOperation, DatexExpression,
-        DatexExpressionData, UnaryOperation,
+        DatexExpressionData, UnaryOperation, expression::Expression,
     },
     fmt::{
         Assoc, Format, Formatter, Operation, ParentContext,

@@ -1,7 +1,7 @@
 use crate::{
     ast::{
+        expressions::{StructuralMap, TypeExpression, TypeExpressionData},
         spanned::Spanned,
-        type_expressions::{StructuralMap, TypeExpression, TypeExpressionData},
     },
     parser::{Parser, SpannedParserError, lexer::Token},
 };
@@ -35,10 +35,11 @@ mod tests {
 
     use crate::{
         ast::{
-            spanned::Spanned,
-            type_expressions::{
+            expressions::{
                 Intersection, StructuralMap, TypeExpressionData,
+                expression::Expression,
             },
+            spanned::Spanned,
         },
         parser::parsers::type_expressions::tests::parse_type_expression,
         prelude::*,

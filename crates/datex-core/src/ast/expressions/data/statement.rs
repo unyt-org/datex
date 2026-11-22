@@ -1,19 +1,28 @@
+//! This module defines the representation for statement-related expressions in the AST.
 use crate::{ast::expressions::DatexExpression, prelude::*};
 
+/// Represents an unbounded statement, e.g. for a block stream
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnboundedStatement {
+    /// Indicates if this statement is the first in the block stream.
     pub is_first: bool,
+    /// Indicates if this statement is the last in the block stream.
     pub is_last: bool,
 }
 
+/// Represents a collection of statements, potentially with unbounded context.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Statements {
+    /// The list of statements in this collection.
     pub statements: Vec<DatexExpression>,
+    /// Indicates if the collection of statements is terminated (by a semicolon)
     pub is_terminated: bool,
+    /// The unbounded context associated with this collection of statements, if any.
     pub unbounded: Option<UnboundedStatement>,
 }
 
 impl Statements {
+    /// Creates a new empty collection of statements, considered terminated.
     pub fn empty() -> Self {
         Statements {
             statements: Vec::new(),
@@ -21,6 +30,8 @@ impl Statements {
             unbounded: None,
         }
     }
+
+    /// Creates a new collection of statements that is terminated (by a semicolon).
     pub fn new_terminated(statements: Vec<DatexExpression>) -> Self {
         Statements {
             statements,
@@ -28,6 +39,8 @@ impl Statements {
             unbounded: None,
         }
     }
+
+    /// Creates a new collection of statements that is unterminated (no semicolon).
     pub fn new_unterminated(statements: Vec<DatexExpression>) -> Self {
         Statements {
             statements,

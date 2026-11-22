@@ -109,10 +109,10 @@ mod tests {
         ast::{
             expressions::{
                 DatexExpressionData, EntityDeclarationExpression,
-                TypeDeclarationExpression,
+                TypeDeclarationExpression, TypeExpressionData,
+                expression::Expression,
             },
             spanned::Spanned,
-            type_expressions::TypeExpressionData,
         },
         parser::tests::parse,
         prelude::*,

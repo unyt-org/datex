@@ -7,7 +7,7 @@ use crate::{
             InterfaceMethodCall, PropertyAccess, PropertyAssignment,
             RangeDeclaration, RemoteExecution, RequestSharedRef,
             StackAssignment, UnaryOperation, Unbox, UnboxAssignment,
-            VariableAssignment,
+            VariableAssignment, expression::Expression,
         },
         spanned::Spanned,
     },
@@ -701,11 +701,11 @@ mod tests {
                 CreateShared, DatexExpressionData, DeriveRef, DeriveSharedRef,
                 GenericInstantiation, InterfaceMethodCall, PropertyAccess,
                 PropertyAssignment, RemoteExecution, RequestSharedRef,
-                StackAssignment, Statements, UnaryOperation, Unbox,
-                UnboxAssignment, VariableAssignment,
+                StackAssignment, Statements, TypeExpressionData,
+                UnaryOperation, Unbox, UnboxAssignment, VariableAssignment,
+                expression::Expression,
             },
             spanned::Spanned,
-            type_expressions::TypeExpressionData,
         },
         global::{
             operators::{

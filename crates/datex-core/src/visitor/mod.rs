@@ -29,12 +29,10 @@ pub enum VisitAction<T: Sized> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{
-            expressions::{
-                BinaryOperation, DatexExpression, DatexExpressionData,
-                DeriveRef, Statements, ValueAccessType, VariableAccess,
-            },
-            type_expressions::{TypeExpression, TypeExpressionData},
+        ast::expressions::{
+            BinaryOperation, DatexExpression, DatexExpressionData, DeriveRef,
+            Statements, TypeExpression, TypeExpressionData, ValueAccessType,
+            VariableAccess, expression::Expression,
         },
         global::operators::{BinaryOperator, binary::ArithmeticOperator},
         parser::Parser,

@@ -1,5 +1,5 @@
 use crate::{
-    ast::type_expressions::TypeExpression,
+    ast::expressions::TypeExpression,
     parser::{Parser, SpannedParserError, errors::ParserError, lexer::Token},
 };
 use core::ops::Range;

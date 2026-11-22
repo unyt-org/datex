@@ -37,7 +37,7 @@ mod tests {
 
     use crate::{
         ast::{
-            expressions::{DatexExpressionData, List},
+            expressions::{DatexExpressionData, List, expression::Expression},
             spanned::Spanned,
         },
         parser::{

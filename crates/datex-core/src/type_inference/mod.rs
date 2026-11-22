@@ -1,6 +1,9 @@
 //! This module contains the implementation of the type inference system based on a [RichAst].
 use crate::{
-    ast::resolved_variable::ResolvedVariable,
+    ast::{
+        expressions::expression::Expression,
+        resolved_variable::ResolvedVariable,
+    },
     global::operators::{BinaryOperator, LogicalUnaryOperator, UnaryOperator},
     type_inference::options::ErrorHandling,
     types::{
@@ -14,23 +17,18 @@ use crate::{
 };
 
 use crate::{
-    ast::{
-        expressions::{
-            Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-            Conditional, CreateShared, DatexExpression, DatexExpressionData,
-            DeriveRef, DeriveSharedRef, EntityDeclarationExpression,
-            GenericInstantiation, List, Map, PropertyAccess,
-            PropertyAssignment, RangeDeclaration, RemoteExecution,
-            RequestSharedRef, StackAssignment, Statements,
-            TypeDeclarationExpression, UnaryOperation, Unbox, UnboxAssignment,
-            ValueAccessType, VariableAccess, VariableAssignment,
-            VariableDeclaration, VariantAccess,
-        },
-        type_expressions::{
-            CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
-            SliceList, StructuralList, StructuralMap, TypeExpression,
-            TypeVariantAccess, Union,
-        },
+    ast::expressions::{
+        Apply, BinaryOperation, CallableDeclaration, CallableTypeExpression,
+        ComparisonOperation, Conditional, CreateShared, DatexExpression,
+        DatexExpressionData, DeriveRef, DeriveSharedRef,
+        EntityDeclarationExpression, FixedSizeList, GenericAccess,
+        GenericInstantiation, Intersection, List, Map, PropertyAccess,
+        PropertyAssignment, RangeDeclaration, RemoteExecution,
+        RequestSharedRef, SliceList, StackAssignment, Statements,
+        StructuralList, StructuralMap, TypeDeclarationExpression,
+        TypeExpression, TypeVariantAccess, UnaryOperation, Unbox,
+        UnboxAssignment, Union, ValueAccessType, VariableAccess,
+        VariableAssignment, VariableDeclaration, VariantAccess,
     },
     compiler::precompiler::precompiled_ast::{AstMetadata, RichAst},
     global::stack_index::StackIndex,

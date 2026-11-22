@@ -1,11 +1,11 @@
+//! This module defines the representation for [TypeExpressionData] that can hold the various kinds of type expressions used in the AST.
 use alloc::{boxed::Box, string::String};
 
 use crate::{
     ast::{
-        expressions::VariableAccess, resolved_variable::ResolvedVariable,
+        expressions::{TypeExpression, VariableAccess},
         spanned::Spanned,
     },
-    prelude::*,
     values::core_values::{
         boolean::Boolean,
         decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -18,12 +18,44 @@ use crate::{
 use crate::{
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     shared_values::PointerAddress,
-    types::{r#type::Type, type_definition::callable::CallableKind},
 };
 use core::ops;
 
-#[derive(Clone, Debug, PartialEq)]
+mod structural_list;
+pub use structural_list::*;
+
+mod identifier_with_pointer_address;
+pub use identifier_with_pointer_address::*;
+
+mod fixed_sized_list;
+pub use fixed_sized_list::*;
+
+mod slice_list;
+pub use slice_list::*;
+
+mod intersection;
+pub use intersection::*;
+
+mod union;
+pub use union::*;
+
+mod generic_access;
+pub use generic_access::*;
+
+mod structural_map;
+pub use structural_map::*;
+
+mod callable;
+pub use callable::*;
+
+mod type_variant_access;
+pub use type_variant_access::*;
+
+mod range;
+pub use range::*;
+
 /// The different kinds of type expressions in the AST
+#[derive(Clone, Debug, PartialEq)]
 pub enum TypeExpressionData {
     // used for error recovery
     Recover,
@@ -134,90 +166,4 @@ impl Spanned for Box<TypeExpressionData> {
             ty: None,
         }
     }
-}
-
-#[derive(Clone, Debug)]
-/// A type expression in the AST
-pub struct TypeExpression {
-    pub data: Box<TypeExpressionData>,
-    pub span: ops::Range<usize>,
-    pub ty: Option<Type>,
-}
-impl TypeExpression {
-    pub fn new(data: TypeExpressionData, span: ops::Range<usize>) -> Self {
-        Self {
-            data: Box::new(data),
-            span,
-            ty: None,
-        }
-    }
-
-    pub fn data(&self) -> &TypeExpressionData {
-        &self.data
-    }
-
-    pub fn data_mut(&mut self) -> &mut TypeExpressionData {
-        &mut self.data
-    }
-}
-
-impl PartialEq for TypeExpression {
-    fn eq(&self, other: &Self) -> bool {
-        self.data == other.data
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct StructuralList(pub Vec<TypeExpression>);
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct IdentifierWithPointerAddress {
-    pub name: String,
-    pub pointer_address: PointerAddress,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct FixedSizeList {
-    pub ty: Box<TypeExpression>,
-    pub size: usize,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct SliceList(pub Box<TypeExpression>);
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Intersection(pub Vec<TypeExpression>);
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Union(pub Vec<TypeExpression>);
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct GenericAccess {
-    pub base: String,
-    pub access: Vec<TypeExpression>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct StructuralMap(pub Vec<(TypeExpression, TypeExpression)>);
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct CallableTypeExpression {
-    pub kind: CallableKind,
-    pub parameter_types: Vec<(Option<String>, TypeExpression)>,
-    pub rest_parameter_type: Option<(Option<String>, Box<TypeExpression>)>,
-    pub return_type: Option<Box<TypeExpression>>,
-    pub yeet_type: Option<Box<TypeExpression>>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct TypeVariantAccess {
-    pub name: String,
-    pub variant: String,
-    pub base: Option<ResolvedVariable>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct RangeTypeExpr {
-    pub start: Box<TypeExpression>,
-    pub end: Box<TypeExpression>,
 }

@@ -1,8 +1,8 @@
 use crate::{
-    ast::type_expressions::{
+    ast::expressions::{
         CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
         RangeTypeExpr, SliceList, StructuralList, StructuralMap,
-        TypeExpression, TypeExpressionData, Union,
+        TypeExpression, TypeExpressionData, Union, expression::Expression,
     },
     visitor::{VisitAction, type_expression::TypeExpressionVisitor},
 };

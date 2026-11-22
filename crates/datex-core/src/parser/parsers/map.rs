@@ -32,7 +32,10 @@ mod tests {
 
     use crate::{
         ast::{
-            expressions::{BinaryOperation, DatexExpressionData, Map},
+            expressions::{
+                BinaryOperation, DatexExpressionData, Map,
+                expression::Expression,
+            },
             spanned::Spanned,
         },
         global::operators::{BinaryOperator, binary::ArithmeticOperator},

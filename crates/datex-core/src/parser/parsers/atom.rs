@@ -361,10 +361,10 @@ mod tests {
         ast::{
             expressions::{
                 CloneExpression, DatexExpressionData, DeriveSharedRef,
-                RootPropertyAccess, Statements, ValueAccessType,
+                RootPropertyAccess, Statements, TypeExpressionData, Union,
+                ValueAccessType, expression::Expression,
             },
             spanned::Spanned,
-            type_expressions::{TypeExpressionData, Union},
         },
         global::stack_index::StackIndex,
         parser::{

@@ -29,7 +29,7 @@ mod tests {
         ast::{
             expressions::{
                 BinaryOperation, CompileExpression, DatexExpressionData,
-                Statements,
+                Statements, expression::Expression,
             },
             spanned::Spanned,
         },

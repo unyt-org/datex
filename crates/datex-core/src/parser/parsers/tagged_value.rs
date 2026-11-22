@@ -75,7 +75,7 @@ mod tests {
         ast::{
             expressions::{
                 ComparisonOperation, DatexExpressionData, List, Map,
-                TagExpression,
+                TagExpression, expression::Expression,
             },
             spanned::Spanned,
         },
