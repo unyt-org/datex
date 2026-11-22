@@ -1,6 +1,6 @@
-use crate::ast::expressions::CallableDeclaration;
-use crate::types::type_definition::map::MapTypeDefinition;
-use crate::values::core_values::map::Map;
+use datex_core::ast::expressions::CallableDeclaration;
+use datex_core::types::type_definition::map::MapTypeDefinition;
+use datex_core::values::core_values::map::Map;
 
 pub trait CodeGenerator {
     /// Folds a static map definition, a.k.a. "module"
