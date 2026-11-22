@@ -1,6 +1,9 @@
 use crate::{
     ast::{
-        expressions::{DatexExpression, DatexExpressionData, Statements},
+        expressions::{
+            DatexExpression, DatexExpressionData, Statements,
+            expression::Expression,
+        },
         spanned::Spanned,
     },
     parser::{
@@ -113,7 +116,9 @@ mod tests {
 
     use crate::{
         ast::{
-            expressions::{DatexExpressionData, Statements},
+            expressions::{
+                DatexExpressionData, Statements, expression::Expression,
+            },
             spanned::Spanned,
         },
         parser::tests::parse,

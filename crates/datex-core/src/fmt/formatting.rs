@@ -5,7 +5,7 @@ use pretty::DocAllocator;
 use crate::{
     ast::expressions::{
         BinaryOperation, DatexExpression, DatexExpressionData, List, Map,
-        VariableAccess, VariableDeclaration,
+        VariableAccess, VariableDeclaration, expression::Expression,
     },
     fmt::{
         Assoc, Format, Formatter, Operation, ParentContext,

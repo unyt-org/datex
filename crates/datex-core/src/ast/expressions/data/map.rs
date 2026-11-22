@@ -1,7 +1,10 @@
+//! This module defines the representation for map expressions in the AST.
 use crate::{ast::expressions::DatexExpression, prelude::*};
 
+/// Represents a map expression.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Map {
+    /// The entries in the map expression (key-value pairs).
     pub entries: Vec<(DatexExpression, DatexExpression)>,
 }
 

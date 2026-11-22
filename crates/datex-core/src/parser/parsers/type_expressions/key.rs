@@ -1,7 +1,7 @@
 use crate::{
     ast::{
+        expressions::{TypeExpression, TypeExpressionData},
         spanned::Spanned,
-        type_expressions::{TypeExpression, TypeExpressionData},
     },
     parser::{Parser, SpannedParserError, lexer::Token},
 };

@@ -9,6 +9,7 @@ use crate::{
         StackListAssignment, Statements, TagExpression,
         TypeDeclarationExpression, UnaryOperation, Unbox, UnboxAssignment,
         UnboxSlotAssignment, VariableAssignment, VariableDeclaration,
+        expression::Expression,
     },
     visitor::{
         VisitAction, expression::ExpressionVisitor,

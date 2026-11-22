@@ -1,7 +1,7 @@
 use crate::{
     ast::{
+        expressions::{TypeExpression, TypeExpressionData},
         spanned::Spanned,
-        type_expressions::{TypeExpression, TypeExpressionData},
     },
     parser::{
         Parser, SpannedParserError,
@@ -259,7 +259,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::type_expressions::TypeExpressionData,
+        ast::expressions::{TypeExpressionData, expression::Expression},
         parser::parsers::type_expressions::tests::parse_type_expression,
         prelude::*,
         values::core_values::{

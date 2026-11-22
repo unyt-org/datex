@@ -1,17 +1,14 @@
 use crate::{
-    ast::{
-        expressions::{
-            Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-            Conditional, CreateShared, DatexExpression, DatexExpressionData,
-            DeriveRef, DeriveSharedRef, GenericInstantiation,
-            InterfaceMethodCall, List, Map, PropertyAccess, PropertyAssignment,
-            RangeDeclaration, RemoteExecution, RequestSharedRef,
-            RootPropertyAccess, Statements, TagExpression, UnaryOperation,
-            UnboundedStatement, Unbox, UnboxAssignment, ValueAccessType,
-            VariableAccess, VariableAssignment, VariableDeclaration,
-            VariableKind,
-        },
-        type_expressions::{TypeExpression, TypeExpressionData},
+    ast::expressions::{
+        Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
+        Conditional, CreateShared, DatexExpression, DatexExpressionData,
+        DeriveRef, DeriveSharedRef, GenericInstantiation, InterfaceMethodCall,
+        List, Map, PropertyAccess, PropertyAssignment, RangeDeclaration,
+        RemoteExecution, RequestSharedRef, RootPropertyAccess, Statements,
+        TagExpression, TypeExpression, TypeExpressionData, UnaryOperation,
+        UnboundedStatement, Unbox, UnboxAssignment, ValueAccessType,
+        VariableAccess, VariableAssignment, VariableDeclaration, VariableKind,
+        expression::Expression,
     },
     compiler::{
         Variable, VariableModel,

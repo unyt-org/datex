@@ -3,10 +3,10 @@ use crate::{
         expressions::{
             Apply, BinaryOperation, DatexExpression, DatexExpressionData,
             InterfaceMethodCall, List, Map, PropertyAssignment, Statements,
-            UnaryOperation, UnboundedStatement, VariableAssignment,
+            TypeExpression, TypeExpressionData, UnaryOperation,
+            UnboundedStatement, VariableAssignment, expression::Expression,
         },
         spanned::Spanned,
-        type_expressions::{TypeExpression, TypeExpressionData},
     },
     dxb_parser::{
         body::{DXBParserError, iterate_instructions},

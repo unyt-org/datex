@@ -2,7 +2,9 @@
 //! The precompiler traverses the AST, resolves variable references and shared values.
 
 use crate::{
-    ast::expressions::{ComparisonOperation, InterfaceMethodCall},
+    ast::expressions::{
+        ComparisonOperation, InterfaceMethodCall, expression::Expression,
+    },
     collections::HashSet,
     type_inference::infer_expression_type_detailed_errors,
     values::core_value::CoreValue,
@@ -27,13 +29,13 @@ use crate::{
             DatexExpression, DatexExpressionData, DeriveRef, DeriveSharedRef,
             EntityDeclarationExpression, PropertyAccess, PropertyAssignment,
             RemoteExecution, RequestSharedRef, Statements,
-            TypeDeclarationExpression, Unbox, UnboxAssignment, ValueAccessType,
-            VariableAccess, VariableAssignment, VariableDeclaration,
-            VariableKind, VariantAccess,
+            TypeDeclarationExpression, TypeExpressionData, TypeVariantAccess,
+            Unbox, UnboxAssignment, ValueAccessType, VariableAccess,
+            VariableAssignment, VariableDeclaration, VariableKind,
+            VariantAccess,
         },
         resolved_variable::ResolvedVariable,
         spanned::Spanned,
-        type_expressions::{TypeExpressionData, TypeVariantAccess},
     },
     compiler::{
         error::{
@@ -1206,12 +1208,12 @@ mod tests {
                 DatexExpressionData, DeriveRef, DeriveSharedRef,
                 EntityDeclarationExpression, InterfaceMethodCall, Map,
                 PropertyAccess, PropertyAssignment, RemoteExecution,
-                Statements, Unbox, ValueAccessType, VariableAccess,
-                VariableDeclaration, VariableKind, VariantAccess,
+                Statements, StructuralMap, TypeExpressionData, Unbox,
+                ValueAccessType, VariableAccess, VariableDeclaration,
+                VariableKind, VariantAccess, expression::Expression,
             },
             resolved_variable::ResolvedVariable,
             spanned::Spanned,
-            type_expressions::{StructuralMap, TypeExpressionData},
         },
         compiler::{
             error::{

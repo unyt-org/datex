@@ -3,7 +3,7 @@ use crate::{
     ast::{
         expressions::{
             DatexExpression, DatexExpressionData, Statements,
-            UnboundedStatement, VariableKind,
+            UnboundedStatement, VariableKind, expression::Expression,
         },
         resolved_variable::VariableId,
     },

@@ -49,7 +49,9 @@ impl Parser {
 mod tests {
     use crate::{
         ast::{
-            expressions::{Conditional, DatexExpressionData},
+            expressions::{
+                Conditional, DatexExpressionData, expression::Expression,
+            },
             spanned::Spanned,
         },
         parser::tests::parse,

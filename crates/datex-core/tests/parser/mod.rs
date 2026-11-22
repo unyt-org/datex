@@ -1,12 +1,9 @@
 use alloc::str::FromStr;
 use core::assert_matches;
 use datex_core::{
-    ast::{
-        expressions::{
-            CallableSignature, RemoteExecution, Statements,
-            TypeDeclarationExpression,
-        },
-        type_expressions::StructuralMap,
+    ast::expressions::{
+        CallableSignature, RemoteExecution, Statements, StructuralMap,
+        TypeDeclarationExpression, expression::Expression,
     },
     global::operators::{
         ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
@@ -31,16 +28,13 @@ use datex_core::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
             Conditional, CreateShared, DatexExpression, DatexExpressionData,
-            EntityDeclarationExpression, GenericInstantiation, List, Map,
-            PropertyAccess, PropertyAssignment, RequestSharedRef,
-            UnaryOperation, Unbox, ValueAccessType, VariableAssignment,
+            EntityDeclarationExpression, GenericInstantiation, Intersection,
+            List, Map, PropertyAccess, PropertyAssignment, RequestSharedRef,
+            StructuralList, TypeExpressionData, TypeVariantAccess,
+            UnaryOperation, Unbox, Union, ValueAccessType, VariableAssignment,
             VariableDeclaration, VariableKind,
         },
         spanned::Spanned,
-        type_expressions::{
-            Intersection, StructuralList, TypeExpressionData,
-            TypeVariantAccess, Union,
-        },
     },
     parser::{
         Parser,

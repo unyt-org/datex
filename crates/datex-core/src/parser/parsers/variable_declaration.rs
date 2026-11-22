@@ -69,10 +69,10 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                DatexExpressionData, VariableDeclaration, VariableKind,
+                DatexExpressionData, TypeExpressionData, Union,
+                VariableDeclaration, VariableKind, expression::Expression,
             },
             spanned::Spanned,
-            type_expressions::{TypeExpressionData, Union},
         },
         parser::tests::parse,
         prelude::*,

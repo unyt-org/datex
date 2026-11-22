@@ -3,9 +3,11 @@
 //! The parser supports both early abort on first error and detailed error collection modes, which can be configured using the [ParserOptions] struct.
 use crate::{
     ast::{
-        expressions::{DatexExpression, DatexExpressionData},
+        expressions::{
+            DatexExpression, DatexExpressionData, TypeExpression,
+            TypeExpressionData,
+        },
         spanned::Spanned,
-        type_expressions::{TypeExpression, TypeExpressionData},
     },
     parser::{
         errors::{ParserError, SpannedParserError},
