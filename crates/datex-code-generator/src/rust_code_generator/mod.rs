@@ -1,4 +1,4 @@
-use datex_code_generator::CodeGenerator;
+use super::CodeGenerator;
 
 struct RustCodeGenerator;
 
