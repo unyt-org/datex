@@ -1,29 +1,11 @@
 //! This module defines the representation for type expressions in the AST.
-use alloc::{boxed::Box, string::String};
+use alloc::boxed::Box;
 
-use crate::{
-    ast::{
-        expressions::{
-            TypeExpressionData, VariableAccess, traits::expression::Expression,
-        },
-        resolved_variable::ResolvedVariable,
-        spanned::Spanned,
-    },
-    prelude::*,
-    values::core_values::{
-        boolean::Boolean,
-        decimal::{Decimal, typed_decimal::TypedDecimal},
-        endpoint::Endpoint,
-        integer::{Integer, typed_integer::TypedInteger},
-        text::Text,
-    },
+use crate::ast::expressions::{
+    TypeExpressionData, traits::expression::Expression,
 };
 
-use crate::{
-    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
-    shared_values::PointerAddress,
-    types::{r#type::Type, type_definition::callable::CallableKind},
-};
+use crate::types::r#type::Type;
 use core::ops;
 
 #[derive(Clone, Debug)]
