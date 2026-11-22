@@ -208,14 +208,22 @@ pub struct ComHub {
     /// Optional runtime for the ComHub, required for network tracing. TODO: find a better solution, comhub should not need to reference runtime
     pub(crate) runtime: RefCell<Option<Runtime>>,
 
-    pub keys: Option<String>,
+    pub vault: RefCell<Vault>,
 
-    pub vault: Option<Mutex<Vault>>,
+    pub peer_vault: Mutex<HashMap<Endpoint, [u8; 32]>>,
 }
 
-struct Vault {
-    pub_key: [u8; 32],
-    pri_key: [u8; 32],
+pub struct Vault {
+    pub pub_key: [u8; 32],
+    pub pri_key: [u8; 32],
+}
+impl Vault {
+    pub fn create_empty() -> Self {
+        Vault {
+            pri_key: [0u8; 32],
+            pub_key: [0u8; 32],
+        }
+    }
 }
 
 impl Debug for ComHub {
@@ -302,6 +310,7 @@ impl ComHub {
             block_history_capacity,
         );
 
+        info!("Creating Comhub.");
         let com_hub = Rc::new(ComHub {
             endpoint: UnsafeCell::new(endpoint.into()),
             options: ComHubOptions::default(),
@@ -315,48 +324,10 @@ impl ComHub {
             reconnecting_interfaces: RefCell::new(HashMap::new()),
             task_manager,
             runtime: RefCell::new(None),
-            keys: None,
-            vault: None,
+            vault: RefCell::new(Vault::create_empty()),
+            peer_vault: Mutex::new(HashMap::<Endpoint, [u8; 32]>::new()),
         });
 
-        info!("Comhub created!");
-        (com_hub, task_future)
-    }
-
-    pub fn create_with_keys(
-        endpoint: impl Into<Endpoint>,
-        incoming_sections_sender: IncomingSectionSender,
-        com_interface_reconnect_request_sender: UnboundedSender<
-            ComInterfaceReconnectRequest,
-        >,
-        block_history_capacity: usize,
-        keys: Option<String>,
-    ) -> (Rc<ComHub>, impl Future<Output = ()>) {
-        let (task_manager, task_future) = TaskManager::create();
-
-        let block_handler = BlockHandler::init(
-            incoming_sections_sender,
-            block_history_capacity,
-        );
-
-        let com_hub = Rc::new(ComHub {
-            endpoint: UnsafeCell::new(endpoint.into()),
-            options: ComHubOptions::default(),
-            block_handler,
-            socket_manager: ComInterfaceSocketManager::new(),
-            interfaces_manager: ComInterfaceManager::default(),
-            block_interceptors: RefCell::new(HashMap::new()),
-            reconnect_interface_sender: RefCell::new(
-                com_interface_reconnect_request_sender,
-            ),
-            reconnecting_interfaces: RefCell::new(HashMap::new()),
-            task_manager,
-            runtime: RefCell::new(None),
-            keys,
-            vault: None,
-        });
-
-        info!("Comhub with keys created!");
         (com_hub, task_future)
     }
 
@@ -692,12 +663,17 @@ impl ComHub {
         block: DXBBlock,
         socket_uuid: ComInterfaceSocketUUID,
     ) {
+        #[cfg(feature = "crypto_enabled")]
         if block.block_type() == BlockType::Hello {
             // preprocess hello block by setting up peers pub keys
-            let x = block.body.clone();
-            info!("HelloBlock Content: {:?}", x);
-            let y = block.routing_header.sender.clone();
-            info!("HelloBlock Sender: {:?}", y);
+            let peer_endpoint = block.routing_header.sender.clone();
+            info!("HelloBlock Sender: {:?}", peer_endpoint);
+            let peer_pub_key = block.body.clone();
+            info!("HelloBlock Content: {:?}", peer_pub_key);
+            let pub_key: [u8; 32] = peer_pub_key.try_into().unwrap();
+
+            let mut z = self.peer_vault.try_lock().unwrap();
+            let _old_key = z.insert(peer_endpoint, pub_key);
         }
         // handle incoming block
         let receive_block_result = self
@@ -750,6 +726,7 @@ impl ComHub {
     /// Returns Ok(dxb) if the signature is valid, or a SignatureValidationError if the signature is missing, cannot be parsed, or is invalid.
     pub fn validate_signature(
         mut dxb: DXBBlock,
+        pub_key: [u8; 32],
     ) -> MaybeAsync<
         Result<DXBBlock, SignatureValidationError>,
         impl Future<Output = Result<DXBBlock, SignatureValidationError>>,
@@ -786,74 +763,36 @@ impl ComHub {
                         MaybeAsync::Async(async move {
                             let is_valid = match signature_type {
                                 SignatureType::Encrypted => {
-                                    info!("validating encrypted signature");
-                                    let raw_sign = dxb.signature.as_ref().ok_or(
-                                SignatureValidationError::MissingSignature,
-                            )?;
-                                    let (enc_sign, pub_key) =
-                                        raw_sign.split_at(64);
-                                    let hash = CryptoImpl::hkdf_sha256(pub_key, &[0u8; 16])
-                                .await
-                                .map_err(|_| {
-                                    SignatureValidationError::SignatureParseError
-                                })?;
-                                    let signature = CryptoImpl::aes_ctr_decrypt(
-                                &hash, &[0u8; 16], enc_sign,
-                            )
-                            .await
-                            .map_err(|_| {
-                                SignatureValidationError::SignatureParseError
-                            })?;
-
-                                    let raw_signed =
-                                        [pub_key, &dxb.body.clone()].concat();
-                                    let hashed_signed = CryptoImpl::hash_sha256(
-                                &raw_signed,
-                            )
-                            .await
-                            .map_err(|_| {
-                                SignatureValidationError::SignatureParseError
-                            })?;
-
-                                    CryptoImpl::ver_ed25519(
-                                pub_key,
-                                &signature,
-                                &hashed_signed,
-                            )
-                            .await
-                            .map_err(|_| {
-                                SignatureValidationError::InvalidSignature
-                            })?
-                                }
+                                    unimplemented!("Encrypted signatures not yet implemented");
+                                },
 
                                 SignatureType::Unencrypted => {
-                                    info!("validating not encrypted signature");
-                                    let raw_sign = dxb.signature.as_ref().ok_or(
-                                SignatureValidationError::MissingSignature,
-                            )?;
-                                    let (signature, pub_key) =
-                                        raw_sign.split_at(64);
+                                    info!("val unencrypted against: {:?}", pub_key);
+                                    let signature = dxb.signature.as_ref().ok_or(
+                                        SignatureValidationError::MissingSignature,
+                                    )?;
 
                                     let raw_signed =
-                                        [pub_key, &dxb.body.clone()].concat();
+                                        [pub_key.to_vec(), dxb.body.clone()].concat();
                                     let hashed_signed = CryptoImpl::hash_sha256(
-                                &raw_signed,
-                            )
-                            .await
-                            .map_err(|_| {
-                                SignatureValidationError::SignatureParseError
-                            })?;
+                                        &raw_signed,
+                                    )
+                                    .await
+                                    .map_err(|_| {
+                                        SignatureValidationError::SignatureParseError
+                                    })?;
 
                                     CryptoImpl::ver_ed25519(
-                                pub_key,
-                                signature,
-                                &hashed_signed,
-                            )
-                            .await
-                            .map_err(|_| {
-                                SignatureValidationError::InvalidSignature
-                            })?
-                                }
+                                        &pub_key,
+                                        signature,
+                                        &hashed_signed,
+                                    )
+                                    .await
+                                    .map_err(|_| {
+                                        SignatureValidationError::InvalidSignature
+                                    })?
+                                },
+
                                 _ => unreachable!(),
                             };
 
@@ -910,6 +849,38 @@ impl ComHub {
         socket_uuid: ComInterfaceSocketUUID,
     ) -> MaybeAsync<ReceiveBlockResult, impl Future<Output = ReceiveBlockResult>>
     {
+        let peer_pub_key = cfg_select! {
+            feature = "crypto_enabled" => {
+                if block.block_type() == BlockType::Hello {
+                    // if block is hello, extract body as key and insert into vault
+                    let ppk: [u8; 32] = block.body.clone().try_into().unwrap();
+                    self.peer_vault
+                        .try_lock()
+                        .unwrap()
+                        .insert(block.sender().clone(), ppk)
+                        .unwrap()
+                        .clone()
+                } else {
+                    // if block is not hello assume knowing public key already
+                    if self.endpoint() == block.sender() {
+                        // check if it's a loopback
+                        self.vault.borrow().pub_key.clone()
+                    } else {
+                        // check hashmap in comhub
+                        self.peer_vault
+                            .try_lock()
+                            .unwrap()
+                            .get(block.sender())
+                            .unwrap()
+                            .clone()
+                    }
+                }
+            },
+            _ => {
+                [0u8; 32]
+            }
+        };
+
         // preprocess the block and get relay receivers and own received block if any
         let preprocess_result =
             self.receive_block_preprocess(&socket_uuid, block);
@@ -919,9 +890,11 @@ impl ComHub {
         // validate block signature if sent to own endpoint
         let validation_result = match preprocess_result.own_received_block {
             // if block is for own endpoint, validate signature if set
-            Some(block) => ComHub::validate_signature(block)
-                .map(|validation| validation.map(Some)),
-            // if block is not for own endpoint, don't validate signature and don't return own received block
+            Some(block) => {
+                ComHub::validate_signature(block, peer_pub_key)
+                    .map(|validation| validation.map(Some))
+                // if block is not for own endpoint, don't validate signature and don't return own received block
+            }
             None => MaybeAsync::Sync(Ok(None)),
         };
 
@@ -1361,9 +1334,12 @@ impl ComHub {
             Ok(block)
         }
 
+        // share own pub sig key via hello block
+        #[cfg(feature = "crypto_enabled")]
         if block.block_type() == BlockType::Hello {
             // alternating series as placeholder for development
-            let x: [u8; 32] = core::array::from_fn(|i| (i % 2) as u8);
+            // let x: [u8; 32] = core::array::from_fn(|i| (i % 2) as u8);
+            let x = self.vault.borrow().pub_key;
             block.body = x.to_vec();
         };
 
@@ -1378,9 +1354,18 @@ impl ComHub {
                 let endpoint = self.endpoint().clone();
 
                 MaybeAsyncResult::Async(Box::pin(async move {
+                    /*
                     let (pub_key, pri_key) = CryptoImpl::gen_ed25519()
                         .await
                         .map_err(|_| ComHubError::SignatureCreationError)?;
+                    */
+                    let mut pri_key = [0u8; 32];
+                    let mut pub_key = [0u8; 32];
+                    {
+                        let vault = self.vault.borrow();
+                        pri_key.copy_from_slice(&vault.pri_key);
+                        pub_key.copy_from_slice(&vault.pub_key);
+                    }
 
                     let raw_signed =
                         [pub_key.to_vec(), block.body.clone()].concat();
@@ -1398,19 +1383,7 @@ impl ComHub {
                         SignatureType::Unencrypted => signature.to_vec(),
 
                         SignatureType::Encrypted => {
-                            let hash =
-                                CryptoImpl::hkdf_sha256(&pub_key, &[0u8; 16])
-                                    .await
-                                    .map_err(|_| {
-                                        ComHubError::SignatureCreationError
-                                    })?;
-
-                            CryptoImpl::aes_ctr_encrypt(
-                                &hash, &[0u8; 16], &signature,
-                            )
-                            .await
-                            .map_err(|_| ComHubError::SignatureCreationError)?
-                            .to_vec()
+                            unimplemented!("Not yet implemented");
                         }
 
                         SignatureType::Unsigned => {
@@ -1418,8 +1391,7 @@ impl ComHub {
                         }
                     };
 
-                    block.signature =
-                        Some([sig_bytes, pub_key.to_vec()].concat());
+                    block.signature = Some(sig_bytes);
                     update_sender_and_timestamp(block, endpoint)
                 }))
             }

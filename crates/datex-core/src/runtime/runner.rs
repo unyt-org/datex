@@ -1,5 +1,6 @@
 use crate::{
     channel::mpsc::create_unbounded_channel,
+    crypto::CryptoImpl,
     network::{
         block_handler::{BlockHandler, create_incoming_sections_channel},
         com_hub::{ComHub, ComInterfaceReconnectRequest},
@@ -15,6 +16,7 @@ use crate::{
 };
 use async_select::select;
 use core::{cell::RefCell, pin::Pin};
+use datex_facades::crypto::Crypto;
 use futures::channel::oneshot;
 use futures_util::{
     future,
@@ -47,13 +49,28 @@ impl RuntimeRunner {
             com_interface_reconnect_request_receiver,
         ) = create_unbounded_channel::<ComInterfaceReconnectRequest>();
 
-        let (com_hub, com_hub_task_future) = ComHub::create_with_keys(
+        let (com_hub, com_hub_task_future) = ComHub::create(
             endpoint.clone(),
             incoming_sections_sender,
             com_interface_reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
-            config.key.clone(),
         );
+
+        // note: import of keys into comhub takes a different route on esp
+        #[cfg(all(feature = "crypto_enabled", not(target_arch = "xtensa")))]
+        {
+            let pub_key_str = config.pub_key.clone();
+            let pri_key_str = config.pri_key.clone();
+            info!("New runner with pub key: {:?}", pub_key_str.clone());
+            let mut x = com_hub.vault.borrow_mut();
+            let pub_key =
+                CryptoImpl::dec_b58_32(pub_key_str.unwrap().as_str()).unwrap();
+            let pri_key =
+                CryptoImpl::dec_b58_32(pri_key_str.unwrap().as_str()).unwrap();
+            x.pub_key = pub_key;
+            x.pri_key = pri_key;
+        }
+
         let memory = RefCell::new(SharedReferencesCache::default());
         let pointer_address_provider = Rc::new(RefCell::new(
             SelfOwnedPointerAddressProvider::new(endpoint.clone()),

@@ -250,7 +250,7 @@ impl DXBBlock {
 
         let signature = match routing_header.flags.signature_type() {
             SignatureType::Encrypted => {
-                let mut signature = Vec::from([0u8; 96]);
+                let mut signature = Vec::from([0u8; 64]);
                 reader.read_exact(&mut signature).map_err(|e| {
                     DXBBlockParseError::IOError(format!(
                         "Failed to read encrypted signature: {}",
@@ -261,7 +261,7 @@ impl DXBBlock {
                 Some(signature)
             }
             SignatureType::Unencrypted => {
-                let mut signature = Vec::from([0u8; 96]);
+                let mut signature = Vec::from([0u8; 64]);
                 reader.read_exact(&mut signature).map_err(|e| {
                     DXBBlockParseError::IOError(format!(
                         "Failed to read unencrypted signature: {}",
@@ -482,7 +482,7 @@ mod tests {
             .routing_header
             .flags
             .set_signature_type(SignatureType::Unencrypted);
-        block.signature = Some(vec![0u8; 96]);
+        block.signature = Some(vec![0u8; 64]);
 
         let block_bytes = block.to_bytes();
         let parse_result = DXBBlock::from_bytes(&block_bytes);

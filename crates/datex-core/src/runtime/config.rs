@@ -51,7 +51,8 @@ impl RuntimeConfigInterface {
 pub struct RuntimeConfig {
     pub endpoint: Endpoint,
     pub name: Option<String>,
-    pub key: Option<String>,
+    pub pub_key: Option<String>,
+    pub pri_key: Option<String>,
     pub interfaces: Option<Vec<RuntimeConfigInterface>>,
     pub env: Option<IndexMap<String, String, RandomState>>,
 }
@@ -61,7 +62,8 @@ impl RuntimeConfig {
         RuntimeConfig {
             endpoint,
             name: None,
-            key: None,
+            pub_key: None,
+            pri_key: None,
             interfaces: None,
             env: None,
         }
@@ -272,7 +274,8 @@ pub mod tests {
             Ok(RuntimeConfig {
                 endpoint: Endpoint::new("@test"),
                 name: Some("Example".to_string()),
-                key: Some("PlaceholderKey".to_string()),
+                pub_key: Some("PlaceholderPubKey".to_string()),
+                pri_key: Some("PlaceholderPriKey".to_string()),
                 interfaces: Some(vec![RuntimeConfigInterface {
                     interface_type: "websocket-client".to_string(),
                     config: Map::from(vec![(
