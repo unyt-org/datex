@@ -1,10 +1,10 @@
-//! This module contains the implementation of the visitor pattern for traversing and transforming the AST of [DatexExpression]s.
+//! This module contains the implementation of the visitor pattern for traversing and transforming the AST of [DataExpression]s.
 pub mod visitable;
 use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, CompileExpression, Conditional, CreateMut,
-        CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
+        CreateShared, DataExpression, DataExpressionData, DeriveRef,
         DeriveSharedRef, EntityDeclarationExpression, EntityValueExpression,
         GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess,
         PropertyAssignment, RemoteExecution, RequestSharedRef,
@@ -39,21 +39,21 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     fn handle_expression_error(
         &mut self,
         error: E,
-        expression: &DatexExpression,
-    ) -> Result<VisitAction<DatexExpression>, E> {
+        expression: &DataExpression,
+    ) -> Result<VisitAction<DataExpression>, E> {
         let _ = expression;
         Err(error)
     }
 
     fn before_visit_datex_expression(
         &mut self,
-        expression: &mut DatexExpression,
+        expression: &mut DataExpression,
     ) {
         let _ = expression;
     }
     fn after_visit_datex_expression(
         &mut self,
-        expression: &mut DatexExpression,
+        expression: &mut DataExpression,
     ) {
         let _ = expression;
     }
@@ -61,188 +61,182 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Visit datex expression
     fn visit_datex_expression(
         &mut self,
-        expr: &mut DatexExpression,
+        expr: &mut DataExpression,
     ) -> Result<(), E> {
         self.before_visit_datex_expression(expr);
         let visit_result = match &mut *expr.data {
-            DatexExpressionData::PropertyAssignment(property_assignment) => {
+            DataExpressionData::PropertyAssignment(property_assignment) => {
                 self.visit_property_assignment(property_assignment, &expr.span)
             }
-            DatexExpressionData::VariantAccess(variant_access) => {
+            DataExpressionData::VariantAccess(variant_access) => {
                 self.visit_variant_access(variant_access, &expr.span)
             }
-            DatexExpressionData::UnaryOperation(op) => {
+            DataExpressionData::UnaryOperation(op) => {
                 self.visit_unary_operation(op, &expr.span)
             }
-            DatexExpressionData::Statements(stmts) => {
+            DataExpressionData::Statements(stmts) => {
                 self.visit_statements(stmts, &expr.span)
             }
-            DatexExpressionData::VariableDeclaration(var_decl) => {
+            DataExpressionData::VariableDeclaration(var_decl) => {
                 self.visit_variable_declaration(var_decl, &expr.span)
             }
-            DatexExpressionData::VariableAssignment(var_assign) => {
+            DataExpressionData::VariableAssignment(var_assign) => {
                 self.visit_variable_assignment(var_assign, &expr.span)
             }
-            DatexExpressionData::VariableAccess(var_access) => {
+            DataExpressionData::VariableAccess(var_access) => {
                 self.visit_variable_access(var_access, &expr.span)
             }
-            DatexExpressionData::Integer(i) => {
-                self.visit_integer(i, &expr.span)
-            }
-            DatexExpressionData::Instant(dt) => {
+            DataExpressionData::Integer(i) => self.visit_integer(i, &expr.span),
+            DataExpressionData::Instant(dt) => {
                 self.visit_datetime(dt, &expr.span)
             }
-            DatexExpressionData::Range(range) => {
+            DataExpressionData::Range(range) => {
                 self.visit_range(range, &expr.span)
             }
-            DatexExpressionData::TypedInteger(ti) => {
+            DataExpressionData::TypedInteger(ti) => {
                 self.visit_typed_integer(ti, &expr.span)
             }
-            DatexExpressionData::Decimal(d) => {
-                self.visit_decimal(d, &expr.span)
-            }
-            DatexExpressionData::TypedDecimal(td) => {
+            DataExpressionData::Decimal(d) => self.visit_decimal(d, &expr.span),
+            DataExpressionData::TypedDecimal(td) => {
                 self.visit_typed_decimal(td, &expr.span)
             }
-            DatexExpressionData::Text(s) => self.visit_text(s, &expr.span),
-            DatexExpressionData::Boolean(b) => {
-                self.visit_boolean(b, &expr.span)
-            }
-            DatexExpressionData::Endpoint(e) => {
+            DataExpressionData::Text(s) => self.visit_text(s, &expr.span),
+            DataExpressionData::Boolean(b) => self.visit_boolean(b, &expr.span),
+            DataExpressionData::Endpoint(e) => {
                 self.visit_endpoint(e, &expr.span)
             }
-            DatexExpressionData::Null => self.visit_null(&expr.span),
-            DatexExpressionData::List(list) => {
-                self.visit_list(list, &expr.span)
-            }
-            DatexExpressionData::Map(map) => self.visit_map(map, &expr.span),
-            DatexExpressionData::RequestSharedRef(request_shared_ref) => self
+            DataExpressionData::Null => self.visit_null(&expr.span),
+            DataExpressionData::List(list) => self.visit_list(list, &expr.span),
+            DataExpressionData::Map(map) => self.visit_map(map, &expr.span),
+            DataExpressionData::RequestSharedRef(request_shared_ref) => self
                 .visit_request_shared_reference(request_shared_ref, &expr.span),
-            DatexExpressionData::Conditional(conditional) => {
+            DataExpressionData::Conditional(conditional) => {
                 self.visit_conditional(conditional, &expr.span)
             }
-            DatexExpressionData::TypeDeclaration(type_declaration) => {
+            DataExpressionData::TypeDeclaration(type_declaration) => {
                 self.visit_type_declaration(type_declaration, &expr.span)
             }
-            DatexExpressionData::EntityDeclaration(entity_declaration) => {
+            DataExpressionData::EntityDeclaration(entity_declaration) => {
                 self.visit_entity_declaration(entity_declaration, &expr.span)
             }
-            DatexExpressionData::TypeExpression(type_expression) => self
+            DataExpressionData::TypeExpression(type_expression) => self
                 .visit_type_expression(type_expression)
                 .map(|_| VisitAction::AbortRecursion),
-            DatexExpressionData::CallableDeclaration(callable_declaration) => {
+            DataExpressionData::CallableDeclaration(callable_declaration) => {
                 self.visit_callable_declaration(
                     callable_declaration,
                     &expr.span,
                 )
             }
-            DatexExpressionData::DeriveRef(get_ref) => {
+            DataExpressionData::DeriveRef(get_ref) => {
                 self.visit_get_ref(get_ref, &expr.span)
             }
-            DatexExpressionData::DeriveSharedRef(get_shared_ref) => {
+            DataExpressionData::DeriveSharedRef(get_shared_ref) => {
                 self.visit_get_shared_ref(get_shared_ref, &expr.span)
             }
-            DatexExpressionData::CreateShared(create_shared) => {
+            DataExpressionData::CreateShared(create_shared) => {
                 self.visit_create_shared(create_shared, &expr.span)
             }
-            DatexExpressionData::CreateMut(create_mut) => {
+            DataExpressionData::CreateMut(create_mut) => {
                 self.visit_create_mut(create_mut, &expr.span)
             }
-            DatexExpressionData::Unbox(unbox) => {
+            DataExpressionData::Unbox(unbox) => {
                 self.visit_unbox(unbox, &expr.span)
             }
-            DatexExpressionData::Clone(clone) => {
+            DataExpressionData::Clone(clone) => {
                 self.visit_clone(clone, &expr.span)
             }
-            DatexExpressionData::StackIndex(slot) => {
+            DataExpressionData::StackIndex(slot) => {
                 self.visit_stack_index(slot, &expr.span)
             }
-            DatexExpressionData::EntityValue(entity_value) => {
+            DataExpressionData::EntityValue(entity_value) => {
                 self.visit_entity_value(entity_value, &expr.span)
             }
-            DatexExpressionData::StackAssignment(stack_assignment) => {
+            DataExpressionData::StackAssignment(stack_assignment) => {
                 self.visit_stack_assignment(stack_assignment, &expr.span)
             }
-            DatexExpressionData::StackListAssignment(stack_list_assignment) => {
+            DataExpressionData::StackListAssignment(stack_list_assignment) => {
                 self.visit_stack_list_assignment(
                     stack_list_assignment,
                     &expr.span,
                 )
             }
-            DatexExpressionData::BinaryOperation(binary_operation) => {
+            DataExpressionData::BinaryOperation(binary_operation) => {
                 self.visit_binary_operation(binary_operation, &expr.span)
             }
-            DatexExpressionData::ComparisonOperation(comparison_operation) => {
+            DataExpressionData::ComparisonOperation(comparison_operation) => {
                 self.visit_comparison_operation(
                     comparison_operation,
                     &expr.span,
                 )
             }
-            DatexExpressionData::UnboxAssignment(unbox_assignment) => {
+            DataExpressionData::UnboxAssignment(unbox_assignment) => {
                 self.visit_unbox_assignment(unbox_assignment, &expr.span)
             }
-            DatexExpressionData::UnboxSlotAssignment(unbox_slot_assignment) => {
+            DataExpressionData::UnboxSlotAssignment(unbox_slot_assignment) => {
                 self.visit_unbox_slot_assignment(
                     unbox_slot_assignment,
                     &expr.span,
                 )
             }
-            DatexExpressionData::Apply(apply) => {
+            DataExpressionData::Apply(apply) => {
                 self.visit_apply(apply, &expr.span)
             }
-            DatexExpressionData::InterfaceMethodCall(call) => {
+            DataExpressionData::InterfaceMethodCall(call) => {
                 self.visit_interface_method_call(call, &expr.span)
             }
-            DatexExpressionData::PropertyAccess(property_access) => {
+            DataExpressionData::PropertyAccess(property_access) => {
                 self.visit_property_access(property_access, &expr.span)
             }
-            DatexExpressionData::GenericInstantiation(
-                generic_instantiation,
-            ) => self
-                .visit_generic_instantiation(generic_instantiation, &expr.span),
-            DatexExpressionData::RemoteExecution(remote_execution) => {
+            DataExpressionData::GenericInstantiation(generic_instantiation) => {
+                self.visit_generic_instantiation(
+                    generic_instantiation,
+                    &expr.span,
+                )
+            }
+            DataExpressionData::RemoteExecution(remote_execution) => {
                 self.visit_remote_execution(remote_execution, &expr.span)
             }
-            DatexExpressionData::Identifier(identifier) => {
+            DataExpressionData::Identifier(identifier) => {
                 self.visit_identifier(identifier, &expr.span)
             }
-            DatexExpressionData::Placeholder(placeholder_type) => {
+            DataExpressionData::Placeholder(placeholder_type) => {
                 self.visit_placeholder(placeholder_type, &expr.span)
             }
-            DatexExpressionData::Recover => {
+            DataExpressionData::Recover => {
                 unreachable!(
                     "Placeholder and Recover expressions should not be visited"
                 )
             }
-            DatexExpressionData::Noop => Ok(VisitAction::AbortRecursion),
-            DatexExpressionData::NativeImplementationIndicator => {
+            DataExpressionData::Noop => Ok(VisitAction::AbortRecursion),
+            DataExpressionData::NativeImplementationIndicator => {
                 Ok(VisitAction::AbortRecursion)
             }
-            DatexExpressionData::Compile(compile_expression) => {
+            DataExpressionData::Compile(compile_expression) => {
                 self.visit_compile_expression(compile_expression, &expr.span)
             }
-            DatexExpressionData::Tag(tag) => {
+            DataExpressionData::Tag(tag) => {
                 self.visit_tag_expression(tag, &expr.span)
             }
-            DatexExpressionData::RootPropertyAccess(root_property_access) => {
+            DataExpressionData::RootPropertyAccess(root_property_access) => {
                 self.visit_root_property_access(
                     root_property_access,
                     &expr.span,
                 )
             }
-            DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
+            DataExpressionData::ResolveCoreLibId(core_lib_id) => {
                 self.visit_get_core_lib_id(core_lib_id, &expr.span)
             }
-            DatexExpressionData::OmitRecursive => {
+            DataExpressionData::OmitRecursive => {
                 unreachable!("Omit expressions should not be visited")
             }
-            DatexExpressionData::MoveSharedValue(_) => {
+            DataExpressionData::MoveSharedValue(_) => {
                 todo!("Move shared value visit?");
             }
-            DatexExpressionData::Sender => {
+            DataExpressionData::Sender => {
                 todo!("Sender visit not implemented yet");
             }
-            DatexExpressionData::Receiver => {
+            DataExpressionData::Receiver => {
                 todo!("Receiver visit not implemented yet");
             }
         };
@@ -263,7 +257,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             }
             VisitAction::AbortRecursion => Ok(()),
             VisitAction::ToNoop => {
-                *expr.data = DatexExpressionData::Noop;
+                *expr.data = DataExpressionData::Noop;
                 Ok(())
             }
             VisitAction::ContinueRecursion => {

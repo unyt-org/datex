@@ -1,5 +1,5 @@
 //! This module defines the representation for type variant access expressions in the AST.
-use crate::{ast::resolved_variable::ResolvedVariable, prelude::*};
+use crate::{ast::expressions::ResolvedVariable, prelude::*};
 
 /// Represents a type variant access expression in the AST, including the name, variant, and optional base variable.
 #[derive(Clone, Debug, PartialEq)]

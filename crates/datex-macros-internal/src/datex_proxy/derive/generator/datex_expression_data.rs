@@ -31,7 +31,7 @@ pub fn generate_datex_expression_data(
         if structure_data.attributes.type_kind.is_entity() {
             let entity_name = structure_data.ident.to_string();
             quote! {
-                DatexExpressionData::EntityValue(EntityValueExpression {
+                DataExpressionData::EntityValue(EntityValueExpression {
                     entity_name: #entity_name.to_string(),
                     entity_address: None,
                     value: #datex_expression_data.with_default_span()
@@ -43,14 +43,14 @@ pub fn generate_datex_expression_data(
 
     quote! {
         impl #impl_generics ToDatexExpressionData for #ident #ty_generics #where_clause {
-            fn to_datex_expression_data(&self) -> DatexExpressionData {
+            fn to_datex_expression_data(&self) -> DataExpressionData {
                 #datex_expression_data
             }
         }
     }
 }
 
-/// Generates the datex expression data for the given fields. Returns a TokenStream of [DatexExpressionData].
+/// Generates the datex expression data for the given fields. Returns a TokenStream of [DataExpressionData].
 fn generate_datex_expression_data_fields(
     fields: &Fields,
     tag: Option<&String>,
@@ -63,7 +63,7 @@ fn generate_datex_expression_data_fields(
                 .map(named_field_to_expression_data)
                 .collect::<Vec<_>>();
             Some(quote! {
-                DatexExpressionData::Map(ast::expressions::Map::new(
+                DataExpressionData::Map(ast::expressions::Map::new(
                     vec![
                         #(#field_expressions),*
                     ]
@@ -82,7 +82,7 @@ fn generate_datex_expression_data_fields(
                 .collect::<Vec<_>>();
 
             Some(quote! {
-                DatexExpressionData::List(ast::expressions::List::new(
+                DataExpressionData::List(ast::expressions::List::new(
                     vec![
                         #(#field_expressions),*
                     ]
@@ -112,14 +112,14 @@ fn generate_datex_expression_data_fields(
             };
 
             quote! {
-                DatexExpressionData::Tag(TagExpression {
+                DataExpressionData::Tag(TagExpression {
                     tag: #tag.to_string(),
                     expression: #expression
                 })
             }
         }
         None => inner.unwrap_or(quote! {
-            DatexExpressionData::Statements(Statements::empty())
+            DataExpressionData::Statements(Statements::empty())
         }),
     }
 }
@@ -151,7 +151,7 @@ fn named_field_to_expression_data(field: &NamedField) -> TokenStream {
     let name = field.datex_field_name().to_string();
     quote! {
         (
-            DatexExpressionData::Text(Text::String(#name.to_string())).with_default_span(),
+            DataExpressionData::Text(Text::String(#name.to_string())).with_default_span(),
             #expression_data,
         )
     }

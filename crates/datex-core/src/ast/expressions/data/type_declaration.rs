@@ -1,6 +1,6 @@
 //! This module defines the representation for type and entity declaration expressions in the AST.
 use crate::{
-    ast::{expressions::TypeExpression, resolved_variable::VariableId},
+    ast::expressions::{TypeExpression, VariableId},
     prelude::*,
 };
 

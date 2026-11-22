@@ -1,6 +1,5 @@
-//! This module reexports various components related to expressions in the AST, such as [data_expression::DatexExpression] and [type_expressions::TypeExpression].
+//! This module reexports various components related to expressions in the AST, such as [data_expression::DataExpression] and [type_expressions::TypeExpression].
 pub use crate::prelude::*;
-use core::fmt::Display;
 
 // Reexport all data modules for expressions
 mod data;

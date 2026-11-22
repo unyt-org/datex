@@ -1,5 +1,5 @@
 use crate::{
-    ast::expressions::{DatexExpression, VariableDeclaration},
+    ast::expressions::{DataExpression, VariableDeclaration},
     visitor::{
         VisitAction, expression::ExpressionVisitor,
         type_expression::TypeExpressionVisitor,
@@ -29,7 +29,7 @@ impl ExpressionVisitor<()> for VariableDeclarationFinder {
         &mut self,
         var_decl: &mut VariableDeclaration,
         span: &Range<usize>,
-    ) -> Result<VisitAction<DatexExpression>, ()> {
+    ) -> Result<VisitAction<DataExpression>, ()> {
         if var_decl.id == Some(self.var_id) {
             self.variable_declaration_position = Some(span.clone());
             // early abort

@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            DatexExpression, DatexExpressionData, Statements,
+            DataExpression, DataExpressionData, Statements,
             expression::Expression,
         },
         spanned::Spanned,
@@ -17,7 +17,7 @@ use crate::prelude::*;
 impl Parser {
     pub(crate) fn parse_parenthesized_statements(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<DataExpression, SpannedParserError> {
         let start = self.expect(Token::LeftParen)?.span.start;
         let statements_data = self.parse_statements()?;
 
@@ -27,7 +27,7 @@ impl Parser {
 
     pub(crate) fn parse_statements(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<DataExpression, SpannedParserError> {
         let mut statements = Vec::new();
         let mut is_terminated = false;
 
@@ -64,7 +64,7 @@ impl Parser {
         }
         // otherwise, return as statements
         else {
-            Ok(DatexExpressionData::Statements(Statements {
+            Ok(DataExpressionData::Statements(Statements {
                 statements,
                 is_terminated,
                 unbounded: None,
@@ -75,7 +75,7 @@ impl Parser {
 
     pub(crate) fn parse_top_level_statements(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<DataExpression, SpannedParserError> {
         // skip optional shebang line at the start
         if let Ok(SpannedToken {
             token: Token::Shebang(_),
@@ -89,7 +89,7 @@ impl Parser {
 
         Ok(match statements_data.data() {
             // if statements expression, set span correctly
-            DatexExpressionData::Statements(_) => {
+            DataExpressionData::Statements(_) => {
                 let full_token_span =
                     0..self.tokens.last().map(|i| i.span.end).unwrap_or(0);
                 statements_data.data.with_span(full_token_span)
@@ -101,7 +101,7 @@ impl Parser {
 
     fn parse_statement(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<DataExpression, SpannedParserError> {
         match self.peek()?.token {
             Token::Variable | Token::Const => self.parse_variable_declaration(),
             Token::TypeAlias => self.parse_type_declaration(),
@@ -117,7 +117,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                DatexExpressionData, Statements, expression::Expression,
+                DataExpressionData, Statements, expression::Expression,
             },
             spanned::Spanned,
         },
@@ -130,7 +130,7 @@ mod tests {
         let expr = parse("()");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &DataExpressionData::Statements(Statements {
                 statements: vec![],
                 is_terminated: false,
                 unbounded: None
@@ -143,13 +143,13 @@ mod tests {
         let expr = parse("(true; false; null;)");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &DataExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true.into())
+                    DataExpressionData::Boolean(true.into())
                         .with_default_span(),
-                    DatexExpressionData::Boolean(false.into())
+                    DataExpressionData::Boolean(false.into())
                         .with_default_span(),
-                    DatexExpressionData::Null.with_default_span(),
+                    DataExpressionData::Null.with_default_span(),
                 ],
                 is_terminated: true,
                 unbounded: None,
@@ -162,13 +162,13 @@ mod tests {
         let expr = parse("(true; false; null)");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &DataExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true.into())
+                    DataExpressionData::Boolean(true.into())
                         .with_default_span(),
-                    DatexExpressionData::Boolean(false.into())
+                    DataExpressionData::Boolean(false.into())
                         .with_default_span(),
-                    DatexExpressionData::Null.with_default_span(),
+                    DataExpressionData::Null.with_default_span(),
                 ],
                 is_terminated: false,
                 unbounded: None,
@@ -181,7 +181,7 @@ mod tests {
         let expr = parse("(;)");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &DataExpressionData::Statements(Statements {
                 statements: vec![],
                 is_terminated: true,
                 unbounded: None,
@@ -194,13 +194,13 @@ mod tests {
         let expr = parse("(;;true;;; false;; ; null;)");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &DataExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true.into())
+                    DataExpressionData::Boolean(true.into())
                         .with_default_span(),
-                    DatexExpressionData::Boolean(false.into())
+                    DataExpressionData::Boolean(false.into())
                         .with_default_span(),
-                    DatexExpressionData::Null.with_default_span(),
+                    DataExpressionData::Null.with_default_span(),
                 ],
                 is_terminated: true,
                 unbounded: None,
@@ -222,13 +222,13 @@ mod tests {
         let expr = parse("true; false; null;");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &DataExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true.into())
+                    DataExpressionData::Boolean(true.into())
                         .with_default_span(),
-                    DatexExpressionData::Boolean(false.into())
+                    DataExpressionData::Boolean(false.into())
                         .with_default_span(),
-                    DatexExpressionData::Null.with_default_span(),
+                    DataExpressionData::Null.with_default_span(),
                 ],
                 is_terminated: true,
                 unbounded: None,
@@ -239,7 +239,7 @@ mod tests {
     #[test]
     fn top_level_single_statement_unterminated() {
         let expr = parse("true");
-        assert_eq!(expr.data(), &DatexExpressionData::Boolean(true.into()));
+        assert_eq!(expr.data(), &DataExpressionData::Boolean(true.into()));
     }
 
     #[test]
@@ -247,9 +247,9 @@ mod tests {
         let expr = parse("true;");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &DataExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true.into())
+                    DataExpressionData::Boolean(true.into())
                         .with_default_span(),
                 ],
                 is_terminated: true,
@@ -263,11 +263,11 @@ mod tests {
         let expr = parse("#!/usr/bin/env datex\ntrue; false;");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &DataExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true.into())
+                    DataExpressionData::Boolean(true.into())
                         .with_default_span(),
-                    DatexExpressionData::Boolean(false.into())
+                    DataExpressionData::Boolean(false.into())
                         .with_default_span(),
                 ],
                 is_terminated: true,

@@ -1,4 +1,4 @@
-use crate::ast::expressions::{DatexExpression, VariableKind};
+use crate::ast::expressions::{DataExpression, VariableKind};
 
 use crate::{prelude::*, types::r#type::Type};
 use core::{cell::RefCell, fmt::Display};
@@ -58,13 +58,13 @@ impl AstMetadata {
 
 #[derive(Debug, Clone, Default)]
 pub struct RichAst {
-    pub ast: DatexExpression,
+    pub ast: DataExpression,
     pub metadata: Rc<RefCell<AstMetadata>>,
 }
 
 impl RichAst {
     pub fn new(
-        ast: DatexExpression,
+        ast: DataExpression,
         metadata: &Rc<RefCell<AstMetadata>>,
     ) -> Self {
         RichAst {
@@ -73,7 +73,7 @@ impl RichAst {
         }
     }
 
-    pub fn new_without_metadata(ast: DatexExpression) -> Self {
+    pub fn new_without_metadata(ast: DataExpression) -> Self {
         RichAst {
             ast,
             metadata: Rc::new(RefCell::new(AstMetadata::default())),

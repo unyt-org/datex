@@ -1,8 +1,7 @@
 //! This module reexports various components of the abstract syntax tree (AST) for DATEX
-//! such as [expressions::DatexExpression] or [expressions::TypeExpression].
+//! such as [expressions::DataExpression] or [expressions::TypeExpression].
 
 pub mod expressions;
-pub mod resolved_variable;
 pub mod spanned;
 #[cfg(feature = "std")]
 pub mod src_id;

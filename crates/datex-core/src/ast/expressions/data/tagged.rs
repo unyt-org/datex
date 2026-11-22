@@ -1,7 +1,7 @@
 //! This module defines the representation for tagged expressions in the AST.
 use core::fmt::Display;
 
-use crate::{ast::expressions::DatexExpression, prelude::*};
+use crate::{ast::expressions::DataExpression, prelude::*};
 
 /// Represents a tagged expression in the AST.
 #[derive(Clone, Debug, PartialEq)]
@@ -10,7 +10,7 @@ pub struct TagExpression {
     pub tag: String,
     /// The expression associated with this tag, if any.
     /// For tagged empty expressions, this will be `None`.
-    pub expression: Option<DatexExpression>,
+    pub expression: Option<DataExpression>,
 }
 
 impl Display for TagExpression {

@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        expressions::{DatexExpressionData, DeriveSharedRef},
+        expressions::{DataExpressionData, DeriveSharedRef},
         spanned::Spanned,
     },
     shared_values::SharedContainer,
@@ -11,14 +11,14 @@ use crate::{
 };
 
 impl<'a> ToDatexExpressionData for BorrowedValueContainer<'a> {
-    fn to_datex_expression_data(&self) -> DatexExpressionData {
+    fn to_datex_expression_data(&self) -> DataExpressionData {
         match self {
             BorrowedValueContainer::Local(value) => {
                 value.to_datex_expression_data()
             }
             BorrowedValueContainer::Shared(shared) => match shared {
                 SharedContainer::Referenced(referenced_container) => {
-                    DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
+                    DataExpressionData::DeriveSharedRef(DeriveSharedRef {
                         mutability: referenced_container.reference_mutability(),
                         expression: referenced_container
                             .to_datex_expression_data()
@@ -34,14 +34,14 @@ impl<'a> ToDatexExpressionData for BorrowedValueContainer<'a> {
 }
 
 impl<'a> ToDatexExpressionData for BorrowedValueContainerMut<'a> {
-    fn to_datex_expression_data(&self) -> DatexExpressionData {
+    fn to_datex_expression_data(&self) -> DataExpressionData {
         match self {
             BorrowedValueContainerMut::Local(value) => {
                 value.to_datex_expression_data()
             }
             BorrowedValueContainerMut::Shared(shared) => match shared {
                 SharedContainer::Referenced(referenced_container) => {
-                    DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
+                    DataExpressionData::DeriveSharedRef(DeriveSharedRef {
                         mutability: referenced_container.reference_mutability(),
                         expression: referenced_container
                             .to_datex_expression_data()

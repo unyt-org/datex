@@ -30,7 +30,7 @@ pub enum VisitAction<T: Sized> {
 mod tests {
     use crate::{
         ast::expressions::{
-            BinaryOperation, DatexExpression, DatexExpressionData, DeriveRef,
+            BinaryOperation, DataExpression, DataExpressionData, DeriveRef,
             Statements, TypeExpression, TypeExpressionData, ValueAccessType,
             VariableAccess, expression::Expression,
         },
@@ -82,8 +82,8 @@ mod tests {
         fn handle_expression_error(
             &mut self,
             error: MyAstExpressionError,
-            expression: &DatexExpression,
-        ) -> Result<VisitAction<DatexExpression>, MyAstExpressionError>
+            expression: &DataExpression,
+        ) -> Result<VisitAction<DataExpression>, MyAstExpressionError>
         {
             log::error!(
                 "Expression error: {:?} at {:?}. Aborting...",
@@ -105,8 +105,8 @@ mod tests {
             identifier: &mut String,
             span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
-            Ok(VisitAction::Replace(DatexExpression {
-                data: Box::new(DatexExpressionData::VariableAccess(
+            Ok(VisitAction::Replace(DataExpression {
+                data: Box::new(DataExpressionData::VariableAccess(
                     VariableAccess {
                         id: 0,
                         name: identifier.clone(),
@@ -147,26 +147,26 @@ mod tests {
 
     #[test]
     fn test() {
-        let mut ast = DatexExpression {
-            data: Box::new(DatexExpressionData::Statements(Statements {
-                statements: vec![DatexExpression {
-                    data: Box::new(DatexExpressionData::BinaryOperation(
+        let mut ast = DataExpression {
+            data: Box::new(DataExpressionData::Statements(Statements {
+                statements: vec![DataExpression {
+                    data: Box::new(DataExpressionData::BinaryOperation(
                         BinaryOperation {
                             operator: BinaryOperator::Arithmetic(
                                 ArithmeticOperator::Add,
                             ),
-                            left: (DatexExpression {
+                            left: (DataExpression {
                                 data: Box::new(
-                                    DatexExpressionData::Identifier(
+                                    DataExpressionData::Identifier(
                                         "x".to_string(),
                                     ),
                                 ),
                                 span: 0..1,
                                 ty: None,
                             }),
-                            right: (DatexExpression {
+                            right: (DataExpression {
                                 data: Box::new(
-                                    DatexExpressionData::Identifier(
+                                    DataExpressionData::Identifier(
                                         "y".to_string(),
                                     ),
                                 ),

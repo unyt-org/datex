@@ -1,7 +1,7 @@
 use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        Conditional, CreateShared, DatexExpression, DatexExpressionData,
+        Conditional, CreateShared, DataExpression, DataExpressionData,
         DeriveRef, DeriveSharedRef, GenericInstantiation, InterfaceMethodCall,
         List, Map, PropertyAccess, PropertyAssignment, RangeDeclaration,
         RemoteExecution, RequestSharedRef, RootPropertyAccess, Statements,
@@ -59,7 +59,7 @@ macro yield_unwrap($expr:expr) {
     }
 }
 
-impl AstNodeToInstructions for DatexExpression {
+impl AstNodeToInstructions for DataExpression {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
@@ -81,7 +81,7 @@ impl AstNodeToInstructions for DatexExpression {
         })
     }
 }
-impl AstNodeToInstructions for DatexExpressionData {
+impl AstNodeToInstructions for DataExpressionData {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
@@ -95,60 +95,60 @@ impl AstNodeToInstructions for DatexExpressionData {
     > {
         Box::new(gen move {
             match self {
-                DatexExpressionData::Integer(integer) => {
+                DataExpressionData::Integer(integer) => {
                     yield Ok(BytecodeItem::from(RegularInstruction::Integer(
                         integer.clone(),
                     )))
                 }
-                DatexExpressionData::TypedInteger(typed_integer) => {
+                DataExpressionData::TypedInteger(typed_integer) => {
                     yield_all_ok!(
                         typed_integer
                             .to_instructions(compilation_context, cache)
                     );
                 }
 
-                DatexExpressionData::Instant(instant) => {
+                DataExpressionData::Instant(instant) => {
                     yield_all_ok!(
                         instant.to_instructions(compilation_context, cache)
                     );
                 }
 
-                DatexExpressionData::Decimal(decimal) => {
+                DataExpressionData::Decimal(decimal) => {
                     yield_all_ok!(
                         decimal.to_instructions(compilation_context, cache)
                     );
                 }
 
-                DatexExpressionData::TypedDecimal(typed_decimal) => {
+                DataExpressionData::TypedDecimal(typed_decimal) => {
                     yield_all_ok!(
                         typed_decimal
                             .to_instructions(compilation_context, cache)
                     );
                 }
 
-                DatexExpressionData::Text(text) => {
+                DataExpressionData::Text(text) => {
                     yield_all_ok!(
                         text.to_instructions(compilation_context, cache)
                     );
                 }
 
-                DatexExpressionData::Boolean(boolean) => {
+                DataExpressionData::Boolean(boolean) => {
                     yield_all_ok!(
                         boolean.to_instructions(compilation_context, cache)
                     );
                 }
 
-                DatexExpressionData::Endpoint(endpoint) => {
+                DataExpressionData::Endpoint(endpoint) => {
                     yield_all_ok!(
                         endpoint.to_instructions(compilation_context, cache)
                     );
                 }
 
-                DatexExpressionData::Null => {
+                DataExpressionData::Null => {
                     yield Ok(BytecodeItem::from(RegularInstruction::null()));
                 }
 
-                DatexExpressionData::List(list) => {
+                DataExpressionData::List(list) => {
                     yield_all!(list.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -157,7 +157,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                     ));
                 }
 
-                DatexExpressionData::Map(map) => {
+                DataExpressionData::Map(map) => {
                     yield_all!(map.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -167,7 +167,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 }
 
                 // unary operations
-                DatexExpressionData::UnaryOperation(unary_operation) => {
+                DataExpressionData::UnaryOperation(unary_operation) => {
                     yield_all!(unary_operation.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -177,7 +177,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 }
 
                 // binary operations
-                DatexExpressionData::BinaryOperation(binary_operation) => {
+                DataExpressionData::BinaryOperation(binary_operation) => {
                     yield_all!(binary_operation.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -187,7 +187,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 }
 
                 // comparisons
-                DatexExpressionData::ComparisonOperation(
+                DataExpressionData::ComparisonOperation(
                     comparison_operation,
                 ) => {
                     yield_all!(comparison_operation.ast_node_to_instructions(
@@ -199,7 +199,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 }
 
                 // apply
-                DatexExpressionData::Apply(apply) => {
+                DataExpressionData::Apply(apply) => {
                     yield_all!(apply.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -209,7 +209,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 }
 
                 // interface methods
-                DatexExpressionData::InterfaceMethodCall(
+                DataExpressionData::InterfaceMethodCall(
                     interface_method_call,
                 ) => {
                     yield_all!(interface_method_call.ast_node_to_instructions(
@@ -221,7 +221,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 }
 
                 // property access
-                DatexExpressionData::PropertyAccess(property_access) => {
+                DataExpressionData::PropertyAccess(property_access) => {
                     yield_all!(property_access.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -230,7 +230,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                     ));
                 }
 
-                DatexExpressionData::GenericInstantiation(
+                DataExpressionData::GenericInstantiation(
                     generic_instantiation,
                 ) => {
                     yield_all!(generic_instantiation.ast_node_to_instructions(
@@ -241,9 +241,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                     ));
                 }
 
-                DatexExpressionData::PropertyAssignment(
-                    property_assignment,
-                ) => {
+                DataExpressionData::PropertyAssignment(property_assignment) => {
                     yield_all!(property_assignment.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -252,7 +250,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                     ));
                 }
 
-                DatexExpressionData::RequestSharedRef(request_shared_ref) => {
+                DataExpressionData::RequestSharedRef(request_shared_ref) => {
                     yield_all!(request_shared_ref.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -261,7 +259,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                     ));
                 }
 
-                DatexExpressionData::UnboxAssignment(unbox_assignment) => {
+                DataExpressionData::UnboxAssignment(unbox_assignment) => {
                     yield_all!(unbox_assignment.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -271,7 +269,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 }
 
                 // root property
-                DatexExpressionData::RootPropertyAccess(
+                DataExpressionData::RootPropertyAccess(
                     root_property_access,
                 ) => {
                     yield_all!(root_property_access.ast_node_to_instructions(
@@ -283,7 +281,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 }
 
                 // refs
-                DatexExpressionData::DeriveRef(derive_ref) => {
+                DataExpressionData::DeriveRef(derive_ref) => {
                     yield_all!(derive_ref.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -293,7 +291,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 }
 
                 // shared refs
-                DatexExpressionData::DeriveSharedRef(derive_shared_ref) => {
+                DataExpressionData::DeriveSharedRef(derive_shared_ref) => {
                     yield_all!(derive_shared_ref.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -303,7 +301,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 }
 
                 // shared values
-                DatexExpressionData::CreateShared(create_shared) => {
+                DataExpressionData::CreateShared(create_shared) => {
                     yield_all!(create_shared.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -312,7 +310,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                     ));
                 }
 
-                DatexExpressionData::TypeExpression(type_expression) => {
+                DataExpressionData::TypeExpression(type_expression) => {
                     yield Ok(RegularInstruction::TypeExpression.into());
                     yield_all!(type_expression.ast_node_to_instructions(
                         compilation_context,
@@ -322,7 +320,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                     ));
                 }
 
-                DatexExpressionData::Range(range_dec) => {
+                DataExpressionData::Range(range_dec) => {
                     yield_all!(range_dec.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -331,7 +329,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                     ));
                 }
 
-                DatexExpressionData::Unbox(unbox) => {
+                DataExpressionData::Unbox(unbox) => {
                     yield_all!(unbox.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -340,7 +338,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                     ));
                 }
 
-                DatexExpressionData::Tag(tag_expression) => {
+                DataExpressionData::Tag(tag_expression) => {
                     yield_all!(tag_expression.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -349,14 +347,14 @@ impl AstNodeToInstructions for DatexExpressionData {
                     ));
                 }
 
-                DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
+                DataExpressionData::ResolveCoreLibId(core_lib_id) => {
                     yield Ok(RegularInstruction::get_core_lib_value(
                         (*core_lib_id).into(),
                     )
                     .into());
                 }
 
-                DatexExpressionData::CallableDeclaration(
+                DataExpressionData::CallableDeclaration(
                     callable_declaration,
                 ) => {
                     yield_all!(callable_declaration.ast_node_to_instructions(
@@ -367,7 +365,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                     ));
                 }
 
-                DatexExpressionData::Conditional(conditional) => {
+                DataExpressionData::Conditional(conditional) => {
                     yield_all!(conditional.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -375,7 +373,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                         ctx_metadata
                     ));
                 }
-                DatexExpressionData::RemoteExecution(remote_execution) => {
+                DataExpressionData::RemoteExecution(remote_execution) => {
                     yield_all!(remote_execution.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -384,7 +382,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                     ));
                 }
 
-                DatexExpressionData::VariableDeclaration(
+                DataExpressionData::VariableDeclaration(
                     _variable_declaration,
                 ) => {
                     yield_all!(_variable_declaration.ast_node_to_instructions(
@@ -394,7 +392,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                         ctx_metadata
                     ));
                 }
-                DatexExpressionData::Statements(statements) => {
+                DataExpressionData::Statements(statements) => {
                     yield_all!(statements.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -403,9 +401,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                     ));
                 }
 
-                DatexExpressionData::VariableAssignment(
-                    variable_assignment,
-                ) => {
+                DataExpressionData::VariableAssignment(variable_assignment) => {
                     yield_all!(variable_assignment.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -414,7 +410,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                     ));
                 }
 
-                DatexExpressionData::VariableAccess(variable_access) => {
+                DataExpressionData::VariableAccess(variable_access) => {
                     yield_all!(variable_access.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -423,7 +419,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                     ));
                 }
 
-                DatexExpressionData::Placeholder(value_access_type) => {
+                DataExpressionData::Placeholder(value_access_type) => {
                     yield_all!(value_access_type.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -441,7 +437,7 @@ impl AstNodeToInstructions for DatexExpressionData {
     }
 }
 
-/// implementation used for [DatexExpressionData::Placeholder]
+/// implementation used for [DataExpressionData::Placeholder]
 impl AstNodeToInstructions for ValueAccessType {
     fn ast_node_to_instructions<'a>(
         &'a self,
@@ -1305,7 +1301,7 @@ impl AstNodeToInstructions for PropertyAssignment {
             // depending on the key, handle different property assignments
 
             match &property.data() {
-                DatexExpressionData::Text(key)
+                DataExpressionData::Text(key)
                     if key.len() <= u8::MAX as usize =>
                 {
                     yield Ok(RegularInstruction::set_entry_text(
@@ -1314,7 +1310,7 @@ impl AstNodeToInstructions for PropertyAssignment {
                     .into());
                 }
 
-                DatexExpressionData::Integer(index)
+                DataExpressionData::Integer(index)
                     if let Some(index) = index.as_u32() =>
                 {
                     yield Ok(RegularInstruction::set_entry_index(index).into());
@@ -1540,14 +1536,14 @@ impl AstNodeToInstructions for PropertyAccess {
             // depending on the key, handle different property accesses
             match self.property.data() {
                 // simple text key if length fits in u8
-                DatexExpressionData::Text(key) if key.len() <= 255 => {
+                DataExpressionData::Text(key) if key.len() <= 255 => {
                     yield Ok(RegularInstruction::get_entry_text(
                         key.as_string(),
                     )
                     .into());
                 }
                 // index access if integer fits in u32
-                DatexExpressionData::Integer(index)
+                DataExpressionData::Integer(index)
                     if let Some(index) = index.as_u32() =>
                 {
                     yield Ok(RegularInstruction::get_entry_index(index).into());
@@ -1655,7 +1651,7 @@ impl AstNodeToInstructions for Map {
     > {
         Box::new(gen move {
             let has_only_text_keys = self.entries.iter().all(|(key, _)| {
-                matches!(&*key.data, DatexExpressionData::Text(_))
+                matches!(&*key.data, DataExpressionData::Text(_))
             });
 
             yield Ok(RegularInstruction::map(
@@ -1666,7 +1662,7 @@ impl AstNodeToInstructions for Map {
             for (key, value) in &self.entries {
                 match &*key.data {
                     // text -> insert key string
-                    DatexExpressionData::Text(text) => {
+                    DataExpressionData::Text(text) => {
                         if text.len() < 256 {
                             yield Ok(RegularInstruction::key_value_short_text(
                                 text.as_string(),

@@ -1,6 +1,6 @@
 //! This module defines the representation for comparison operation expressions in the AST.
 use crate::{
-    ast::expressions::DatexExpression, global::operators::ComparisonOperator,
+    ast::expressions::DataExpression, global::operators::ComparisonOperator,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -8,7 +8,7 @@ pub struct ComparisonOperation {
     /// The operator of the comparison operation.
     pub operator: ComparisonOperator,
     /// The left operand of the comparison operation.
-    pub left: DatexExpression,
+    pub left: DataExpression,
     /// The right operand of the comparison operation.
-    pub right: DatexExpression,
+    pub right: DataExpression,
 }
