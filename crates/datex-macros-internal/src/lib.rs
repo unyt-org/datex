@@ -10,6 +10,7 @@ mod core_lib;
 mod datex_proxy;
 mod magic_rw;
 mod utils;
+pub mod code_generator;
 
 /// Unused and incomplete
 #[proc_macro_derive(BitfieldSerde)]
@@ -119,4 +120,10 @@ pub fn datex(args: TokenStream, input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input_clone as Item);
 
     generate_item_glue_code(Some(args.into()), input.into(), item).into()
+}
+
+
+#[proc_macro]
+pub fn use_remote(args: TokenStream) -> TokenStream {
+    todo!()
 }
