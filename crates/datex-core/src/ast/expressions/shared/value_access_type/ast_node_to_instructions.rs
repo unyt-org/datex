@@ -1,5 +1,5 @@
 use crate::{
-    ast::{expressions::ValueAccessType, to_instructions::yield_unwrap},
+    ast::expressions::ValueAccessType,
     compiler::{
         ast_node_to_instructions::AstNodeToInstructions,
         context::CompilationContext, error::CompilerError,
@@ -10,6 +10,7 @@ use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{SharedContainer, traits::SharedContainerCommon},
+    utils::yield_unwrap::yield_unwrap,
     values::value_container::ValueContainer,
 };
 

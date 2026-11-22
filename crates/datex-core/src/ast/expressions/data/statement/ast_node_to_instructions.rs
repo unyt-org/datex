@@ -1,8 +1,5 @@
 use crate::{
-    ast::{
-        expressions::{Statements, UnboundedStatement},
-        to_instructions::yield_unwrap,
-    },
+    ast::expressions::{Statements, UnboundedStatement},
     compiler::{
         ast_node_to_instructions::AstNodeToInstructions,
         context::CompilationContext, error::CompilerError,
@@ -13,6 +10,7 @@ use crate::{
     instruction::regular_instruction::RegularInstruction,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    utils::yield_unwrap::yield_unwrap,
 };
 
 impl AstNodeToInstructions for Statements {

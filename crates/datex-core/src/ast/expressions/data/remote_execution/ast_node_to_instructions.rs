@@ -1,5 +1,5 @@
 use crate::{
-    ast::{expressions::RemoteExecution, to_instructions::yield_unwrap},
+    ast::expressions::RemoteExecution,
     compiler::{
         ast_node_to_instructions::AstNodeToInstructions,
         compile_child_realm_instructions, context::CompilationContext,
@@ -10,6 +10,7 @@ use crate::{
     instruction::regular_instruction::RegularInstruction,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    utils::yield_unwrap::yield_unwrap,
 };
 
 impl AstNodeToInstructions for RemoteExecution {
