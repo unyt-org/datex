@@ -14,3 +14,11 @@ license-file = "../../LICENSE"
 crate-type = ["rlib"]
 
 [dependencies]
+datex-core = { version = "0.0.14", default-features = false, features = [
+    "target_native",
+    "decompiler",
+    "disassembler",
+    "syntax_highlighting_legacy",
+    "compiler",
+    "allow_unsigned_blocks",
+] }
