@@ -113,7 +113,7 @@ macro_rules! derive_prelude_ast {
             ast::{
                 expressions::DataExpressionData,
                 expressions::EntityValueExpression, expressions::Statements,
-                expressions::TagExpression, spanned::Spanned,
+                expressions::Tagged, spanned::Spanned,
             },
             traits::to_datex_expression_data::ToDatexExpressionData,
         };

@@ -6,10 +6,9 @@ use crate::{
         DeriveSharedRef, EntityDeclarationExpression, EntityValueExpression,
         GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess,
         PropertyAssignment, RangeDeclaration, RemoteExecution, StackAssignment,
-        StackListAssignment, Statements, TagExpression,
-        TypeDeclarationExpression, UnaryOperation, Unbox, UnboxAssignment,
-        UnboxSlotAssignment, VariableAssignment, VariableDeclaration,
-        expression::Expression,
+        StackListAssignment, Statements, Tagged, TypeDeclarationExpression,
+        UnaryOperation, Unbox, UnboxAssignment, UnboxSlotAssignment,
+        VariableAssignment, VariableDeclaration, expression::Expression,
     },
     visitor::{
         VisitAction, expression::ExpressionVisitor,
@@ -175,7 +174,7 @@ impl<E> VisitableExpression<E> for UnboxSlotAssignment {
     }
 }
 
-impl<E> VisitableExpression<E> for TagExpression {
+impl<E> VisitableExpression<E> for Tagged {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,

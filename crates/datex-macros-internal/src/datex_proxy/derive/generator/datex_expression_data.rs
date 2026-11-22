@@ -112,7 +112,7 @@ fn generate_datex_expression_data_fields(
             };
 
             quote! {
-                DataExpressionData::Tag(TagExpression {
+                DataExpressionData::Tag(Tagged {
                     tag: #tag.to_string(),
                     expression: #expression
                 })

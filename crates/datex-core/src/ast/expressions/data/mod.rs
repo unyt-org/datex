@@ -2,7 +2,10 @@
 pub use crate::prelude::*;
 use crate::{
     ast::{
-        expressions::{DataExpression, TypeExpression, expression::Expression},
+        expressions::{
+            DataExpression, TypeExpression, ValueAccessType,
+            expression::Expression,
+        },
         spanned::Spanned,
     },
     global::{
@@ -10,7 +13,7 @@ use crate::{
         stack_index::StackIndex,
     },
     libs::core::core_lib_id::CoreLibId,
-    shared_values::{ReferenceMutability, SelfOwnedPointerAddress},
+    shared_values::SelfOwnedPointerAddress,
     values::{
         core_value::CoreValue,
         core_value_with_classification::CoreValueWithClassification,
@@ -33,8 +36,8 @@ use core::ops::{self, Neg};
 mod apply;
 pub use apply::*;
 
-mod assignments;
-pub use assignments::*;
+mod property_assignment;
+pub use property_assignment::*;
 
 mod binary_operation;
 pub use binary_operation::*;
@@ -75,14 +78,20 @@ pub use property_access::*;
 mod range;
 pub use range::*;
 
-mod r#ref;
-pub use r#ref::*;
+mod derive_shared_ref;
+pub use derive_shared_ref::*;
 
 mod remote_execution;
 pub use remote_execution::*;
 
-mod stack;
-pub use stack::*;
+mod variable_assignment;
+pub use variable_assignment::*;
+
+mod stack_assignment;
+pub use stack_assignment::*;
+
+mod stack_list_assignment;
+pub use stack_list_assignment::*;
 
 mod statement;
 pub use statement::*;
@@ -107,6 +116,33 @@ pub use variable_declaration::*;
 
 mod variant_access;
 pub use variant_access::*;
+
+mod unbox_assignment;
+pub use unbox_assignment::*;
+
+mod unbox_slot_assignment;
+pub use unbox_slot_assignment::*;
+
+mod request_shared_ref;
+pub use request_shared_ref::*;
+
+mod root_property_access;
+pub use root_property_access::*;
+
+mod derive_ref;
+pub use derive_ref::*;
+
+mod create_shared;
+pub use create_shared::*;
+
+mod create_mut;
+pub use create_mut::*;
+
+mod entity_type_declaration;
+pub use entity_type_declaration::*;
+
+#[cfg(feature = "compiler")]
+mod ast_node_to_instructions;
 
 /// The different kinds of type expressions in the AST
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -219,7 +255,7 @@ pub enum DataExpressionData {
     StackIndex(StackIndex),
 
     /// Tag, e.g. #Variant1
-    Tag(TagExpression),
+    Tag(Tagged),
 
     /// Property access on the root, e.g. $.print
     RootPropertyAccess(RootPropertyAccess),
@@ -268,29 +304,6 @@ pub enum DataExpressionData {
     VariantAccess(VariantAccess),
 
     EntityValue(EntityValueExpression),
-}
-
-#[derive(Clone, Debug, PartialEq, Default, Hash, Eq)]
-pub enum ValueAccessType {
-    /// 'mut x
-    SharedRefMut,
-    /// 'x
-    SharedRef,
-    /// clone x
-    Clone, // TODO: allow clone only for non-shared values, for shared values, do clone *x
-    /// temp borrow for x (used before Unbox)
-    Borrow,
-    #[default]
-    MoveOrCopy,
-}
-
-impl From<&ReferenceMutability> for ValueAccessType {
-    fn from(mutability: &ReferenceMutability) -> Self {
-        match mutability {
-            ReferenceMutability::Mutable => ValueAccessType::SharedRefMut,
-            ReferenceMutability::Immutable => ValueAccessType::SharedRef,
-        }
-    }
 }
 
 impl DataExpressionData {

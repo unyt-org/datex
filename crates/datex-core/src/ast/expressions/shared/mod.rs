@@ -4,3 +4,6 @@ pub use variable_kind::*;
 
 mod resolved_variable;
 pub use resolved_variable::*;
+
+mod value_access_type;
+pub use value_access_type::*;
