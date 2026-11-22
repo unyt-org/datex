@@ -8,9 +8,7 @@ use crate::{
 
 use crate::prelude::*;
 impl Parser {
-    pub fn parse_list(
-        &mut self,
-    ) -> Result<DataExpression, SpannedParserError> {
+    pub fn parse_list(&mut self) -> Result<DataExpression, SpannedParserError> {
         let start = self.expect(Token::LeftBracket)?.span.start;
         let mut items = Vec::new();
 

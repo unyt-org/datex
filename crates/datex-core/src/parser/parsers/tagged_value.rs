@@ -109,9 +109,9 @@ mod tests {
                         entries: vec![(
                             DataExpressionData::Text("a".into())
                                 .with_default_span(),
-                            DataExpressionData::TypedInteger(
-                                TypedInteger::U8(42)
-                            )
+                            DataExpressionData::TypedInteger(TypedInteger::U8(
+                                42
+                            ))
                             .with_default_span(),
                         )]
                     })
@@ -191,9 +191,9 @@ mod tests {
                     DataExpressionData::Tag(TagExpression {
                         tag: "Tag3".to_string(),
                         expression: Some(
-                            DataExpressionData::TypedInteger(
-                                TypedInteger::U8(42)
-                            )
+                            DataExpressionData::TypedInteger(TypedInteger::U8(
+                                42
+                            ))
                             .with_default_span()
                         )
                     })

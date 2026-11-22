@@ -1,7 +1,6 @@
 //! This module defines the representation for entity value expressions in the AST.
 use crate::{
-    ast::expressions::DataExpression, prelude::*,
-    shared_values::PointerAddress,
+    ast::expressions::DataExpression, prelude::*, shared_values::PointerAddress,
 };
 
 /// Represents an entity value expression.

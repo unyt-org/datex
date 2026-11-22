@@ -559,12 +559,10 @@ impl Parser {
                     let span = op.span.start..next.span.end;
                     self.advance()?; // consume pointer address
 
-                    Ok(DataExpressionData::RequestSharedRef(
-                        RequestSharedRef {
-                            mutability: ReferenceMutability::Immutable,
-                            address,
-                        },
-                    )
+                    Ok(DataExpressionData::RequestSharedRef(RequestSharedRef {
+                        mutability: ReferenceMutability::Immutable,
+                        address,
+                    })
                     .with_span(span))
                 }
                 // normal shared ref to dynamic expression
@@ -593,12 +591,10 @@ impl Parser {
                     let span = op.span.start..next.span.end;
                     self.advance()?; // consume pointer address
 
-                    Ok(DataExpressionData::RequestSharedRef(
-                        RequestSharedRef {
-                            mutability: ReferenceMutability::Mutable,
-                            address,
-                        },
-                    )
+                    Ok(DataExpressionData::RequestSharedRef(RequestSharedRef {
+                        mutability: ReferenceMutability::Mutable,
+                        address,
+                    })
                     .with_span(span))
                 }
                 // normal shared ref to dynamic expression
@@ -755,17 +751,15 @@ mod tests {
                 left: (DataExpressionData::Boolean(true.into())
                     .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                right: (DataExpressionData::BinaryOperation(
-                    BinaryOperation {
-                        left: (DataExpressionData::Boolean(false.into())
-                            .with_default_span()),
-                        operator: BinaryOperator::Arithmetic(
-                            ArithmeticOperator::Multiply
-                        ),
-                        right: (DataExpressionData::Null.with_default_span()),
-                        ty: None,
-                    }
-                )
+                right: (DataExpressionData::BinaryOperation(BinaryOperation {
+                    left: (DataExpressionData::Boolean(false.into())
+                        .with_default_span()),
+                    operator: BinaryOperator::Arithmetic(
+                        ArithmeticOperator::Multiply
+                    ),
+                    right: (DataExpressionData::Null.with_default_span()),
+                    ty: None,
+                })
                 .with_default_span()),
                 ty: None,
             })
@@ -862,29 +856,27 @@ mod tests {
                 })
                 .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                right: (DataExpressionData::BinaryOperation(
-                    BinaryOperation {
-                        left: (DataExpressionData::PropertyAccess(
-                            PropertyAccess {
-                                base: (DataExpressionData::Identifier(
-                                    "myObject".to_string()
-                                )
-                                .with_default_span()),
-                                property: (DataExpressionData::Text(
-                                    "value2".into()
-                                )
-                                .with_default_span()),
-                            }
-                        )
-                        .with_default_span()),
-                        operator: BinaryOperator::Arithmetic(
-                            ArithmeticOperator::Multiply
-                        ),
-                        right: (DataExpressionData::Boolean(true.into())
+                right: (DataExpressionData::BinaryOperation(BinaryOperation {
+                    left: (DataExpressionData::PropertyAccess(
+                        PropertyAccess {
+                            base: (DataExpressionData::Identifier(
+                                "myObject".to_string()
+                            )
                             .with_default_span()),
-                        ty: None,
-                    }
-                )
+                            property: (DataExpressionData::Text(
+                                "value2".into()
+                            )
+                            .with_default_span()),
+                        }
+                    )
+                    .with_default_span()),
+                    operator: BinaryOperator::Arithmetic(
+                        ArithmeticOperator::Multiply
+                    ),
+                    right: (DataExpressionData::Boolean(true.into())
+                        .with_default_span()),
+                    ty: None,
+                })
                 .with_default_span()),
                 ty: None,
             })
@@ -974,10 +966,8 @@ mod tests {
             expr.data(),
             &DataExpressionData::Apply(Apply {
                 base: (DataExpressionData::Apply(Apply {
-                    base: (DataExpressionData::Identifier(
-                        "myFunction".into()
-                    )
-                    .with_default_span()),
+                    base: (DataExpressionData::Identifier("myFunction".into())
+                        .with_default_span()),
                     arguments: vec![
                         DataExpressionData::Identifier("arg1".into())
                             .with_default_span(),
@@ -1132,16 +1122,14 @@ mod tests {
                 left: (DataExpressionData::Boolean(true.into())
                     .with_default_span()),
                 operator: BinaryOperator::Logical(LogicalOperator::Or),
-                right: (DataExpressionData::BinaryOperation(
-                    BinaryOperation {
-                        left: (DataExpressionData::Boolean(false.into())
-                            .with_default_span()),
-                        operator: BinaryOperator::Logical(LogicalOperator::And),
-                        right: (DataExpressionData::Boolean(true.into())
-                            .with_default_span()),
-                        ty: None,
-                    }
-                )
+                right: (DataExpressionData::BinaryOperation(BinaryOperation {
+                    left: (DataExpressionData::Boolean(false.into())
+                        .with_default_span()),
+                    operator: BinaryOperator::Logical(LogicalOperator::And),
+                    right: (DataExpressionData::Boolean(true.into())
+                        .with_default_span()),
+                    ty: None,
+                })
                 .with_default_span()),
                 ty: None,
             })
@@ -1481,10 +1469,8 @@ mod tests {
                     .with_default_span()),
                 property: (DataExpressionData::Text("prop".into())
                     .with_default_span()),
-                assigned_expression: (DataExpressionData::Boolean(
-                    true.into()
-                )
-                .with_default_span()),
+                assigned_expression: (DataExpressionData::Boolean(true.into())
+                    .with_default_span()),
             })
         );
     }
@@ -1758,22 +1744,16 @@ mod tests {
                 left: (DataExpressionData::Identifier("a".to_string())
                     .with_default_span()),
                 operator: ComparisonOperator::StructuralEqual,
-                right: (DataExpressionData::BinaryOperation(
-                    BinaryOperation {
-                        left: (DataExpressionData::Identifier(
-                            "b".to_string()
-                        )
+                right: (DataExpressionData::BinaryOperation(BinaryOperation {
+                    left: (DataExpressionData::Identifier("b".to_string())
                         .with_default_span()),
-                        operator: BinaryOperator::Arithmetic(
-                            ArithmeticOperator::Add
-                        ),
-                        right: (DataExpressionData::Identifier(
-                            "c".to_string()
-                        )
+                    operator: BinaryOperator::Arithmetic(
+                        ArithmeticOperator::Add
+                    ),
+                    right: (DataExpressionData::Identifier("c".to_string())
                         .with_default_span()),
-                        ty: None,
-                    }
-                )
+                    ty: None,
+                })
                 .with_default_span()),
             })
         );
@@ -1859,18 +1839,16 @@ mod tests {
                 left: (DataExpressionData::Integer(2.into())
                     .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Power),
-                right: (DataExpressionData::BinaryOperation(
-                    BinaryOperation {
-                        left: (DataExpressionData::Integer(3.into())
-                            .with_default_span()),
-                        operator: BinaryOperator::Arithmetic(
-                            ArithmeticOperator::Power
-                        ),
-                        right: (DataExpressionData::Integer(4.into())
-                            .with_default_span()),
-                        ty: None,
-                    }
-                )
+                right: (DataExpressionData::BinaryOperation(BinaryOperation {
+                    left: (DataExpressionData::Integer(3.into())
+                        .with_default_span()),
+                    operator: BinaryOperator::Arithmetic(
+                        ArithmeticOperator::Power
+                    ),
+                    right: (DataExpressionData::Integer(4.into())
+                        .with_default_span()),
+                    ty: None,
+                })
                 .with_default_span()),
                 ty: None,
             })

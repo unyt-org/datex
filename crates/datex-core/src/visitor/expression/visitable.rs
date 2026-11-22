@@ -462,9 +462,9 @@ impl<E> VisitableExpression<E> for DataExpression {
             DataExpressionData::PropertyAccess(property_access) => {
                 property_access.walk_children(visitor)
             }
-            DataExpressionData::GenericInstantiation(
-                generic_instantiation,
-            ) => generic_instantiation.walk_children(visitor),
+            DataExpressionData::GenericInstantiation(generic_instantiation) => {
+                generic_instantiation.walk_children(visitor)
+            }
             DataExpressionData::RemoteExecution(remote_execution) => {
                 remote_execution.walk_children(visitor)
             }

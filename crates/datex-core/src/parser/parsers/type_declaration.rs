@@ -79,14 +79,12 @@ impl Parser {
                 // initializer expression
                 let definition = self.parse_type_expression(0)?;
 
-                DataExpressionData::TypeDeclaration(
-                    TypeDeclarationExpression {
-                        id: None,
-                        name,
-                        definition,
-                        hoisted: false,
-                    },
-                )
+                DataExpressionData::TypeDeclaration(TypeDeclarationExpression {
+                    id: None,
+                    name,
+                    definition,
+                    hoisted: false,
+                })
                 .with_default_span()
             }
 

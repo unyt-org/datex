@@ -230,10 +230,8 @@ impl Parser {
     pub(crate) fn parse_placeholder(
         &mut self,
     ) -> Result<DataExpression, SpannedParserError> {
-        Ok(
-            DataExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
-                .with_span(self.advance()?.span),
-        )
+        Ok(DataExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
+            .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_true(
@@ -260,8 +258,10 @@ impl Parser {
         &mut self,
         name: String,
     ) -> Result<DataExpression, SpannedParserError> {
-        Ok(DataExpressionData::Identifier(name)
-            .with_span(self.advance()?.span))
+        Ok(
+            DataExpressionData::Identifier(name)
+                .with_span(self.advance()?.span),
+        )
     }
 
     pub(crate) fn parse_infinity(
