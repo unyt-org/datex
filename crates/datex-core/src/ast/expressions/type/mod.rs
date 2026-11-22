@@ -14,7 +14,8 @@ use crate::{
         text::Text,
     },
 };
-
+#[cfg(feature = "compiler")]
+mod ast_node_to_instructions;
 use crate::{
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     shared_values::PointerAddress,
