@@ -12,14 +12,14 @@ impl ValueAccess for bool {}
 #[cfg(feature = "ast")]
 mod to_datex_expression_data {
     use crate::{
-        ast::expressions::DatexExpressionData,
+        ast::expressions::DataExpressionData,
         traits::to_datex_expression_data::ToDatexExpressionData,
         values::core_values::boolean::Boolean,
     };
 
     impl ToDatexExpressionData for bool {
-        fn to_datex_expression_data(&self) -> DatexExpressionData {
-            DatexExpressionData::Boolean(Boolean(*self))
+        fn to_datex_expression_data(&self) -> DataExpressionData {
+            DataExpressionData::Boolean(Boolean(*self))
         }
     }
 }

@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            DatexExpression, DatexExpressionData, RootPropertyAccess,
+            DataExpression, DataExpressionData, RootPropertyAccess,
             ValueAccessType,
         },
         spanned::Spanned,
@@ -28,7 +28,7 @@ use core::str::FromStr;
 impl Parser {
     pub(crate) fn parse_atom(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<DataExpression, SpannedParserError> {
         Ok(match self.peek()?.token.clone() {
             Token::LeftCurly => self.parse_map()?,
             Token::LeftBracket => self.parse_list()?,
@@ -132,7 +132,7 @@ impl Parser {
 
     pub(crate) fn parse_wrapped_type_expression(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<DataExpression, SpannedParserError> {
         let start_token = self.advance()?;
         let type_expression = self.parse_type_expression(0);
         match type_expression {
@@ -140,7 +140,7 @@ impl Parser {
                 // expect closing ')'
                 let end_token = self.expect(Token::RightAngle)?;
                 let span = start_token.span.start..end_token.span.end;
-                Ok(DatexExpressionData::TypeExpression(type_expression)
+                Ok(DataExpressionData::TypeExpression(type_expression)
                     .with_span(span))
             }
             Err(e) => self.collect_error_and_continue(e),
@@ -150,20 +150,20 @@ impl Parser {
     pub(crate) fn parse_integer_literal(
         &mut self,
         integer_literal: String,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<DataExpression, SpannedParserError> {
         let span = self.advance()?.span.clone();
         Ok(match parse_integer_literal(integer_literal) {
             Ok(IntegerOrDecimal::Integer(integer)) => {
-                DatexExpressionData::Integer(integer)
+                DataExpressionData::Integer(integer)
             }
             Ok(IntegerOrDecimal::TypedInteger(typed_integer)) => {
-                DatexExpressionData::TypedInteger(typed_integer)
+                DataExpressionData::TypedInteger(typed_integer)
             }
             Ok(IntegerOrDecimal::Decimal(decimal)) => {
-                DatexExpressionData::Decimal(decimal)
+                DataExpressionData::Decimal(decimal)
             }
             Ok(IntegerOrDecimal::TypedDecimal(typed_decimal)) => {
-                DatexExpressionData::TypedDecimal(typed_decimal)
+                DataExpressionData::TypedDecimal(typed_decimal)
             }
             Err(e) => {
                 return self.collect_error_and_continue(SpannedParserError {
@@ -178,7 +178,7 @@ impl Parser {
     pub(crate) fn parse_integer_with_variant(
         &mut self,
         integer_with_variant: IntegerWithVariant,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<DataExpression, SpannedParserError> {
         let token = self.advance()?;
         let span = token.span.clone();
 
@@ -186,10 +186,10 @@ impl Parser {
             match parse_integer_with_variant(integer_with_variant, token.token)
             {
                 Ok(IntegerOrTypedInteger::Integer(integer)) => {
-                    DatexExpressionData::Integer(integer)
+                    DataExpressionData::Integer(integer)
                 }
                 Ok(IntegerOrTypedInteger::TypedInteger(typed_integer)) => {
-                    DatexExpressionData::TypedInteger(typed_integer)
+                    DataExpressionData::TypedInteger(typed_integer)
                 }
                 Err(e) => {
                     return self.collect_error_and_continue(
@@ -207,16 +207,16 @@ impl Parser {
     pub(crate) fn parse_decimal_with_variant(
         &mut self,
         decimal_with_variant: DecimalWithVariant,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<DataExpression, SpannedParserError> {
         let value = decimal_with_variant.value;
         let variant = decimal_with_variant.variant;
 
         let span = self.advance()?.span.clone();
         let res = match variant {
             Some(var) => TypedDecimal::try_from_string_and_variant(&value, var)
-                .map(DatexExpressionData::TypedDecimal),
+                .map(DataExpressionData::TypedDecimal),
             None => Decimal::try_from_string(&value)
-                .map(DatexExpressionData::Decimal),
+                .map(DataExpressionData::Decimal),
         };
         match res {
             Ok(expr) => Ok(expr.with_span(span)),
@@ -229,59 +229,59 @@ impl Parser {
 
     pub(crate) fn parse_placeholder(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<DataExpression, SpannedParserError> {
         Ok(
-            DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
+            DataExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
                 .with_span(self.advance()?.span),
         )
     }
 
     pub(crate) fn parse_true(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Boolean(true.into())
+    ) -> Result<DataExpression, SpannedParserError> {
+        Ok(DataExpressionData::Boolean(true.into())
             .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_false(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Boolean(false.into())
+    ) -> Result<DataExpression, SpannedParserError> {
+        Ok(DataExpressionData::Boolean(false.into())
             .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_null(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Null.with_span(self.advance()?.span))
+    ) -> Result<DataExpression, SpannedParserError> {
+        Ok(DataExpressionData::Null.with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_identifier(
         &mut self,
         name: String,
-    ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Identifier(name)
+    ) -> Result<DataExpression, SpannedParserError> {
+        Ok(DataExpressionData::Identifier(name)
             .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_infinity(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Decimal(Decimal::Infinity)
+    ) -> Result<DataExpression, SpannedParserError> {
+        Ok(DataExpressionData::Decimal(Decimal::Infinity)
             .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_nan(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Decimal(Decimal::Nan)
+    ) -> Result<DataExpression, SpannedParserError> {
+        Ok(DataExpressionData::Decimal(Decimal::Nan)
             .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_endpoint(
         &mut self,
         endpoint_name: String,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<DataExpression, SpannedParserError> {
         let span = self.advance()?.span.clone();
         match Endpoint::from_str(endpoint_name.as_str()) {
             Err(e) => self.collect_error_and_continue(SpannedParserError {
@@ -292,7 +292,7 @@ impl Parser {
                 span,
             }),
             Ok(endpoint) => {
-                Ok(DatexExpressionData::Endpoint(endpoint).with_span(span))
+                Ok(DataExpressionData::Endpoint(endpoint).with_span(span))
             }
         }
     }
@@ -300,8 +300,8 @@ impl Parser {
     pub(crate) fn parse_stack_index(
         &mut self,
         index: String,
-    ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::StackIndex(StackIndex(
+    ) -> Result<DataExpression, SpannedParserError> {
+        Ok(DataExpressionData::StackIndex(StackIndex(
             index[1..].parse::<u32>().unwrap(),
         ))
         .with_span(self.advance()?.span))
@@ -310,8 +310,8 @@ impl Parser {
     pub(crate) fn parse_root_property_access(
         &mut self,
         property_access: String,
-    ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
+    ) -> Result<DataExpression, SpannedParserError> {
+        Ok(DataExpressionData::RootPropertyAccess(RootPropertyAccess {
             property_name: property_access[2..].to_string(), // remove leading '$.'
         })
         .with_span(self.advance()?.span))
@@ -320,22 +320,22 @@ impl Parser {
     pub(crate) fn parse_string_literal(
         &mut self,
         value: String,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<DataExpression, SpannedParserError> {
         let unescaped = unescape_text(&value);
-        Ok(DatexExpressionData::Text(unescaped.into())
+        Ok(DataExpressionData::Text(unescaped.into())
             .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_fraction_literal(
         &mut self,
         fraction: String,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<DataExpression, SpannedParserError> {
         let span = self.advance()?.span.clone();
         // remove all underscores from fraction string
         let fraction: String = fraction.chars().filter(|&c| c != '_').collect();
         match Decimal::try_from_string(&fraction) {
             Ok(decimal) => {
-                Ok(DatexExpressionData::Decimal(decimal).with_span(span))
+                Ok(DataExpressionData::Decimal(decimal).with_span(span))
             }
             Err(e) => self.collect_error_and_continue(SpannedParserError {
                 error: ParserError::NumberParseError(e),
@@ -347,10 +347,10 @@ impl Parser {
     pub(crate) fn parse_iso_datetime(
         &mut self,
         iso_string: String,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<DataExpression, SpannedParserError> {
         let span = self.advance()?.span.clone();
         let instant = Instant::instant_from_iso(&iso_string);
-        Ok(DatexExpressionData::Instant(instant).with_span(span))
+        Ok(DataExpressionData::Instant(instant).with_span(span))
     }
 }
 
@@ -360,7 +360,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                CloneExpression, DatexExpressionData, DeriveSharedRef,
+                CloneExpression, DataExpressionData, DeriveSharedRef,
                 RootPropertyAccess, Statements, TypeExpressionData, Union,
                 ValueAccessType, expression::Expression,
             },
@@ -389,19 +389,19 @@ mod tests {
     #[test]
     fn parse_boolean_true() {
         let expr = parse("true");
-        assert_eq!(expr.data(), &DatexExpressionData::Boolean(true.into()));
+        assert_eq!(expr.data(), &DataExpressionData::Boolean(true.into()));
     }
 
     #[test]
     fn parse_boolean_false() {
         let expr = parse("false");
-        assert_eq!(expr.data(), &DatexExpressionData::Boolean(false.into()));
+        assert_eq!(expr.data(), &DataExpressionData::Boolean(false.into()));
     }
 
     #[test]
     fn parse_null() {
         let expr = parse("null");
-        assert_eq!(expr.data(), &DatexExpressionData::Null);
+        assert_eq!(expr.data(), &DataExpressionData::Null);
     }
 
     #[test]
@@ -409,7 +409,7 @@ mod tests {
         let expr = parse("myVar");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Identifier("myVar".to_string())
+            &DataExpressionData::Identifier("myVar".to_string())
         );
     }
 
@@ -418,7 +418,7 @@ mod tests {
         let expr = parse("\"Hello, World!\"");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Text("Hello, World!".into())
+            &DataExpressionData::Text("Hello, World!".into())
         );
     }
 
@@ -427,14 +427,14 @@ mod tests {
         let expr = parse("infinity");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Decimal(Decimal::Infinity)
+            &DataExpressionData::Decimal(Decimal::Infinity)
         );
     }
 
     #[test]
     fn parse_nan() {
         let expr = parse("nan");
-        assert_eq!(expr.data(), &DatexExpressionData::Decimal(Decimal::Nan));
+        assert_eq!(expr.data(), &DataExpressionData::Decimal(Decimal::Nan));
     }
 
     #[test]
@@ -442,7 +442,7 @@ mod tests {
         let expr = parse("@example");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Endpoint(Endpoint::new("@example"))
+            &DataExpressionData::Endpoint(Endpoint::new("@example"))
         );
     }
 
@@ -468,10 +468,10 @@ mod tests {
 
         assert_eq!(
             ast.data(),
-            &DatexExpressionData::Statements(Statements {
+            &DataExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Recover.with_default_span(),
-                    DatexExpressionData::Boolean(true.into())
+                    DataExpressionData::Recover.with_default_span(),
+                    DataExpressionData::Boolean(true.into())
                         .with_default_span(),
                 ],
                 is_terminated: false,
@@ -493,7 +493,7 @@ mod tests {
         let expr = parse("\\42");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::StackIndex(StackIndex(42))
+            &DataExpressionData::StackIndex(StackIndex(42))
         );
     }
 
@@ -502,7 +502,7 @@ mod tests {
         let expr = parse("$.myProperty");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
+            &DataExpressionData::RootPropertyAccess(RootPropertyAccess {
                 property_name: "myProperty".to_string()
             })
         );
@@ -513,7 +513,7 @@ mod tests {
         let expr = parse("?");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
+            &DataExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
         );
     }
 
@@ -522,8 +522,8 @@ mod tests {
         let expr = parse("'?");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
-                expression: (DatexExpressionData::Placeholder(
+            &DataExpressionData::DeriveSharedRef(DeriveSharedRef {
+                expression: (DataExpressionData::Placeholder(
                     ValueAccessType::MoveOrCopy
                 )
                 .with_default_span()),
@@ -537,8 +537,8 @@ mod tests {
         let expr = parse("'mut ?");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
-                expression: (DatexExpressionData::Placeholder(
+            &DataExpressionData::DeriveSharedRef(DeriveSharedRef {
+                expression: (DataExpressionData::Placeholder(
                     ValueAccessType::MoveOrCopy
                 )
                 .with_default_span()),
@@ -552,8 +552,8 @@ mod tests {
         let expr = parse("clone ?");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Clone(CloneExpression {
-                expression: (DatexExpressionData::Placeholder(
+            &DataExpressionData::Clone(CloneExpression {
+                expression: (DataExpressionData::Placeholder(
                     ValueAccessType::MoveOrCopy
                 )
                 .with_default_span())
@@ -564,19 +564,19 @@ mod tests {
     #[test]
     fn parse_integer_literal() {
         let expr = parse("12345");
-        assert_eq!(expr.data(), &DatexExpressionData::Integer(12345.into()));
+        assert_eq!(expr.data(), &DataExpressionData::Integer(12345.into()));
     }
 
     #[test]
     fn parse_integer_literal_with_underscores() {
         let expr = parse("12_345_678");
-        assert_eq!(expr.data(), &DatexExpressionData::Integer(12345678.into()));
+        assert_eq!(expr.data(), &DataExpressionData::Integer(12345678.into()));
     }
 
     #[test]
     fn parse_negative_integer_literal() {
         let expr = parse("-6789");
-        assert_eq!(expr.data(), &DatexExpressionData::Integer((-6789).into()));
+        assert_eq!(expr.data(), &DataExpressionData::Integer((-6789).into()));
     }
 
     #[test]
@@ -584,26 +584,26 @@ mod tests {
         let expr = parse("12345i32");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::TypedInteger(TypedInteger::I32(12345))
+            &DataExpressionData::TypedInteger(TypedInteger::I32(12345))
         );
     }
 
     #[test]
     fn parse_hex_integer_literal() {
         let expr = parse("0x1A3F");
-        assert_eq!(expr.data(), &DatexExpressionData::Integer(0x1A3F.into()));
+        assert_eq!(expr.data(), &DataExpressionData::Integer(0x1A3F.into()));
     }
 
     #[test]
     fn parse_binary_integer_literal() {
         let expr = parse("0b1101");
-        assert_eq!(expr.data(), &DatexExpressionData::Integer(0b1101.into()));
+        assert_eq!(expr.data(), &DataExpressionData::Integer(0b1101.into()));
     }
 
     #[test]
     fn parse_octal_integer_literal() {
         let expr = parse("0o755");
-        assert_eq!(expr.data(), &DatexExpressionData::Integer(0o755.into()));
+        assert_eq!(expr.data(), &DataExpressionData::Integer(0o755.into()));
     }
 
     #[test]
@@ -611,7 +611,7 @@ mod tests {
         let expr = parse("0xFFu8");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::TypedInteger(TypedInteger::U8(0xFF))
+            &DataExpressionData::TypedInteger(TypedInteger::U8(0xFF))
         );
     }
 
@@ -620,7 +620,7 @@ mod tests {
         let expr = parse("0b1010i16");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::TypedInteger(TypedInteger::I16(0b1010))
+            &DataExpressionData::TypedInteger(TypedInteger::I16(0b1010))
         );
     }
 
@@ -629,7 +629,7 @@ mod tests {
         let expr = parse("0o77u32");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::TypedInteger(TypedInteger::U32(0o77))
+            &DataExpressionData::TypedInteger(TypedInteger::U32(0o77))
         );
     }
 
@@ -638,7 +638,7 @@ mod tests {
         let expr = parse("123.456");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Decimal(
+            &DataExpressionData::Decimal(
                 Decimal::try_from_string("123.456").unwrap()
             )
         );
@@ -649,7 +649,7 @@ mod tests {
         let expr = parse("78.9f32");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::TypedDecimal(TypedDecimal::F32(78.9.into()))
+            &DataExpressionData::TypedDecimal(TypedDecimal::F32(78.9.into()))
         );
     }
 
@@ -658,7 +658,7 @@ mod tests {
         let expr = parse("-0.001");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Decimal(
+            &DataExpressionData::Decimal(
                 Decimal::try_from_string("-0.001").unwrap()
             )
         );
@@ -669,7 +669,7 @@ mod tests {
         let expr = parse("1.23e4");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Decimal(
+            &DataExpressionData::Decimal(
                 Decimal::try_from_string("1.23e4").unwrap()
             )
         );
@@ -680,7 +680,7 @@ mod tests {
         let expr = parse("5.67e-8f64");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::TypedDecimal(TypedDecimal::F64(
+            &DataExpressionData::TypedDecimal(TypedDecimal::F64(
                 5.67e-8.into()
             ))
         );
@@ -691,7 +691,7 @@ mod tests {
         let expr = parse("42e2");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Decimal(
+            &DataExpressionData::Decimal(
                 Decimal::try_from_string("42e2").unwrap()
             )
         );
@@ -702,7 +702,7 @@ mod tests {
         let expr = parse("100e3_f32");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::TypedDecimal(TypedDecimal::F32(100e3.into()))
+            &DataExpressionData::TypedDecimal(TypedDecimal::F32(100e3.into()))
         );
     }
 
@@ -711,7 +711,7 @@ mod tests {
         let expr = parse("3/4");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Decimal(
+            &DataExpressionData::Decimal(
                 Decimal::try_from_string("3/4").unwrap()
             )
         );
@@ -722,7 +722,7 @@ mod tests {
         let expr = parse("1_000/2_500");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Decimal(
+            &DataExpressionData::Decimal(
                 Decimal::try_from_string("1000/2500").unwrap()
             )
         );
@@ -733,7 +733,7 @@ mod tests {
         let expr = parse("-7_500/2_500");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Decimal(
+            &DataExpressionData::Decimal(
                 Decimal::try_from_string("-7500/2500").unwrap()
             )
         );
@@ -744,7 +744,7 @@ mod tests {
         let expr = parse("2026-04-13T18:28:09.415Z");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Instant(Instant::instant_from_iso(
+            &DataExpressionData::Instant(Instant::instant_from_iso(
                 "2026-04-13T18:28:09.415Z"
             ))
         );
@@ -755,7 +755,7 @@ mod tests {
         let expr = parse("2026-04-13T18:28:09Z");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Instant(Instant::instant_from_iso(
+            &DataExpressionData::Instant(Instant::instant_from_iso(
                 "2026-04-13T18:28:09Z"
             ))
         );
@@ -767,7 +767,7 @@ mod tests {
         let expr = parse("2026-04-13T18:28Z");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Instant(Instant::instant_from_iso(
+            &DataExpressionData::Instant(Instant::instant_from_iso(
                 "2026-04-13T18:28Z"
             ))
         );
@@ -776,7 +776,7 @@ mod tests {
     #[test]
     fn parse_iso_datetime_epoch() {
         let expr = parse("1970-01-01T00:00:00.000Z");
-        assert_eq!(expr.data(), &DatexExpressionData::Instant(Instant(0)));
+        assert_eq!(expr.data(), &DataExpressionData::Instant(Instant(0)));
     }
 
     #[test]
@@ -784,7 +784,7 @@ mod tests {
         let expr = parse("type<1 | 2>");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::TypeExpression(
+            &DataExpressionData::TypeExpression(
                 TypeExpressionData::Union(Union(vec![
                     TypeExpressionData::Integer(1.into()).with_default_span(),
                     TypeExpressionData::Integer(2.into()).with_default_span()

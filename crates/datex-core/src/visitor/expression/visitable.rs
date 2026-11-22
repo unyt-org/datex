@@ -2,7 +2,7 @@ use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, CallableSignature,
         CloneExpression, ComparisonOperation, Conditional, CreateMut,
-        CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
+        CreateShared, DataExpression, DataExpressionData, DeriveRef,
         DeriveSharedRef, EntityDeclarationExpression, EntityValueExpression,
         GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess,
         PropertyAssignment, RangeDeclaration, RemoteExecution, StackAssignment,
@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
+pub type ExpressionVisitResult<E> = Result<VisitAction<DataExpression>, E>;
 
 pub trait VisitableExpression<E> {
     fn walk_children(
@@ -381,129 +381,129 @@ impl<E> VisitableExpression<E> for PropertyAssignment {
     }
 }
 
-impl<E> VisitableExpression<E> for DatexExpression {
+impl<E> VisitableExpression<E> for DataExpression {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
     ) -> Result<(), E> {
         match self.data_mut() {
-            DatexExpressionData::PropertyAssignment(property_assignment) => {
+            DataExpressionData::PropertyAssignment(property_assignment) => {
                 property_assignment.walk_children(visitor)
             }
-            DatexExpressionData::BinaryOperation(op) => {
+            DataExpressionData::BinaryOperation(op) => {
                 op.walk_children(visitor)
             }
-            DatexExpressionData::Statements(statements) => {
+            DataExpressionData::Statements(statements) => {
                 statements.walk_children(visitor)
             }
-            DatexExpressionData::List(list) => list.walk_children(visitor),
-            DatexExpressionData::Map(map) => map.walk_children(visitor),
-            DatexExpressionData::Conditional(conditional) => {
+            DataExpressionData::List(list) => list.walk_children(visitor),
+            DataExpressionData::Map(map) => map.walk_children(visitor),
+            DataExpressionData::Conditional(conditional) => {
                 conditional.walk_children(visitor)
             }
-            DatexExpressionData::VariableDeclaration(variable_declaration) => {
+            DataExpressionData::VariableDeclaration(variable_declaration) => {
                 variable_declaration.walk_children(visitor)
             }
-            DatexExpressionData::VariableAssignment(variable_assignment) => {
+            DataExpressionData::VariableAssignment(variable_assignment) => {
                 variable_assignment.walk_children(visitor)
             }
-            DatexExpressionData::TypeDeclaration(type_declaration) => {
+            DataExpressionData::TypeDeclaration(type_declaration) => {
                 type_declaration.walk_children(visitor)
             }
-            DatexExpressionData::EntityDeclaration(entity_declaration) => {
+            DataExpressionData::EntityDeclaration(entity_declaration) => {
                 entity_declaration.walk_children(visitor)
             }
-            DatexExpressionData::TypeExpression(type_expression) => {
+            DataExpressionData::TypeExpression(type_expression) => {
                 type_expression.walk_children(visitor)
             }
-            DatexExpressionData::CallableDeclaration(function_declaration) => {
+            DataExpressionData::CallableDeclaration(function_declaration) => {
                 function_declaration.walk_children(visitor)
             }
-            DatexExpressionData::DeriveRef(create_ref) => {
+            DataExpressionData::DeriveRef(create_ref) => {
                 create_ref.walk_children(visitor)
             }
-            DatexExpressionData::DeriveSharedRef(create_shared_ref) => {
+            DataExpressionData::DeriveSharedRef(create_shared_ref) => {
                 create_shared_ref.walk_children(visitor)
             }
-            DatexExpressionData::CreateShared(create_ref) => {
+            DataExpressionData::CreateShared(create_ref) => {
                 create_ref.walk_children(visitor)
             }
-            DatexExpressionData::CreateMut(create_mut) => {
+            DataExpressionData::CreateMut(create_mut) => {
                 create_mut.walk_children(visitor)
             }
-            DatexExpressionData::Unbox(datex_expression) => {
+            DataExpressionData::Unbox(datex_expression) => {
                 datex_expression.walk_children(visitor)
             }
-            DatexExpressionData::Clone(datex_expression) => {
+            DataExpressionData::Clone(datex_expression) => {
                 datex_expression.walk_children(visitor)
             }
-            DatexExpressionData::StackAssignment(stack_assignment) => {
+            DataExpressionData::StackAssignment(stack_assignment) => {
                 stack_assignment.walk_children(visitor)
             }
-            DatexExpressionData::StackListAssignment(stack_list_assignment) => {
+            DataExpressionData::StackListAssignment(stack_list_assignment) => {
                 stack_list_assignment.walk_children(visitor)
             }
-            DatexExpressionData::ComparisonOperation(comparison_operation) => {
+            DataExpressionData::ComparisonOperation(comparison_operation) => {
                 comparison_operation.walk_children(visitor)
             }
-            DatexExpressionData::UnboxAssignment(unbox_assignment) => {
+            DataExpressionData::UnboxAssignment(unbox_assignment) => {
                 unbox_assignment.walk_children(visitor)
             }
-            DatexExpressionData::UnboxSlotAssignment(unbox_slot_assignment) => {
+            DataExpressionData::UnboxSlotAssignment(unbox_slot_assignment) => {
                 unbox_slot_assignment.walk_children(visitor)
             }
-            DatexExpressionData::UnaryOperation(unary_operation) => {
+            DataExpressionData::UnaryOperation(unary_operation) => {
                 unary_operation.walk_children(visitor)
             }
-            DatexExpressionData::Apply(apply) => apply.walk_children(visitor),
-            DatexExpressionData::InterfaceMethodCall(call) => {
+            DataExpressionData::Apply(apply) => apply.walk_children(visitor),
+            DataExpressionData::InterfaceMethodCall(call) => {
                 call.walk_children(visitor)
             }
-            DatexExpressionData::PropertyAccess(property_access) => {
+            DataExpressionData::PropertyAccess(property_access) => {
                 property_access.walk_children(visitor)
             }
-            DatexExpressionData::GenericInstantiation(
+            DataExpressionData::GenericInstantiation(
                 generic_instantiation,
             ) => generic_instantiation.walk_children(visitor),
-            DatexExpressionData::RemoteExecution(remote_execution) => {
+            DataExpressionData::RemoteExecution(remote_execution) => {
                 remote_execution.walk_children(visitor)
             }
-            DatexExpressionData::Compile(compile_expression) => {
+            DataExpressionData::Compile(compile_expression) => {
                 compile_expression.expression.walk_children(visitor)
             }
 
-            DatexExpressionData::Range(range) => range.walk_children(visitor),
+            DataExpressionData::Range(range) => range.walk_children(visitor),
 
-            DatexExpressionData::Tag(tag) => tag.walk_children(visitor),
+            DataExpressionData::Tag(tag) => tag.walk_children(visitor),
 
-            DatexExpressionData::EntityValue(entity_value) => {
+            DataExpressionData::EntityValue(entity_value) => {
                 entity_value.walk_children(visitor)
             }
 
-            DatexExpressionData::Noop
-            | DatexExpressionData::OmitRecursive
-            | DatexExpressionData::NativeImplementationIndicator
-            | DatexExpressionData::VariantAccess(_)
-            | DatexExpressionData::VariableAccess(_)
-            | DatexExpressionData::RequestSharedRef(_)
-            | DatexExpressionData::StackIndex(_)
-            | DatexExpressionData::Placeholder(_)
-            | DatexExpressionData::Recover
-            | DatexExpressionData::Null
-            | DatexExpressionData::Boolean(_)
-            | DatexExpressionData::Text(_)
-            | DatexExpressionData::Decimal(_)
-            | DatexExpressionData::TypedDecimal(_)
-            | DatexExpressionData::Integer(_)
-            | DatexExpressionData::TypedInteger(_)
-            | DatexExpressionData::Identifier(_)
-            | DatexExpressionData::RootPropertyAccess(_)
-            | DatexExpressionData::ResolveCoreLibId(_)
-            | DatexExpressionData::Endpoint(_)
-            | DatexExpressionData::MoveSharedValue(_)
-            | DatexExpressionData::Sender
-            | DatexExpressionData::Receiver
-            | DatexExpressionData::Instant(_) => Ok(()),
+            DataExpressionData::Noop
+            | DataExpressionData::OmitRecursive
+            | DataExpressionData::NativeImplementationIndicator
+            | DataExpressionData::VariantAccess(_)
+            | DataExpressionData::VariableAccess(_)
+            | DataExpressionData::RequestSharedRef(_)
+            | DataExpressionData::StackIndex(_)
+            | DataExpressionData::Placeholder(_)
+            | DataExpressionData::Recover
+            | DataExpressionData::Null
+            | DataExpressionData::Boolean(_)
+            | DataExpressionData::Text(_)
+            | DataExpressionData::Decimal(_)
+            | DataExpressionData::TypedDecimal(_)
+            | DataExpressionData::Integer(_)
+            | DataExpressionData::TypedInteger(_)
+            | DataExpressionData::Identifier(_)
+            | DataExpressionData::RootPropertyAccess(_)
+            | DataExpressionData::ResolveCoreLibId(_)
+            | DataExpressionData::Endpoint(_)
+            | DataExpressionData::MoveSharedValue(_)
+            | DataExpressionData::Sender
+            | DataExpressionData::Receiver
+            | DataExpressionData::Instant(_) => Ok(()),
         }
     }
 }

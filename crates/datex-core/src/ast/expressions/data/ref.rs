@@ -1,6 +1,6 @@
 //! This module defines the representation for reference-related expressions in the AST, including shared and mutable references.
 use crate::{
-    ast::expressions::DatexExpression,
+    ast::expressions::DataExpression,
     shared_values::{
         PointerAddress, ReferenceMutability, SharedContainerMutability,
     },
@@ -13,7 +13,7 @@ pub struct DeriveRef {
     /// The mutability of the local reference.
     pub mutability: LocalReferenceMutability,
     /// The expression being referenced.
-    pub expression: DatexExpression,
+    pub expression: DataExpression,
 }
 
 /// Represents the derivation of a shared reference, e.g. `&x`.
@@ -22,14 +22,14 @@ pub struct DeriveSharedRef {
     /// The mutability of the shared reference.
     pub mutability: ReferenceMutability,
     /// The expression being referenced.
-    pub expression: DatexExpression,
+    pub expression: DataExpression,
 }
 
 /// Represents the creation of a mutable reference, e.g. `&mut x`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreateMut {
     /// The expression being referenced.
-    pub expression: DatexExpression,
+    pub expression: DataExpression,
 }
 
 /// Represents the request for a shared reference from a pointer, e.g. `&*ptr`.
@@ -47,5 +47,5 @@ pub struct CreateShared {
     /// The mutability of the shared container.
     pub mutability: SharedContainerMutability,
     /// The expression being stored in the shared container.
-    pub expression: DatexExpression,
+    pub expression: DataExpression,
 }

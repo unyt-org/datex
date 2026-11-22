@@ -1,11 +1,11 @@
 //! This module defines the representation for range expressions in the AST.
-use crate::ast::expressions::DatexExpression;
+use crate::ast::expressions::DataExpression;
 
 /// Represents a range expression, e.g. `start..end`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RangeDeclaration {
     /// The start expression of the range.
-    pub start: DatexExpression,
+    pub start: DataExpression,
     /// The end expression of the range.
-    pub end: DatexExpression,
+    pub end: DataExpression,
 }

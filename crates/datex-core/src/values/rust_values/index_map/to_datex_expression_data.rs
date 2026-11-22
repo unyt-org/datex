@@ -1,5 +1,5 @@
 use crate::{
-    ast::{expressions::DatexExpressionData, spanned::Spanned},
+    ast::{expressions::DataExpressionData, spanned::Spanned},
     random::RandomState,
     traits::to_datex_expression_data::ToDatexExpressionData,
 };
@@ -11,8 +11,8 @@ where
     K: ToDatexExpressionData + Eq + Hash,
     V: ToDatexExpressionData,
 {
-    fn to_datex_expression_data(&self) -> DatexExpressionData {
-        DatexExpressionData::Map(
+    fn to_datex_expression_data(&self) -> DataExpressionData {
+        DataExpressionData::Map(
             self.iter()
                 .map(|(k, v)| {
                     (

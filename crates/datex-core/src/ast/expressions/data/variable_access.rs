@@ -1,6 +1,6 @@
 //! This module defines the representation for variable access expressions in the AST.
 use crate::{
-    ast::{expressions::ValueAccessType, resolved_variable::VariableId},
+    ast::expressions::{ValueAccessType, VariableId},
     prelude::*,
 };
 

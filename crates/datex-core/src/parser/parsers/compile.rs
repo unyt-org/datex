@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            CompileExpression, DatexExpression, DatexExpressionData,
+            CompileExpression, DataExpression, DataExpressionData,
         },
         spanned::Spanned,
     },
@@ -10,12 +10,12 @@ use crate::{
 impl Parser {
     pub(crate) fn parse_compile_expression(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<DataExpression, SpannedParserError> {
         let start = self.expect(Token::Compile)?.span.start;
 
         let compile_expression = self.parse_expression(0)?;
 
-        Ok(DatexExpressionData::Compile(CompileExpression {
+        Ok(DataExpressionData::Compile(CompileExpression {
             expression: compile_expression,
         })
         .with_span(start..self.get_current_source_position()))
@@ -28,7 +28,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, CompileExpression, DatexExpressionData,
+                BinaryOperation, CompileExpression, DataExpressionData,
                 Statements, expression::Expression,
             },
             spanned::Spanned,
@@ -44,8 +44,8 @@ mod tests {
         let expr = parse("compile ()");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Compile(CompileExpression {
-                expression: DatexExpressionData::Statements(Statements {
+            &DataExpressionData::Compile(CompileExpression {
+                expression: DataExpressionData::Statements(Statements {
                     statements: vec![],
                     is_terminated: false,
                     unbounded: None,
@@ -60,15 +60,15 @@ mod tests {
         let expr = parse("compile (1 + 2)");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Compile(CompileExpression {
-                expression: (DatexExpressionData::BinaryOperation(
+            &DataExpressionData::Compile(CompileExpression {
+                expression: (DataExpressionData::BinaryOperation(
                     BinaryOperation {
-                        left: (DatexExpressionData::Integer(Integer::from(1))
+                        left: (DataExpressionData::Integer(Integer::from(1))
                             .with_default_span()),
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Add
                         ),
-                        right: (DatexExpressionData::Integer(Integer::from(2))
+                        right: (DataExpressionData::Integer(Integer::from(2))
                             .with_default_span()),
                         ty: None,
                     }
@@ -83,8 +83,8 @@ mod tests {
         let expr = parse("compile 42");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Compile(CompileExpression {
-                expression: (DatexExpressionData::Integer(Integer::from(42))
+            &DataExpressionData::Compile(CompileExpression {
+                expression: (DataExpressionData::Integer(Integer::from(42))
                     .with_default_span())
             })
         );

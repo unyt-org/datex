@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            Apply, BinaryOperation, DatexExpression, DatexExpressionData,
+            Apply, BinaryOperation, DataExpression, DataExpressionData,
             InterfaceMethodCall, List, Map, PropertyAssignment, Statements,
             TypeExpression, TypeExpressionData, UnaryOperation,
             UnboundedStatement, VariableAssignment, expression::Expression,
@@ -63,12 +63,12 @@ use core::cell::RefCell;
 
 #[derive(Debug)]
 enum CollectedAstResult {
-    Expression(DatexExpression),
+    Expression(DataExpression),
     TypeExpression(TypeExpression),
-    KeyValuePair((DatexExpression, DatexExpression)),
+    KeyValuePair((DataExpression, DataExpression)),
 }
-impl From<DatexExpression> for CollectedAstResult {
-    fn from(value: DatexExpression) -> Self {
+impl From<DataExpression> for CollectedAstResult {
+    fn from(value: DataExpression) -> Self {
         CollectedAstResult::Expression(value)
     }
 }
@@ -82,9 +82,9 @@ impl From<TypeExpression> for CollectedAstResult {
 impl
     CollectionResultsPopper<
         CollectedAstResult,
-        DatexExpression,
-        DatexExpression,
-        DatexExpression,
+        DataExpression,
+        DataExpression,
+        DataExpression,
         TypeExpression,
         TypeExpression,
     > for CollectedResults<CollectedAstResult>
@@ -98,10 +98,8 @@ impl
         }
     }
 
-    /// Pops a DatexExpression from the collected results.
-    fn try_extract_value(
-        result: CollectedAstResult,
-    ) -> Option<DatexExpression> {
+    /// Pops a DataExpression from the collected results.
+    fn try_extract_value(result: CollectedAstResult) -> Option<DataExpression> {
         match result {
             CollectedAstResult::Expression(expr) => Some(expr),
             _ => None,
@@ -119,7 +117,7 @@ impl
     /// Pops a key-value pair from the collected results.
     fn try_extract_key_value_pair(
         result: CollectedAstResult,
-    ) -> Option<(DatexExpression, DatexExpression)> {
+    ) -> Option<(DataExpression, DataExpression)> {
         match result {
             CollectedAstResult::KeyValuePair((key, value)) => {
                 Some((key, value))
@@ -130,9 +128,7 @@ impl
 }
 
 // TODO: don't convert to AST directly, first generate disassembler tree, then convert to AST?
-pub fn ast_from_bytecode(
-    dxb: &[u8],
-) -> Result<DatexExpression, DXBParserError> {
+pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
     let mut collector = InstructionCollector::<CollectedAstResult>::default();
 
     let mut next_stack_index = StackIndex(0);
@@ -158,79 +154,79 @@ pub fn ast_from_bytecode(
                     });
 
                 let expr = regular_instruction.map(|regular_instruction|
-                    Result::<DatexExpression, DXBParserError>::Ok(match regular_instruction {
+                    Result::<DataExpression, DXBParserError>::Ok(match regular_instruction {
                         // Handle different regular instructions here
                         RegularInstruction::Int8(integer_data) => {
-                            DatexExpressionData::TypedInteger(
+                            DataExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::Int16(integer_data) => {
-                            DatexExpressionData::TypedInteger(
+                            DataExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::Int32(integer_data) => {
-                            DatexExpressionData::TypedInteger(
+                            DataExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::Instant(instant_data) => {
-                            DatexExpressionData::Instant(
+                            DataExpressionData::Instant(
                                 Instant(
                                     instant_data.0,
                                 ),
                             )
                         }
                         RegularInstruction::Int64(integer_data) => {
-                            DatexExpressionData::TypedInteger(
+                            DataExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::Int128(integer_data) => {
-                            DatexExpressionData::TypedInteger(
+                            DataExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::UInt8(integer_data) => {
-                            DatexExpressionData::TypedInteger(
+                            DataExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::UInt16(integer_data) => {
-                            DatexExpressionData::TypedInteger(
+                            DataExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::UInt32(integer_data) => {
-                            DatexExpressionData::TypedInteger(
+                            DataExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::UInt64(integer_data) => {
-                            DatexExpressionData::TypedInteger(
+                            DataExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::UInt128(integer_data) => {
-                            DatexExpressionData::TypedInteger(
+                            DataExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::BigInteger(integer_data) => {
-                            DatexExpressionData::TypedInteger(
+                            DataExpressionData::TypedInteger(
                                 TypedInteger::IBig(integer_data),
                             )
                         }
                         RegularInstruction::Integer(integer_data) => {
-                            DatexExpressionData::Integer(integer_data)
+                            DataExpressionData::Integer(integer_data)
                         }
 
                         // compact lists
                         RegularInstruction::CompactList(list_data) => {
                             // u8 list can just be mapped directly
                             if list_data.core_lib_type == CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)) {
-                               DatexExpressionData::List(List::new(list_data.elements.iter().map(|b| DatexExpressionData::TypedInteger(TypedInteger::from(*b)).with_default_span()).collect()))
+                               DataExpressionData::List(List::new(list_data.elements.iter().map(|b| DataExpressionData::TypedInteger(TypedInteger::from(*b)).with_default_span()).collect()))
                             }
                             else {
                                 todo!()
@@ -241,124 +237,124 @@ pub fn ast_from_bytecode(
                             unreachable!("decompiler ast from bytcode ranges not implemented");
                         }
                         RegularInstruction::Sender => {
-                            DatexExpressionData::Sender
+                            DataExpressionData::Sender
                         }
                         RegularInstruction::Receiver => {
-                            DatexExpressionData::Receiver
+                            DataExpressionData::Receiver
                         }
                         RegularInstruction::Endpoint(endpoint) => {
-                            DatexExpressionData::Endpoint(endpoint)
+                            DataExpressionData::Endpoint(endpoint)
                         }
                         RegularInstruction::DecimalF32(f32_data) => {
-                            DatexExpressionData::TypedDecimal(
+                            DataExpressionData::TypedDecimal(
                                 TypedDecimal::from(f32_data.0),
                             )
                         }
                         RegularInstruction::DecimalF64(f64_data) => {
-                            DatexExpressionData::TypedDecimal(
+                            DataExpressionData::TypedDecimal(
                                 TypedDecimal::from(f64_data.0),
                             )
                         }
                         RegularInstruction::DecimalAsInt16(
                             decimal_i16_data,
-                        ) => DatexExpressionData::Decimal(Decimal::from(
+                        ) => DataExpressionData::Decimal(Decimal::from(
                             decimal_i16_data.0 as f64,
                         )),
                         RegularInstruction::DecimalAsInt32(
                             decimal_i32_data,
-                        ) => DatexExpressionData::Decimal(Decimal::from(
+                        ) => DataExpressionData::Decimal(Decimal::from(
                             decimal_i32_data.0 as f64,
                         )),
                         RegularInstruction::BigDecimal(decimal_data) => {
-                            DatexExpressionData::TypedDecimal(
+                            DataExpressionData::TypedDecimal(
                                 TypedDecimal::Decimal(decimal_data),
                             )
                         }
                         RegularInstruction::Decimal(decimal_data) => {
-                            DatexExpressionData::Decimal(decimal_data)
+                            DataExpressionData::Decimal(decimal_data)
                         }
                         RegularInstruction::ShortText(short_text_data) => {
-                            DatexExpressionData::Text(short_text_data.0.into())
+                            DataExpressionData::Text(short_text_data.0.into())
                         }
                         RegularInstruction::Text(text_data) => {
-                            DatexExpressionData::Text(text_data.0.into())
+                            DataExpressionData::Text(text_data.0.into())
                         }
                         RegularInstruction::True => {
-                            DatexExpressionData::Boolean(true.into())
+                            DataExpressionData::Boolean(true.into())
                         }
                         RegularInstruction::False => {
-                            DatexExpressionData::Boolean(false.into())
+                            DataExpressionData::Boolean(false.into())
                         }
                         RegularInstruction::Null => {
-                            DatexExpressionData::Null
+                            DataExpressionData::Null
                         }
                         RegularInstruction::Uninitialized => {
-                            DatexExpressionData::NativeImplementationIndicator // TODO: how to display?
+                            DataExpressionData::NativeImplementationIndicator // TODO: how to display?
                         }
                         RegularInstruction::RequestRemoteSharedRef(raw_address) => {
-                            DatexExpressionData::RequestSharedRef(RequestSharedRef {
+                            DataExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: PointerAddress::from(raw_address),
                                 mutability: ReferenceMutability::Immutable,
                             })
                         }
                         RegularInstruction::RequestRemoteSharedRefMut(raw_address) => {
-                            DatexExpressionData::RequestSharedRef(RequestSharedRef {
+                            DataExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: PointerAddress::from(raw_address),
                                 mutability: ReferenceMutability::Mutable,
                             })
                         }
                         RegularInstruction::GetLocalSharedRef(raw_address) => {
-                            DatexExpressionData::RequestSharedRef(RequestSharedRef {
+                            DataExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: PointerAddress::from(raw_address),
                                 mutability: ReferenceMutability::Immutable,
                             })
                         }
 
                         RegularInstruction::GetCoreLibValue(id) => {
-                            DatexExpressionData::ResolveCoreLibId(
+                            DataExpressionData::ResolveCoreLibId(
                                 id.try_into().map_err(|_| DXBParserError::InvalidCoreLibId(id))?,
                             )
                         }
 
                         RegularInstruction::SharedRef(shared_ref) => {
-                            DatexExpressionData::RequestSharedRef(RequestSharedRef {
+                            DataExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: shared_ref.address,
                                 mutability: shared_ref.ref_mutability,
                             })
                         }
 
                         RegularInstruction::CloneStackValue(stack_index) => {
-                            DatexExpressionData::Clone(CloneExpression {
-                                expression: (DatexExpressionData::StackIndex(stack_index).with_default_span())
+                            DataExpressionData::Clone(CloneExpression {
+                                expression: (DataExpressionData::StackIndex(stack_index).with_default_span())
                             })
                         }
 
                         RegularInstruction::BorrowStackValue(stack_index) => {
-                            DatexExpressionData::StackIndex(stack_index)
+                            DataExpressionData::StackIndex(stack_index)
                         }
 
                         RegularInstruction::GetStackValueSharedRef(stack_index) => {
-                            DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
+                            DataExpressionData::DeriveSharedRef(DeriveSharedRef {
                                 mutability: ReferenceMutability::Immutable,
-                                expression: (DatexExpressionData::StackIndex(stack_index).with_default_span()),
+                                expression: (DataExpressionData::StackIndex(stack_index).with_default_span()),
                             })
                         }
 
                         RegularInstruction::GetStackValueSharedRefMut(stack_index) => {
-                            DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
+                            DataExpressionData::DeriveSharedRef(DeriveSharedRef {
                                 mutability: ReferenceMutability::Mutable,
-                                expression: (DatexExpressionData::StackIndex(stack_index).with_default_span()),
+                                expression: (DataExpressionData::StackIndex(stack_index).with_default_span()),
                             })
                         }
 
                         RegularInstruction::TakeStackValue(stack_index) => {
-                            DatexExpressionData::StackIndex(stack_index)
+                            DataExpressionData::StackIndex(stack_index)
                         }
 
                         RegularInstruction::GetRootProperty(
                             root_property,
                         ) => {
-                            DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
+                            DataExpressionData::RootPropertyAccess(RootPropertyAccess {
                                 property_name: root_property.to_string(),
                             })
                         }
@@ -371,7 +367,7 @@ pub fn ast_from_bytecode(
                             impl_count: _,
                             impls: _,
                         }) => {
-                            DatexExpressionData::Tag(TagExpression {
+                            DataExpressionData::Tag(TagExpression {
                                 tag: tag
                                     .expect("has_tag is true, so tag must be Some")
                                     .0,
@@ -560,7 +556,7 @@ pub fn ast_from_bytecode(
                             | RegularInstruction::ShortList(_) => {
                                 let elements =
                                     collected_results.collect_value_results();
-                                DatexExpressionData::List(List::new(elements))
+                                DataExpressionData::List(List::new(elements))
                                     .with_default_span()
                                     .into()
                             }
@@ -568,7 +564,7 @@ pub fn ast_from_bytecode(
                             | RegularInstruction::ShortMap(_) => {
                                 let entries = collected_results
                                     .collect_key_value_pair_results();
-                                DatexExpressionData::Map(Map::new(entries))
+                                DataExpressionData::Map(Map::new(entries))
                                     .with_default_span()
                                     .into()
                             }
@@ -578,7 +574,7 @@ pub fn ast_from_bytecode(
                             ) => {
                                 let statements =
                                     collected_results.collect_value_results();
-                                DatexExpressionData::Statements(Statements {
+                                DataExpressionData::Statements(Statements {
                                     statements,
                                     is_terminated: terminated,
                                     unbounded: None,
@@ -599,7 +595,7 @@ pub fn ast_from_bytecode(
                             ) => {
                                 let value =
                                     collected_results.pop_value();
-                                let key = DatexExpressionData::Text(
+                                let key = DataExpressionData::Text(
                                     short_text_data.0.into(),
                                 )
                                     .with_default_span();
@@ -614,7 +610,7 @@ pub fn ast_from_bytecode(
                                 let right =
                                     collected_results.pop_value();
                                 let left = collected_results.pop_value();
-                                DatexExpressionData::BinaryOperation(
+                                DataExpressionData::BinaryOperation(
                                     BinaryOperation {
                                         operator: BinaryOperator::from(
                                             unsafe {
@@ -640,7 +636,7 @@ pub fn ast_from_bytecode(
                                     collected_results.pop_value();
                                 let left = collected_results.pop_value();
 
-                                DatexExpressionData::ComparisonOperation(
+                                DataExpressionData::ComparisonOperation(
                                     ComparisonOperation {
                                         operator: ComparisonOperator::from(
                                             regular_instruction,
@@ -657,7 +653,7 @@ pub fn ast_from_bytecode(
                             RegularInstruction::CreateShared | RegularInstruction::CreateSharedMut
                             ) => {
                                 let expr = collected_results.pop_value();
-                                DatexExpressionData::CreateShared(
+                                DataExpressionData::CreateShared(
                                     CreateShared {
                                         mutability: match instruction {
                                             RegularInstruction::CreateShared => {
@@ -676,7 +672,7 @@ pub fn ast_from_bytecode(
                             }
 
                             RegularInstruction::SharedRefWithValue(shared_ref) => {
-                                DatexExpressionData::RequestSharedRef(RequestSharedRef {
+                                DataExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(shared_ref.address),
                                     mutability: shared_ref.ref_mutability,
                                 })
@@ -686,7 +682,7 @@ pub fn ast_from_bytecode(
 
                             RegularInstruction::DeriveSharedReference => {
                                 let expr = collected_results.pop_value();
-                                DatexExpressionData::DeriveSharedRef(
+                                DataExpressionData::DeriveSharedRef(
                                     DeriveSharedRef {
                                         mutability: ReferenceMutability::Immutable,
                                         expression: (expr),
@@ -697,7 +693,7 @@ pub fn ast_from_bytecode(
                             }
                             RegularInstruction::DeriveSharedReferenceMut => {
                                 let expr = collected_results.pop_value();
-                                DatexExpressionData::DeriveSharedRef(
+                                DataExpressionData::DeriveSharedRef(
                                     DeriveSharedRef {
                                         mutability: ReferenceMutability::Mutable,
                                         expression: (expr),
@@ -707,7 +703,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
                             RegularInstruction::SetSharedContainerValue => {
-                                DatexExpressionData::UnboxAssignment(UnboxAssignment {
+                                DataExpressionData::UnboxAssignment(UnboxAssignment {
                                     assigned_expression: (collected_results.pop_value()),
                                     operator: None,
                                     unbox_expression: (collected_results.pop_value()),
@@ -721,7 +717,7 @@ pub fn ast_from_bytecode(
                             | RegularInstruction::BitwiseNot
                             | RegularInstruction::Unbox => {
                                 let expr = collected_results.pop_value();
-                                DatexExpressionData::UnaryOperation(
+                                DataExpressionData::UnaryOperation(
                                     UnaryOperation {
                                         operator: UnaryOperator::from(
                                             regular_instruction,
@@ -739,13 +735,13 @@ pub fn ast_from_bytecode(
                                 let types = collected_results.pop_types(callable.signature.total_type_count());
                                 let signature = resolve_signature(types, callable.signature);
 
-                                let body = DatexExpressionData::Statements(Statements {
+                                let body = DataExpressionData::Statements(Statements {
                                     statements: vec![ast_from_bytecode(&callable.body.body)?],
                                     is_terminated: false,
                                     unbounded: None,
                                 }).with_default_span();
 
-                                DatexExpressionData::callable_declaration(CallableDeclaration {
+                                DataExpressionData::callable_declaration(CallableDeclaration {
                                     signature,
                                     body,
                                     injected_variable_count: Some(injected_values.len() as u32),
@@ -762,13 +758,13 @@ pub fn ast_from_bytecode(
                                 let types = collected_results.pop_types(callable_declaration.signature.total_type_count());
                                 let signature = resolve_signature(types, callable_declaration.signature);
 
-                                let body = DatexExpressionData::Statements(Statements {
+                                let body = DataExpressionData::Statements(Statements {
                                     statements: vec![ast_from_bytecode(&callable_declaration.body.body)?],
                                     is_terminated: false,
                                     unbounded: None,
                                 }).with_default_span();
 
-                                DatexExpressionData::callable_declaration(CallableDeclaration {
+                                DataExpressionData::callable_declaration(CallableDeclaration {
                                     signature,
                                     body,
                                     injected_variable_count: None,
@@ -786,7 +782,7 @@ pub fn ast_from_bytecode(
                                 // TODO: handle impls
                                 let value_expression = collected_results.pop_value();
                                 let inner_expression = if let Some(tag) = tag {
-                                    DatexExpressionData::Tag(TagExpression {
+                                    DataExpressionData::Tag(TagExpression {
                                         tag: tag.0,
                                         expression: Some(value_expression),
                                     })
@@ -798,7 +794,7 @@ pub fn ast_from_bytecode(
                                 if is_entity {
                                     let _shared_container = collected_results.pop_value();
 
-                                    DatexExpressionData::EntityValue(EntityValueExpression {
+                                    DataExpressionData::EntityValue(EntityValueExpression {
                                         entity_name: "TODO".to_string(), // TODO: resolve name
                                         entity_address: None,
                                         value: inner_expression,
@@ -815,7 +811,7 @@ pub fn ast_from_bytecode(
                                 if let FullOrPartialResult::Full { results, .. } =
                                     result
                                 {
-                                    DatexExpressionData::Statements(
+                                    DataExpressionData::Statements(
                                         Statements {
                                             statements: results
                                                 .collect_value_results(),
@@ -836,7 +832,7 @@ pub fn ast_from_bytecode(
                             }
 
                             RegularInstruction::MoveWithValue(move_with_value) => {
-                                DatexExpressionData::MoveSharedValue(move_with_value.previous_address)
+                                DataExpressionData::MoveSharedValue(move_with_value.previous_address)
                                     .with_default_span()
                                     .into()
                             }
@@ -844,7 +840,7 @@ pub fn ast_from_bytecode(
                             RegularInstruction::PushToStack => {
                                 let expr = collected_results.pop_value();
 
-                                let res = DatexExpressionData::StackAssignment(
+                                let res = DataExpressionData::StackAssignment(
                                     StackAssignment {
                                         index: next_stack_index,
                                         expression: (expr),
@@ -859,7 +855,7 @@ pub fn ast_from_bytecode(
 
                             RegularInstruction::PushListToStack => {
                                 let expression = collected_results.pop_value();
-                                DatexExpressionData::StackListAssignment(StackListAssignment {
+                                DataExpressionData::StackListAssignment(StackListAssignment {
                                     expression,
                                 })
                                     .with_default_span()
@@ -868,7 +864,7 @@ pub fn ast_from_bytecode(
 
                             RegularInstruction::SetStackValue(slot_address) => {
                                 let expr = collected_results.pop_value();
-                                DatexExpressionData::VariableAssignment(
+                                DataExpressionData::VariableAssignment(
                                     VariableAssignment {
                                         id: None,
                                         name: format!(
@@ -894,7 +890,7 @@ pub fn ast_from_bytecode(
                                 // base is the last collected argument
                                 let base =
                                     arguments.remove(arguments.len() - 1);
-                                DatexExpressionData::Apply(Apply {
+                                DataExpressionData::Apply(Apply {
                                     base,
                                     arguments,
                                 })
@@ -908,7 +904,7 @@ pub fn ast_from_bytecode(
                                 // base is the last collected argument
                                 let base =
                                     arguments.remove(arguments.len() - 1);
-                                DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                DataExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
                                     base,
                                     method_data.method_name.0,
                                     arguments,
@@ -923,11 +919,11 @@ pub fn ast_from_bytecode(
                                 index_data,
                             ) => {
                                 let base = collected_results.pop_value();
-                                DatexExpressionData::PropertyAccess(
+                                DataExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
                                         base: (base),
                                         property: (
-                                            DatexExpressionData::Integer(
+                                            DataExpressionData::Integer(
                                                 Integer::from(index_data.0),
                                             )
                                                 .with_default_span()
@@ -940,11 +936,11 @@ pub fn ast_from_bytecode(
 
                             RegularInstruction::TakeEntryText(text_data) | RegularInstruction::GetEntryText(text_data) => {
                                 let base = collected_results.pop_value();
-                                DatexExpressionData::PropertyAccess(
+                                DataExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
                                         base: (base),
                                         property: (
-                                            DatexExpressionData::Text(
+                                            DataExpressionData::Text(
                                                 text_data.0.into(),
                                             )
                                                 .with_default_span()
@@ -959,7 +955,7 @@ pub fn ast_from_bytecode(
                                 let base = collected_results.pop_value();
                                 let property =
                                     collected_results.pop_value();
-                                DatexExpressionData::PropertyAccess(
+                                DataExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
                                         base: (base),
                                         property: (property),
@@ -975,11 +971,11 @@ pub fn ast_from_bytecode(
                                 let base = collected_results.pop_value();
                                 let value =
                                     collected_results.pop_value();
-                                DatexExpressionData::PropertyAssignment(
+                                DataExpressionData::PropertyAssignment(
                                     PropertyAssignment {
                                         base: (base),
                                         property: (
-                                            DatexExpressionData::Integer(
+                                            DataExpressionData::Integer(
                                                 Integer::from(index_data.0),
                                             )
                                                 .with_default_span()
@@ -998,11 +994,11 @@ pub fn ast_from_bytecode(
                                     splice_data.insert_count
                                 );
                                 let splice_args = vec![
-                                    DatexExpressionData::Integer(splice_data.start_index.into()).with_default_span(),
-                                    DatexExpressionData::Integer(splice_data.delete_count.into()).with_default_span(),
-                                    DatexExpressionData::List(List { items: values }).with_default_span()
+                                    DataExpressionData::Integer(splice_data.start_index.into()).with_default_span(),
+                                    DataExpressionData::Integer(splice_data.delete_count.into()).with_default_span(),
+                                    DataExpressionData::List(List { items: values }).with_default_span()
                                 ];
-                                DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                DataExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
                                     target,
                                     "splice".to_string(),
                                     splice_args,
@@ -1015,7 +1011,7 @@ pub fn ast_from_bytecode(
                                 let delete_count = collected_results.pop_value();
                                 let start_index = collected_results.pop_value();
 
-                                DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                DataExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
                                     target,
                                     "splice".to_string(),
                                     vec![
@@ -1029,7 +1025,7 @@ pub fn ast_from_bytecode(
                                 let target = collected_results.pop_value();
                                 let value = collected_results.pop_value();
 
-                                DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                DataExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
                                     target,
                                     "append".to_string(),
                                     vec![value],
@@ -1037,7 +1033,7 @@ pub fn ast_from_bytecode(
                             }
                             RegularInstruction::Clear => {
                                 let target = collected_results.pop_value();
-                                DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                DataExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
                                     target,
                                     "clear".to_string(),
                                     vec![],
@@ -1047,7 +1043,7 @@ pub fn ast_from_bytecode(
                                 let base = collected_results.pop_value();
                                 let value =
                                     collected_results.pop_value();
-                                DatexExpressionData::UnboxAssignment(UnboxAssignment {
+                                DataExpressionData::UnboxAssignment(UnboxAssignment {
                                     operator: Some(ModificationOperator::AddAssign),
                                     unbox_expression: base,
                                     assigned_expression: value,
@@ -1059,7 +1055,7 @@ pub fn ast_from_bytecode(
                                 let base = collected_results.pop_value();
                                 let value =
                                     collected_results.pop_value();
-                                DatexExpressionData::UnboxAssignment(UnboxAssignment {
+                                DataExpressionData::UnboxAssignment(UnboxAssignment {
                                     operator: Some(ModificationOperator::SubtractAssign),
                                     unbox_expression: base,
                                     assigned_expression: value,
@@ -1072,11 +1068,11 @@ pub fn ast_from_bytecode(
                                 let base = collected_results.pop_value();
                                 let value =
                                     collected_results.pop_value();
-                                DatexExpressionData::PropertyAssignment(
+                                DataExpressionData::PropertyAssignment(
                                     PropertyAssignment {
                                         base: (base),
                                         property: (
-                                            DatexExpressionData::Text(
+                                            DataExpressionData::Text(
                                                 text_data.0.into(),
                                             )
                                                 .with_default_span()
@@ -1095,7 +1091,7 @@ pub fn ast_from_bytecode(
                                     collected_results.pop_value();
                                 let property =
                                     collected_results.pop_value();
-                                DatexExpressionData::PropertyAssignment(
+                                DataExpressionData::PropertyAssignment(
                                     PropertyAssignment {
                                         base: (base),
                                         property: (property),
@@ -1109,13 +1105,13 @@ pub fn ast_from_bytecode(
                             RegularInstruction::RemoteExecution(remote_execution_data) => {
                                 let receivers = collected_results.pop_value();
 
-                                let body = DatexExpressionData::Statements(Statements {
+                                let body = DataExpressionData::Statements(Statements {
                                     statements: vec![ast_from_bytecode(&remote_execution_data.body)?],
                                     is_terminated: false,
                                     unbounded: None,
                                 }).with_default_span();
 
-                                DatexExpressionData::RemoteExecution(RemoteExecution {
+                                DataExpressionData::RemoteExecution(RemoteExecution {
                                     left: (receivers),
                                     right: (body),
                                     injected_variable_count: None,
@@ -1134,7 +1130,7 @@ pub fn ast_from_bytecode(
 
                         Instruction::Type(_type_instruction) => {
                             // FIXME: Implement as from bytecode for nested type instruction
-                            DatexExpressionData::TypeExpression(TypeExpression::new(TypeExpressionData::GetCoreLibType(CoreLibBaseTypeId::Never.into()), Default::default()))
+                            DataExpressionData::TypeExpression(TypeExpression::new(TypeExpressionData::GetCoreLibType(CoreLibBaseTypeId::Never.into()), Default::default()))
                                 .with_default_span().into()
                         }
                     };
@@ -1205,7 +1201,7 @@ fn resolve_signature(
 mod tests {
     use super::*;
     use crate::{
-        ast::{expressions::DatexExpressionData, spanned::Spanned},
+        ast::{expressions::DataExpressionData, spanned::Spanned},
         global::operators::binary::ArithmeticOperator,
         instruction::instruction_codes::InstructionCode,
         values::core_values::integer::typed_integer::TypedInteger,
@@ -1217,7 +1213,7 @@ mod tests {
         let ast = ast_from_bytecode(&bytecode).unwrap();
         assert_eq!(
             ast,
-            DatexExpressionData::TypedInteger(TypedInteger::from(42u8))
+            DataExpressionData::TypedInteger(TypedInteger::from(42u8))
                 .with_default_span()
         );
     }
@@ -1226,7 +1222,7 @@ mod tests {
     fn ast_from_bytecode_null() {
         let bytecode: Vec<u8> = vec![InstructionCode::NULL as u8];
         let ast = ast_from_bytecode(&bytecode).unwrap();
-        assert_eq!(ast, DatexExpressionData::Null.with_default_span());
+        assert_eq!(ast, DataExpressionData::Null.with_default_span());
     }
 
     #[test]
@@ -1235,7 +1231,7 @@ mod tests {
         let ast = ast_from_bytecode(&bytecode).unwrap();
         assert_eq!(
             ast,
-            DatexExpressionData::Boolean(true.into()).with_default_span()
+            DataExpressionData::Boolean(true.into()).with_default_span()
         );
     }
 
@@ -1253,7 +1249,7 @@ mod tests {
         let ast = ast_from_bytecode(&bytecode).unwrap();
         assert_eq!(
             ast,
-            DatexExpressionData::Text("Hello".into()).with_default_span()
+            DataExpressionData::Text("Hello".into()).with_default_span()
         );
     }
 
@@ -1270,10 +1266,10 @@ mod tests {
         let ast = ast_from_bytecode(&bytecode).unwrap();
         assert_eq!(
             ast,
-            DatexExpressionData::List(List::new(vec![
-                DatexExpressionData::TypedInteger(TypedInteger::from(42u8))
+            DataExpressionData::List(List::new(vec![
+                DataExpressionData::TypedInteger(TypedInteger::from(42u8))
                     .with_default_span(),
-                DatexExpressionData::TypedInteger(TypedInteger::from(21u8))
+                DataExpressionData::TypedInteger(TypedInteger::from(21u8))
                     .with_default_span(),
             ]))
             .with_default_span()
@@ -1297,15 +1293,15 @@ mod tests {
         let ast = ast_from_bytecode(&bytecode).unwrap();
         assert_eq!(
             ast,
-            DatexExpressionData::List(List::new(vec![
-                DatexExpressionData::List(List::new(vec![
-                    DatexExpressionData::TypedInteger(TypedInteger::from(1u8))
+            DataExpressionData::List(List::new(vec![
+                DataExpressionData::List(List::new(vec![
+                    DataExpressionData::TypedInteger(TypedInteger::from(1u8))
                         .with_default_span(),
-                    DatexExpressionData::TypedInteger(TypedInteger::from(2u8))
+                    DataExpressionData::TypedInteger(TypedInteger::from(2u8))
                         .with_default_span(),
                 ]))
                 .with_default_span(),
-                DatexExpressionData::TypedInteger(TypedInteger::from(3u8))
+                DataExpressionData::TypedInteger(TypedInteger::from(3u8))
                     .with_default_span(),
             ]))
             .with_default_span()
@@ -1326,11 +1322,11 @@ mod tests {
         let ast = ast_from_bytecode(&bytecode).unwrap();
         assert_eq!(
             ast,
-            DatexExpressionData::Statements(Statements {
+            DataExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::TypedInteger(TypedInteger::from(42u8))
+                    DataExpressionData::TypedInteger(TypedInteger::from(42u8))
                         .with_default_span(),
-                    DatexExpressionData::TypedInteger(TypedInteger::from(21u8))
+                    DataExpressionData::TypedInteger(TypedInteger::from(21u8))
                         .with_default_span(),
                 ],
                 is_terminated: true,
@@ -1358,20 +1354,20 @@ mod tests {
         let ast = ast_from_bytecode(&bytecode).unwrap();
         assert_eq!(
             ast,
-            DatexExpressionData::List(List::new(vec![
-                DatexExpressionData::TypedInteger(TypedInteger::from(1u8))
+            DataExpressionData::List(List::new(vec![
+                DataExpressionData::TypedInteger(TypedInteger::from(1u8))
                     .with_default_span(),
-                DatexExpressionData::TypedInteger(TypedInteger::from(2u8))
+                DataExpressionData::TypedInteger(TypedInteger::from(2u8))
                     .with_default_span(),
-                DatexExpressionData::BinaryOperation(BinaryOperation {
+                DataExpressionData::BinaryOperation(BinaryOperation {
                     operator: BinaryOperator::Arithmetic(
                         ArithmeticOperator::Add
                     ),
-                    left: (DatexExpressionData::TypedInteger(
+                    left: (DataExpressionData::TypedInteger(
                         TypedInteger::from(3u8)
                     )
                     .with_default_span()),
-                    right: (DatexExpressionData::TypedInteger(
+                    right: (DataExpressionData::TypedInteger(
                         TypedInteger::from(4u8)
                     )
                     .with_default_span()),
@@ -1399,16 +1395,16 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast,
-    //         DatexExpressionData::Apply(Apply {
+    //         DataExpressionData::Apply(Apply {
     //             base: (
-    //                 DatexExpressionData::TypeExpression(
+    //                 DataExpressionData::TypeExpression(
     //                     TypeExpressionData::Text("OK".to_string())
     //                         .with_default_span()
     //                 )
     //                 .with_default_span()
     //             ),
     //             arguments: vec![
-    //                 DatexExpressionData::TypedInteger(TypedInteger::from(43u8))
+    //                 DataExpressionData::TypedInteger(TypedInteger::from(43u8))
     //                     .with_default_span()
     //             ],
     //         })
@@ -1430,11 +1426,11 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast,
-    //         DatexExpressionData::Statements(Statements {
+    //         DataExpressionData::Statements(Statements {
     //             statements: vec![
-    //                 DatexExpressionData::TypedInteger(TypedInteger::from(10u8))
+    //                 DataExpressionData::TypedInteger(TypedInteger::from(10u8))
     //                     .with_default_span(),
-    //                 DatexExpressionData::TypedInteger(TypedInteger::from(20u8))
+    //                 DataExpressionData::TypedInteger(TypedInteger::from(20u8))
     //                     .with_default_span(),
     //             ],
     //             is_terminated: true,
@@ -1461,9 +1457,9 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast,
-    //         DatexExpressionData::Apply(Apply {
+    //         DataExpressionData::Apply(Apply {
     //             base: (
-    //                 DatexExpressionData::Text("test".to_string())
+    //                 DataExpressionData::Text("test".to_string())
     //                     .with_default_span()
     //             ),
     //             arguments: vec![],
@@ -1487,13 +1483,13 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast,
-    //         DatexExpressionData::Apply(Apply {
+    //         DataExpressionData::Apply(Apply {
     //             base: (
-    //                 DatexExpressionData::Text("sin".to_string())
+    //                 DataExpressionData::Text("sin".to_string())
     //                     .with_default_span()
     //             ),
     //             arguments: vec![
-    //                 DatexExpressionData::TypedInteger(TypedInteger::from(0u8))
+    //                 DataExpressionData::TypedInteger(TypedInteger::from(0u8))
     //                     .with_default_span()
     //             ],
     //         })
@@ -1520,15 +1516,15 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast,
-    //         DatexExpressionData::Apply(Apply {
+    //         DataExpressionData::Apply(Apply {
     //             base: (
-    //                 DatexExpressionData::Text("add".to_string())
+    //                 DataExpressionData::Text("add".to_string())
     //                     .with_default_span()
     //             ),
     //             arguments: vec![
-    //                 DatexExpressionData::TypedInteger(TypedInteger::from(1u8))
+    //                 DataExpressionData::TypedInteger(TypedInteger::from(1u8))
     //                     .with_default_span(),
-    //                 DatexExpressionData::TypedInteger(TypedInteger::from(2u8))
+    //                 DataExpressionData::TypedInteger(TypedInteger::from(2u8))
     //                     .with_default_span(),
     //             ],
     //         })
@@ -1551,13 +1547,13 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast.data,
-    //         DatexExpressionData::PropertyAccess(PropertyAccess {
+    //         DataExpressionData::PropertyAccess(PropertyAccess {
     //             base: (
-    //                 DatexExpressionData::TypedInteger(TypedInteger::from(42u8))
+    //                 DataExpressionData::TypedInteger(TypedInteger::from(42u8))
     //                     .with_default_span()
     //             ),
     //             property: (
-    //                 DatexExpressionData::Text("abc".to_string())
+    //                 DataExpressionData::Text("abc".to_string())
     //                     .with_default_span()
     //             ),
     //         })
@@ -1582,20 +1578,20 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast.data,
-    //         DatexExpressionData::PropertyAssignment(PropertyAssignment {
+    //         DataExpressionData::PropertyAssignment(PropertyAssignment {
     //             base: (
-    //                 DatexExpressionData::TypedInteger(TypedInteger::from(
+    //                 DataExpressionData::TypedInteger(TypedInteger::from(
     //                     200u8
     //                 ))
     //                 .with_default_span()
     //             ),
     //             property: (
-    //                 DatexExpressionData::Text("xyz".to_string())
+    //                 DataExpressionData::Text("xyz".to_string())
     //                     .with_default_span()
     //             ),
     //             operator: None,
     //             assigned_expression: (
-    //                 DatexExpressionData::TypedInteger(TypedInteger::from(
+    //                 DataExpressionData::TypedInteger(TypedInteger::from(
     //                     100u8
     //                 ))
     //                 .with_default_span(),
@@ -1619,13 +1615,13 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast.data,
-    //         DatexExpressionData::PropertyAccess(PropertyAccess {
+    //         DataExpressionData::PropertyAccess(PropertyAccess {
     //             base: (
-    //                 DatexExpressionData::TypedInteger(TypedInteger::from(42u8))
+    //                 DataExpressionData::TypedInteger(TypedInteger::from(42u8))
     //                     .with_default_span()
     //             ),
     //             property: (
-    //                 DatexExpressionData::Integer(Integer::from(5u8))
+    //                 DataExpressionData::Integer(Integer::from(5u8))
     //                     .with_default_span()
     //             ),
     //         })
@@ -1650,20 +1646,20 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast.data,
-    //         DatexExpressionData::PropertyAssignment(PropertyAssignment {
+    //         DataExpressionData::PropertyAssignment(PropertyAssignment {
     //             base: (
-    //                 DatexExpressionData::TypedInteger(TypedInteger::from(
+    //                 DataExpressionData::TypedInteger(TypedInteger::from(
     //                     250u8
     //                 ))
     //                 .with_default_span()
     //             ),
     //             property: (
-    //                 DatexExpressionData::Integer(Integer::from(10u8))
+    //                 DataExpressionData::Integer(Integer::from(10u8))
     //                     .with_default_span()
     //             ),
     //             operator: None,
     //             assigned_expression: (
-    //                 DatexExpressionData::TypedInteger(TypedInteger::from(
+    //                 DataExpressionData::TypedInteger(TypedInteger::from(
     //                     150u8
     //                 ))
     //                 .with_default_span(),
@@ -1690,13 +1686,13 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast.data,
-    //         DatexExpressionData::PropertyAccess(PropertyAccess {
+    //         DataExpressionData::PropertyAccess(PropertyAccess {
     //             base: (
-    //                 DatexExpressionData::TypedInteger(TypedInteger::from(42u8))
+    //                 DataExpressionData::TypedInteger(TypedInteger::from(42u8))
     //                     .with_default_span()
     //             ),
     //             property: (
-    //                 DatexExpressionData::Text("name".to_string())
+    //                 DataExpressionData::Text("name".to_string())
     //                     .with_default_span()
     //             ),
     //         })
@@ -1723,20 +1719,20 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast.data,
-    //         DatexExpressionData::PropertyAssignment(PropertyAssignment {
+    //         DataExpressionData::PropertyAssignment(PropertyAssignment {
     //             base: (
-    //                 DatexExpressionData::TypedInteger(TypedInteger::from(
+    //                 DataExpressionData::TypedInteger(TypedInteger::from(
     //                     100u8
     //                 ))
     //                 .with_default_span()
     //             ),
     //             property: (
-    //                 DatexExpressionData::Text("age".to_string())
+    //                 DataExpressionData::Text("age".to_string())
     //                     .with_default_span()
     //             ),
     //             operator: None,
     //             assigned_expression: (
-    //                 DatexExpressionData::TypedInteger(TypedInteger::from(30u8))
+    //                 DataExpressionData::TypedInteger(TypedInteger::from(30u8))
     //                     .with_default_span(),
     //             ),
     //         })

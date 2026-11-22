@@ -1,16 +1,6 @@
-use core::fmt::Display;
+//! Shared definitions for expressions in the Datex AST used in type and data space.
+mod variable_kind;
+pub use variable_kind::*;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum VariableKind {
-    Const,
-    Var,
-}
-
-impl Display for VariableKind {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            VariableKind::Const => core::write!(f, "const"),
-            VariableKind::Var => core::write!(f, "var"),
-        }
-    }
-}
+mod resolved_variable;
+pub use resolved_variable::*;

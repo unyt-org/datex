@@ -1,11 +1,11 @@
 use crate::{
-    ast::expressions::DatexExpressionData,
+    ast::expressions::DataExpressionData,
     traits::to_datex_expression_data::ToDatexExpressionData,
     values::core_values::text::Text,
 };
 
 impl ToDatexExpressionData for Text {
-    fn to_datex_expression_data(&self) -> DatexExpressionData {
-        DatexExpressionData::Text(self.clone())
+    fn to_datex_expression_data(&self) -> DataExpressionData {
+        DataExpressionData::Text(self.clone())
     }
 }

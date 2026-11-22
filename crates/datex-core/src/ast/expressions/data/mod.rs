@@ -1,10 +1,8 @@
-//! This module defines the representation for [DatexExpressionData] that can hold the various kinds of data used in expressions.
+//! This module defines the representation for [DataExpressionData] that can hold the various kinds of data used in expressions.
 pub use crate::prelude::*;
 use crate::{
     ast::{
-        expressions::{
-            DatexExpression, TypeExpression, expression::Expression,
-        },
+        expressions::{DataExpression, TypeExpression, expression::Expression},
         spanned::Spanned,
     },
     global::{
@@ -112,7 +110,7 @@ pub use variant_access::*;
 
 /// The different kinds of type expressions in the AST
 #[derive(Clone, Debug, PartialEq, Default)]
-pub enum DatexExpressionData {
+pub enum DataExpressionData {
     /// This is a marker for recovery from parse errors.
     /// We should never use this manually.
     #[default]
@@ -295,19 +293,19 @@ impl From<&ReferenceMutability> for ValueAccessType {
     }
 }
 
-impl DatexExpressionData {
+impl DataExpressionData {
     pub fn callable_declaration(
         callable_declaration: CallableDeclaration,
     ) -> Self {
-        DatexExpressionData::CallableDeclaration(Box::new(callable_declaration))
+        DataExpressionData::CallableDeclaration(Box::new(callable_declaration))
     }
 }
 
-impl Spanned for DatexExpressionData {
-    type Output = DatexExpression;
+impl Spanned for DataExpressionData {
+    type Output = DataExpression;
 
     fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
-        DatexExpression {
+        DataExpression {
             data: Box::new(self),
             span: span.into(),
             ty: None,
@@ -315,7 +313,7 @@ impl Spanned for DatexExpressionData {
     }
 
     fn with_default_span(self) -> Self::Output {
-        DatexExpression {
+        DataExpression {
             data: Box::new(self),
             span: (0..0),
             ty: None,
@@ -323,11 +321,11 @@ impl Spanned for DatexExpressionData {
     }
 }
 
-impl Spanned for Box<DatexExpressionData> {
-    type Output = DatexExpression;
+impl Spanned for Box<DataExpressionData> {
+    type Output = DataExpression;
 
     fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
-        DatexExpression {
+        DataExpression {
             data: self,
             span: span.into(),
             ty: None,
@@ -335,7 +333,7 @@ impl Spanned for Box<DatexExpressionData> {
     }
 
     fn with_default_span(self) -> Self::Output {
-        DatexExpression {
+        DataExpression {
             data: self,
             span: (0..0),
             ty: None,
@@ -343,13 +341,13 @@ impl Spanned for Box<DatexExpressionData> {
     }
 }
 
-// directly convert DatexExpression to a ValueContainer
-impl TryFrom<&DatexExpressionData> for ValueContainer {
+// directly convert DataExpression to a ValueContainer
+impl TryFrom<&DataExpressionData> for ValueContainer {
     type Error = ();
 
-    fn try_from(expr: &DatexExpressionData) -> Result<Self, Self::Error> {
+    fn try_from(expr: &DataExpressionData) -> Result<Self, Self::Error> {
         Ok(match expr {
-            DatexExpressionData::UnaryOperation(UnaryOperation {
+            DataExpressionData::UnaryOperation(UnaryOperation {
                 operator,
                 expression,
             }) => {
@@ -372,19 +370,19 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                     _ => Err(())?,
                 }
             }
-            DatexExpressionData::Null => ValueContainer::Local(Value::null()),
-            DatexExpressionData::Boolean(b) => ValueContainer::from(b.clone()),
-            DatexExpressionData::Text(s) => ValueContainer::from(s.clone()),
-            DatexExpressionData::Decimal(d) => ValueContainer::from(d.clone()),
-            DatexExpressionData::Integer(i) => ValueContainer::from(i.clone()),
-            DatexExpressionData::TypedInteger(i) => {
+            DataExpressionData::Null => ValueContainer::Local(Value::null()),
+            DataExpressionData::Boolean(b) => ValueContainer::from(b.clone()),
+            DataExpressionData::Text(s) => ValueContainer::from(s.clone()),
+            DataExpressionData::Decimal(d) => ValueContainer::from(d.clone()),
+            DataExpressionData::Integer(i) => ValueContainer::from(i.clone()),
+            DataExpressionData::TypedInteger(i) => {
                 ValueContainer::from(i.clone())
             }
-            DatexExpressionData::TypedDecimal(d) => {
+            DataExpressionData::TypedDecimal(d) => {
                 ValueContainer::from(d.clone())
             }
-            DatexExpressionData::Endpoint(e) => ValueContainer::from(e.clone()),
-            DatexExpressionData::List(list) => {
+            DataExpressionData::Endpoint(e) => ValueContainer::from(e.clone()),
+            DataExpressionData::List(list) => {
                 let entries = list
                     .items
                     .iter()
@@ -392,7 +390,7 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                     .collect::<Result<Vec<ValueContainer>, ()>>()?;
                 ValueContainer::from(core_values::list::List::from(entries))
             }
-            DatexExpressionData::Map(pairs) => {
+            DataExpressionData::Map(pairs) => {
                 let entries = pairs
                     .entries
                     .iter()

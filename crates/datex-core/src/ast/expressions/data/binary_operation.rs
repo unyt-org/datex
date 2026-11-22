@@ -1,6 +1,6 @@
 //! This module defines the representation for binary operation expressions in the AST.
 use crate::{
-    ast::expressions::DatexExpression, global::operators::BinaryOperator,
+    ast::expressions::DataExpression, global::operators::BinaryOperator,
     types::r#type::Type,
 };
 /// Represents a binary operation expression.
@@ -9,9 +9,9 @@ pub struct BinaryOperation {
     /// The operator of the binary operation.
     pub operator: BinaryOperator,
     /// The left operand of the binary operation.
-    pub left: DatexExpression,
+    pub left: DataExpression,
     /// The right operand of the binary operation.
-    pub right: DatexExpression,
+    pub right: DataExpression,
     /// The type of the binary operation, if known.
     pub ty: Option<Type>,
 }
