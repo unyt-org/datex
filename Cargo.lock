@@ -53,6 +53,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "aes-kw"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69fa2b352dcefb5f7f3a5fb840e02665d311d878955380515e4fd50095dd3d8c"
+dependencies = [
+ "aes",
+]
+
+[[package]]
 name = "ahash"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -737,6 +746,7 @@ dependencies = [
  "cfg-if",
  "cpufeatures 0.2.17",
  "curve25519-dalek-derive",
+ "digest",
  "fiat-crypto",
  "rustc_version",
  "subtle",
@@ -878,7 +888,7 @@ checksum = "a4ae5f15dda3c708c0ade84bfee31ccab44a3da4f88015ed22f63732abe300c8"
 
 [[package]]
 name = "datex-core"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "async-select",
  "async-timer",
@@ -888,11 +898,11 @@ dependencies = [
  "cfg-if",
  "chrono",
  "criterion",
- "datex-crypto-esp32",
- "datex-crypto-native",
- "datex-crypto-web",
+ "datex-esp-impls",
  "datex-facades",
  "datex-macros-internal",
+ "datex-nat-impls",
+ "datex-web-impls",
  "dhat",
  "dotenvy",
  "embassy-executor",
@@ -953,34 +963,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "datex-crypto-esp32"
-version = "0.0.3"
+name = "datex-esp-impls"
+version = "0.0.1"
 dependencies = [
+ "aes",
+ "aes-kw",
+ "ctr",
  "datex-facades",
+ "ed25519-dalek",
  "esp-hal",
+ "hkdf",
+ "log",
+ "sha2",
  "spin 0.12.1",
  "static_cell",
-]
-
-[[package]]
-name = "datex-crypto-native"
-version = "0.0.3"
-dependencies = [
- "datex-facades",
- "openssl",
- "rand 0.10.2",
  "tokio",
- "uuid",
-]
-
-[[package]]
-name = "datex-crypto-web"
-version = "0.0.3"
-dependencies = [
- "datex-facades",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
+ "x25519-dalek",
 ]
 
 [[package]]
@@ -1013,12 +1011,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "datex-nat-impls"
+version = "0.0.1"
+dependencies = [
+ "datex-facades",
+ "openssl",
+ "rand 0.10.2",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "datex-traits"
 version = "0.0.1"
 
 [[package]]
+name = "datex-web-impls"
+version = "0.0.1"
+dependencies = [
+ "datex-facades",
+ "der",
+ "ed25519-dalek",
+ "pkcs8",
+ "spki",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "x25519-dalek",
+]
+
+[[package]]
 name = "datex_macros"
-version = "0.1.10"
+version = "0.1.11"
 dependencies = [
  "datex-core",
  "datex-macro-utils",
@@ -1192,6 +1216,27 @@ dependencies = [
  "rfc6979",
  "signature",
  "spki",
+]
+
+[[package]]
+name = "ed25519"
+version = "2.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "115531babc129696a58c64a4fef0a8bf9e9698629fb97e9e40767d235cfbcd53"
+dependencies = [
+ "signature",
+]
+
+[[package]]
+name = "ed25519-dalek"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70e796c081cee67dc755e1a36a0a172b897fab85fc3f6bc48307991f64e4eca9"
+dependencies = [
+ "curve25519-dalek",
+ "ed25519",
+ "sha2",
+ "subtle",
 ]
 
 [[package]]

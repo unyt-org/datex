@@ -5,6 +5,7 @@ use crate::{
         core_compilation_context::DXBWithSharedValues, core_compile,
         instruction_input::InstructionInput,
     },
+    crypto::CryptoImpl,
     datex_registry::{all_datex_types, get_all_modules},
     dif::dif_interface::DIFInterface,
     disassembler::{
@@ -69,6 +70,7 @@ use core::{
     ops::DerefMut,
     pin::Pin,
 };
+use datex_facades::crypto::Crypto;
 use datex_macros_internal::Datex;
 use futures_util::future::join_all;
 use indexmap::IndexMap;
@@ -246,6 +248,23 @@ impl RuntimeInternal {
     /// # Safety
     /// The caller should only call this on an uninitialized runtime.
     pub unsafe fn set_config(&self, config: RuntimeConfig) {
+        #[cfg(feature = "crypto_enabled")]
+        {
+            let conf_clone = config.clone();
+            let pub_key_str = conf_clone.pub_key.clone();
+            let pri_key_str = conf_clone.pri_key.clone();
+            info!("Setting runtime config with pub key: {:?}", pub_key_str);
+
+            let mut x = self.com_hub.vault.borrow_mut();
+            // note: format keys
+            let pub_key =
+                CryptoImpl::dec_b58_32(pub_key_str.unwrap().as_str()).unwrap();
+            let pri_key =
+                CryptoImpl::dec_b58_32(pri_key_str.unwrap().as_str()).unwrap();
+            x.pub_key = pub_key;
+            x.pri_key = pri_key;
+        }
+
         unsafe {
             *self.config.get() = config;
         }
