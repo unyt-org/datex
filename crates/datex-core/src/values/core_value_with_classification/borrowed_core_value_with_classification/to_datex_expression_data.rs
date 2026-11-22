@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            DataExpressionData, EntityValueExpression, TagExpression,
+            DataExpressionData, EntityValueExpression, Tagged,
         },
         spanned::Spanned,
     },
@@ -43,7 +43,7 @@ fn classification_expression(
         is_empty,
     }) = &classification.tag
     {
-        expression = DataExpressionData::Tag(TagExpression {
+        expression = DataExpressionData::Tag(Tagged {
             tag: tag.clone(),
             expression: if !is_empty {
                 Some(expression.with_default_span())

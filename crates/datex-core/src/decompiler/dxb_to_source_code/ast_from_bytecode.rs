@@ -33,8 +33,8 @@ use crate::{
         CallableDeclaration, CallableSignature, CloneExpression,
         ComparisonOperation, CreateShared, DeriveSharedRef,
         EntityValueExpression, RemoteExecution, RequestSharedRef,
-        RootPropertyAccess, StackAssignment, StackListAssignment,
-        TagExpression, UnboxAssignment,
+        RootPropertyAccess, StackAssignment, StackListAssignment, Tagged,
+        UnboxAssignment,
     },
     global::{
         operators::{ComparisonOperator, ModificationOperator},
@@ -367,7 +367,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                             impl_count: _,
                             impls: _,
                         }) => {
-                            DataExpressionData::Tag(TagExpression {
+                            DataExpressionData::Tag(Tagged {
                                 tag: tag
                                     .expect("has_tag is true, so tag must be Some")
                                     .0,
@@ -782,7 +782,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 // TODO: handle impls
                                 let value_expression = collected_results.pop_value();
                                 let inner_expression = if let Some(tag) = tag {
-                                    DataExpressionData::Tag(TagExpression {
+                                    DataExpressionData::Tag(Tagged {
                                         tag: tag.0,
                                         expression: Some(value_expression),
                                     })

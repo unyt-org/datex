@@ -9,7 +9,7 @@ use crate::{
         GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess,
         PropertyAssignment, RemoteExecution, RequestSharedRef,
         RootPropertyAccess, StackAssignment, StackListAssignment, Statements,
-        TagExpression, TypeDeclarationExpression, UnaryOperation, Unbox,
+        Tagged, TypeDeclarationExpression, UnaryOperation, Unbox,
         UnboxAssignment, UnboxSlotAssignment, ValueAccessType, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
@@ -482,7 +482,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
 
     fn visit_tag_expression(
         &mut self,
-        tag: &mut TagExpression,
+        tag: &mut Tagged,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;

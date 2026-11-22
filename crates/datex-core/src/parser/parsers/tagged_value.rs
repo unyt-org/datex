@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        expressions::{DataExpression, DataExpressionData, TagExpression},
+        expressions::{DataExpression, DataExpressionData, Tagged},
         spanned::Spanned,
     },
     parser::{
@@ -20,7 +20,7 @@ impl Parser {
 
         // if followed by no tokens, return empty tag
         if !self.has_more_tokens() {
-            Ok(DataExpressionData::Tag(TagExpression {
+            Ok(DataExpressionData::Tag(Tagged {
                 tag,
                 expression: None,
             })
@@ -34,14 +34,14 @@ impl Parser {
                         maybe_expression,
                         &[], // TODO: recover?
                     )?;
-                    DataExpressionData::Tag(TagExpression {
+                    DataExpressionData::Tag(Tagged {
                         tag,
                         expression: Some(expression),
                     })
                     .with_default_span()
                 }
                 // else, return empty tag
-                _ => DataExpressionData::Tag(TagExpression {
+                _ => DataExpressionData::Tag(Tagged {
                     tag,
                     expression: None,
                 })
@@ -74,8 +74,8 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                ComparisonOperation, DataExpressionData, List, Map,
-                TagExpression, expression::Expression,
+                ComparisonOperation, DataExpressionData, List, Map, Tagged,
+                expression::Expression,
             },
             spanned::Spanned,
         },
@@ -90,7 +90,7 @@ mod tests {
         let expr = parse("#MyTag");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Tag(TagExpression {
+            &DataExpressionData::Tag(Tagged {
                 tag: "MyTag".to_string(),
                 expression: None
             })
@@ -102,7 +102,7 @@ mod tests {
         let expr = parse("#MyTag { a: 42u8 }");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Tag(TagExpression {
+            &DataExpressionData::Tag(Tagged {
                 tag: "MyTag".to_string(),
                 expression: Some(
                     DataExpressionData::Map(Map {
@@ -126,7 +126,7 @@ mod tests {
         let expr = parse("#MyTag [true, false]");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Tag(TagExpression {
+            &DataExpressionData::Tag(Tagged {
                 tag: "MyTag".to_string(),
                 expression: Some(
                     DataExpressionData::List(List {
@@ -148,7 +148,7 @@ mod tests {
         let expr = parse("#MyTag (42u8)");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Tag(TagExpression {
+            &DataExpressionData::Tag(Tagged {
                 tag: "MyTag".to_string(),
                 expression: Some(
                     DataExpressionData::TypedInteger(TypedInteger::U8(42))
@@ -166,7 +166,7 @@ mod tests {
             expr.data(),
             &DataExpressionData::List(List {
                 items: vec![
-                    DataExpressionData::Tag(TagExpression {
+                    DataExpressionData::Tag(Tagged {
                         tag: "Tag1".to_string(),
                         expression: Some(
                             DataExpressionData::Map(Map {
@@ -183,12 +183,12 @@ mod tests {
                         )
                     })
                     .with_default_span(),
-                    DataExpressionData::Tag(TagExpression {
+                    DataExpressionData::Tag(Tagged {
                         tag: "Tag2".to_string(),
                         expression: None
                     })
                     .with_default_span(),
-                    DataExpressionData::Tag(TagExpression {
+                    DataExpressionData::Tag(Tagged {
                         tag: "Tag3".to_string(),
                         expression: Some(
                             DataExpressionData::TypedInteger(TypedInteger::U8(
@@ -210,7 +210,7 @@ mod tests {
             expr.data(),
             &DataExpressionData::ComparisonOperation(ComparisonOperation {
                 operator: ComparisonOperator::StructuralEqual,
-                left: DataExpressionData::Tag(TagExpression {
+                left: DataExpressionData::Tag(Tagged {
                     tag: "Test".to_string(),
                     expression: Some(
                         DataExpressionData::TypedInteger(TypedInteger::U8(4))
