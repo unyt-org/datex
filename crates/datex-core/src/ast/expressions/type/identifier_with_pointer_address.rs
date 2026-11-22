@@ -1,7 +1,5 @@
 //! This module defines the representation for identifier with pointer address type expressions in the AST.
-use crate::{
-    ast::expressions::TypeExpression, prelude::*, shared_values::PointerAddress,
-};
+use crate::{prelude::*, shared_values::PointerAddress};
 
 /// Represents an identifier with a pointer address type expression in the AST, including its name and pointer address.
 #[derive(Clone, Debug, PartialEq)]
