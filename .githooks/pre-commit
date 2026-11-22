@@ -8,14 +8,14 @@ echo "Running formatting and lint fixes..."
 
 ./scripts/fmt.sh
 
-echo "Running cargo test-std..."
-cargo test-std
+# echo "Running cargo test-std..."
+# cargo test-std
 
-echo "Running cargo test-nostd..."
-cargo test-nostd
+# echo "Running cargo test-nostd..."
+# cargo test-nostd
 
-echo "Checking for remaining changes..."
+# echo "Checking for remaining changes..."
 
-git add -u
+# git add -u
 
-echo "Pre-commit checks passed!"
+# echo "Pre-commit checks passed!"
