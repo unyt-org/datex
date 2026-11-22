@@ -79,6 +79,7 @@ pub mod datex_registry;
 pub mod inspector;
 pub mod serde_compat;
 pub mod shared_wrappers;
+pub mod code_generator;
 
 pub use inventory;
 pub use linkme;
