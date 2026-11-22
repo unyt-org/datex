@@ -1,5 +1,5 @@
 use crate::{
-    ast::{expressions::CallableDeclaration, to_instructions::yield_unwrap},
+    ast::expressions::CallableDeclaration,
     compiler::{
         Variable, ast_node_to_instructions::AstNodeToInstructions,
         compile_child_realm_instructions, context::CompilationContext,
@@ -16,6 +16,7 @@ use crate::{
     },
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    utils::yield_unwrap::yield_unwrap,
 };
 
 impl AstNodeToInstructions for CallableDeclaration {

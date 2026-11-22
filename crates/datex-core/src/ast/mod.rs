@@ -5,5 +5,3 @@ pub mod expressions;
 pub mod spanned;
 #[cfg(feature = "std")]
 pub mod src_id;
-#[cfg(feature = "compiler")]
-mod to_instructions;

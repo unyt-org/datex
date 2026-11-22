@@ -1,8 +1,5 @@
 use crate::{
-    ast::{
-        expressions::{VariableAssignment, VariableKind},
-        to_instructions::yield_unwrap,
-    },
+    ast::expressions::{VariableAssignment, VariableKind},
     compiler::{
         ast_node_to_instructions::AstNodeToInstructions,
         context::CompilationContext, error::CompilerError,
@@ -14,6 +11,7 @@ use crate::{
     instruction::regular_instruction::RegularInstruction,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    utils::yield_unwrap::yield_unwrap,
 };
 use log::info;
 

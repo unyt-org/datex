@@ -1,8 +1,5 @@
 use crate::{
-    ast::{
-        expressions::{ValueAccessType, VariableAccess},
-        to_instructions::yield_unwrap,
-    },
+    ast::expressions::{ValueAccessType, VariableAccess},
     compiler::{
         ast_node_to_instructions::AstNodeToInstructions,
         context::CompilationContext, error::CompilerError,
@@ -15,6 +12,7 @@ use crate::{
     instruction::regular_instruction::RegularInstruction,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    utils::yield_unwrap::yield_unwrap,
 };
 
 impl AstNodeToInstructions for VariableAccess {
