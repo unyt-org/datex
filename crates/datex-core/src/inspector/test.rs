@@ -18,10 +18,7 @@ use crate::{
 use core::ops::{Deref, DerefMut};
 
 #[tokio::test]
-#[cfg(all(
-    feature = "compiler",
-    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
-))]
+#[cfg(feature = "compiler")]
 pub async fn inspector_instantiation() {
     flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");

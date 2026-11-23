@@ -359,32 +359,27 @@ impl ComHub {
     /// Stores the provided keys in the vault or generates new keys if none are provided.
     pub async fn init_own_keys(
         self: Rc<Self>,
-        pub_key_str: &Option<String>,
-        pri_key_str: &Option<String>,
+        pub_key_str: Option<&str>,
+        pri_key_str: Option<&str>,
     ) {
-        #[cfg(feature = "crypto_enabled")]
-        {
+        let (pub_key, pri_key) = match (pub_key_str, pri_key_str) {
+            (Some(pub_key_str), Some(pri_key_str)) => {
+                (
+                    CryptoImpl::dec_b58_32(pub_key_str).unwrap(),
+                    CryptoImpl::dec_b58_32(pri_key_str).unwrap()
+                )
+            }
+            _ => {
+                let (pub_key, pri_key) = CryptoImpl::gen_ed25519().await.unwrap();
+                (pub_key, pri_key)
+            }
+        };
 
-            let (pub_key, pri_key) = match (pub_key_str, pri_key_str) {
-                (Some(pub_key_str), Some(pri_key_str)) => {
-                    (
-                        CryptoImpl::dec_b58_32(pub_key_str).unwrap(),
-                        CryptoImpl::dec_b58_32(pri_key_str).unwrap()
-                    )
-                }
-                _ => {
-                    let (pub_key, pri_key) = CryptoImpl::gen_ed25519().await.unwrap();
-                    (pub_key, pri_key)
-                }
-            };
+        info!("Initializing com hub pub key: {:?}", pub_key);
 
-            info!("Initializing com hub pub key: {:?}", pub_key);
-
-            let mut vault = self.vault.borrow_mut();
-            vault.pub_key = pub_key;
-            vault.pri_key = pri_key;
-        }
-
+        let mut vault = self.vault.borrow_mut();
+        vault.pub_key = pub_key;
+        vault.pri_key = pri_key;
     }
 
     pub fn endpoint(&self) -> &Endpoint {
@@ -751,11 +746,8 @@ impl ComHub {
         impl Future<Output = Result<DXBBlock, SignatureValidationError>>,
     > {
         cfg_select! {
-            // if not crypto_enabled, but allow_unsigned_blocks is set, just return Ok(()) for all blocks, as signature validation is not possible
-            all(
-                not(feature = "crypto_enabled"),
-                feature = "allow_unsigned_blocks"
-            ) => {
+            // if allow_unsigned_blocks is set, just return Ok(()) for all blocks, as signature validation is not possible
+            feature = "allow_unsigned_blocks" => {
                 log::info!(
                     "Crypto and signature validation are disabled, allowing block without signature validation"
                 );
@@ -868,37 +860,31 @@ impl ComHub {
         socket_uuid: ComInterfaceSocketUUID,
     ) -> MaybeAsync<ReceiveBlockResult, impl Future<Output = ReceiveBlockResult>>
     {
-        let peer_pub_key = cfg_select! {
-            feature = "crypto_enabled" => {
-                // if block is hello, extract body as key and insert into vault
-                if block.block_type() == BlockType::Hello {
-                    let peer_endpoint = block.routing_header.sender.clone();
-                    info!("HelloBlock Sender: {:?}", peer_endpoint);
-                    let peer_pub_key = block.body.clone();
-                    info!("HelloBlock Content: {:?}", peer_pub_key);
-                    let peer_pub_sig_key: [u8; 32] = peer_pub_key.try_into().unwrap();
+        let peer_pub_key = {
+            // if block is hello, extract body as key and insert into vault
+            if block.block_type() == BlockType::Hello {
+                let peer_endpoint = block.routing_header.sender.clone();
+                info!("HelloBlock Sender: {:?}", peer_endpoint);
+                let peer_pub_key = block.body.clone();
+                info!("HelloBlock Content: {:?}", peer_pub_key);
+                let peer_pub_sig_key: [u8; 32] = peer_pub_key.try_into().unwrap();
 
-                    let mut peer_vault = self.peer_vault.borrow_mut();
-                    let _ = peer_vault.insert(peer_endpoint, peer_pub_sig_key);
+                let mut peer_vault = self.peer_vault.borrow_mut();
+                let _ = peer_vault.insert(peer_endpoint, peer_pub_sig_key);
 
-                    peer_pub_sig_key
+                peer_pub_sig_key
+            } else {
+                // if block is not hello assume knowing public key already
+                if self.endpoint() == block.sender() {
+                    // check if it's a loopback
+                    self.vault.borrow().pub_key
                 } else {
-                    // if block is not hello assume knowing public key already
-                    if self.endpoint() == block.sender() {
-                        // check if it's a loopback
-                        self.vault.borrow().pub_key
-                    } else {
-                        // check hashmap in comhub
-                        *self.peer_vault
-                            .borrow()
-                            .get(block.sender())
-                            .unwrap()
-                    }
+                    // check hashmap in comhub
+                    *self.peer_vault
+                        .borrow()
+                        .get(block.sender())
+                        .unwrap()
                 }
-            },
-            // if crypto disabled, pass zeroed keys
-            _ => {
-                [0u8; 32]
             }
         };
 
@@ -1350,7 +1336,6 @@ impl ComHub {
         }
 
         // share own pub sig key via hello block
-        #[cfg(feature = "crypto_enabled")]
         if block.block_type() == BlockType::Hello {
             // alternating series as placeholder for development
             // let x: [u8; 32] = core::array::from_fn(|i| (i % 2) as u8);
@@ -2098,7 +2083,6 @@ impl ComHub {
 }
 
 #[cfg(test)]
-#[cfg(feature = "crypto_enabled")]
 pub mod tests {
     use crate::{
         channel::mpsc::{

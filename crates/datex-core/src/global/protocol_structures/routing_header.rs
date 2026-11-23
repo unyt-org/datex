@@ -20,18 +20,8 @@ pub enum SignatureType {
 
 #[allow(clippy::derivable_impls)]
 impl Default for SignatureType {
-    /// Sets the default signature type based on whether the "crypto_enabled" feature is enabled.
-    /// When "crypto_enabled" is enabled, the default signature type is set to Unencrypted
-    /// Otherwise, it is set to None.
     fn default() -> Self {
-        #[cfg(not(feature = "crypto_enabled"))]
-        {
-            SignatureType::Unsigned
-        }
-        #[cfg(feature = "crypto_enabled")]
-        {
-            SignatureType::Unencrypted
-        }
+        SignatureType::Unencrypted
     }
 }
 

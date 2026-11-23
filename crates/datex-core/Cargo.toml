@@ -208,8 +208,6 @@ target_esp_shared = [
     "no_std",
     "embassy_runtime",
     "dep:datex-esp-impls",
-    # FIXME: enable once crypto is fully implemented for esp32
-    "crypto_enabled",
 ]
 target_esp32 = ["target_esp_shared", "datex-esp-impls/esp32"]
 target_esp32s3 = ["target_esp_shared", "datex-esp-impls/esp32s3"]
@@ -220,12 +218,11 @@ target_native = [
     "std",
     "tokio_runtime",
     "dep:datex-nat-impls",
-    "crypto_enabled",
     "dep:dotenvy",
 ]
 
 # wasm - std, wasm runtime
-target_wasm = ["std", "wasm_runtime", "crypto_enabled"]
+target_wasm = ["std", "wasm_runtime"]
 
 
 ### runtimes ##################################################################
@@ -251,9 +248,6 @@ allow_unsigned_blocks = []
 
 # when enabled, deterministic behavior is enforced for operations that can be non-deterministic
 enable_deterministic_behavior = []
-
-# when set, all crypto-related features are enabled
-crypto_enabled = []
 
 # when set, DATEX values can be displayed as human readable strings, e.g. for debugging or logging purposes
 value_display = ["ast"]

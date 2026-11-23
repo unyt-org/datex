@@ -380,17 +380,13 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg(feature = "std")]
     async fn interfaces_send_block() {
+        flexi_logger::init();
         run_with_coupled_com_hubs(|peer_a, mut peer_b| async move {
             // create block to send from A to B
             let block_a_to_b_body = [1, 2, 3];
             let mut block_a_to_b = DXBBlock::new_with_body(&block_a_to_b_body);
             block_a_to_b.set_receivers(vec![peer_b.com_hub.endpoint().clone()]);
-            block_a_to_b
-                .routing_header
-                .flags
-                .set_signature_type(SignatureType::Unencrypted);
 
             // send block from A to B
             peer_a

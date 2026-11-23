@@ -4,8 +4,7 @@
     "rust-analyzer.cargo.features": [
         "decompiler",
         "std",
-        "compiler",
-        "crypto_enabled"
+        "compiler"
     ],
     "rust-analyzer.imports.preferPrelude": false,
     "rust-analyzer.imports.preferNoStd": true,
