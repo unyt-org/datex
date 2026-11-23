@@ -210,7 +210,7 @@ pub struct ComHub {
 
     pub vault: RefCell<Vault>,
 
-    pub peer_vault: Mutex<HashMap<Endpoint, [u8; 32]>>,
+    pub peer_vault: RefCell<HashMap<Endpoint, [u8; 32]>>,
 }
 
 pub struct Vault {
@@ -325,7 +325,7 @@ impl ComHub {
             task_manager,
             runtime: RefCell::new(None),
             vault: RefCell::new(Vault::create_empty()),
-            peer_vault: Mutex::new(HashMap::<Endpoint, [u8; 32]>::new()),
+            peer_vault: RefCell::new(HashMap::<Endpoint, [u8; 32]>::new()),
         });
 
         (com_hub, task_future)
@@ -354,6 +354,37 @@ impl ComHub {
                 socket_ready_senders,
             ));
         socket_ready_fut
+    }
+
+    /// Stores the provided keys in the vault or generates new keys if none are provided.
+    pub async fn init_own_keys(
+        self: Rc<Self>,
+        pub_key_str: &Option<String>,
+        pri_key_str: &Option<String>,
+    ) {
+        #[cfg(feature = "crypto_enabled")]
+        {
+
+            let (pub_key, pri_key) = match (pub_key_str, pri_key_str) {
+                (Some(pub_key_str), Some(pri_key_str)) => {
+                    (
+                        CryptoImpl::dec_b58_32(pub_key_str).unwrap(),
+                        CryptoImpl::dec_b58_32(pri_key_str).unwrap()
+                    )
+                }
+                _ => {
+                    let (pub_key, pri_key) = CryptoImpl::gen_ed25519().await.unwrap();
+                    (pub_key, pri_key)
+                }
+            };
+
+            info!("Initializing com hub pub key: {:?}", pub_key);
+
+            let mut vault = self.vault.borrow_mut();
+            vault.pub_key = pub_key;
+            vault.pri_key = pri_key;
+        }
+
     }
 
     pub fn endpoint(&self) -> &Endpoint {
@@ -847,23 +878,21 @@ impl ComHub {
                     info!("HelloBlock Content: {:?}", peer_pub_key);
                     let peer_pub_sig_key: [u8; 32] = peer_pub_key.try_into().unwrap();
 
-                    let mut z = self.peer_vault.try_lock().unwrap();
-                    let _old_key = z.insert(peer_endpoint, peer_pub_sig_key);
+                    let mut peer_vault = self.peer_vault.borrow_mut();
+                    let _ = peer_vault.insert(peer_endpoint, peer_pub_sig_key);
 
                     peer_pub_sig_key
                 } else {
                     // if block is not hello assume knowing public key already
                     if self.endpoint() == block.sender() {
                         // check if it's a loopback
-                        self.vault.borrow().pub_key.clone()
+                        self.vault.borrow().pub_key
                     } else {
                         // check hashmap in comhub
-                        self.peer_vault
-                            .try_lock()
-                            .unwrap()
+                        *self.peer_vault
+                            .borrow()
                             .get(block.sender())
                             .unwrap()
-                            .clone()
                     }
                 }
             },

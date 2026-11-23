@@ -56,21 +56,6 @@ impl RuntimeRunner {
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
         );
 
-        // note: import of keys into comhub takes a different route on esp
-        #[cfg(all(feature = "crypto_enabled", not(target_arch = "xtensa")))]
-        {
-            let pub_key_str = config.pub_key.clone();
-            let pri_key_str = config.pri_key.clone();
-            info!("New runner with pub key: {:?}", pub_key_str.clone());
-            let mut x = com_hub.vault.borrow_mut();
-            let pub_key =
-                CryptoImpl::dec_b58_32(pub_key_str.unwrap().as_str()).unwrap();
-            let pri_key =
-                CryptoImpl::dec_b58_32(pri_key_str.unwrap().as_str()).unwrap();
-            x.pub_key = pub_key;
-            x.pri_key = pri_key;
-        }
-
         let memory = RefCell::new(SharedReferencesCache::default());
         let pointer_address_provider = Rc::new(RefCell::new(
             SelfOwnedPointerAddressProvider::new(endpoint.clone()),

@@ -363,7 +363,7 @@ pub async fn remote_shared_roundtrip_move(
             let result = runtime_a
                 .execute(
                     &format!(
-                        "const x = {shared_string} 42; @test_b :: (print 'x; x)"
+                        "const x = {shared_string} 42; @test_b :: (write_line 'x; x)"
                     ),
                     &[],
                     None::<ExecutionContext>,
