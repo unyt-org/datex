@@ -959,6 +959,7 @@ impl ComHub {
 
         // assign endpoint to socket if none is assigned
         // only if a new block and the sender in not the local endpoint
+        let block_id = block.get_block_id();
         if is_new_block
             && !self.is_local_endpoint_exact(&block.routing_header.sender)
         {
@@ -969,65 +970,58 @@ impl ComHub {
         }
 
         let all_receivers = block.receiver_endpoints();
-        let (relayed_block, own_received_block, is_for_own) = if !all_receivers
-            .is_empty()
-        {
-            let is_for_own = all_receivers.iter().any(|e| {
-                self.is_local_endpoint_exact(e)
-                    || e == &Endpoint::ANY
-                    || e == &Endpoint::ANY_ALL_INSTANCES
-            });
+        let (relayed_block, own_received_block, is_for_own) =
+            if !all_receivers.is_empty() {
+                let is_for_own = all_receivers.iter().any(|e| {
+                    self.is_local_endpoint_exact(e)
+                        || e == &Endpoint::ANY
+                        || e == &Endpoint::ANY_ALL_INSTANCES
+                });
 
-            // handle blocks for own endpoint
-            let own_received_block =
-                if is_for_own && block_type != BlockType::Hello {
-                    info!("Block is for this endpoint ({})", self.endpoint());
-
-                    Some(block.clone()) // FIXME #733: no clone
-                } else {
-                    None
-                };
-
-            // TODO #177: handle this via TTL, not explicitly for Hello blocks
-            let relay_receivers = {
-                let should_relay =
+                // TODO #177: handle this via TTL, not explicitly for Hello blocks
+                let relay_receivers = {
+                    let should_relay =
                     // don't relay "Hello" blocks sent to own endpoint
                     !(
                         is_for_own && block_type == BlockType::Hello
                     );
 
-                // relay the block to other endpoints
-                if should_relay {
-                    let relay_receivers = if is_for_own {
-                        // get all receivers that the block must be relayed to
-                        self.get_remote_receivers(&all_receivers)
+                    // relay the block to other endpoints
+                    if should_relay {
+                        let relay_receivers = if is_for_own {
+                            // get all receivers that the block must be relayed to
+                            self.get_remote_receivers(&all_receivers)
+                        } else {
+                            all_receivers
+                        };
+                        if relay_receivers.is_empty() {
+                            None
+                        } else {
+                            Some(relay_receivers)
+                        }
                     } else {
-                        all_receivers
-                    };
-                    if relay_receivers.is_empty() {
                         None
-                    } else {
-                        Some(relay_receivers)
                     }
-                } else {
-                    None
-                }
+                };
+
+                let relayed_block = relay_receivers
+                    .map(|receivers| block.clone_with_new_receivers(receivers));
+                // handle blocks for own endpoint
+                let own_received_block =
+                    if is_for_own && block_type != BlockType::Hello {
+                        Some(block) // FIXME #733: no clone 
+                    } else {
+                        None
+                    };
+
+                (relayed_block, own_received_block, is_for_own)
+            } else {
+                (None, None, false)
             };
 
-            let relayed_block = relay_receivers
-                .map(|receivers| block.clone_with_new_receivers(receivers));
-
-            (relayed_block, own_received_block, is_for_own)
-        } else {
-            (None, None, false)
-        };
-
         // add to block history
-        let block_id_for_history = if is_new_block {
-            Some(block.get_block_id())
-        } else {
-            None
-        };
+        let block_id_for_history =
+            if is_new_block { Some(block_id) } else { None };
 
         ReceiveBlockPreprocessResult {
             relayed_block,
