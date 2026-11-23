@@ -663,18 +663,6 @@ impl ComHub {
         block: DXBBlock,
         socket_uuid: ComInterfaceSocketUUID,
     ) {
-        #[cfg(feature = "crypto_enabled")]
-        if block.block_type() == BlockType::Hello {
-            // preprocess hello block by setting up peers pub keys
-            let peer_endpoint = block.routing_header.sender.clone();
-            info!("HelloBlock Sender: {:?}", peer_endpoint);
-            let peer_pub_key = block.body.clone();
-            info!("HelloBlock Content: {:?}", peer_pub_key);
-            let pub_key: [u8; 32] = peer_pub_key.try_into().unwrap();
-
-            let mut z = self.peer_vault.try_lock().unwrap();
-            let _old_key = z.insert(peer_endpoint, pub_key);
-        }
         // handle incoming block
         let receive_block_result = self
             .clone()
@@ -851,15 +839,18 @@ impl ComHub {
     {
         let peer_pub_key = cfg_select! {
             feature = "crypto_enabled" => {
+                // if block is hello, extract body as key and insert into vault
                 if block.block_type() == BlockType::Hello {
-                    // if block is hello, extract body as key and insert into vault
-                    let ppk: [u8; 32] = block.body.clone().try_into().unwrap();
-                    self.peer_vault
-                        .try_lock()
-                        .unwrap()
-                        .insert(block.sender().clone(), ppk)
-                        .unwrap()
-                        .clone()
+                    let peer_endpoint = block.routing_header.sender.clone();
+                    info!("HelloBlock Sender: {:?}", peer_endpoint);
+                    let peer_pub_key = block.body.clone();
+                    info!("HelloBlock Content: {:?}", peer_pub_key);
+                    let peer_pub_sig_key: [u8; 32] = peer_pub_key.try_into().unwrap();
+
+                    let mut z = self.peer_vault.try_lock().unwrap();
+                    let _old_key = z.insert(peer_endpoint, peer_pub_sig_key);
+
+                    peer_pub_sig_key
                 } else {
                     // if block is not hello assume knowing public key already
                     if self.endpoint() == block.sender() {
@@ -876,6 +867,7 @@ impl ComHub {
                     }
                 }
             },
+            // if crypto disabled, pass zeroed keys
             _ => {
                 [0u8; 32]
             }
