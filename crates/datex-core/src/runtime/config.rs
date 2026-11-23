@@ -255,7 +255,8 @@ pub mod tests {
         let config_source = r#"{
             endpoint: @test,
             name: "Example",
-            key: "PlaceholderKey",
+            pub_key: "PlaceholderPubKey",
+            pri_key: "PlaceholderPriKey",
             interfaces: [
                 {
                     type: "websocket-client",

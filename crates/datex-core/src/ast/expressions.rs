@@ -210,7 +210,7 @@ pub enum DatexExpressionData {
     /// Tag, e.g. #Variant1
     Tag(TagExpression),
 
-    /// Property access on the root, e.g. $.print
+    /// Property access on the root, e.g. $.write_line
     RootPropertyAccess(RootPropertyAccess),
 
     /// Stack assignment e.g. {0} = ...

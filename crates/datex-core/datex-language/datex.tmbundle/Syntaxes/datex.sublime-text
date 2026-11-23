@@ -44,7 +44,7 @@ contexts:
       scope: constant.language.datex
 
   keywords:
-    - match: '\b(const|let|shared|mut|function|if|else|return|print)\b'
+    - match: '\b(const|let|shared|mut|function|if|else|return)\b'
       scope: keyword.control.datex
 
   numbers:

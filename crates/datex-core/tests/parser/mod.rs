@@ -2019,12 +2019,12 @@ fn apply_multiple() {
 
 #[test]
 fn apply_atom() {
-    let src = r#"print "test""#;
+    let src = r#"write_line "test""#;
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
         DatexExpressionData::Apply(Apply {
-            base: DatexExpressionData::Identifier("print".to_string())
+            base: DatexExpressionData::Identifier("write_line".to_string())
                 .with_default_span(),
             arguments: vec![
                 DatexExpressionData::Text("test".into()).with_default_span()
