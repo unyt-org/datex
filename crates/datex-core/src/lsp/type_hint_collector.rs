@@ -1,8 +1,5 @@
 use crate::{
-    ast::{
-        expressions::{DataExpression, VariableDeclaration},
-        resolved_variable::VariableId,
-    },
+    ast::expressions::{DataExpression, VariableDeclaration, VariableId},
     visitor::{
         VisitAction, expression::ExpressionVisitor,
         type_expression::TypeExpressionVisitor,
