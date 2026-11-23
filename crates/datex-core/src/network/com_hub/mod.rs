@@ -855,11 +855,12 @@ impl ComHub {
         if peer_vault.contains_key(&endpoint) {
             // check if the existing key is the same as the new key, if not return error
             if peer_vault.get(&endpoint) != Some(&pub_key) {
-                error!(
+                // FIXME: error, only warning for now until keys can be stored persistently
+                warn!(
                     "Endpoint {} is already registered with a different public key",
                     endpoint
                 );
-                return Err(());
+                return Ok(());
             }
             return Ok(());
         }
