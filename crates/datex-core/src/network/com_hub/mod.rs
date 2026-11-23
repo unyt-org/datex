@@ -860,9 +860,11 @@ impl ComHub {
                     "Endpoint {} is already registered with a different public key",
                     endpoint
                 );
+                // return Err(());
+            }
+            else {
                 return Ok(());
             }
-            return Ok(());
         }
         let _ = peer_vault.insert(endpoint, pub_key);
         Ok(())
