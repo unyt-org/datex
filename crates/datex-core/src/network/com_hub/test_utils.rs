@@ -89,7 +89,7 @@ pub async fn get_coupled_com_hubs() -> (
         BlockHandler::DEFAULT_HISTORY_CAPACITY,
     );
     
-    com_hub_a.clone().init_own_keys(None, None).await;
+    com_hub_a.init_own_keys(None, None).await;
 
     let (incoming_sections_sender_b, incoming_sections_receiver_b) =
         create_incoming_sections_channel();
@@ -104,7 +104,7 @@ pub async fn get_coupled_com_hubs() -> (
         BlockHandler::DEFAULT_HISTORY_CAPACITY,
     );
 
-    com_hub_b.clone().init_own_keys(None, None).await;
+    com_hub_b.init_own_keys(None, None).await;
 
     let res = couple_com_hubs_internal(com_hub_a.clone(), com_hub_b.clone());
 

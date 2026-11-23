@@ -43,6 +43,7 @@ use core::{
     pin::Pin,
     result::Result,
 };
+use core::cell::Ref;
 use itertools::Itertools;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
@@ -208,7 +209,7 @@ pub struct ComHub {
     /// Optional runtime for the ComHub, required for network tracing. TODO: find a better solution, comhub should not need to reference runtime
     pub(crate) runtime: RefCell<Option<Runtime>>,
 
-    pub vault: RefCell<Vault>,
+    pub vault: RefCell<Option<Vault>>,
 
     pub peer_vault: RefCell<HashMap<Endpoint, [u8; 32]>>,
 }
@@ -216,14 +217,6 @@ pub struct ComHub {
 pub struct Vault {
     pub pub_key: [u8; 32],
     pub pri_key: [u8; 32],
-}
-impl Vault {
-    pub fn create_empty() -> Self {
-        Vault {
-            pri_key: [0u8; 32],
-            pub_key: [0u8; 32],
-        }
-    }
 }
 
 impl Debug for ComHub {
@@ -324,7 +317,7 @@ impl ComHub {
             reconnecting_interfaces: RefCell::new(HashMap::new()),
             task_manager,
             runtime: RefCell::new(None),
-            vault: RefCell::new(Vault::create_empty()),
+            vault: RefCell::new(None),
             peer_vault: RefCell::new(HashMap::<Endpoint, [u8; 32]>::new()),
         });
 
@@ -358,10 +351,14 @@ impl ComHub {
 
     /// Stores the provided keys in the vault or generates new keys if none are provided.
     pub async fn init_own_keys(
-        self: Rc<Self>,
+        &self,
         pub_key_str: Option<&str>,
         pri_key_str: Option<&str>,
     ) {
+        if self.vault.borrow().is_some() {
+            panic!("ComHub keys already initialized");
+        }
+
         let (pub_key, pri_key) = match (pub_key_str, pri_key_str) {
             (Some(pub_key_str), Some(pri_key_str)) => {
                 (
@@ -378,8 +375,7 @@ impl ComHub {
         info!("Initializing com hub pub key: {:?}", pub_key);
 
         let mut vault = self.vault.borrow_mut();
-        vault.pub_key = pub_key;
-        vault.pri_key = pri_key;
+        *vault = Some(Vault { pub_key, pri_key });
     }
 
     pub fn endpoint(&self) -> &Endpoint {
@@ -848,6 +844,39 @@ impl ComHub {
         }
     }
 
+    /// Registers the public key of a peer endpoint in the peer vault for signature validation of incoming blocks.
+    /// If the endpoint is already registered, returns an error.
+    pub fn register_endpoint_key(
+        &self,
+        endpoint: Endpoint,
+        pub_key: [u8; 32],
+    ) -> Result<(), ()> {
+        let mut peer_vault = self.peer_vault.borrow_mut();
+        if peer_vault.contains_key(&endpoint) {
+            // check if the existing key is the same as the new key, if not return error
+            if peer_vault.get(&endpoint) != Some(&pub_key) {
+                error!(
+                    "Endpoint {} is already registered with a different public key",
+                    endpoint
+                );
+                return Err(());
+            }
+            return Ok(());
+        }
+        let _ = peer_vault.insert(endpoint, pub_key);
+        Ok(())
+    }
+
+    pub fn vault(&self) -> Ref<Vault> {
+        Ref::map(self.vault.borrow(), |vault| {
+            vault.as_ref().expect("Vault is not initialized")
+        })
+    }
+
+    pub fn pub_key(&self) -> Ref<[u8; 32]> {
+        Ref::map(self.vault(), |vault| &vault.pub_key)
+    }
+
     /// Receives a block from a socket and handles it accordingly
     /// Returns a MaybeAsync which is async in the following cases:
     /// * the block signature is validated because the block is for own endpoint and signature is set
@@ -869,21 +898,24 @@ impl ComHub {
                 info!("HelloBlock Content: {:?}", peer_pub_key);
                 let peer_pub_sig_key: [u8; 32] = peer_pub_key.try_into().unwrap();
 
-                let mut peer_vault = self.peer_vault.borrow_mut();
-                let _ = peer_vault.insert(peer_endpoint, peer_pub_sig_key);
-
+                self.register_endpoint_key(peer_endpoint.clone(), peer_pub_sig_key).unwrap();
                 peer_pub_sig_key
             } else {
                 // if block is not hello assume knowing public key already
                 if self.endpoint() == block.sender() {
                     // check if it's a loopback
-                    self.vault.borrow().pub_key
+                    *self.pub_key()
                 } else {
                     // check hashmap in comhub
-                    *self.peer_vault
+                    match self.peer_vault
                         .borrow()
-                        .get(block.sender())
-                        .unwrap()
+                        .get(block.sender()) {
+                        Some(key) => *key,
+                        _ => {
+                            // TODO: request keys from endpoint
+                            return MaybeAsync::Sync(Err(SignatureValidationError::SignatureParseError));
+                        }
+                    }
                 }
             }
         };
@@ -1339,7 +1371,7 @@ impl ComHub {
         if block.block_type() == BlockType::Hello {
             // alternating series as placeholder for development
             // let x: [u8; 32] = core::array::from_fn(|i| (i % 2) as u8);
-            let x = self.vault.borrow().pub_key;
+            let x = self.pub_key();
             block.body = x.to_vec();
         };
 
@@ -1362,7 +1394,7 @@ impl ComHub {
                     let mut pri_key = [0u8; 32];
                     let mut pub_key = [0u8; 32];
                     {
-                        let vault = self.vault.borrow();
+                        let vault = self.vault();
                         pri_key.copy_from_slice(&vault.pri_key);
                         pub_key.copy_from_slice(&vault.pub_key);
                     }
@@ -2154,6 +2186,9 @@ pub mod tests {
             com_interface_reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
         );
+
+        com_hub.init_own_keys(None, None).await;
+
         select! {
             app_result = app_logic(com_hub, incoming_section_receiver, com_interface_reconnect_request_receiver).fuse() => app_result,
             _ = com_hub_future.fuse() => panic!("ComHub future should not complete during the test"),
