@@ -181,12 +181,9 @@ impl ComHub {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "std")]
     use crate::global::{
         dxb_block::{DXBBlock, IncomingSection},
-        protocol_structures::routing_header::SignatureType,
     };
-    #[cfg(feature = "std")]
     use crate::network::com_hub::test_utils::{
         TEST_ENDPOINT_A, TEST_ENDPOINT_B, get_coupled_com_hubs,
         run_with_coupled_com_hubs,
@@ -231,7 +228,7 @@ mod tests {
             .collect::<Vec<_>>()
     }
 
-    fn generate_test_com_hub_configuration()
+    async fn generate_test_com_hub_configuration()
     -> (Rc<ComHub>, impl Future<Output = ()>, ComInterfaceUUID) {
         let configuration = ComInterfaceConfiguration::new_single_socket(
             ComInterfaceProperties::default(),
@@ -261,6 +258,8 @@ mod tests {
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
         );
 
+        com_hub.init_own_keys(None, None).await;
+
         // add interface
         com_hub
             .clone()
@@ -284,15 +283,15 @@ mod tests {
         (com_hub, task_future, interface_uuid)
     }
 
-    #[test]
-    fn add_interface_from_configuration() {
-        let _ = generate_test_com_hub_configuration();
+    #[tokio::test]
+    async fn add_interface_from_configuration() {
+        let _ = generate_test_com_hub_configuration().await;
     }
 
     #[tokio::test]
     async fn remove_interface_from_configuration_before_init() {
         let (com_hub, task_future, interface_uuid) =
-            generate_test_com_hub_configuration();
+            generate_test_com_hub_configuration().await;
 
         // remove interface before the com interface is fully initialized
         select(
@@ -314,7 +313,7 @@ mod tests {
     #[tokio::test]
     async fn remove_interface_from_configuration_after_init() {
         let (com_hub, task_future, interface_uuid) =
-            generate_test_com_hub_configuration();
+            generate_test_com_hub_configuration().await;
 
         // remove interface after the com interface is fully initialized
         select(

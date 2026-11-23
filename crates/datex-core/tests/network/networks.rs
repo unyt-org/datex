@@ -188,6 +188,7 @@ async fn get_test_network_1_with_deterministic_priorities() -> Network {
 #[tokio::test]
 #[timeout(2000)]
 async fn network_routing_with_four_nodes_1() {
+    flexi_logger::init();
     let local = task::LocalSet::new();
     local
         .run_until(async {
@@ -492,6 +493,7 @@ macro_rules! run_async {
 #[tokio::test]
 #[timeout(2000)]
 async fn simple_network() {
+    flexi_logger::init();
     run_async! {
         let mut network = Network::load("simple.json");
             network.start().await;

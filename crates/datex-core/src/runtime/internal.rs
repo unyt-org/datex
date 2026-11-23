@@ -460,7 +460,7 @@ impl RuntimeInternal {
 
     /// Performs asynchronous initialization of the runtime
     pub(crate) async fn init_async(&self) {
-        self.com_hub.clone().init_own_keys(self.config().pub_key.as_deref(), self.config().pri_key.as_deref()).await;
+        self.com_hub.init_own_keys(self.config().pub_key.as_deref(), self.config().pri_key.as_deref()).await;
 
         // create local loopback interface and other configured interfaces
         self.init_local_loopback_interface().await;
