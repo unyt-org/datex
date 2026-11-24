@@ -5,7 +5,6 @@ use crate::{
         core_compilation_context::DXBWithSharedValues, core_compile,
         instruction_input::InstructionInput,
     },
-    crypto::CryptoImpl,
     datex_registry::{all_datex_types, get_all_modules},
     dif::dif_interface::DIFInterface,
     disassembler::{
@@ -70,7 +69,6 @@ use core::{
     ops::DerefMut,
     pin::Pin,
 };
-use datex_facades::crypto::Crypto;
 use datex_macros_internal::Datex;
 use futures_util::future::join_all;
 use indexmap::IndexMap;
@@ -460,7 +458,12 @@ impl RuntimeInternal {
 
     /// Performs asynchronous initialization of the runtime
     pub(crate) async fn init_async(&self) {
-        self.com_hub.init_own_keys(self.config().pub_key.as_deref(), self.config().pri_key.as_deref()).await;
+        self.com_hub
+            .init_own_keys(
+                self.config().pub_key.as_deref(),
+                self.config().pri_key.as_deref(),
+            )
+            .await;
 
         // create local loopback interface and other configured interfaces
         self.init_local_loopback_interface().await;

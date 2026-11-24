@@ -17,7 +17,6 @@ use crate::{
         },
         options::ComHubOptions,
     },
-    std_sync::Mutex,
     task,
 };
 
@@ -730,8 +729,8 @@ impl ComHub {
     /// Validates the signature of a dxblock based on the signature type specified in the routing header.
     /// Returns Ok(dxb) if the signature is valid, or a SignatureValidationError if the signature is missing, cannot be parsed, or is invalid.
     pub fn validate_signature(
-        mut dxb: DXBBlock,
-        pub_key: [u8; 32],
+        dxb: DXBBlock,
+        #[allow(unused_variables)] pub_key: [u8; 32],
     ) -> MaybeAsync<
         Result<DXBBlock, SignatureValidationError>,
         impl Future<Output = Result<DXBBlock, SignatureValidationError>>,
@@ -871,13 +870,13 @@ impl ComHub {
         Ok(())
     }
 
-    pub fn vault(&self) -> Ref<Vault> {
+    pub fn vault(&self) -> Ref<'_, Vault> {
         Ref::map(self.vault.borrow(), |vault| {
             vault.as_ref().expect("Vault is not initialized")
         })
     }
 
-    pub fn pub_key(&self) -> Ref<[u8; 32]> {
+    pub fn pub_key(&self) -> Ref<'_, [u8; 32]> {
         Ref::map(self.vault(), |vault| &vault.pub_key)
     }
 

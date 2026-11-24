@@ -181,12 +181,9 @@ impl ComHub {
 
 #[cfg(test)]
 mod tests {
-    use crate::global::{
-        dxb_block::{DXBBlock, IncomingSection},
-    };
-    use crate::network::com_hub::test_utils::{
-        TEST_ENDPOINT_A, TEST_ENDPOINT_B, get_coupled_com_hubs,
-        run_with_coupled_com_hubs,
+    use crate::{
+        global::dxb_block::{DXBBlock, IncomingSection},
+        network::com_hub::test_utils::run_with_coupled_com_hubs,
     };
 
     use crate::{
@@ -359,6 +356,9 @@ mod tests {
     #[tokio::test]
     #[cfg(feature = "std")]
     async fn connected_interfaces() {
+        use crate::network::com_hub::test_utils::{
+            TEST_ENDPOINT_A, TEST_ENDPOINT_B, get_coupled_com_hubs,
+        };
         let (peer_a, peer_b, init_future) = get_coupled_com_hubs().await;
 
         // run task futures for 10ms to allow sockets to connect
