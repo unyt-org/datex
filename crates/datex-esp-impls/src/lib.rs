@@ -21,10 +21,12 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use hkdf::Hkdf;
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
+use esp_hal::sha::Sha256Context;
 
-#[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
 mod hal {
+    use esp_hal::peripherals::SHA;
     use esp_hal::rng::Rng;
+    use esp_hal::sha::ShaBackend;
     use spin::{Mutex, MutexGuard, Once, Spin};
     use static_cell::StaticCell;
 
@@ -35,6 +37,21 @@ mod hal {
         let m = INIT.call_once(|| RNG.init(Mutex::new(Rng::new())));
 
         m.lock()
+    }
+
+    static SHA_BACKEND: StaticCell<ShaBackend<'static>> = StaticCell::new();
+    static SHA_INIT: Once<()> = Once::new();
+
+    /// Starts the hardware SHA backend on first use.
+    pub fn ensure_sha() {
+        SHA_INIT.call_once(|| {
+            // SAFETY: this crate is the only user of the SHA peripheral;
+            // the firmware must not use `peripherals.SHA` elsewhere.
+            let sha = unsafe { SHA::steal() };
+            let backend = SHA_BACKEND.init(ShaBackend::new(sha));
+            // The guard must never drop, or processing stops and hashes hang.
+            core::mem::forget(backend.start());
+        });
     }
 }
 
@@ -85,12 +102,20 @@ impl Crypto for CryptoEsp32 {
         bytes
     }
 
+    /// Generates a sha256 hash of the given data asynchronously.
+    /// Note: The SHA peripheral of the ESP32 must be initialized and kept alive for this function to work.
     fn hash_sha256<'a>(
         to_digest: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError> {
         Box::pin(async move {
-            let hash: [u8; 32] = Sha256::digest(to_digest).into();
-            Ok(hash)
+            hal::ensure_sha();
+
+            let mut ctx = Sha256Context::new();
+            let mut out = [0u8; 32];
+
+            ctx.update(to_digest).wait().await;
+            Sha256Context::finalize(&mut ctx, &mut out).wait().await;
+            Ok(out)
         })
     }
 
