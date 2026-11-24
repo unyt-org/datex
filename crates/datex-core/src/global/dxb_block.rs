@@ -296,10 +296,7 @@ impl DXBBlock {
 
         // invalid state: trace / trace back blocks with a signature
         if signature.is_some()
-            && matches!(
-                block_header.flags_and_timestamp.block_type(),
-                BlockType::Trace | BlockType::TraceBack
-            )
+            && block_header.flags_and_timestamp.block_type().is_tracing_block()
         {
             return Err(DXBBlockParseError::IllegalState);
         }
