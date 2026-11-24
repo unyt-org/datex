@@ -10,7 +10,6 @@ mod core_lib;
 mod datex_proxy;
 mod magic_rw;
 mod utils;
-pub mod code_generator;
 
 /// Unused and incomplete
 #[proc_macro_derive(BitfieldSerde)]
