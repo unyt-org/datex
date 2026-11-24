@@ -1,6 +1,5 @@
 use crate::{
     channel::mpsc::create_unbounded_channel,
-    crypto::CryptoImpl,
     network::{
         block_handler::{BlockHandler, create_incoming_sections_channel},
         com_hub::{ComHub, ComInterfaceReconnectRequest},
@@ -16,7 +15,6 @@ use crate::{
 };
 use async_select::select;
 use core::{cell::RefCell, pin::Pin};
-use datex_facades::crypto::Crypto;
 use futures::channel::oneshot;
 use futures_util::{
     future,

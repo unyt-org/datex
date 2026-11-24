@@ -296,7 +296,10 @@ impl DXBBlock {
 
         // invalid state: trace / trace back blocks with a signature
         if signature.is_some()
-            && block_header.flags_and_timestamp.block_type().is_tracing_block()
+            && block_header
+                .flags_and_timestamp
+                .block_type()
+                .is_tracing_block()
         {
             return Err(DXBBlockParseError::IllegalState);
         }
@@ -409,14 +412,6 @@ impl Display for DXBBlock {
 #[cfg(test)]
 mod tests {
     use core::str::FromStr;
-    // TODO enable tests for no-std target
-    #[cfg(feature = "std")]
-    use crate::{
-        crypto::CryptoImpl, network::com_hub::errors::SignatureValidationError,
-    };
-
-    #[cfg(feature = "std")]
-    use datex_facades::crypto::Crypto;
 
     use crate::{
         global::{

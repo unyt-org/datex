@@ -19,7 +19,10 @@
 #![allow(incomplete_features)]
 #![allow(static_mut_refs)]
 #![allow(async_fn_in_trait)]
-#![feature(vec_try_remove)] // FIXME: remove when stable in esp toolchain
+#![cfg_attr(
+    any(target_arch = "xtensa", target_arch = "riscv32"),
+    feature(vec_try_remove)
+)] // FIXME: remove when stable in esp toolchain
 
 extern crate alloc;
 extern crate num_integer;
