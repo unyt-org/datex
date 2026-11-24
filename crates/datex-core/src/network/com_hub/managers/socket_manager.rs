@@ -144,16 +144,7 @@ impl ComInterfaceSocketManager {
         endpoint: Endpoint,
         distance: i8,
     ) -> Result<(), SocketEndpointRegistrationError> {
-        info!(
-            "Registering endpoint {} for socket {}",
-            endpoint, socket_uuid
-        );
         let socket = self.get_socket_by_uuid_mut(&socket_uuid);
-
-        // if the registered endpoint is the same as the socket endpoint,
-        // this is a direct socket to the endpoint
-        let is_direct =
-            socket.socket_properties.direct_endpoint == Some(endpoint.clone());
 
         // check if the socket is already registered for the endpoint
         if let Some(entries) = self.endpoint_sockets.borrow().get(&endpoint)
@@ -163,10 +154,20 @@ impl ComInterfaceSocketManager {
         {
             return Err(SocketEndpointRegistrationError::SocketEndpointAlreadyRegistered);
         }
+        info!(
+            "Registering endpoint {} for socket {}",
+            endpoint, socket_uuid
+        );
 
         let socket_uuid = socket.socket_properties.uuid().clone();
         let channel_factor = socket.socket_properties.channel_factor;
         let direction = socket.socket_properties.direction.clone();
+
+        // if the registered endpoint is the same as the socket endpoint,
+        // this is a direct socket to the endpoint
+        let is_direct =
+            socket.socket_properties.direct_endpoint == Some(endpoint.clone());
+
 
         drop(socket);
 
