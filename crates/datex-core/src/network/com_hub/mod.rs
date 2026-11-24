@@ -302,7 +302,6 @@ impl ComHub {
             block_history_capacity,
         );
 
-        info!("Creating Comhub.");
         let com_hub = Rc::new(ComHub {
             endpoint: UnsafeCell::new(endpoint.into()),
             options: ComHubOptions::default(),
@@ -925,12 +924,14 @@ impl ComHub {
                         let context_id = block.block_header.context_id;
                         let section_index = block.block_header.section_index;
                         let self_clone = self.clone();
+                        let challenge = block.body.clone();
                         self.task_manager.register_task(async move {
                             self_clone
                                 .send_its_a_me_block(
                                     sender,
                                     context_id,
                                     section_index,
+                                    challenge,
                                 )
                                 .await
                                 .expect("Failed to send ItsAMe block");
@@ -2175,6 +2176,9 @@ impl ComHub {
 
         block.set_receivers(vec![endpoint.clone()]);
 
+        let challenge = CryptoImpl::random_bytes(32);
+        block.body = challenge;
+
         let block = self
             .prepare_own_block(block)
             .into_result()
@@ -2210,6 +2214,7 @@ impl ComHub {
         endpoint: Endpoint,
         context_id: u32,
         section_index: u16,
+        challenge: Vec<u8>,
     ) -> Result<(), ()> {
         info!("Sending ItsAMe block to {}", endpoint);
         let mut block: DXBBlock = DXBBlock::default();
@@ -2222,6 +2227,8 @@ impl ComHub {
         block.block_header.section_index = section_index;
 
         block.set_receivers(vec![endpoint.clone()]);
+
+        block.body = challenge;
 
         let block = self
             .prepare_own_block(block)
