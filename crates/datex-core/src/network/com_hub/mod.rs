@@ -103,7 +103,7 @@ use datex_facades::crypto::Crypto;
 use datex_macros_internal::Datex;
 use futures::channel::{oneshot, oneshot::Sender};
 use futures_util::FutureExt;
-use crate::traits::try_clone::TryClone;
+use crate::global::dxb_block::IncomingSection;
 
 /// Represents the direction of a block, either incoming or outgoing, used in the block interceptor callback.
 #[derive(Datex, Debug, Clone, Copy, Display)]
@@ -614,10 +614,8 @@ impl ComHub {
                         },
                         // receive new blocks from block collector
                         Some(block) = async_next_pin_box(&mut block_iterator).fuse() => {
-                            // spawn as separate task to handle incoming block
-                            // this improves performance as multiple blocks can be handled in parallel
-                            // it's also required because the size of this future gets to big for embedded targets (heap allocation fails)
-                            self.clone().handle_incoming_block_async(block, socket_properties.uuid()).await;
+                            // must be spawned in a separate task to allow continuing to receive blocks from the socket while processing the block
+                            self.task_manager.register_task(self.clone().handle_incoming_block_async(block, socket_properties.uuid()));
                         },
 
                         complete => break,
@@ -823,9 +821,10 @@ impl ComHub {
                                 }
                                 // otherwise, only allow unsigned Trace and TraceBack blocks,
                                 // as they are used for debugging and should not be used in production with real data
+                                // ItsAMe blocks are also allowed to be unsigned since the keys are only known after the ItsAMe block was received
                                 else {
                                     match dxb.block_type() {
-                                        BlockType::Trace | BlockType::TraceBack => true,
+                                        BlockType::Trace | BlockType::TraceBack | BlockType::ItsAMe => true,
                                         // TODO #181 Check if the sender is trusted (endpoint + interface) connection
                                         _ => return MaybeAsync::Sync(Err(SignatureValidationError::MissingSignature))
                                     }
@@ -906,15 +905,13 @@ impl ComHub {
         let preprocess_result =
             self.receive_block_preprocess(&socket_uuid, block);
 
-        let self_clone = self.clone();
-
         // validate block signature if sent to own endpoint
         let validation_result = match preprocess_result.own_received_block {
             // if block is for own endpoint, validate signature if set
             Some(block) => {
                 let block_type = block.block_type();
                 // the public signing key of the sender
-                let peer_pub_key = match block_type {
+                match block_type {
                     // send back an ItsAMe block with own public key if a WhoAreYou block is received
                     BlockType::WhoAreYou => {
                         let sender = block.sender().clone();
@@ -925,18 +922,24 @@ impl ComHub {
                             self_clone.send_its_a_me_block(sender, context_id, section_index).await.expect("Failed to send ItsAMe block");
                         });
                         self.handle_receive_block_with_endpoint_keys(&block);
-                        MaybeAsync::Sync(None)
+                        return MaybeAsync::Sync(Ok(None))
                     },
-                    // register the public key of the sender endpoint if a Hello or ItsAMe block is received
-                    BlockType::Hello | BlockType::ItsAMe => {
+                    // register the public key of the sender endpoint if an ItsAMe block is received
+                    BlockType::ItsAMe => {
                         self.handle_receive_block_with_endpoint_keys(&block);
-                        MaybeAsync::Sync(None)
+                        // skip validation, return the block directly as validation result, since it's not signed.
+                        MaybeAsync::Sync(Ok(Some(block)))
+                    },
+                    // register the public key of the sender endpoint if a Hello block is received
+                    BlockType::Hello => {
+                        self.handle_receive_block_with_endpoint_keys(&block);
+                        return MaybeAsync::Sync(Ok(None));
                     },
                     // Find the public key of the sender endpoint in the peer vault if a block with endpoint keys is received
                     // If the public key is not found, send a WhoAreYou block to the sender endpoint and wait for a response with the public key
                     _ => {
                         // if block is not hello assume knowing public key already
-                        if self.endpoint() == block.sender() {
+                        let peer_pub_key = if self.endpoint() == block.sender() {
                             // check if it's a loopback
                             MaybeAsync::Sync(Some(*self.pub_key()))
                         } else {
@@ -962,20 +965,19 @@ impl ComHub {
                                     })
                                 }
                             }
-                        }
-                    }
-                };
+                        };
 
-                peer_pub_key.map(move |peer_pub_key| {
-                    if let Some(peer_pub_key) = peer_pub_key {
-                        ComHub::validate_signature(block, peer_pub_key)
-                            .map(|validation| validation.map(Some))
+                        peer_pub_key.map(move |peer_pub_key| {
+                            if let Some(peer_pub_key) = peer_pub_key {
+                                ComHub::validate_signature(block, peer_pub_key)
+                                    .map(|validation| validation.map(Some))
+                            }
+                            else {
+                                MaybeAsync::Sync(Ok(None))
+                            }
+                        }).flatten()
                     }
-                    else {
-                        MaybeAsync::Sync(Ok(None))
-                    }
-                }).flatten()
-                // if block is not for own endpoint, don't validate signature and don't return own received block
+                }
             }
             None => MaybeAsync::Sync(Ok(None)),
         };
@@ -1004,6 +1006,7 @@ impl ComHub {
                 if preprocess_result.relayed_block.is_some()
                     || trace_block.is_some()
                 {
+                    let self_clone = self.clone();
                     MaybeAsync::Async(async move {
                         self_clone
                             .receive_block_async(
@@ -1073,7 +1076,7 @@ impl ComHub {
                     let should_relay =
                     // don't relay "Hello" blocks sent to own endpoint
                     !(
-                        is_for_own && block_type.is_block_with_endpoint_keys()
+                        is_for_own && block_type == BlockType::Hello
                     );
 
                     // relay the block to other endpoints
@@ -2141,7 +2144,7 @@ impl ComHub {
         .map(|_| ())
     }
 
-    /// Sends a WhoAreYou block to the specified endpoint and waits for a response.
+    /// Sends a WhoAreYou block to the specified endpoint and waits for a [BlockType::ItsAMe] response.
     pub async fn send_who_are_you_block(
         &self,
         endpoint: Endpoint
@@ -2153,6 +2156,9 @@ impl ComHub {
             .flags_and_timestamp
             .set_block_type(BlockType::WhoAreYou);
 
+        let context_id = block.block_header.context_id;
+        let section_index = block.block_header.section_index;
+
         block.set_receivers(vec![endpoint.clone()]);
 
         let block = self
@@ -2163,21 +2169,29 @@ impl ComHub {
                 panic!("Error preparing own block for sending: {:?}", e)
             });
 
-        let res = self.send_own_block_await_response(
+        self.send_own_block_async(
             block,
-            ResponseOptions::default(),
         )
-        .await;
+        .await.map_err(|_| ())?;
 
-        if res.is_empty() {
-            error!("No response received to WhoAreYou block from {}", endpoint);
-            return Err(());
+        let mut incoming_receiver = self
+            .block_handler
+            .register_incoming_block_observer(context_id, section_index);
+
+        // await its a me response
+        let response = incoming_receiver.next().await.unwrap();
+
+        // IncomingSection must be a SingleBlock
+        match response {
+            IncomingSection::SingleBlock((Some(block), _)) if block.block_type() == BlockType::ItsAMe => {
+                info!("Received response to WhoAreYou block from {}", endpoint);
+                Ok(())
+            }
+            _ => panic!("Expected a SingleBlock section with type ItsAMe"),
         }
-        info!("Received response to WhoAreYou block from {}", endpoint);
-        Ok(())
     }
 
-    /// Sends an ItsAMe block to the specified endpoint.
+    /// Sends a [BlockType::ItsAMe] block to the specified endpoint.
     pub async fn send_its_a_me_block(
         &self,
         endpoint: Endpoint,
