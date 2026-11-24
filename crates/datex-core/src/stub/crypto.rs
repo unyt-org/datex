@@ -18,14 +18,18 @@ impl Crypto for CryptoStub {
         generate_pseudo_uuid()
     }
 
+    /// Stub implementation of random byte generation always returns a vector of zeros.
     fn random_bytes(length: usize) -> Vec<u8> {
         vec![0u8; length]
     }
 
+    // Stub implementation of SHA256 hashing always returns a fixed hash of zeros.
     fn hash_sha256<'a>(
         _to_digest: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError> {
-        unimplemented!()
+        Box::pin(async {
+            Ok([0u8; 32]).into()
+        })
     }
 
     fn hkdf_sha256<'a>(
@@ -35,24 +39,33 @@ impl Crypto for CryptoStub {
         unimplemented!()
     }
 
+    /// Stub implementation of Ed25519 key generation always generates a fixed key pair of zeros.
     fn gen_ed25519<'a>()
     -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::CryptoError> {
-        unimplemented!()
+        Box::pin(async {
+            Ok(([0u8; 32], [0u8; 32])).into()
+        })
     }
 
+    /// Stub implementation of Ed25519 signing always returns a fixed signature of zeros.
     fn sig_ed25519<'a>(
         _pri_key: &'a [u8],
         _data: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 64], Self::CryptoError> {
-        unimplemented!()
+        Box::pin(async {
+            Ok([0u8; 64])
+        })
     }
 
+    /// Stub implementation of Ed25519 signature verification always returns true.
     fn ver_ed25519<'a>(
         _pub_key: &'a [u8],
         _sig: &'a [u8],
         _data: &'a [u8],
     ) -> AsyncCryptoResult<'a, bool, Self::CryptoError> {
-        unimplemented!()
+        Box::pin(async {
+            Ok(true).into()
+        })
     }
 
     fn aes_ctr_encrypt<'a>(
