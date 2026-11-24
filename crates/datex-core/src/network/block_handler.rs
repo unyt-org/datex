@@ -238,14 +238,14 @@ impl BlockHandler {
         };
         let new_sections =
             self.extract_complete_sections_with_new_incoming_block(block);
-        // try to call the observer for the incoming response block
+        // try to call (and remove) the observer for the incoming response block
         for section in new_sections {
             let section_index = section.get_section_index();
 
-            if let Some(observer) = self
+            if let Some(mut observer) = self
                 .section_observers
                 .borrow_mut()
-                .get_mut(&(context_id, section_index))
+                .remove(&(context_id, section_index))
             {
                 // call the observer with the new section
                 observer(section);
