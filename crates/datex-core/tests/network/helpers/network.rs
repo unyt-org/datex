@@ -583,7 +583,7 @@ impl Network {
             }
         }
 
-        sleep(Duration::from_millis(500)).await;
+        sleep(Duration::from_millis(1000)).await;
 
         // iterate over all connection pairs and set up
         let mut iterator = channel_pairs.iter();
@@ -708,18 +708,6 @@ impl Network {
         runtime_a: (Runtime, InterfaceConnection),
         runtime_b: (Runtime, InterfaceConnection),
     ) {
-        let runtime_a_pub_key = *runtime_a.0.com_hub().pub_key();
-        let runtime_b_pub_key = *runtime_b.0.com_hub().pub_key();
-
-        runtime_a.0.com_hub().register_endpoint_key(
-            runtime_b.0.endpoint().clone(),
-            runtime_b_pub_key,
-        ).unwrap();
-        runtime_b.0.com_hub().register_endpoint_key(
-            runtime_a.0.endpoint().clone(),
-            runtime_a_pub_key,
-        ).unwrap();
-
         let remote_endpoint_a = runtime_b.1.setup_data.endpoint.clone();
         let (socket_a_outgoing_receiver, socket_a_incoming_sender) =
             Network::init_interface(
