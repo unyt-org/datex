@@ -888,7 +888,14 @@ impl ComHub {
             block.block_type(),
             peer_endpoint
         );
-        let peer_pub_key = block.body.clone();
+        let peer_pub_key = match block.block_type() {
+            BlockType::ItsAMe => {
+                let key_with_challenge = block.body.clone();
+                let (peer_pub_key, _) = key_with_challenge.split_at(32);
+                peer_pub_key.to_vec()
+            }
+            _ => block.body.clone(),
+        };
         let peer_pub_sig_key: [u8; 32] = peer_pub_key.try_into().unwrap();
 
         self.register_endpoint_key(peer_endpoint.clone(), peer_pub_sig_key)
@@ -1430,10 +1437,18 @@ impl ComHub {
 
         // share own pub sig key via hello block
         if block.block_type().is_block_with_endpoint_keys() {
-            // alternating series as placeholder for development
-            // let x: [u8; 32] = core::array::from_fn(|i| (i % 2) as u8);
-            let x = self.pub_key();
-            block.body = x.to_vec();
+            match block.block_type() {
+                BlockType::ItsAMe => {
+                    /* add pubkey to challenge in body body */
+                    let challenge = block.body;
+                    let own_pub_sig_key = self.pub_key();
+                    block.body = [own_pub_sig_key.to_vec(), challenge].concat();
+                }
+                _ => {
+                    let x = self.pub_key();
+                    block.body = x.to_vec();
+                }
+            }
         };
 
         match block.routing_header.flags.signature_type() {
@@ -1447,11 +1462,6 @@ impl ComHub {
                 let endpoint = self.endpoint().clone();
 
                 MaybeAsyncResult::Async(Box::pin(async move {
-                    /*
-                    let (pub_key, pri_key) = CryptoImpl::gen_ed25519()
-                        .await
-                        .map_err(|_| ComHubError::SignatureCreationError)?;
-                    */
                     let mut pri_key = [0u8; 32];
                     let mut pub_key = [0u8; 32];
                     {
