@@ -90,20 +90,3 @@ pub enum X25519DeriveError {
     InvalidPeerPublicKey,
     Backend(BackendError),
 }
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CryptoError {
-    RandomBytesError,
-    Sha256Error(Sha256Error),
-    HkdfError(HkdfError),
-    Ed25519GenError(Ed25519GenError),
-    Ed25519SignError(Ed25519SignError),
-    Ed25519VerifyError(Ed25519VerifyError),
-    AesCtrError(AesCtrError),
-    KeyWrapError(KeyWrapError),
-    KeyUnwrapError(KeyUnwrapError),
-    X25519GenError(X25519GenError),
-    X25519DeriveError(X25519DeriveError),
-    // placeholder for development
-    Placeholder,
-}
