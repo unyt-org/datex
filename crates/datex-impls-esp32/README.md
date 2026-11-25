@@ -1,9 +1,8 @@
-# DATEX Crypto Native
-> This crate provides native implementations of cryptographic functions for the
-> [DATEX Crypto Facade](https://github.com/unyt-org/datex/blob/main/crates/datex-facades) used in DATEX.
+# DATEX Crypto ESP32
+> This crate provides embedded implementations of cryptographic functions for the
+> [DATEX Crypto Facade](https://github.com/unyt-org/datex/blob/main/crates/datex-facades) used in DATEX for ESP32 targets.
 
-[![](https://img.shields.io/crates/v/datex-nat-impls.svg)](https://crates.io/crates/datex-nat-impls) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
-
+[![](https://img.shields.io/crates/v/datex-impls-esp32.svg)](https://crates.io/crates/datex-impls-esp32) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
 
 ## Contributing
 

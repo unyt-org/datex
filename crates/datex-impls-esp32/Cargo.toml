@@ -1,5 +1,5 @@
 [package]
-name = "datex-esp-impls"
+name = "datex-impls-esp32"
 version = "0.0.1"
 description = "Embedded ESP32 target implementation of the DATEX facades"
 authors = [

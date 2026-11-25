@@ -41,7 +41,7 @@ jobs:
           key: ${{ runner.os }}-build-${{ hashFiles('Cargo.lock') }}
 
       - name: Run clippy
-        run: cargo clippy --workspace --exclude datex-esp-impls
+        run: cargo clippy --workspace --exclude datex-impls-esp32
 
   test:
     runs-on: ubuntu-latest
