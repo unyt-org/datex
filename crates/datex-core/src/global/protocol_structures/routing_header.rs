@@ -14,14 +14,14 @@ use modular_bitfield::prelude::*;
 #[bits = 2]
 pub enum SignatureType {
     Unsigned = 0b00,
-    Unencrypted = 0b10,
-    Encrypted = 0b11,
+    Signed = 0b10,
+    CryptedSigned = 0b11,
 }
 
 #[allow(clippy::derivable_impls)]
 impl Default for SignatureType {
     fn default() -> Self {
-        SignatureType::Unencrypted
+        SignatureType::Signed
     }
 }
 
