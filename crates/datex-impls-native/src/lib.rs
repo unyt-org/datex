@@ -1,3 +1,5 @@
+pub mod vault;
+
 use datex_facades::{
     crypto::{AsyncCryptoResult, Crypto},
     error::{

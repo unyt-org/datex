@@ -6,6 +6,8 @@ use web_sys::{
     js_sys::{Array, ArrayBuffer, Object, Reflect, Uint8Array},
 };
 mod utils;
+pub mod vault;
+
 use utils::{TryAsByteSlice, js_array, js_object};
 
 use der::{Encode, asn1::BitStringRef};

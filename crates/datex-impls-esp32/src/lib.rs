@@ -9,6 +9,8 @@ extern crate alloc;
 #[cfg(doctest)]
 pub struct ReadmeDoctests;
 
+pub mod vault;
+
 use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
 use datex_facades::{
     crypto::{AsyncCryptoResult, Crypto},
