@@ -293,7 +293,6 @@ impl Crypto for CryptoEsp32 {
     }
 }
 
-#[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
 pub fn now_ms() -> u64 {
     let rtc = esp_hal::rtc_cntl::Rtc::new(unsafe {
         esp_hal::peripherals::Peripherals::steal()
