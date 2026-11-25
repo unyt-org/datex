@@ -213,8 +213,8 @@ pub struct ComHub {
 }
 
 pub struct Vault {
-    pub pub_key: [u8; 32],
-    pub pri_key: [u8; 32],
+    pub pub_sig_key: [u8; 32],
+    pub pri_sig_key: [u8; 32],
 }
 
 impl Debug for ComHub {
@@ -349,29 +349,33 @@ impl ComHub {
     /// Stores the provided keys in the vault or generates new keys if none are provided.
     pub async fn init_own_keys(
         &self,
-        pub_key_str: Option<&str>,
-        pri_key_str: Option<&str>,
+        pub_sig_key_str: Option<&str>,
+        pri_sig_key_str: Option<&str>,
     ) {
         if self.vault.borrow().is_some() {
             panic!("ComHub keys already initialized");
         }
 
-        let (pub_key, pri_key) = match (pub_key_str, pri_key_str) {
-            (Some(pub_key_str), Some(pri_key_str)) => (
-                CryptoImpl::dec_b58_32(pub_key_str).unwrap(),
-                CryptoImpl::dec_b58_32(pri_key_str).unwrap(),
-            ),
-            _ => {
-                let (pub_key, pri_key) =
-                    CryptoImpl::gen_ed25519().await.unwrap();
-                (pub_key, pri_key)
-            }
-        };
+        let (pub_sig_key, pri_sig_key) =
+            match (pub_sig_key_str, pri_sig_key_str) {
+                (Some(pub_sig_key_str), Some(pri_sig_key_str)) => (
+                    CryptoImpl::dec_b58_32(pub_sig_key_str).unwrap(),
+                    CryptoImpl::dec_b58_32(pri_sig_key_str).unwrap(),
+                ),
+                _ => {
+                    let (pub_sig_key, pri_sig_key) =
+                        CryptoImpl::gen_ed25519().await.unwrap();
+                    (pub_sig_key, pri_sig_key)
+                }
+            };
 
-        info!("Initializing com hub pub key: {:?}", pub_key);
+        info!("Initializing com hub pub sig key: {:?}", pub_sig_key);
 
         let mut vault = self.vault.borrow_mut();
-        *vault = Some(Vault { pub_key, pri_key });
+        *vault = Some(Vault {
+            pub_sig_key,
+            pri_sig_key,
+        });
     }
 
     pub fn endpoint(&self) -> &Endpoint {
@@ -730,7 +734,7 @@ impl ComHub {
     /// Returns Ok(dxb) if the signature is valid, or a SignatureValidationError if the signature is missing, cannot be parsed, or is invalid.
     pub fn validate_signature(
         dxb: DXBBlock,
-        #[allow(unused_variables)] pub_key: [u8; 32],
+        #[allow(unused_variables)] pub_sig_key: [u8; 32],
     ) -> MaybeAsync<
         Result<DXBBlock, SignatureValidationError>,
         impl Future<Output = Result<DXBBlock, SignatureValidationError>>,
@@ -769,13 +773,16 @@ impl ComHub {
                             }
 
                             SignatureType::Signed => {
-                                info!("val unencrypted against: {:?}", pub_key);
+                                info!(
+                                    "val unencrypted against: {:?}",
+                                    pub_sig_key
+                                );
                                 let signature = dxb.signature.as_ref().ok_or(
                                     SignatureValidationError::MissingSignature,
                                 )?;
 
                                 let raw_signed =
-                                    [pub_key.to_vec(), dxb.body.clone()]
+                                    [pub_sig_key.to_vec(), dxb.body.clone()]
                                         .concat();
                                 let hashed_signed = CryptoImpl::hash_sha256(
                                         &raw_signed,
@@ -786,7 +793,7 @@ impl ComHub {
                                     })?;
 
                                 CryptoImpl::ver_ed25519(
-                                        &pub_key,
+                                        &pub_sig_key,
                                         signature,
                                         &hashed_signed,
                                     )
@@ -818,6 +825,7 @@ impl ComHub {
                                 // otherwise, only allow unsigned Trace and TraceBack blocks,
                                 // as they are used for debugging and should not be used in production with real data
                                 // ItsAMe blocks are also allowed to be unsigned since the keys are only known after the ItsAMe block was received
+                                // note: ItsAMe blocks should/could be signed by the keys contained, as proof of ownership over them?
                                 else {
                                     match dxb.block_type() {
                                         BlockType::Trace | BlockType::TraceBack | BlockType::ItsAMe => true,
@@ -842,15 +850,15 @@ impl ComHub {
 
     /// Registers the public key of a peer endpoint in the peer vault for signature validation of incoming blocks.
     /// If the endpoint is already registered, returns an error.
-    pub fn register_endpoint_key(
+    pub fn register_endpoint_sig_key(
         &self,
         endpoint: Endpoint,
-        pub_key: [u8; 32],
+        pub_sig_key: [u8; 32],
     ) -> Result<(), ()> {
         let mut peer_vault = self.peer_vault.borrow_mut();
         if peer_vault.contains_key(&endpoint) {
             // check if the existing key is the same as the new key, if not return error
-            if peer_vault.get(&endpoint) != Some(&pub_key) {
+            if peer_vault.get(&endpoint) != Some(&pub_sig_key) {
                 // FIXME: error, only warning for now until keys can be stored persistently
                 warn!(
                     "Endpoint {} is already registered with a different public key",
@@ -861,7 +869,7 @@ impl ComHub {
                 return Ok(());
             }
         }
-        let _ = peer_vault.insert(endpoint, pub_key);
+        let _ = peer_vault.insert(endpoint, pub_sig_key);
         Ok(())
     }
 
@@ -871,8 +879,8 @@ impl ComHub {
         })
     }
 
-    pub fn pub_key(&self) -> Ref<'_, [u8; 32]> {
-        Ref::map(self.vault(), |vault| &vault.pub_key)
+    pub fn pub_sig_key(&self) -> Ref<'_, [u8; 32]> {
+        Ref::map(self.vault(), |vault| &vault.pub_sig_key)
     }
 
     pub fn handle_receive_block_with_endpoint_keys(&self, block: &DXBBlock) {
@@ -892,7 +900,7 @@ impl ComHub {
         };
         let peer_pub_sig_key: [u8; 32] = peer_pub_key.try_into().unwrap();
 
-        self.register_endpoint_key(peer_endpoint.clone(), peer_pub_sig_key)
+        self.register_endpoint_sig_key(peer_endpoint.clone(), peer_pub_sig_key)
             .unwrap();
     }
 
@@ -940,25 +948,26 @@ impl ComHub {
                         self.handle_receive_block_with_endpoint_keys(&block);
                         return MaybeAsync::Sync(Ok(None));
                     }
-                    // register the public key of the sender endpoint if an ItsAMe block is received
+                    // register the public signature key of the sender endpoint if an ItsAMe block is received
                     BlockType::ItsAMe => {
                         self.handle_receive_block_with_endpoint_keys(&block);
                         // skip validation, return the block directly as validation result, since it's not signed.
                         MaybeAsync::Sync(Ok(Some(block)))
                     }
-                    // register the public key of the sender endpoint if a Hello block is received
+                    // register the public signature key of the sender endpoint if a Hello block is received
                     BlockType::Hello => {
                         self.handle_receive_block_with_endpoint_keys(&block);
                         return MaybeAsync::Sync(Ok(None));
                     }
-                    // Find the public key of the sender endpoint in the peer vault if a block with endpoint keys is received
+                    // Find the public signature key of the sender endpoint in the peer vault if a block with endpoint keys is received
                     // If the public key is not found, send a WhoAreYou block to the sender endpoint and wait for a response with the public key
                     _ => {
-                        // if block is not hello assume knowing public key already
-                        let peer_pub_key = if self.endpoint() == block.sender()
+                        // if block is not hello assume knowing public signature key already
+                        let peer_pub_sig_key = if self.endpoint()
+                            == block.sender()
                         {
                             // check if it's a loopback
-                            MaybeAsync::Sync(Some(*self.pub_key()))
+                            MaybeAsync::Sync(Some(*self.pub_sig_key()))
                         } else {
                             let sender = block.sender();
                             // check hashmap in com hub
@@ -983,7 +992,7 @@ impl ComHub {
                             }
                         };
 
-                        peer_pub_key
+                        peer_pub_sig_key
                             .map(move |peer_pub_key| {
                                 if let Some(peer_pub_key) = peer_pub_key {
                                     ComHub::validate_signature(
@@ -1435,11 +1444,11 @@ impl ComHub {
                 BlockType::ItsAMe => {
                     /* add pubkey to challenge in body body */
                     let challenge = block.body;
-                    let own_pub_sig_key = self.pub_key();
+                    let own_pub_sig_key = self.pub_sig_key();
                     block.body = [own_pub_sig_key.to_vec(), challenge].concat();
                 }
                 _ => {
-                    let x = self.pub_key();
+                    let x = self.pub_sig_key();
                     block.body = x.to_vec();
                 }
             }
@@ -1460,8 +1469,8 @@ impl ComHub {
                     let mut pub_key = [0u8; 32];
                     {
                         let vault = self.vault();
-                        pri_key.copy_from_slice(&vault.pri_key);
-                        pub_key.copy_from_slice(&vault.pub_key);
+                        pri_key.copy_from_slice(&vault.pri_sig_key);
+                        pub_key.copy_from_slice(&vault.pub_sig_key);
                     }
 
                     let raw_signed =
