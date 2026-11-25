@@ -1,5 +1,5 @@
 [package]
-name = "datex-nat-impls"
+name = "datex-impls-native"
 version = "0.0.1"
 description = "Native implementation of the DATEX facades"
 authors = [
