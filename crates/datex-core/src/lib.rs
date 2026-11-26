@@ -141,6 +141,21 @@ pub mod crypto {
     }
 }
 
+/// VAult implementations selection based on target architecture and features.
+pub mod vault {
+    cfg_if::cfg_if! {
+        if #[cfg(any(feature = "target_native", test))] {
+            pub use datex_impls_native::vault::VaultNative as CryptoImpl;
+        } else if #[cfg(feature = "target_esp_shared")] {
+            pub use datex_impls_esp32::vault::VaultEsp32 as CryptoImpl;
+        } else if #[cfg(feature = "target_wasm")] {
+            pub use datex_impls_web::vault::VaultWeb as CryptoImpl;
+        } else {
+            pub use crate::stub::vault::VaultStub as CryptoImpl;
+        }
+    }
+}
+
 pub mod time {
     mod system_time {
         cfg_if::cfg_if! {

@@ -61,6 +61,8 @@ pub mod com_hub_interface;
 mod com_hub_socket;
 #[cfg(test)]
 pub mod test_utils;
+pub mod key_manager;
+
 use strum_macros::Display;
 
 use crate::{
@@ -101,6 +103,7 @@ use datex_facades::crypto::Crypto;
 use datex_macros_internal::Datex;
 use futures::channel::{oneshot, oneshot::Sender};
 use futures_util::FutureExt;
+use crate::network::com_hub::key_manager::KeyManager;
 
 /// Represents the direction of a block, either incoming or outgoing, used in the block interceptor callback.
 #[derive(Datex, Debug, Clone, Copy, Display)]
@@ -207,14 +210,8 @@ pub struct ComHub {
     /// Optional runtime for the ComHub, required for network tracing. TODO: find a better solution, comhub should not need to reference runtime
     pub(crate) runtime: RefCell<Option<Runtime>>,
 
-    pub vault: RefCell<Option<Vault>>,
-
-    pub peer_vault: RefCell<HashMap<Endpoint, [u8; 32]>>,
-}
-
-pub struct Vault {
-    pub pub_key: [u8; 32],
-    pub pri_key: [u8; 32],
+    /// Key manager for handling and storing cryptographic keys and signatures
+    pub key_manager: KeyManager,
 }
 
 impl Debug for ComHub {
@@ -314,8 +311,7 @@ impl ComHub {
             reconnecting_interfaces: RefCell::new(HashMap::new()),
             task_manager,
             runtime: RefCell::new(None),
-            vault: RefCell::new(None),
-            peer_vault: RefCell::new(HashMap::<Endpoint, [u8; 32]>::new()),
+            key_manager: KeyManager::default()
         });
 
         (com_hub, task_future)
@@ -352,26 +348,7 @@ impl ComHub {
         pub_key_str: Option<&str>,
         pri_key_str: Option<&str>,
     ) {
-        if self.vault.borrow().is_some() {
-            panic!("ComHub keys already initialized");
-        }
-
-        let (pub_key, pri_key) = match (pub_key_str, pri_key_str) {
-            (Some(pub_key_str), Some(pri_key_str)) => (
-                CryptoImpl::dec_b58_32(pub_key_str).unwrap(),
-                CryptoImpl::dec_b58_32(pri_key_str).unwrap(),
-            ),
-            _ => {
-                let (pub_key, pri_key) =
-                    CryptoImpl::gen_ed25519().await.unwrap();
-                (pub_key, pri_key)
-            }
-        };
-
-        info!("Initializing com hub pub key: {:?}", pub_key);
-
-        let mut vault = self.vault.borrow_mut();
-        *vault = Some(Vault { pub_key, pri_key });
+        self.key_manager.init_own_keys(pub_key_str, pri_key_str).await;
     }
 
     pub fn endpoint(&self) -> &Endpoint {
@@ -845,40 +822,7 @@ impl ComHub {
         }
     }
 
-    /// Registers the public key of a peer endpoint in the peer vault for signature validation of incoming blocks.
-    /// If the endpoint is already registered, returns an error.
-    pub fn register_endpoint_key(
-        &self,
-        endpoint: Endpoint,
-        pub_key: [u8; 32],
-    ) -> Result<(), ()> {
-        let mut peer_vault = self.peer_vault.borrow_mut();
-        if peer_vault.contains_key(&endpoint) {
-            // check if the existing key is the same as the new key, if not return error
-            if peer_vault.get(&endpoint) != Some(&pub_key) {
-                // FIXME: error, only warning for now until keys can be stored persistently
-                warn!(
-                    "Endpoint {} is already registered with a different public key",
-                    endpoint
-                );
-                // return Err(());
-            } else {
-                return Ok(());
-            }
-        }
-        let _ = peer_vault.insert(endpoint, pub_key);
-        Ok(())
-    }
 
-    pub fn vault(&self) -> Ref<'_, Vault> {
-        Ref::map(self.vault.borrow(), |vault| {
-            vault.as_ref().expect("Vault is not initialized")
-        })
-    }
-
-    pub fn pub_key(&self) -> Ref<'_, [u8; 32]> {
-        Ref::map(self.vault(), |vault| &vault.pub_key)
-    }
 
     pub fn handle_receive_block_with_endpoint_keys(&self, block: &DXBBlock) {
         let peer_endpoint = block.sender().clone();
@@ -897,7 +841,7 @@ impl ComHub {
         };
         let peer_pub_sig_key: [u8; 32] = peer_pub_key.try_into().unwrap();
 
-        self.register_endpoint_key(peer_endpoint.clone(), peer_pub_sig_key)
+        self.key_manager.register_endpoint_key(peer_endpoint.clone(), peer_pub_sig_key)
             .unwrap();
     }
 
@@ -963,12 +907,12 @@ impl ComHub {
                         let peer_pub_key = if self.endpoint() == block.sender()
                         {
                             // check if it's a loopback
-                            MaybeAsync::Sync(Some(*self.pub_key()))
+                            MaybeAsync::Sync(Some(*self.key_manager.pub_key()))
                         } else {
                             let sender = block.sender();
                             // check hashmap in com hub
-                            match self.peer_vault.borrow().get(sender) {
-                                Some(key) => MaybeAsync::Sync(Some(*key)),
+                            match self.key_manager.get_endpoint_key(sender) {
+                                Some(key) => MaybeAsync::Sync(Some(key)),
                                 None => {
                                     let sender = sender.clone();
                                     let self_clone = self.clone();
@@ -977,10 +921,9 @@ impl ComHub {
                                             .await
                                             .expect("Failed to send WhoAreYou block");
                                         Some(
-                                            *self_clone
-                                                .peer_vault
-                                                .borrow()
-                                                .get(&sender)
+                                            self_clone
+                                                .key_manager
+                                                .get_endpoint_key(&sender)
                                                 .unwrap(),
                                         )
                                     })
@@ -1440,11 +1383,11 @@ impl ComHub {
                 BlockType::ItsAMe => {
                     /* add pubkey to challenge in body body */
                     let challenge = block.body;
-                    let own_pub_sig_key = self.pub_key();
+                    let own_pub_sig_key = self.key_manager.pub_key();
                     block.body = [own_pub_sig_key.to_vec(), challenge].concat();
                 }
                 _ => {
-                    let x = self.pub_key();
+                    let x = self.key_manager.pub_key();
                     block.body = x.to_vec();
                 }
             }
@@ -1464,7 +1407,7 @@ impl ComHub {
                     let mut pri_key = [0u8; 32];
                     let mut pub_key = [0u8; 32];
                     {
-                        let vault = self.vault();
+                        let vault = self.key_manager.own_keys();
                         pri_key.copy_from_slice(&vault.pri_key);
                         pub_key.copy_from_slice(&vault.pub_key);
                     }
