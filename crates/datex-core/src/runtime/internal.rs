@@ -248,7 +248,7 @@ impl RuntimeInternal {
     /// The caller should only call this on an uninitialized runtime.
     pub async unsafe fn set_config(&self, config: RuntimeConfig) {
         let (endpoint, keys) = config.get_or_create_endpoint_and_keys().await;
-        
+
         unsafe {
             *self.config.get() = config;
         }
@@ -389,7 +389,7 @@ impl RuntimeInternal {
             RuntimeConfig::default(),
             ComHub::create(
                 Endpoint::default(),
-                OwnEndpointKeys::default(),
+                OwnEndpointKeys::stub(),
                 incoming_sections_sender,
                 reconnect_request_sender,
                 0,

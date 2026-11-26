@@ -2270,7 +2270,7 @@ pub mod tests {
         ) = create_unbounded_channel();
         let (com_hub, com_hub_future) = ComHub::create(
             TEST_ENDPOINT_A.clone(),
-            OwnEndpointKeys::default(),
+            OwnEndpointKeys::new().await,
             incoming_section_sender,
             com_interface_reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,

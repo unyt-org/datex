@@ -41,18 +41,18 @@ impl RuntimeRunner {
 
         Self::new_inner(endpoint, keys, config, info)
     }
-    
+
     /// Creates a new runtime instance with the given configuration and global context, without specifying an endpoint.
     /// The config can later be set with [`RuntimeInternal::set_config`].
     fn new_uninitialized(info: CustomRuntimeInfo) -> RuntimeRunner {
         Self::new_inner(
             Endpoint::default(),
-            OwnEndpointKeys::default(),
+            OwnEndpointKeys::stub(),
             RuntimeConfig::default(),
             info,
         )
     }
-    
+
     fn new_inner(
         endpoint: Endpoint,
         keys: OwnEndpointKeys,
@@ -118,7 +118,7 @@ impl RuntimeRunner {
             task_future: Box::pin(task_future),
         }
     }
-    
+
 
     // Starts the runtime, runs the provided app logic, and returns its result.
     // The runtime will exit when the app logic completes.

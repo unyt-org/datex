@@ -6,11 +6,24 @@ use crate::crypto::CryptoImpl;
 use crate::prelude::*;
 
 /// Contains the endpoint's own public/private key pair
-#[derive(Default, Clone, Debug, BinRead, BinWrite, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, BinRead, BinWrite, PartialEq, Eq, Hash)]
 #[brw(little)]
 pub struct OwnEndpointKeys {
     pub pub_key: [u8; 32],
     pub pri_key: [u8; 32],
+}
+
+impl OwnEndpointKeys {
+    pub fn stub() -> Self {
+        OwnEndpointKeys {
+            pub_key: [0; 32],
+            pri_key: [0; 32],
+        }
+    }
+    pub async fn new() -> Self {
+        let (pub_key, pri_key) = CryptoImpl::gen_ed25519().await.unwrap();
+        Self { pub_key, pri_key }
+    }
 }
 
 impl Serialize for OwnEndpointKeys {

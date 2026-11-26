@@ -85,7 +85,7 @@ pub async fn get_coupled_com_hubs() -> (
     ) = create_unbounded_channel::<ComInterfaceReconnectRequest>();
     let (com_hub_a, task_future_a) = ComHub::create(
         TEST_ENDPOINT_A.clone(),
-        OwnEndpointKeys::default(),
+        OwnEndpointKeys::new().await,
         incoming_sections_sender_a,
         com_interface_reconnect_request_sender_a,
         BlockHandler::DEFAULT_HISTORY_CAPACITY,
@@ -99,7 +99,7 @@ pub async fn get_coupled_com_hubs() -> (
     ) = create_unbounded_channel::<ComInterfaceReconnectRequest>();
     let (com_hub_b, task_future_b) = ComHub::create(
         TEST_ENDPOINT_B.clone(),
-        OwnEndpointKeys::default(),
+        OwnEndpointKeys::new().await,
         incoming_sections_sender_b,
         com_interface_reconnect_request_sender_b,
         BlockHandler::DEFAULT_HISTORY_CAPACITY,
