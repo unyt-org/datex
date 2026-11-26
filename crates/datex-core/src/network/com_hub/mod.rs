@@ -707,7 +707,7 @@ impl ComHub {
         cfg_select! {
             // if allow_unsigned_blocks is set, just return Ok(()) for all blocks, as signature validation is not possible
             feature = "allow_unsigned_blocks" => {
-                log::info!(
+                log::warn!(
                     "Crypto and signature validation are disabled, allowing block without signature validation"
                 );
                 MaybeAsync::<
@@ -786,7 +786,7 @@ impl ComHub {
                             cfg_if::cfg_if! {
                                 // if unsigned blocks are allowed, return true
                                 if #[cfg(feature = "allow_unsigned_blocks")] {
-                                    log::info!("Signature validation is disabled, allowing block without signature validation");
+                                    log::warn!("Signature validation is disabled, allowing block without signature validation");
                                     true
                                 }
                                 // otherwise, only allow unsigned Trace and TraceBack blocks,
@@ -816,7 +816,7 @@ impl ComHub {
 
 
 
-    pub fn handle_receive_block_with_endpoint_keys(&self, block: &DXBBlock) {
+    pub fn handle_receive_block_with_endpoint_keys(&self, block: &DXBBlock) -> Result<(), ()> {
         let peer_endpoint = block.sender().clone();
         info!(
             "{} block received from: {:?}",
@@ -834,7 +834,6 @@ impl ComHub {
         let peer_pub_sig_key: [u8; 32] = peer_pub_key.try_into().unwrap();
 
         self.key_manager.register_endpoint_key(peer_endpoint.clone(), peer_pub_sig_key)
-            .unwrap();
     }
 
     /// Receives a block from a socket and handles it accordingly
@@ -878,19 +877,36 @@ impl ComHub {
                                 .await
                                 .expect("Failed to send ItsAMe block");
                         });
-                        self.handle_receive_block_with_endpoint_keys(&block);
-                        return MaybeAsync::Sync(Ok(None));
+                        return MaybeAsync::Sync(
+                            if self.handle_receive_block_with_endpoint_keys(&block).is_err() {
+                                Err(SignatureValidationError::InvalidSignature)
+                            }
+                            else {
+                                Ok(None)
+                            }
+                        )
                     }
                     // register the public key of the sender endpoint if an ItsAMe block is received
                     BlockType::ItsAMe => {
-                        self.handle_receive_block_with_endpoint_keys(&block);
-                        // skip validation, return the block directly as validation result, since it's not signed.
-                        MaybeAsync::Sync(Ok(Some(block)))
+                        MaybeAsync::Sync(
+                            if self.handle_receive_block_with_endpoint_keys(&block).is_err() {
+                                Err(SignatureValidationError::InvalidSignature)
+                            }
+                            else {
+                                Ok(Some(block))
+                            }
+                        )
                     }
                     // register the public key of the sender endpoint if a Hello block is received
                     BlockType::Hello => {
-                        self.handle_receive_block_with_endpoint_keys(&block);
-                        return MaybeAsync::Sync(Ok(None));
+                        return MaybeAsync::Sync(
+                            if self.handle_receive_block_with_endpoint_keys(&block).is_err() {
+                                Err(SignatureValidationError::InvalidSignature)
+                            }
+                            else {
+                                Ok(None)
+                            }
+                        )
                     }
                     // Find the public key of the sender endpoint in the peer vault if a block with endpoint keys is received
                     // If the public key is not found, send a WhoAreYou block to the sender endpoint and wait for a response with the public key

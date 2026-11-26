@@ -2,6 +2,7 @@ pub mod own_endpoint_keys;
 
 use core::cell::RefCell;
 use core::cell::Ref;
+use log::{error, info};
 use crate::collections::HashMap;
 use crate::network::com_hub::key_manager::own_endpoint_keys::OwnEndpointKeys;
 use crate::values::core_values::endpoint::Endpoint;
@@ -51,11 +52,13 @@ impl KeyManager {
         if peer_vault.contains_key(&endpoint) {
             // check if the existing key is the same as the new key, if not return error
             return if peer_vault.get(&endpoint) != Some(&pub_key) {
+                error!("Received a different public key for endpoint: {}, existing key: {:?}, new key: {:?}", endpoint, peer_vault.get(&endpoint), pub_key);
                 Err(())
             } else {
                 Ok(())
             };
         }
+        info!("Registering public key for endpoint: {}", endpoint);
         let _ = peer_vault.insert(endpoint, pub_key);
         Ok(())
     }
