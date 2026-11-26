@@ -49,20 +49,26 @@ fn nvs_key(endpoint: &str, key: &str) -> Key {
 pub struct VaultEsp32;
 
 impl Vault for VaultEsp32 {
-    fn new(_location: &str) -> Self {
+    fn new(location: &str) -> Self {
+        // FIXME: location must be set to "nvs" for now
+        if location != "nvs" {
+            panic!("VaultEsp32 only supports 'nvs' location, got: {}", location);
+        }
         VaultEsp32
     }
 
     fn store(&self, endpoint: &str, key: &str, data: &str) {
         let k = nvs_key(endpoint, key);
-        with_nvs(|nvs| nvs.set(&NAMESPACE, &k, data))
-            .expect("failed to store value in vault");
+        let result = with_nvs(|nvs| nvs.set(&NAMESPACE, &k, data));
+        result.expect("vault: failed to store value");
     }
-
+    
     fn get(&self, endpoint: &str, key: &str) -> Option<String> {
         let k = nvs_key(endpoint, key);
-        with_nvs(|nvs| nvs.get::<String>(&NAMESPACE, &k)).ok()
+        let result = with_nvs(|nvs| nvs.get::<String>(&NAMESPACE, &k));
+        result.ok()
     }
+    
 
     fn delete(&self, endpoint: &str, key: &str) {
         let k = nvs_key(endpoint, key);
