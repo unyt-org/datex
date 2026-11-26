@@ -246,7 +246,7 @@ impl RuntimeInternal {
     ///
     /// # Safety
     /// The caller should only call this on an uninitialized runtime.
-    pub async unsafe fn set_config(&self, config: RuntimeConfig) {
+    pub async unsafe fn set_config(&self, mut config: RuntimeConfig) {
         let (endpoint, keys) = config.get_or_create_endpoint_and_keys().await;
 
         unsafe {

@@ -34,7 +34,7 @@ impl RuntimeRunner {
     /// Creates a new runtime instance with the given configuration and global context.
     /// Note: If the endpoint is not specified in the config, a random endpoint will be generated.
     pub async fn new(
-        config: RuntimeConfig,
+        mut config: RuntimeConfig,
         info: CustomRuntimeInfo,
     ) -> RuntimeRunner {
         let (endpoint, keys) = config.get_or_create_endpoint_and_keys().await;
