@@ -44,7 +44,7 @@ impl RuntimeRunner {
 
     /// Creates a new runtime instance with the given configuration and global context, without specifying an endpoint.
     /// The config can later be set with [`RuntimeInternal::set_config`].
-    fn new_uninitialized(info: CustomRuntimeInfo) -> RuntimeRunner {
+    pub fn new_uninitialized(info: CustomRuntimeInfo) -> RuntimeRunner {
         Self::new_inner(
             Endpoint::default(),
             OwnEndpointKeys::stub(),
