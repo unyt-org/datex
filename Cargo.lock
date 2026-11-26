@@ -968,10 +968,14 @@ version = "0.0.1"
 dependencies = [
  "aes",
  "aes-kw",
+ "critical-section",
  "ctr",
  "datex-facades",
  "ed25519-dalek",
+ "embassy-futures",
  "esp-hal",
+ "esp-nvs",
+ "esp-storage",
  "hkdf",
  "log",
  "sha2",
@@ -1567,14 +1571,15 @@ dependencies = [
 
 [[package]]
 name = "esp-hal"
-version = "1.1.1"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bfcf2a0842903717f4663f6a08512c32b0f6b2d7fb7db3c8a6895d2e6d49f72"
+checksum = "9e2874462a2a0faca8b6318a10b0db87d2b7cd74dded82b3dfd780c07a319038"
 dependencies = [
  "bitfield",
  "bitflags 2.13.0",
  "bytemuck",
  "cfg-if",
+ "critical-section",
  "delegate",
  "digest",
  "document-features",
@@ -1622,6 +1627,7 @@ dependencies = [
  "strum",
  "ufmt-write",
  "xtensa-lx",
+ "xtensa-lx-rt",
 ]
 
 [[package]]
@@ -1644,6 +1650,19 @@ name = "esp-metadata-generated"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42c2ee95b945a4780796e4359e72c033aed3b45073880e8029458f538532db8a"
+
+[[package]]
+name = "esp-nvs"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "952c42de0a9b05e4c833c55ea6776075a7ca688dfc19042b16db196ef5ee5bf4"
+dependencies = [
+ "embedded-storage",
+ "esp-hal",
+ "esp-storage",
+ "strum",
+ "thiserror 2.0.18",
+]
 
 [[package]]
 name = "esp-riscv-rt"
@@ -1674,6 +1693,21 @@ dependencies = [
  "esp32h2",
  "esp32s2",
  "esp32s3",
+]
+
+[[package]]
+name = "esp-storage"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4cf2b3f00c9f94b27c62a4f5296b19470c3a083c687c8146e554a459f9bee596"
+dependencies = [
+ "document-features",
+ "embedded-storage",
+ "esp-hal",
+ "esp-hal-procmacros",
+ "esp-metadata-generated",
+ "esp-rom-sys",
+ "esp-sync",
 ]
 
 [[package]]
@@ -5260,6 +5294,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e012d667b0aa6d2592ace8ef145a98bff3e76cca7a644f4181ecd7a916ed289b"
 dependencies = [
  "critical-section",
+]
+
+[[package]]
+name = "xtensa-lx-rt"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "409a9b4629d429e995cde4dfbd9fe562ccae66f7624514e200733fc5d0ea8905"
+dependencies = [
+ "document-features",
+ "xtensa-lx",
+ "xtensa-lx-rt-proc-macros",
+]
+
+[[package]]
+name = "xtensa-lx-rt-proc-macros"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96fb42cd29c42f8744c74276e9f5bee7b06685bbe5b88df891516d72cb320450"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.118",
 ]
 
 [[package]]

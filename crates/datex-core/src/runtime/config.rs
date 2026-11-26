@@ -157,9 +157,10 @@ impl RuntimeConfig {
             Some(endpoint) => endpoint.clone(),
             None => {
                 // check if the vault contains the endpoint
-                let stored_endpoint = vault.as_ref().and_then(|vault| {
-                    vault.get(&Endpoint::ANY.to_string(), "active_endpoint")
-                });
+                let stored_endpoint = match &vault {
+                    Some(vault) => vault.get(&Endpoint::ANY.to_string(), "active_endpoint"),
+                    None => None,
+                };
 
                 match stored_endpoint {
                     Some(stored_endpoint) => Endpoint::new(&stored_endpoint),
@@ -186,7 +187,10 @@ impl RuntimeConfig {
                 keys.clone()
             },
             _ => {
-                let stored_keys = vault.as_ref().and_then(|vault| vault.get(&endpoint.to_string(), "own_keys"));
+                let stored_keys = match &vault {
+                    Some(vault) => vault.get(&endpoint.to_string(), "own_keys"),
+                    None => None,
+                };
 
                 // If keys are stored in the vault, use them. Otherwise, generate new keys and store them in the vault.
                 match stored_keys {

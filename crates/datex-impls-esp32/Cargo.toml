@@ -32,12 +32,16 @@ sha2 = { version = "0.10", default-features = false }
 log = { version = "0.4.29", default-features = false }
 ed25519-dalek = {version = "2.2", default-features = false, features = ["fast", "zeroize"]  }
 x25519-dalek = {version = "2.0", features = ["static_secrets"], default-features = false }
+embassy-futures = "0.1.2"
+critical-section = "1.2.0"
 
 [target.'cfg(any(target_arch = "xtensa", target_arch = "riscv32"))'.dependencies]
-esp-hal = { version = "1.1.1", features = [
+esp-hal = { version = "1.1.0", features = [
     "log-04",
     "unstable",
 ], default-features = false }
+esp-storage = { version = "0.9" }
+esp-nvs = { version = "0.6" }
 
 [dev-dependencies]
 tokio = { version = "1.5", features = ["full"] }
@@ -45,12 +49,12 @@ tokio = { version = "1.5", features = ["full"] }
 [features]
 default = []
 
-esp32 = ["esp-hal/esp32"]
-esp32c2 = ["esp-hal/esp32c2"]
-esp32c3 = ["esp-hal/esp32c3"]
-esp32c5 = ["esp-hal/esp32c5"]
-esp32c6 = ["esp-hal/esp32c6"]
-esp32c61 = ["esp-hal/esp32c61"]
-esp32h2 = ["esp-hal/esp32h2"]
-esp32s2 = ["esp-hal/esp32s2"]
-esp32s3 = ["esp-hal/esp32s3"]
+esp32 = ["esp-hal/esp32", "esp-storage/esp32", "esp-nvs/esp32"]
+esp32c2 = ["esp-hal/esp32c2", "esp-storage/esp32c2", "esp-nvs/esp32c2"]
+esp32c3 = ["esp-hal/esp32c3", "esp-storage/esp32c3", "esp-nvs/esp32c3"]
+esp32c5 = ["esp-hal/esp32c5", "esp-storage/esp32c5", "esp-nvs/esp32c5"]
+esp32c6 = ["esp-hal/esp32c6", "esp-storage/esp32c6", "esp-nvs/esp32c6"]
+esp32c61 = ["esp-hal/esp32c61", "esp-storage/esp32c61", "esp-nvs/esp32c61"]
+esp32h2 = ["esp-hal/esp32h2", "esp-storage/esp32h2", "esp-nvs/esp32h2"]
+esp32s2 = ["esp-hal/esp32s2", "esp-storage/esp32s2", "esp-nvs/esp32s2"]
+esp32s3 = ["esp-hal/esp32s3", "esp-storage/esp32s3", "esp-nvs/esp32s3"]

@@ -19,10 +19,7 @@
 #![allow(incomplete_features)]
 #![allow(static_mut_refs)]
 #![allow(async_fn_in_trait)]
-#![cfg_attr(
-    any(target_arch = "xtensa", target_arch = "riscv32"),
-    feature(vec_try_remove)
-)] // FIXME: remove when stable in esp toolchain
+#![feature(vec_try_remove)] // TODO: remove this when the feature is stabilized for esp toolchain
 
 extern crate alloc;
 extern crate num_integer;
@@ -141,7 +138,7 @@ pub mod crypto {
     }
 }
 
-/// VAult implementations selection based on target architecture and features.
+/// Vault implementations selection based on target architecture and features.
 pub mod vault {
     cfg_if::cfg_if! {
         if #[cfg(any(feature = "target_native", test))] {
@@ -189,7 +186,7 @@ pub mod time {
                     .expect("System time is before UNIX_EPOCH")
                     .as_millis() as u64
             } else if #[cfg(feature = "target_esp_shared")] {
-                datex_esp_impls::now_ms()
+                datex_impls_esp32::crypto::now_ms()
             } else {
                 Instant::now().elapsed().as_millis() as u64
             }
