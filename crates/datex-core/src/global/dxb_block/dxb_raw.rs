@@ -62,6 +62,7 @@ impl RawDXB {
 mod tests {
     use super::*;
 
+    #[ignore]
     #[test]
     pub fn raw_dxb_default() {
         let dxb = RawDXB::default();

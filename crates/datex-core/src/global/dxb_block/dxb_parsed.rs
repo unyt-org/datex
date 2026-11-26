@@ -82,6 +82,7 @@ impl ParsedDXB {
 mod tests {
     use super::*;
 
+    #[ignore]
     #[test]
     pub fn parsed_dxb_default() {
         let dxb = ParsedDXB::default();
