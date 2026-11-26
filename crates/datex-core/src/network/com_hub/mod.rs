@@ -285,12 +285,12 @@ pub type ReceiveBlockResult =
 impl ComHub {
     pub fn create(
         endpoint: impl Into<Endpoint>,
+        keys: OwnEndpointKeys,
         incoming_sections_sender: IncomingSectionSender,
         com_interface_reconnect_request_sender: UnboundedSender<
             ComInterfaceReconnectRequest,
         >,
         block_history_capacity: usize,
-        vault_location: Option<&str>,
     ) -> (Rc<ComHub>, impl Future<Output = ()>  + 'static) {
         let (task_manager, task_future) = TaskManager::create();
 
@@ -312,7 +312,7 @@ impl ComHub {
             reconnecting_interfaces: RefCell::new(HashMap::new()),
             task_manager,
             runtime: RefCell::new(None),
-            key_manager: KeyManager::new(vault_location),
+            key_manager: KeyManager::new(keys),
         });
 
         (com_hub, task_future)
@@ -341,14 +341,6 @@ impl ComHub {
                 socket_ready_senders,
             ));
         socket_ready_fut
-    }
-
-    /// Stores the provided keys in the vault or generates new keys if none are provided.
-    pub async fn init_own_keys(
-        &self,
-        keys: Option<OwnEndpointKeys>,
-    ) {
-        self.key_manager.init_own_keys(self.endpoint(), keys).await;
     }
 
     pub fn endpoint(&self) -> &Endpoint {
@@ -2257,6 +2249,7 @@ pub mod tests {
     use datex_macros_internal::Datex;
     use futures_util::FutureExt;
     use log::info;
+    use crate::network::com_hub::key_manager::own_endpoint_keys::OwnEndpointKeys;
 
     /// Creates a mock ComHub for testing without a connected channel
     async fn run_with_com_hub<AppReturn, AppFuture>(
@@ -2277,13 +2270,11 @@ pub mod tests {
         ) = create_unbounded_channel();
         let (com_hub, com_hub_future) = ComHub::create(
             TEST_ENDPOINT_A.clone(),
+            OwnEndpointKeys::default(),
             incoming_section_sender,
             com_interface_reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
-            None,
         );
-
-        com_hub.init_own_keys(None).await;
 
         select! {
             app_result = app_logic(com_hub, incoming_section_receiver, com_interface_reconnect_request_receiver).fuse() => app_result,

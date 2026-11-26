@@ -12,6 +12,7 @@ pub async fn init_runtime() {
         RuntimeConfig::new_with_endpoint(Endpoint::new("@test")),
         CustomRuntimeInfo::default(),
     )
+    .await
     .run(async |runtime| {
         assert_eq!(*runtime.version(), env!("CARGO_PKG_VERSION"));
     })

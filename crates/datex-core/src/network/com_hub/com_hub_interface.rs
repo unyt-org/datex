@@ -209,6 +209,7 @@ mod tests {
 
     use core::time::Duration;
     use futures_util::future::select;
+    use crate::network::com_hub::key_manager::own_endpoint_keys::OwnEndpointKeys;
 
     #[cfg(feature = "std")]
     fn get_metadata_sockets(
@@ -250,13 +251,11 @@ mod tests {
             create_unbounded_channel::<ComInterfaceReconnectRequest>();
         let (com_hub, task_future) = ComHub::create(
             Endpoint::default(),
+            OwnEndpointKeys::default(),
             incoming_sections_sender,
             reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
-            None,
         );
-
-        com_hub.init_own_keys(None).await;
 
         // add interface
         com_hub
@@ -345,10 +344,10 @@ mod tests {
             create_unbounded_channel::<ComInterfaceReconnectRequest>();
         let (com_hub, _task_future) = ComHub::create(
             Endpoint::default(),
+            OwnEndpointKeys::default(),
             incoming_sections_sender,
             reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
-            None,
         );
 
         let result = com_hub.remove_interface(&ComInterfaceUUID::new()).await;

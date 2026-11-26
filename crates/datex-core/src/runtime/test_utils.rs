@@ -17,11 +17,11 @@ pub async fn use_mock_setup_with_two_connected_runtimes<AppReturn, AppFuture>(
     let runner_a = RuntimeRunner::new(
         RuntimeConfig::new_with_endpoint(endpoint_a.clone()),
         CustomRuntimeInfo::default(),
-    );
+    ).await;
     let runner_b = RuntimeRunner::new(
         RuntimeConfig::new_with_endpoint(endpoint_b.clone()),
         CustomRuntimeInfo::default(),
-    );
+    ).await;
 
     let end_reached = Rc::new(Cell::new(false));
     let end_reached_clone = end_reached.clone();

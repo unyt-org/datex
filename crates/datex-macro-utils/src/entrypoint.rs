@@ -202,7 +202,7 @@ pub fn datex_main_impl_with_config(
             #setup
 
             // first init runner with default config
-            let mut runner = RuntimeRunner::new(RuntimeConfig::default(), #custom_runtime_info);
+            let mut runner = RuntimeRunner::new_unitialized(#custom_runtime_info);
 
             // resolve the actual config from bytes
             let config = match (#config_bytes) {
@@ -210,7 +210,7 @@ pub fn datex_main_impl_with_config(
                 None => RuntimeConfig::default(),
             };
             unsafe {
-                runner.runtime.set_config(config);
+                runner.runtime.set_config(config).await;
             }
 
             #runtime_clone
