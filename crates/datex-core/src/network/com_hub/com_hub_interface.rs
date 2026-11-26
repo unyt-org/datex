@@ -253,9 +253,10 @@ mod tests {
             incoming_sections_sender,
             reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
+            None,
         );
 
-        com_hub.init_own_keys(None, None).await;
+        com_hub.init_own_keys(None).await;
 
         // add interface
         com_hub
@@ -347,6 +348,7 @@ mod tests {
             incoming_sections_sender,
             reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
+            None,
         );
 
         let result = com_hub.remove_interface(&ComInterfaceUUID::new()).await;

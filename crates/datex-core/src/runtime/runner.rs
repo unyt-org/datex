@@ -52,6 +52,7 @@ impl RuntimeRunner {
             incoming_sections_sender,
             com_interface_reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
+            config.vault_location.as_deref(),
         );
 
         let memory = RefCell::new(SharedReferencesCache::default());

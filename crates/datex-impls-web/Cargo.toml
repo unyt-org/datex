@@ -22,6 +22,8 @@ ed25519-dalek = {version = "2.2", default-features = false }
 x25519-dalek = { version = "2.0", features = ["static_secrets"], default-features = false }
 spki = { version = "0.7", default-features = false }
 der = { version = "0.7", default-features = false }
+strum = { version = "0.27.1", features = ["derive"] }
+strum_macros = { version = "0.27.1" }
 
 [dependencies.web-sys]
 version = "0.3.100"

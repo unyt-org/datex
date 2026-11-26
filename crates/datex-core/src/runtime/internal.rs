@@ -389,6 +389,7 @@ impl RuntimeInternal {
                 incoming_sections_sender,
                 reconnect_request_sender,
                 0,
+                None,
             )
             .0,
             TaskManager::create().0,
@@ -460,8 +461,7 @@ impl RuntimeInternal {
     pub(crate) async fn init_async(&self) {
         self.com_hub
             .init_own_keys(
-                self.config().pub_key.as_deref(),
-                self.config().pri_key.as_deref(),
+                self.config().keys.clone(),
             )
             .await;
 

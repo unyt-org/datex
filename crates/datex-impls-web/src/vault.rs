@@ -1,13 +1,28 @@
 use datex_facades::vault::Vault;
+use strum_macros::EnumString;
 
-pub struct VaultWeb;
+#[derive(Debug, EnumString)]
+#[strum(serialize_all = "snake_case")]
+pub enum WebStorageLocation {
+    LocalStorage,
+    SessionStorage,
+}
+
+pub struct VaultWeb {
+    location: WebStorageLocation
+}
 
 impl Vault for VaultWeb {
-    fn store(&self, endpoint: &str, key: &str, data: &[u8]) {
+    fn new(location: &str) -> Self {
+        let location = location.parse().expect("invalid storage location, must be one of 'local_storage' or 'session_storage'");
+        VaultWeb { location }
+    }
+
+    fn store(&self, endpoint: &str, key: &str, data: &str) {
         todo!()
     }
 
-    fn get(&self, endpoint: &str, key: &str) -> Option<Vec<u8>> {
+    fn get(&self, endpoint: &str, key: &str) -> Option<String> {
         todo!()
     }
 

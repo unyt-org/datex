@@ -103,7 +103,7 @@ use datex_facades::crypto::Crypto;
 use datex_macros_internal::Datex;
 use futures::channel::{oneshot, oneshot::Sender};
 use futures_util::FutureExt;
-use crate::network::com_hub::key_manager::KeyManager;
+use crate::network::com_hub::key_manager::{KeyManager, own_endpoint_keys::OwnEndpointKeys};
 
 /// Represents the direction of a block, either incoming or outgoing, used in the block interceptor callback.
 #[derive(Datex, Debug, Clone, Copy, Display)]
@@ -290,7 +290,8 @@ impl ComHub {
             ComInterfaceReconnectRequest,
         >,
         block_history_capacity: usize,
-    ) -> (Rc<ComHub>, impl Future<Output = ()>) {
+        vault_location: Option<&str>,
+    ) -> (Rc<ComHub>, impl Future<Output = ()>  + 'static) {
         let (task_manager, task_future) = TaskManager::create();
 
         let block_handler = BlockHandler::init(
@@ -311,7 +312,7 @@ impl ComHub {
             reconnecting_interfaces: RefCell::new(HashMap::new()),
             task_manager,
             runtime: RefCell::new(None),
-            key_manager: KeyManager::default()
+            key_manager: KeyManager::new(vault_location),
         });
 
         (com_hub, task_future)
@@ -345,10 +346,9 @@ impl ComHub {
     /// Stores the provided keys in the vault or generates new keys if none are provided.
     pub async fn init_own_keys(
         &self,
-        pub_key_str: Option<&str>,
-        pri_key_str: Option<&str>,
+        keys: Option<OwnEndpointKeys>,
     ) {
-        self.key_manager.init_own_keys(pub_key_str, pri_key_str).await;
+        self.key_manager.init_own_keys(self.endpoint(), keys).await;
     }
 
     pub fn endpoint(&self) -> &Endpoint {
@@ -2280,9 +2280,10 @@ pub mod tests {
             incoming_section_sender,
             com_interface_reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
+            None,
         );
 
-        com_hub.init_own_keys(None, None).await;
+        com_hub.init_own_keys(None).await;
 
         select! {
             app_result = app_logic(com_hub, incoming_section_receiver, com_interface_reconnect_request_receiver).fuse() => app_result,
