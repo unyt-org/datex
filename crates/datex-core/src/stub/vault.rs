@@ -1,4 +1,5 @@
 use datex_facades::vault::Vault;
+use crate::prelude::*;
 
 pub struct VaultStub;
 

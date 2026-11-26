@@ -3,9 +3,10 @@ use binrw::{BinRead, BinWrite};
 use serde::{Deserialize, Serialize};
 use datex_facades::crypto::Crypto;
 use crate::crypto::CryptoImpl;
+use crate::prelude::*;
 
 /// Contains the endpoint's own public/private key pair
-#[derive(Clone, Debug, BinRead, BinWrite, PartialEq, Eq, Hash)]
+#[derive(Default, Clone, Debug, BinRead, BinWrite, PartialEq, Eq, Hash)]
 #[brw(little)]
 pub struct OwnEndpointKeys {
     pub pub_key: [u8; 32],
@@ -44,12 +45,12 @@ impl OwnEndpointKeys {
         let bytes = cursor.into_inner();
         Ok(bytes)
     }
-    
+
     pub fn serialize_to_base58(&self) -> Result<String, binrw::Error> {
         let bytes = self.serialize_to_bytes()?;
         Ok(CryptoImpl::enc_b58(&bytes))
     }
-    
+
     pub fn deserialize_from_base58(base58: &str) -> Result<Self, binrw::Error> {
         let bytes = CryptoImpl::dec_b58(base58).map_err(|e| binrw::Error::Custom {
             pos: 0,

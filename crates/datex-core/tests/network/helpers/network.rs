@@ -554,7 +554,7 @@ impl Network {
             let runtime_runner = RuntimeRunner::new(
                 RuntimeConfig::new_with_endpoint(node.endpoint.clone()),
                 CustomRuntimeInfo::default(),
-            );
+            ).await;
 
             let runtime = runtime_runner.runtime.clone();
             node.runtime = Some(runtime.clone());

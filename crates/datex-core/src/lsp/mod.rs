@@ -456,6 +456,7 @@ mod tests {
                     ),
                     CustomRuntimeInfo::default(),
                 )
+                .await
                 .run(async |runtime| {
                     let (tx_to_lsp, rx_from_client) =
                         mpsc::unbounded::<Vec<u8>>();

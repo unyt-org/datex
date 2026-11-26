@@ -10,12 +10,26 @@ pub struct VaultNative {
 impl VaultNative {
     pub fn storage_file_path(&self, endpoint: &str, key: &str) -> PathBuf {
         let storage_directory = &self.storage_directory;
-        let endpoint_sanitized = endpoint.replace("/", "_");
-        let key_sanitized = key.replace("/", "_");
-        let file_path = storage_directory
+        let endpoint_sanitized = Self::sanitize_path_component(endpoint);
+        let key_sanitized = Self::sanitize_path_component(key);
+        storage_directory
             .join(endpoint_sanitized)
-            .join(key_sanitized);
-        file_path
+            .join(key_sanitized)
+    }
+    
+    fn sanitize_path_component(component: &str) -> String {
+        component
+            .replace("/", "_")
+            .replace("\\", "_")
+            .replace(":", "_")
+            .replace("*", "_")
+            .replace("?", "_")
+            .replace("\"", "_")
+            .replace("'", "_")
+            .replace("<", "_")
+            .replace(">", "_")
+            .replace("|", "_")
+            .replace(" ", "_")
     }
 }
 
