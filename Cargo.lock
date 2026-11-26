@@ -1606,9 +1606,7 @@ dependencies = [
  "esp32",
  "esp32c2",
  "esp32c3",
- "esp32c5",
  "esp32c6",
- "esp32c61",
  "esp32h2",
  "esp32s2",
  "esp32s3",
@@ -1687,10 +1685,6 @@ dependencies = [
  "esp32",
  "esp32c2",
  "esp32c3",
- "esp32c5",
- "esp32c6",
- "esp32c61",
- "esp32h2",
  "esp32s2",
  "esp32s3",
 ]
@@ -1767,28 +1761,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "esp32c5"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6f8ba56195df10224263c60ceb93b4578450019ee838b7338039a281117cb02"
-dependencies = [
- "vcell",
-]
-
-[[package]]
 name = "esp32c6"
 version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c58f34ff2633968c12125efc7f4f8f101078d5d34c7cb60eab82268db20986f9"
-dependencies = [
- "vcell",
-]
-
-[[package]]
-name = "esp32c61"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a926616351b1edfdb50b7ea6451a8dff0c7515c6ceb687063af7d32b117ec0d"
 dependencies = [
  "vcell",
 ]
