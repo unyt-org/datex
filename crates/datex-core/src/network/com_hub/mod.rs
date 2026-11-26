@@ -68,7 +68,7 @@ use strum_macros::Display;
 use crate::{
     collections::HashSet,
     crypto::CryptoImpl,
-    global::dxb_block::{BlockId, IncomingSection},
+    global::dxb_block::{dxb_id::BlockId, incoming_section::IncomingSection},
     network::{
         block_handler::IncomingSectionSender,
         com_hub::managers::com_interface_manager::{
@@ -2219,7 +2219,7 @@ pub mod tests {
             UnboundedReceiver, UnboundedSender, create_unbounded_channel,
         },
         global::{
-            dxb_block::{DXBBlock, IncomingSection},
+            dxb_block::{DXBBlock, incoming_section::IncomingSection},
             protocol_structures::{
                 block_header::{BlockHeader, FlagsAndTimestamp},
                 routing_header::RoutingHeader,

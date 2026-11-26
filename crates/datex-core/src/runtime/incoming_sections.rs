@@ -1,7 +1,10 @@
 use crate::{
     core_compiler::{core_compilation_context::CompileInput, panic::Panic},
     global::{
-        dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
+        dxb_block::{
+            DXBBlock,
+            incoming_section::{IncomingSection, OutgoingContextId},
+        },
         protocol_structures::{
             block_header::{BlockHeader, BlockType, FlagsAndTimestamp},
             encrypted_header::EncryptedHeader,
