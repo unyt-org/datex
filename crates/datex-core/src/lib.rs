@@ -145,13 +145,13 @@ pub mod crypto {
 pub mod vault {
     cfg_if::cfg_if! {
         if #[cfg(any(feature = "target_native", test))] {
-            pub use datex_impls_native::vault::VaultNative as CryptoImpl;
+            pub use datex_impls_native::vault::VaultNative as VaultImpl;
         } else if #[cfg(feature = "target_esp_shared")] {
-            pub use datex_impls_esp32::vault::VaultEsp32 as CryptoImpl;
+            pub use datex_impls_esp32::vault::VaultEsp32 as VaultImpl;
         } else if #[cfg(feature = "target_wasm")] {
-            pub use datex_impls_web::vault::VaultWeb as CryptoImpl;
+            pub use datex_impls_web::vault::VaultWeb as VaultImpl;
         } else {
-            pub use crate::stub::vault::VaultStub as CryptoImpl;
+            pub use crate::stub::vault::VaultStub as VaultImpl;
         }
     }
 }

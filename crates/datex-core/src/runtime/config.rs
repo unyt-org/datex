@@ -7,6 +7,7 @@ use crate::{
 };
 use datex_macros_internal::Datex;
 use indexmap::IndexMap;
+use crate::network::com_hub::key_manager::own_endpoint_keys::OwnEndpointKeys;
 
 pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
@@ -49,12 +50,21 @@ impl RuntimeConfigInterface {
 #[derive(Datex, Debug, Default, Clone, PartialEq, Eq)]
 #[datex(structural)]
 pub struct RuntimeConfig {
+    /// The endpoint identifier for the runtime.
     pub endpoint: Endpoint,
+    /// An optional human-readable name for the endpoint which is publicly visible to other endpoints.
     pub name: Option<String>,
-    pub pub_key: Option<String>,
-    pub pri_key: Option<String>,
+    /// Optional public+private keys for the endpoint. If not provided, a new key pair will be generated or retrieved from the vault if available.
+    /// When this keys are set, it will always be used, even if a vault already contains a key for the endpoint. This allows for overriding the vault's key with a specific one.
+    #[datex(serde)]
+    pub keys: Option<OwnEndpointKeys>,
+    /// Optional list of interfaces to be created for the runtime.
     pub interfaces: Option<Vec<RuntimeConfigInterface>>,
+    /// Optional environment variables to be set for the runtime.
     pub env: Option<IndexMap<String, String, RandomState>>,
+    /// The location of the vault for storing keys and other sensitive data.
+    /// If not provided, the vault will not be used and keys will not be persisted.
+    pub vault_location: Option<String>,
 }
 
 impl RuntimeConfig {
@@ -62,10 +72,10 @@ impl RuntimeConfig {
         RuntimeConfig {
             endpoint,
             name: None,
-            pub_key: None,
-            pri_key: None,
+            keys: None,
             interfaces: None,
             env: None,
+            vault_location: None,
         }
     }
 
@@ -145,6 +155,7 @@ pub mod tests {
         },
     };
     use datex_macros_internal::Datex;
+    use crate::network::com_hub::key_manager::own_endpoint_keys::OwnEndpointKeys;
 
     #[derive(Datex, Clone)]
     #[datex(structural)]
@@ -252,31 +263,35 @@ pub mod tests {
     #[test]
     #[cfg(feature = "compiler")]
     fn read_runtime_config_from_datex_source() {
-        let config_source = r#"{
+        let keys = OwnEndpointKeys {
+            pub_key: [1u8; 32],
+            pri_key: [2u8; 32],
+        };
+
+        let config_source = format!(r#"{{
             endpoint: @test,
             name: "Example",
-            pub_key: "PlaceholderPubKey",
-            pri_key: "PlaceholderPriKey",
+            keys: {},
             interfaces: [
-                {
+                {{
                     type: "websocket-client",
-                    config: {url:"wss://example.unyt.land"},
+                    config: {{url:"wss://example.unyt.land"}},
                     priority: #Priority(0u16)
-                }
+                }}
             ],
-            env: null
-        }"#;
+            env: null,
+            vault_location: "./vault"
+        }}"#, serde_json::to_string(&keys).unwrap());
 
         let config =
-            RuntimeConfig::try_from_script(config_source, &Runtime::stub());
+            RuntimeConfig::try_from_script(&config_source, &Runtime::stub());
 
         assert_eq!(
             config,
             Ok(RuntimeConfig {
                 endpoint: Endpoint::new("@test"),
                 name: Some("Example".to_string()),
-                pub_key: Some("PlaceholderPubKey".to_string()),
-                pri_key: Some("PlaceholderPriKey".to_string()),
+                keys: Some(keys),
                 interfaces: Some(vec![RuntimeConfigInterface {
                     interface_type: "websocket-client".to_string(),
                     config: Map::from(vec![(
@@ -287,6 +302,7 @@ pub mod tests {
                     priority: InterfacePriority::Priority(0),
                 }]),
                 env: None,
+                vault_location: Some("./vault".to_string()),
             })
         );
     }

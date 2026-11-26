@@ -1,14 +1,17 @@
-use alloc::vec::Vec;
+use alloc::string::String;
 use datex_facades::vault::Vault;
 
 pub struct VaultEsp;
 
 impl Vault for VaultEsp {
-    fn store(&self, endpoint: &str, key: &str, data: &[u8]) {
+    fn new(location: &str) -> Self {
+        VaultEsp
+    }
+    fn store(&self, endpoint: &str, key: &str, data: &str) {
         todo!()
     }
 
-    fn get(&self, endpoint: &str, key: &str) -> Option<Vec<u8>> {
+    fn get(&self, endpoint: &str, key: &str) -> Option<String> {
         todo!()
     }
 

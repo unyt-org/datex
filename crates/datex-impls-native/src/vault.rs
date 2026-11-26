@@ -1,17 +1,54 @@
+use std::path::{PathBuf};
 use datex_facades::vault::Vault;
+use std::fs;
 
-pub struct VaultNative;
+/// A native implementation of the Vault trait that stores data in the local file system.
+pub struct VaultNative {
+    storage_directory: PathBuf,
+}
+
+impl VaultNative {
+    pub fn storage_file_path(&self, endpoint: &str, key: &str) -> PathBuf {
+        let storage_directory = &self.storage_directory;
+        let endpoint_sanitized = endpoint.replace("/", "_");
+        let key_sanitized = key.replace("/", "_");
+        let file_path = storage_directory
+            .join(endpoint_sanitized)
+            .join(key_sanitized);
+        file_path
+    }
+}
+
 
 impl Vault for VaultNative {
-    fn store(&self, endpoint: &str, key: &str, data: &[u8]) {
-        todo!()
+    /// Creates a new instance of `VaultNative` with a storage directory.
+    fn new(location: &str) -> Self {
+        VaultNative {
+            storage_directory: PathBuf::from(location),
+        }
     }
 
-    fn get(&self, endpoint: &str, key: &str) -> Option<Vec<u8>> {
-        todo!()
+    fn store(&self, endpoint: &str, key: &str, data: &str) {
+        let file_path = self.storage_file_path(endpoint, key);
+        if let Some(parent_dir) = file_path.parent() {
+            fs::create_dir_all(parent_dir).unwrap();
+        }
+        fs::write(file_path, data).unwrap();
+    }
+
+    fn get(&self, endpoint: &str, key: &str) -> Option<String> {
+        let file_path = self.storage_file_path(endpoint, key);
+        if file_path.exists() {
+            fs::read_to_string(file_path).ok()
+        } else {
+            None
+        }
     }
 
     fn delete(&self, endpoint: &str, key: &str) {
-        todo!()
+        let file_path = self.storage_file_path(endpoint, key);
+        if file_path.exists() {
+            fs::remove_file(file_path).ok();
+        }
     }
 }
