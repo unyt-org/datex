@@ -195,15 +195,14 @@ impl RuntimeConfig {
                         keys
                     }
                     None => {
-                        let (pub_key, pri_key) =
-                            CryptoImpl::gen_ed25519().await.unwrap();
-                        let serialized_keys = OwnEndpointKeys { pub_key, pri_key }
+                        let keys = OwnEndpointKeys::new().await;
+                        let serialized_keys = keys
                             .serialize_to_base58()
                             .expect("Failed to serialize own keys");
                         if let Some(vault) = &vault {
                             vault.store(&endpoint.to_string(), "own_keys", &serialized_keys);
                         }
-                        OwnEndpointKeys { pub_key, pri_key }
+                        keys
                     }
                 }
             }

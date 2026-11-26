@@ -251,7 +251,7 @@ mod tests {
             create_unbounded_channel::<ComInterfaceReconnectRequest>();
         let (com_hub, task_future) = ComHub::create(
             Endpoint::default(),
-            OwnEndpointKeys::default(),
+            OwnEndpointKeys::new().await,
             incoming_sections_sender,
             reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
@@ -344,7 +344,7 @@ mod tests {
             create_unbounded_channel::<ComInterfaceReconnectRequest>();
         let (com_hub, _task_future) = ComHub::create(
             Endpoint::default(),
-            OwnEndpointKeys::default(),
+            OwnEndpointKeys::new().await,
             incoming_sections_sender,
             reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
