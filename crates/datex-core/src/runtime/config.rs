@@ -149,7 +149,7 @@ impl RuntimeConfig {
     /// If not, it checks if the vault contains the endpoint and keys.
     /// If not, it generates a new anonymous endpoint and keys, and stores them in the vault if available.
     pub async fn get_or_create_endpoint_and_keys(
-        &self,
+        &mut self,
     ) -> (Endpoint, OwnEndpointKeys) {
         let vault = self.vault_location.as_ref().map(|vault_location| VaultImpl::new(vault_location));
         
@@ -207,6 +207,10 @@ impl RuntimeConfig {
                 }
             }
         };
+        
+        // also store the endpoint and keys in the config for future use
+        self.endpoint = Some(endpoint.clone());
+        self.keys = Some(keys.clone());
 
         (endpoint, keys)
     }
