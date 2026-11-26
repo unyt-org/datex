@@ -2,7 +2,7 @@ use crate::{
     channel::mpsc::{
         UnboundedReceiver, UnboundedSender, create_unbounded_channel,
     },
-    global::dxb_block::{DXBBlock, HeaderParsingError},
+    global::dxb_block::{DXBBlock, error::DxbHeaderParsingError},
 };
 
 use crate::prelude::*;
@@ -35,10 +35,10 @@ impl BlockCollector {
                     Ok(length) => {
                         self.current_block_specified_length = Some(length);
                     }
-                    Err(HeaderParsingError::InsufficientLength) => {
+                    Err(DxbHeaderParsingError::InsufficientLength) => {
                         break;
                     }
-                    Err(HeaderParsingError::InvalidMagicNumber) => {
+                    Err(DxbHeaderParsingError::InvalidMagicNumber) => {
                         error!(
                             "Received invalid block header: Invalid Magic Number"
                         );

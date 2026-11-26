@@ -5,7 +5,10 @@ use crate::{
         CompileInput, DXBWithSharedValues,
     },
     global::{
-        dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
+        dxb_block::{
+            DXBBlock,
+            incoming_section::{IncomingSection, OutgoingContextId},
+        },
         protocol_structures::{
             block_header::{BlockHeader, BlockType, FlagsAndTimestamp},
             routing_header::RoutingHeader,

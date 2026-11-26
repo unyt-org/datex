@@ -182,7 +182,7 @@ impl ComHub {
 #[cfg(test)]
 mod tests {
     use crate::{
-        global::dxb_block::{DXBBlock, IncomingSection},
+        global::dxb_block::{DXBBlock, incoming_section::IncomingSection},
         network::com_hub::test_utils::run_with_coupled_com_hubs,
     };
 
