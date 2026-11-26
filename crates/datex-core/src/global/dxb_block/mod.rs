@@ -1,4 +1,6 @@
 pub mod dxb_id;
+pub mod dxb_parsed;
+pub mod dxb_raw;
 pub mod error;
 pub mod incoming_section;
 
