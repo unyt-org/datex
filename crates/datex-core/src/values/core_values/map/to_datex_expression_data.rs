@@ -1,12 +1,12 @@
 use crate::{
-    ast::{expressions::DataExpressionData, spanned::Spanned},
+    ast::{expressions::NormalExpressionData, spanned::Spanned},
     traits::to_datex_expression_data::ToDatexExpressionData,
     values::core_values::map::Map,
 };
 
 impl ToDatexExpressionData for Map {
-    fn to_datex_expression_data(&self) -> DataExpressionData {
-        DataExpressionData::Map(crate::ast::expressions::Map::new(
+    fn to_datex_expression_data(&self) -> NormalExpressionData {
+        NormalExpressionData::Map(crate::ast::expressions::Map::new(
             self.iter()
                 .map(|(key, value)| {
                     (

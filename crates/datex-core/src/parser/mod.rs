@@ -4,7 +4,7 @@
 use crate::{
     ast::{
         expressions::{
-            DataExpression, DataExpressionData, TypeExpression,
+            NormalExpression, NormalExpressionData, TypeExpression,
             TypeExpressionData,
         },
         spanned::Spanned,
@@ -82,7 +82,7 @@ impl Parser {
     pub fn parse(
         src: &str,
         options: ParserOptions,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         let (tokens, errors) = lexer::get_spanned_tokens_from_source(src);
         // already has lexer errors - aborts early when parsing starts
         if let Some(first_error) = errors.into_iter().next() {
@@ -100,7 +100,7 @@ impl Parser {
     /// Uses default parser options.
     pub fn parse_with_default_options(
         src: &str,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         Self::parse(src, ParserOptions::default())
     }
 
@@ -126,7 +126,7 @@ impl Parser {
     }
 
     /// Entrypoint for parsing a full source file.
-    fn parse_root(&mut self) -> Result<DataExpression, SpannedParserError> {
+    fn parse_root(&mut self) -> Result<NormalExpression, SpannedParserError> {
         self.parse_top_level_statements()
     }
 
@@ -151,10 +151,10 @@ impl Parser {
     fn collect_error_and_continue(
         &mut self,
         error: SpannedParserError,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         let span = error.span.clone();
         self.collect_error(error)
-            .map(|_| DataExpressionData::Recover.with_span(span))
+            .map(|_| NormalExpressionData::Recover.with_span(span))
     }
 
     /// Collects an error and returns a Recover type expression to continue parsing if
@@ -267,9 +267,9 @@ impl Parser {
     /// TODO #660: set correct span on recovered expression
     fn recover_on_error(
         &mut self,
-        result: Result<DataExpression, SpannedParserError>,
+        result: Result<NormalExpression, SpannedParserError>,
         recovery_tokens: &[Token],
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         match result {
             Ok(statement) => Ok(statement),
             Err(err) => {
@@ -282,7 +282,7 @@ impl Parser {
                     }
                     self.advance()?;
                 }
-                Ok(DataExpressionData::Recover.with_default_span())
+                Ok(NormalExpressionData::Recover.with_default_span())
             }
         }
     }
@@ -294,7 +294,7 @@ mod tests {
 
     pub fn try_parse_and_return_on_first_error(
         src: &str,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         Parser::parse_with_default_options(src)
     }
 
@@ -302,7 +302,7 @@ mod tests {
         Parser::parse_collecting_with_default_options(src)
     }
 
-    pub fn parse(src: &str) -> DataExpression {
+    pub fn parse(src: &str) -> NormalExpression {
         Parser::parse_with_default_options(src).unwrap()
     }
 }

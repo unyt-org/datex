@@ -9,7 +9,7 @@ pub mod io;
 
 use crate::{
     ast::expressions::{
-        DataExpressionData, ValueAccessType, VariableAccess,
+        NormalExpressionData, ValueAccessType, VariableAccess,
         VariableAssignment, VariableDeclaration,
     },
     collections::HashMap,
@@ -184,12 +184,12 @@ impl LanguageServer for LanguageServerBackend {
         if let Some(expression) = expression {
             Ok(match *expression.data {
                 // show variable type info on hover
-                DataExpressionData::VariableDeclaration(
+                NormalExpressionData::VariableDeclaration(
                     VariableDeclaration {
                         name, id: Some(id), ..
                     },
                 )
-                | DataExpressionData::VariableAssignment(
+                | NormalExpressionData::VariableAssignment(
                     VariableAssignment {
                         name, id: Some(id), ..
                     },
@@ -206,7 +206,7 @@ impl LanguageServer for LanguageServerBackend {
                     )))
                 }
 
-                DataExpressionData::VariableAccess(VariableAccess {
+                NormalExpressionData::VariableAccess(VariableAccess {
                     id,
                     name,
                     access_type,
@@ -229,34 +229,34 @@ impl LanguageServer for LanguageServerBackend {
                 }
 
                 // show value info on hover for literals
-                DataExpressionData::Integer(integer) => Some(
+                NormalExpressionData::Integer(integer) => Some(
                     self.get_language_string_hover(&format!("{}", integer)),
                 ),
-                DataExpressionData::TypedInteger(typed_integer) => {
+                NormalExpressionData::TypedInteger(typed_integer) => {
                     Some(self.get_language_string_hover(&format!(
                         "{}",
                         typed_integer
                     )))
                 }
-                DataExpressionData::Decimal(decimal) => Some(
+                NormalExpressionData::Decimal(decimal) => Some(
                     self.get_language_string_hover(&format!("{}", decimal)),
                 ),
-                DataExpressionData::TypedDecimal(typed_decimal) => {
+                NormalExpressionData::TypedDecimal(typed_decimal) => {
                     Some(self.get_language_string_hover(&format!(
                         "{}",
                         typed_decimal
                     )))
                 }
-                DataExpressionData::Boolean(boolean) => Some(
+                NormalExpressionData::Boolean(boolean) => Some(
                     self.get_language_string_hover(&format!("{}", boolean)),
                 ),
-                DataExpressionData::Text(text) => Some(
+                NormalExpressionData::Text(text) => Some(
                     self.get_language_string_hover(&format!("\"{}\"", text)),
                 ),
-                DataExpressionData::Endpoint(endpoint) => Some(
+                NormalExpressionData::Endpoint(endpoint) => Some(
                     self.get_language_string_hover(&format!("{}", endpoint)),
                 ),
-                DataExpressionData::Null => {
+                NormalExpressionData::Null => {
                     Some(self.get_language_string_hover("null"))
                 }
 
@@ -303,7 +303,7 @@ impl LanguageServer for LanguageServerBackend {
             .get_expression_at_position(&params.text_document_position_params);
         if let Some(expression) = expression {
             match *expression.data {
-                DataExpressionData::VariableAccess(VariableAccess {
+                NormalExpressionData::VariableAccess(VariableAccess {
                     id,
                     name: _,
                     ..

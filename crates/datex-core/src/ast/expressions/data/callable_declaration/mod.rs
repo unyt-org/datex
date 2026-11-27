@@ -1,6 +1,6 @@
 //! This module defines the representation for callable declaration expressions in the AST.
 use crate::{
-    ast::expressions::{DataExpression, TypeExpression},
+    ast::expressions::{NormalExpression, TypeExpression},
     prelude::*,
     types::type_definition::callable::CallableKind,
 };
@@ -14,7 +14,7 @@ pub struct CallableDeclaration {
     /// The signature of the callable.
     pub signature: CallableSignature,
     /// The body of the callable.
-    pub body: DataExpression,
+    pub body: NormalExpression,
     /// The number of injected variables, if any.
     pub injected_variable_count: Option<u32>,
 }

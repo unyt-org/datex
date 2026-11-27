@@ -1,6 +1,6 @@
 //! This module defines the representation for stack-related expressions in the AST.
 use crate::{
-    ast::expressions::DataExpression, global::stack_index::StackIndex,
+    ast::expressions::NormalExpression, global::stack_index::StackIndex,
 };
 
 #[cfg(feature = "compiler")]
@@ -11,5 +11,5 @@ pub struct StackAssignment {
     /// The index of the stack slot being assigned to.
     pub index: StackIndex,
     /// The expression being assigned to the stack slot.
-    pub expression: DataExpression,
+    pub expression: NormalExpression,
 }

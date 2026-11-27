@@ -1,7 +1,7 @@
 use crate::{
     ast::expressions::{
-        BinaryOperation, ComparisonOperation, DataExpression,
-        DataExpressionData, UnaryOperation, expression::Expression,
+        BinaryOperation, ComparisonOperation, NormalExpression,
+        NormalExpressionData, UnaryOperation, expression::Expression,
     },
     fmt::{
         Assoc, Format, Formatter, Operation, ParentContext,
@@ -18,7 +18,7 @@ impl<'a> Formatter<'a> {
     /// Handles bracketing of an expression based on the current formatting options.
     pub fn handle_bracketing(
         &'a self,
-        expression: &'a DataExpression,
+        expression: &'a NormalExpression,
         doc: Format<'a>,
         parent_ctx: Option<ParentContext<'a>>,
         is_left_child_of_parent: bool,
@@ -34,7 +34,7 @@ impl<'a> Formatter<'a> {
     /// Decides whether to wrap an expression in parentheses based on its parent context.
     pub fn maybe_wrap_by_parent(
         &'a self,
-        expression: &'a DataExpression,
+        expression: &'a NormalExpression,
         inner: Format<'a>,
         parent_ctx: Option<ParentContext<'a>>,
         is_left_child_of_parent: bool,
@@ -45,7 +45,7 @@ impl<'a> Formatter<'a> {
         }
 
         // handle Statements expression specially
-        if let DataExpressionData::Statements(statements) = expression.data() {
+        if let NormalExpressionData::Statements(statements) = expression.data() {
             return
                 // brackets definitely needed because multiple statements or terminated
                 if statements.statements.len() > 1 || statements.is_terminated {
@@ -125,30 +125,30 @@ impl<'a> Formatter<'a> {
     }
 
     // precedence of an expression (used for children that are not binary/comparison)
-    fn expression_precedence(&self, expression: &DataExpression) -> u8 {
+    fn expression_precedence(&self, expression: &NormalExpression) -> u8 {
         match expression.data() {
-            DataExpressionData::BinaryOperation(BinaryOperation {
+            NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator,
                 ..
             }) => {
                 let (prec, _, _) = self.binary_operator_info(operator);
                 prec
             }
-            DataExpressionData::ComparisonOperation(ComparisonOperation {
+            NormalExpressionData::ComparisonOperation(ComparisonOperation {
                 operator,
                 ..
             }) => {
                 let (prec, _, _) = self.comparison_operator_info(operator);
                 prec
             }
-            DataExpressionData::UnaryOperation(UnaryOperation {
+            NormalExpressionData::UnaryOperation(UnaryOperation {
                 operator: op,
                 ..
             }) => {
                 let (prec, _, _) = self.unary_operator_info(op);
                 prec
             }
-            DataExpressionData::CreateShared(_) => 40,
+            NormalExpressionData::CreateShared(_) => 40,
             _ => 255, // never need parens
         }
     }
@@ -158,7 +158,7 @@ impl<'a> Formatter<'a> {
     /// `is_left_child` indicates whether the child is the left operand.
     fn needs_parens_for_child_expr(
         &self,
-        child: &DataExpression,
+        child: &NormalExpression,
         parent_context: &ParentContext<'a>,
         is_left_child: bool,
     ) -> bool {
@@ -180,7 +180,7 @@ impl<'a> Formatter<'a> {
         let same_op_and_assoc = match (child.data(), &parent_context.operation)
         {
             (
-                DataExpressionData::BinaryOperation(BinaryOperation {
+                NormalExpressionData::BinaryOperation(BinaryOperation {
                     operator,
                     ..
                 }),
@@ -190,7 +190,7 @@ impl<'a> Formatter<'a> {
                 operator == *parent_op && c_is_assoc
             }
             (
-                DataExpressionData::ComparisonOperation(ComparisonOperation {
+                NormalExpressionData::ComparisonOperation(ComparisonOperation {
                     operator,
                     ..
                 }),
@@ -201,7 +201,7 @@ impl<'a> Formatter<'a> {
                 operator == *parent_op && c_is_assoc
             }
             (
-                DataExpressionData::UnaryOperation(UnaryOperation {
+                NormalExpressionData::UnaryOperation(UnaryOperation {
                     operator,
                     ..
                 }),

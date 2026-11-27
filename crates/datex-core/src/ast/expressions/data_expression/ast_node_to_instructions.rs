@@ -1,5 +1,5 @@
 use crate::{
-    ast::expressions::DataExpression,
+    ast::expressions::NormalExpression,
     compiler::{
         ast_node_to_instructions::AstNodeToInstructions,
         context::CompilationContext, error::CompilerError,
@@ -11,7 +11,7 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
 };
 
-impl AstNodeToInstructions for DataExpression {
+impl AstNodeToInstructions for NormalExpression {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,

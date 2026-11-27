@@ -2,7 +2,7 @@ use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, CallableSignature,
         CloneExpression, ComparisonOperation, Conditional, CreateMut,
-        CreateShared, DataExpression, DataExpressionData, DeriveRef,
+        CreateShared, NormalExpression, NormalExpressionData, DeriveRef,
         DeriveSharedRef, EntityDeclarationExpression, EntityValueExpression,
         GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess,
         PropertyAssignment, RangeDeclaration, RemoteExecution, StackAssignment,
@@ -16,7 +16,7 @@ use crate::{
     },
 };
 
-pub type ExpressionVisitResult<E> = Result<VisitAction<DataExpression>, E>;
+pub type ExpressionVisitResult<E> = Result<VisitAction<NormalExpression>, E>;
 
 pub trait VisitableExpression<E> {
     fn walk_children(
@@ -380,129 +380,129 @@ impl<E> VisitableExpression<E> for PropertyAssignment {
     }
 }
 
-impl<E> VisitableExpression<E> for DataExpression {
+impl<E> VisitableExpression<E> for NormalExpression {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
     ) -> Result<(), E> {
         match self.data_mut() {
-            DataExpressionData::PropertyAssignment(property_assignment) => {
+            NormalExpressionData::PropertyAssignment(property_assignment) => {
                 property_assignment.walk_children(visitor)
             }
-            DataExpressionData::BinaryOperation(op) => {
+            NormalExpressionData::BinaryOperation(op) => {
                 op.walk_children(visitor)
             }
-            DataExpressionData::Statements(statements) => {
+            NormalExpressionData::Statements(statements) => {
                 statements.walk_children(visitor)
             }
-            DataExpressionData::List(list) => list.walk_children(visitor),
-            DataExpressionData::Map(map) => map.walk_children(visitor),
-            DataExpressionData::Conditional(conditional) => {
+            NormalExpressionData::List(list) => list.walk_children(visitor),
+            NormalExpressionData::Map(map) => map.walk_children(visitor),
+            NormalExpressionData::Conditional(conditional) => {
                 conditional.walk_children(visitor)
             }
-            DataExpressionData::VariableDeclaration(variable_declaration) => {
+            NormalExpressionData::VariableDeclaration(variable_declaration) => {
                 variable_declaration.walk_children(visitor)
             }
-            DataExpressionData::VariableAssignment(variable_assignment) => {
+            NormalExpressionData::VariableAssignment(variable_assignment) => {
                 variable_assignment.walk_children(visitor)
             }
-            DataExpressionData::TypeDeclaration(type_declaration) => {
+            NormalExpressionData::TypeDeclaration(type_declaration) => {
                 type_declaration.walk_children(visitor)
             }
-            DataExpressionData::EntityDeclaration(entity_declaration) => {
+            NormalExpressionData::EntityDeclaration(entity_declaration) => {
                 entity_declaration.walk_children(visitor)
             }
-            DataExpressionData::TypeExpression(type_expression) => {
+            NormalExpressionData::TypeExpression(type_expression) => {
                 type_expression.walk_children(visitor)
             }
-            DataExpressionData::CallableDeclaration(function_declaration) => {
+            NormalExpressionData::CallableDeclaration(function_declaration) => {
                 function_declaration.walk_children(visitor)
             }
-            DataExpressionData::DeriveRef(create_ref) => {
+            NormalExpressionData::DeriveRef(create_ref) => {
                 create_ref.walk_children(visitor)
             }
-            DataExpressionData::DeriveSharedRef(create_shared_ref) => {
+            NormalExpressionData::DeriveSharedRef(create_shared_ref) => {
                 create_shared_ref.walk_children(visitor)
             }
-            DataExpressionData::CreateShared(create_ref) => {
+            NormalExpressionData::CreateShared(create_ref) => {
                 create_ref.walk_children(visitor)
             }
-            DataExpressionData::CreateMut(create_mut) => {
+            NormalExpressionData::CreateMut(create_mut) => {
                 create_mut.walk_children(visitor)
             }
-            DataExpressionData::Unbox(datex_expression) => {
+            NormalExpressionData::Unbox(datex_expression) => {
                 datex_expression.walk_children(visitor)
             }
-            DataExpressionData::Clone(datex_expression) => {
+            NormalExpressionData::Clone(datex_expression) => {
                 datex_expression.walk_children(visitor)
             }
-            DataExpressionData::StackAssignment(stack_assignment) => {
+            NormalExpressionData::StackAssignment(stack_assignment) => {
                 stack_assignment.walk_children(visitor)
             }
-            DataExpressionData::StackListAssignment(stack_list_assignment) => {
+            NormalExpressionData::StackListAssignment(stack_list_assignment) => {
                 stack_list_assignment.walk_children(visitor)
             }
-            DataExpressionData::ComparisonOperation(comparison_operation) => {
+            NormalExpressionData::ComparisonOperation(comparison_operation) => {
                 comparison_operation.walk_children(visitor)
             }
-            DataExpressionData::UnboxAssignment(unbox_assignment) => {
+            NormalExpressionData::UnboxAssignment(unbox_assignment) => {
                 unbox_assignment.walk_children(visitor)
             }
-            DataExpressionData::UnboxSlotAssignment(unbox_slot_assignment) => {
+            NormalExpressionData::UnboxSlotAssignment(unbox_slot_assignment) => {
                 unbox_slot_assignment.walk_children(visitor)
             }
-            DataExpressionData::UnaryOperation(unary_operation) => {
+            NormalExpressionData::UnaryOperation(unary_operation) => {
                 unary_operation.walk_children(visitor)
             }
-            DataExpressionData::Apply(apply) => apply.walk_children(visitor),
-            DataExpressionData::InterfaceMethodCall(call) => {
+            NormalExpressionData::Apply(apply) => apply.walk_children(visitor),
+            NormalExpressionData::InterfaceMethodCall(call) => {
                 call.walk_children(visitor)
             }
-            DataExpressionData::PropertyAccess(property_access) => {
+            NormalExpressionData::PropertyAccess(property_access) => {
                 property_access.walk_children(visitor)
             }
-            DataExpressionData::GenericInstantiation(generic_instantiation) => {
+            NormalExpressionData::GenericInstantiation(generic_instantiation) => {
                 generic_instantiation.walk_children(visitor)
             }
-            DataExpressionData::RemoteExecution(remote_execution) => {
+            NormalExpressionData::RemoteExecution(remote_execution) => {
                 remote_execution.walk_children(visitor)
             }
-            DataExpressionData::Compile(compile_expression) => {
+            NormalExpressionData::Compile(compile_expression) => {
                 compile_expression.expression.walk_children(visitor)
             }
 
-            DataExpressionData::Range(range) => range.walk_children(visitor),
+            NormalExpressionData::Range(range) => range.walk_children(visitor),
 
-            DataExpressionData::Tag(tag) => tag.walk_children(visitor),
+            NormalExpressionData::Tag(tag) => tag.walk_children(visitor),
 
-            DataExpressionData::EntityValue(entity_value) => {
+            NormalExpressionData::EntityValue(entity_value) => {
                 entity_value.walk_children(visitor)
             }
 
-            DataExpressionData::Noop
-            | DataExpressionData::OmitRecursive
-            | DataExpressionData::NativeImplementationIndicator
-            | DataExpressionData::VariantAccess(_)
-            | DataExpressionData::VariableAccess(_)
-            | DataExpressionData::RequestSharedRef(_)
-            | DataExpressionData::StackIndex(_)
-            | DataExpressionData::Placeholder(_)
-            | DataExpressionData::Recover
-            | DataExpressionData::Null
-            | DataExpressionData::Boolean(_)
-            | DataExpressionData::Text(_)
-            | DataExpressionData::Decimal(_)
-            | DataExpressionData::TypedDecimal(_)
-            | DataExpressionData::Integer(_)
-            | DataExpressionData::TypedInteger(_)
-            | DataExpressionData::Identifier(_)
-            | DataExpressionData::RootPropertyAccess(_)
-            | DataExpressionData::ResolveCoreLibId(_)
-            | DataExpressionData::Endpoint(_)
-            | DataExpressionData::MoveSharedValue(_)
-            | DataExpressionData::Sender
-            | DataExpressionData::Receiver
-            | DataExpressionData::Instant(_) => Ok(()),
+            NormalExpressionData::Noop
+            | NormalExpressionData::OmitRecursive
+            | NormalExpressionData::NativeImplementationIndicator
+            | NormalExpressionData::VariantAccess(_)
+            | NormalExpressionData::VariableAccess(_)
+            | NormalExpressionData::RequestSharedRef(_)
+            | NormalExpressionData::StackIndex(_)
+            | NormalExpressionData::Placeholder(_)
+            | NormalExpressionData::Recover
+            | NormalExpressionData::Null
+            | NormalExpressionData::Boolean(_)
+            | NormalExpressionData::Text(_)
+            | NormalExpressionData::Decimal(_)
+            | NormalExpressionData::TypedDecimal(_)
+            | NormalExpressionData::Integer(_)
+            | NormalExpressionData::TypedInteger(_)
+            | NormalExpressionData::Identifier(_)
+            | NormalExpressionData::RootPropertyAccess(_)
+            | NormalExpressionData::ResolveCoreLibId(_)
+            | NormalExpressionData::Endpoint(_)
+            | NormalExpressionData::MoveSharedValue(_)
+            | NormalExpressionData::Sender
+            | NormalExpressionData::Receiver
+            | NormalExpressionData::Instant(_) => Ok(()),
         }
     }
 }

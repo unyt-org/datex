@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            DataExpression, DataExpressionData, EntityDeclarationExpression,
+            NormalExpression, NormalExpressionData, EntityDeclarationExpression,
             TypeDeclarationExpression,
         },
         spanned::Spanned,
@@ -12,7 +12,7 @@ use crate::{
 impl Parser {
     pub(crate) fn parse_entity_declaration(
         &mut self,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         Ok(match self.advance()?.token {
             // handle var and const declarations
             Token::EntityTypeDeclaration => {
@@ -33,7 +33,7 @@ impl Parser {
                 // initializer expression
                 let definition = self.parse_type_expression(0)?;
 
-                DataExpressionData::EntityDeclaration(
+                NormalExpressionData::EntityDeclaration(
                     EntityDeclarationExpression {
                         id: None,
                         name,
@@ -58,7 +58,7 @@ impl Parser {
 
     pub(crate) fn parse_type_declaration(
         &mut self,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         Ok(match self.advance()?.token {
             // handle var and const declarations
             Token::TypeAlias => {
@@ -79,7 +79,7 @@ impl Parser {
                 // initializer expression
                 let definition = self.parse_type_expression(0)?;
 
-                DataExpressionData::TypeDeclaration(TypeDeclarationExpression {
+                NormalExpressionData::TypeDeclaration(TypeDeclarationExpression {
                     id: None,
                     name,
                     definition,
@@ -106,7 +106,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                DataExpressionData, EntityDeclarationExpression,
+                NormalExpressionData, EntityDeclarationExpression,
                 TypeDeclarationExpression, TypeExpressionData,
                 expression::Expression,
             },
@@ -121,7 +121,7 @@ mod tests {
         let expr = parse("entity myType = true");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::EntityDeclaration(
+            &NormalExpressionData::EntityDeclaration(
                 EntityDeclarationExpression {
                     id: None,
                     name: "myType".to_string(),
@@ -138,7 +138,7 @@ mod tests {
         let expr = parse("type myAlias = false");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::TypeDeclaration(TypeDeclarationExpression {
+            &NormalExpressionData::TypeDeclaration(TypeDeclarationExpression {
                 id: None,
                 name: "myAlias".to_string(),
                 definition: TypeExpressionData::Boolean(false.into())
@@ -154,7 +154,7 @@ mod tests {
         let expr = parse("entity myType<T, U> = true");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::EntityDeclaration(
+            &NormalExpressionData::EntityDeclaration(
                 EntityDeclarationExpression {
                     id: None,
                     name: "myType".to_string(),

@@ -27,7 +27,7 @@ use datex_core::{
     ast::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-            Conditional, CreateShared, DataExpression, DataExpressionData,
+            Conditional, CreateShared, NormalExpression, NormalExpressionData,
             EntityDeclarationExpression, GenericInstantiation, Intersection,
             List, Map, PropertyAccess, PropertyAssignment, RequestSharedRef,
             StructuralList, TypeExpressionData, TypeVariantAccess,
@@ -51,22 +51,22 @@ use datex_core::{
     values::core_values::error::NumberParseError,
 };
 
-/// Parse the given source code into a DataExpression AST.
-fn parse_unwrap(src: &str) -> DataExpression {
+/// Parse the given source code into a NormalExpression AST.
+fn parse_unwrap(src: &str) -> NormalExpression {
     Parser::parse_with_default_options(src).unwrap()
 }
 
-/// Parse the given source code into a [DataExpressionData] AST.
+/// Parse the given source code into a [NormalExpressionData] AST.
 /// Will panic if there are any parse errors.
-fn parse_unwrap_data(src: &str) -> DataExpressionData {
+fn parse_unwrap_data(src: &str) -> NormalExpressionData {
     *parse_unwrap(src).data
 }
 
-/// Parse the given source code into a DataExpression AST.
+/// Parse the given source code into a NormalExpression AST.
 /// If there are any parse errors, they will be printed to stdout.
 fn parse_print_error(
     src: &str,
-) -> Result<DataExpression, Vec<SpannedParserError>> {
+) -> Result<NormalExpression, Vec<SpannedParserError>> {
     let res = Parser::parse_collecting_with_default_options(src);
     match res {
         ParserResult::Invalid(InvalidDatexParseResult { errors, .. }) => {
@@ -107,30 +107,30 @@ fn json() {
 
     assert_eq!(
         json,
-        DataExpressionData::Map(Map::new(vec![
+        NormalExpressionData::Map(Map::new(vec![
             (
-                DataExpressionData::Text("name".into()).with_default_span(),
-                DataExpressionData::Text("Test".into()).with_default_span()
+                NormalExpressionData::Text("name".into()).with_default_span(),
+                NormalExpressionData::Text("Test".into()).with_default_span()
             ),
             (
-                DataExpressionData::Text("value".into()).with_default_span(),
-                DataExpressionData::Integer(Integer::from(42))
+                NormalExpressionData::Text("value".into()).with_default_span(),
+                NormalExpressionData::Integer(Integer::from(42))
                     .with_default_span()
             ),
             (
-                DataExpressionData::Text("active".into()).with_default_span(),
-                DataExpressionData::Boolean(true.into()).with_default_span()
+                NormalExpressionData::Text("active".into()).with_default_span(),
+                NormalExpressionData::Boolean(true.into()).with_default_span()
             ),
             (
-                DataExpressionData::Text("items".into()).with_default_span(),
-                DataExpressionData::List(List::new(vec![
-                    DataExpressionData::Integer(Integer::from(1))
+                NormalExpressionData::Text("items".into()).with_default_span(),
+                NormalExpressionData::List(List::new(vec![
+                    NormalExpressionData::Integer(Integer::from(1))
                         .with_default_span(),
-                    DataExpressionData::Integer(Integer::from(2))
+                    NormalExpressionData::Integer(Integer::from(2))
                         .with_default_span(),
-                    DataExpressionData::Integer(Integer::from(3))
+                    NormalExpressionData::Integer(Integer::from(3))
                         .with_default_span(),
-                    DataExpressionData::Decimal(
+                    NormalExpressionData::Decimal(
                         Decimal::try_from_string("0.5").unwrap()
                     )
                     .with_default_span()
@@ -138,12 +138,12 @@ fn json() {
                 .with_default_span()
             ),
             (
-                DataExpressionData::Text("nested".into()).with_default_span(),
-                DataExpressionData::Map(Map::new(
+                NormalExpressionData::Text("nested".into()).with_default_span(),
+                NormalExpressionData::Map(Map::new(
                     vec![(
-                        DataExpressionData::Text("key".into())
+                        NormalExpressionData::Text("key".into())
                             .with_default_span(),
-                        DataExpressionData::Text("value".into())
+                        NormalExpressionData::Text("value".into())
                             .with_default_span()
                     )]
                     .into_iter()
@@ -162,7 +162,7 @@ fn type_expression() {
     let expr = result.unwrap().data;
     assert_eq!(
         *expr,
-        DataExpressionData::TypeExpression(
+        NormalExpressionData::TypeExpression(
             TypeExpressionData::Union(Union(vec![
                 TypeExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
@@ -176,14 +176,14 @@ fn type_expression() {
     let src = "var a = type<[1,2,3]>";
     let result = parse_print_error(src);
     let expr = result.unwrap().data;
-    if let DataExpressionData::VariableDeclaration(VariableDeclaration {
+    if let NormalExpressionData::VariableDeclaration(VariableDeclaration {
         init_expression: value,
         ..
     }) = *expr
     {
         assert_eq!(
             value.data(),
-            &DataExpressionData::TypeExpression(
+            &NormalExpressionData::TypeExpression(
                 TypeExpressionData::StructuralList(StructuralList(vec![
                     TypeExpressionData::Integer(Integer::from(1))
                         .with_default_span(),
@@ -206,8 +206,8 @@ fn structural_type_declaration() {
     let result = parse_print_error(src);
     let expr = result.unwrap();
     assert_matches!(expr,
-        DataExpression {
-            data: DataExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
+        NormalExpression {
+            data: NormalExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
         }
         if name == "A"
     );
@@ -219,8 +219,8 @@ fn nominal_type_declaration() {
     let result = parse_print_error(src);
     let expr = result.unwrap();
     assert_matches!(expr,
-        DataExpression {
-            data: DataExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
+        NormalExpression {
+            data: NormalExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
         }
         if name == "B"
     );
@@ -229,8 +229,8 @@ fn nominal_type_declaration() {
     let result = parse_print_error(src);
     let expr = result.unwrap();
     assert_matches!(expr,
-        DataExpression {
-            data: DataExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
+        NormalExpression {
+            data: NormalExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
         }
         if name == "User"
     );
@@ -420,7 +420,7 @@ fn function_simple() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::callable_declaration(CallableDeclaration {
+        NormalExpressionData::callable_declaration(CallableDeclaration {
             signature: CallableSignature {
                 name: Some("myFunction".to_string()),
                 kind: CallableKind::Function,
@@ -430,7 +430,7 @@ fn function_simple() {
                 return_type: None,
                 yeet_type: None,
             },
-            body: DataExpressionData::Integer(Integer::from(42))
+            body: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span(),
             injected_variable_count: None,
         })
@@ -447,7 +447,7 @@ fn function_with_params() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::callable_declaration(CallableDeclaration {
+        NormalExpressionData::callable_declaration(CallableDeclaration {
             signature: CallableSignature {
                 name: Some("myFunction".to_string()),
                 kind: CallableKind::Function,
@@ -461,7 +461,7 @@ fn function_with_params() {
                 return_type: None,
                 yeet_type: None,
             },
-            body: DataExpressionData::Integer(Integer::from(42))
+            body: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span(),
             injected_variable_count: None,
         })
@@ -475,7 +475,7 @@ fn function_with_params() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::callable_declaration(CallableDeclaration {
+        NormalExpressionData::callable_declaration(CallableDeclaration {
             signature: CallableSignature {
                 name: Some("myFunction".into()),
                 kind: CallableKind::Function,
@@ -496,15 +496,15 @@ fn function_with_params() {
                 return_type: None,
                 yeet_type: None,
             },
-            body: DataExpressionData::Statements(Statements::new_terminated(
+            body: NormalExpressionData::Statements(Statements::new_terminated(
                 vec![
-                    DataExpressionData::BinaryOperation(BinaryOperation {
+                    NormalExpressionData::BinaryOperation(BinaryOperation {
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Add
                         ),
-                        left: DataExpressionData::Integer(Integer::from(1))
+                        left: NormalExpressionData::Integer(Integer::from(1))
                             .with_default_span(),
-                        right: DataExpressionData::Integer(Integer::from(2))
+                        right: NormalExpressionData::Integer(Integer::from(2))
                             .with_default_span(),
                         ty: None
                     })
@@ -527,7 +527,7 @@ fn function_with_return_type() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::callable_declaration(CallableDeclaration {
+        NormalExpressionData::callable_declaration(CallableDeclaration {
             signature: CallableSignature {
                 name: Some("myFunction".into()),
                 kind: CallableKind::Function,
@@ -549,7 +549,7 @@ fn function_with_return_type() {
                 ),
                 yeet_type: None,
             },
-            body: DataExpressionData::Integer(Integer::from(42))
+            body: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span(),
             injected_variable_count: None,
         })
@@ -562,7 +562,7 @@ fn type_var_declaration() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::VariableDeclaration(VariableDeclaration {
+        NormalExpressionData::VariableDeclaration(VariableDeclaration {
             id: None,
             kind: VariableKind::Var,
             type_annotation: Some(
@@ -570,7 +570,7 @@ fn type_var_declaration() {
                     .with_default_span()
             ),
             name: "x".to_string(),
-            init_expression: DataExpressionData::Integer(Integer::from(42))
+            init_expression: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span()
         })
     );
@@ -579,7 +579,7 @@ fn type_var_declaration() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::VariableDeclaration(VariableDeclaration {
+        NormalExpressionData::VariableDeclaration(VariableDeclaration {
             id: None,
             kind: VariableKind::Var,
             type_annotation: Some(
@@ -591,7 +591,7 @@ fn type_var_declaration() {
                 .with_default_span()
             ),
             name: "x".to_string(),
-            init_expression: DataExpressionData::Integer(Integer::from(42))
+            init_expression: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span()
         })
     );
@@ -603,17 +603,17 @@ fn binary_operator_precedence() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: DataExpressionData::Integer(Integer::from(1))
+            left: NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span(),
-            right: DataExpressionData::BinaryOperation(BinaryOperation {
+            right: NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(
                     ArithmeticOperator::Multiply
                 ),
-                left: DataExpressionData::Integer(Integer::from(2))
+                left: NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
-                right: DataExpressionData::Integer(Integer::from(3))
+                right: NormalExpressionData::Integer(Integer::from(3))
                     .with_default_span(),
                 ty: None
             })
@@ -626,15 +626,15 @@ fn binary_operator_precedence() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: DataExpressionData::Integer(Integer::from(1))
+            left: NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span(),
-            right: DataExpressionData::BinaryOperation(BinaryOperation {
+            right: NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Bitwise(BitwiseOperator::And),
-                left: DataExpressionData::Integer(Integer::from(2))
+                left: NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
-                right: DataExpressionData::Integer(Integer::from(3))
+                right: NormalExpressionData::Integer(Integer::from(3))
                     .with_default_span(),
                 ty: None
             })
@@ -647,15 +647,15 @@ fn binary_operator_precedence() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: DataExpressionData::Integer(Integer::from(1))
+            left: NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span(),
-            right: DataExpressionData::BinaryOperation(BinaryOperation {
+            right: NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Bitwise(BitwiseOperator::Or),
-                left: DataExpressionData::Integer(Integer::from(2))
+                left: NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
-                right: DataExpressionData::Integer(Integer::from(3))
+                right: NormalExpressionData::Integer(Integer::from(3))
                     .with_default_span(),
                 ty: None
             })
@@ -668,8 +668,8 @@ fn binary_operator_precedence() {
 #[test]
 fn generic_accessor() {
     let generic_instantiation =
-        DataExpressionData::GenericInstantiation(GenericInstantiation {
-            base: DataExpressionData::Identifier("User".to_string())
+        NormalExpressionData::GenericInstantiation(GenericInstantiation {
+            base: NormalExpressionData::Identifier("User".to_string())
                 .with_default_span(),
             generic_arguments: vec![
                 TypeExpressionData::VariantAccess(TypeVariantAccess {
@@ -680,10 +680,10 @@ fn generic_accessor() {
                 .with_default_span(),
             ],
         });
-    let expected = DataExpressionData::Apply(Apply {
+    let expected = NormalExpressionData::Apply(Apply {
         base: generic_instantiation.with_default_span(),
         arguments: vec![
-            DataExpressionData::Map(Map::new(vec![])).with_default_span(),
+            NormalExpressionData::Map(Map::new(vec![])).with_default_span(),
         ],
     });
     assert_eq!(parse_unwrap_data("User<integer/u8> {}"), expected);
@@ -699,13 +699,13 @@ fn if_else() {
         let val = parse_unwrap_data(s);
         assert_eq!(
             val,
-            DataExpressionData::Conditional(Conditional {
-                condition: DataExpressionData::Boolean(true.into())
+            NormalExpressionData::Conditional(Conditional {
+                condition: NormalExpressionData::Boolean(true.into())
                     .with_default_span(),
-                then_branch: DataExpressionData::Integer(Integer::from(1))
+                then_branch: NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
                 else_branch: Some(
-                    DataExpressionData::Integer(Integer::from(2))
+                    NormalExpressionData::Integer(Integer::from(2))
                         .with_default_span()
                 ),
             })
@@ -717,18 +717,18 @@ fn if_else() {
         let val = parse_unwrap_data(s);
         assert_eq!(
             val,
-            DataExpressionData::Conditional(Conditional {
-                condition: DataExpressionData::ComparisonOperation(
+            NormalExpressionData::Conditional(Conditional {
+                condition: NormalExpressionData::ComparisonOperation(
                     ComparisonOperation {
                         operator: ComparisonOperator::StructuralEqual,
-                        left: DataExpressionData::BinaryOperation(
+                        left: NormalExpressionData::BinaryOperation(
                             BinaryOperation {
                                 operator: BinaryOperator::Arithmetic(
                                     ArithmeticOperator::Add
                                 ),
-                                left: DataExpressionData::Boolean(true.into())
+                                left: NormalExpressionData::Boolean(true.into())
                                     .with_default_span(),
-                                right: DataExpressionData::Integer(
+                                right: NormalExpressionData::Integer(
                                     Integer::from(1)
                                 )
                                 .with_default_span(),
@@ -736,15 +736,15 @@ fn if_else() {
                             }
                         )
                         .with_default_span(),
-                        right: DataExpressionData::Integer(Integer::from(2))
+                        right: NormalExpressionData::Integer(Integer::from(2))
                             .with_default_span()
                     }
                 )
                 .with_default_span(),
-                then_branch: DataExpressionData::Integer(Integer::from(4))
+                then_branch: NormalExpressionData::Integer(Integer::from(4))
                     .with_default_span(),
                 else_branch: Some(
-                    DataExpressionData::Integer(Integer::from(2))
+                    NormalExpressionData::Integer(Integer::from(2))
                         .with_default_span()
                 ),
             })
@@ -757,18 +757,18 @@ fn if_else() {
         let val = parse_unwrap_data(s);
         assert_eq!(
             val,
-            DataExpressionData::Conditional(Conditional {
-                condition: DataExpressionData::ComparisonOperation(
+            NormalExpressionData::Conditional(Conditional {
+                condition: NormalExpressionData::ComparisonOperation(
                     ComparisonOperation {
                         operator: ComparisonOperator::StructuralEqual,
-                        left: DataExpressionData::BinaryOperation(
+                        left: NormalExpressionData::BinaryOperation(
                             BinaryOperation {
                                 operator: BinaryOperator::Arithmetic(
                                     ArithmeticOperator::Add
                                 ),
-                                left: DataExpressionData::Boolean(true.into())
+                                left: NormalExpressionData::Boolean(true.into())
                                     .with_default_span(),
-                                right: DataExpressionData::Integer(
+                                right: NormalExpressionData::Integer(
                                     Integer::from(1)
                                 )
                                 .with_default_span(),
@@ -776,21 +776,21 @@ fn if_else() {
                             }
                         )
                         .with_default_span(),
-                        right: DataExpressionData::Integer(Integer::from(2))
+                        right: NormalExpressionData::Integer(Integer::from(2))
                             .with_default_span()
                     }
                 )
                 .with_default_span(),
-                then_branch: DataExpressionData::Apply(Apply {
-                    base: DataExpressionData::Identifier("test".to_string())
+                then_branch: NormalExpressionData::Apply(Apply {
+                    base: NormalExpressionData::Identifier("test".to_string())
                         .with_default_span(),
                     arguments: vec![
-                        DataExpressionData::List(List::new(vec![
-                            DataExpressionData::Integer(Integer::from(1))
+                        NormalExpressionData::List(List::new(vec![
+                            NormalExpressionData::Integer(Integer::from(1))
                                 .with_default_span(),
-                            DataExpressionData::Integer(Integer::from(2))
+                            NormalExpressionData::Integer(Integer::from(2))
                                 .with_default_span(),
-                            DataExpressionData::Integer(Integer::from(3))
+                            NormalExpressionData::Integer(Integer::from(3))
                                 .with_default_span(),
                         ]))
                         .with_default_span()
@@ -816,37 +816,37 @@ fn if_else_if_else() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::Conditional(Conditional {
-            condition: DataExpressionData::ComparisonOperation(
+        NormalExpressionData::Conditional(Conditional {
+            condition: NormalExpressionData::ComparisonOperation(
                 ComparisonOperation {
                     operator: ComparisonOperator::StructuralEqual,
-                    left: DataExpressionData::Identifier("x".to_string())
+                    left: NormalExpressionData::Identifier("x".to_string())
                         .with_default_span(),
-                    right: DataExpressionData::Integer(Integer::from(4))
+                    right: NormalExpressionData::Integer(Integer::from(4))
                         .with_default_span()
                 }
             )
             .with_default_span(),
-            then_branch: DataExpressionData::Text("4".into())
+            then_branch: NormalExpressionData::Text("4".into())
                 .with_default_span(),
             else_branch: Some(
-                DataExpressionData::Conditional(Conditional {
-                    condition: DataExpressionData::ComparisonOperation(
+                NormalExpressionData::Conditional(Conditional {
+                    condition: NormalExpressionData::ComparisonOperation(
                         ComparisonOperation {
                             operator: ComparisonOperator::StructuralEqual,
-                            left: DataExpressionData::Identifier(
+                            left: NormalExpressionData::Identifier(
                                 "x".to_string()
                             )
                             .with_default_span(),
-                            right: DataExpressionData::Text("hello".into())
+                            right: NormalExpressionData::Text("hello".into())
                                 .with_default_span()
                         }
                     )
                     .with_default_span(),
-                    then_branch: DataExpressionData::Text("42".into())
+                    then_branch: NormalExpressionData::Text("42".into())
                         .with_default_span(),
                     else_branch: Some(
-                        DataExpressionData::Null.with_default_span()
+                        NormalExpressionData::Null.with_default_span()
                     )
                 })
                 .with_default_span()
@@ -861,13 +861,13 @@ fn unary_operator() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::UnaryOperation(UnaryOperation {
+        NormalExpressionData::UnaryOperation(UnaryOperation {
             operator: UnaryOperator::Arithmetic(ArithmeticUnaryOperator::Plus),
-            expression: DataExpressionData::Apply(Apply {
-                base: DataExpressionData::Identifier("User".to_string())
+            expression: NormalExpressionData::Apply(Apply {
+                base: NormalExpressionData::Identifier("User".to_string())
                     .with_default_span(),
                 arguments: vec![
-                    DataExpressionData::Map(Map::new(vec![]))
+                    NormalExpressionData::Map(Map::new(vec![]))
                         .with_default_span()
                 ]
             })
@@ -877,29 +877,29 @@ fn unary_operator() {
 
     let src = "-(5)";
     let val = parse_unwrap_data(src);
-    assert_eq!(val, DataExpressionData::Integer(Integer::from(-5)));
+    assert_eq!(val, NormalExpressionData::Integer(Integer::from(-5)));
 
     let src = "+-+-myVal";
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::UnaryOperation(UnaryOperation {
+        NormalExpressionData::UnaryOperation(UnaryOperation {
             operator: UnaryOperator::Arithmetic(ArithmeticUnaryOperator::Plus),
-            expression: DataExpressionData::UnaryOperation(UnaryOperation {
+            expression: NormalExpressionData::UnaryOperation(UnaryOperation {
                 operator: UnaryOperator::Arithmetic(
                     ArithmeticUnaryOperator::Minus
                 ),
-                expression: DataExpressionData::UnaryOperation(
+                expression: NormalExpressionData::UnaryOperation(
                     UnaryOperation {
                         operator: UnaryOperator::Arithmetic(
                             ArithmeticUnaryOperator::Plus
                         ),
-                        expression: DataExpressionData::UnaryOperation(
+                        expression: NormalExpressionData::UnaryOperation(
                             UnaryOperation {
                                 operator: UnaryOperator::Arithmetic(
                                     ArithmeticUnaryOperator::Minus
                                 ),
-                                expression: DataExpressionData::Identifier(
+                                expression: NormalExpressionData::Identifier(
                                     "myVal".to_string()
                                 )
                                 .with_default_span()
@@ -921,7 +921,7 @@ fn var_declaration_with_type_simple() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::VariableDeclaration(VariableDeclaration {
+        NormalExpressionData::VariableDeclaration(VariableDeclaration {
             id: None,
             kind: VariableKind::Var,
             type_annotation: Some(
@@ -929,7 +929,7 @@ fn var_declaration_with_type_simple() {
                     .with_default_span()
             ),
             name: "x".to_string(),
-            init_expression: DataExpressionData::Integer(Integer::from(42))
+            init_expression: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span()
         })
     );
@@ -938,7 +938,7 @@ fn var_declaration_with_type_simple() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::VariableDeclaration(VariableDeclaration {
+        NormalExpressionData::VariableDeclaration(VariableDeclaration {
             id: None,
             kind: VariableKind::Var,
             type_annotation: Some(
@@ -946,7 +946,7 @@ fn var_declaration_with_type_simple() {
                     .with_default_span()
             ),
             name: "x".to_string(),
-            init_expression: DataExpressionData::Integer(Integer::from(42))
+            init_expression: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span()
         })
     );
@@ -955,7 +955,7 @@ fn var_declaration_with_type_simple() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::VariableDeclaration(VariableDeclaration {
+        NormalExpressionData::VariableDeclaration(VariableDeclaration {
             id: None,
             kind: VariableKind::Var,
             type_annotation: Some(
@@ -967,7 +967,7 @@ fn var_declaration_with_type_simple() {
                 .with_default_span()
             ),
             name: "x".to_string(),
-            init_expression: DataExpressionData::Integer(Integer::from(42))
+            init_expression: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span()
         })
     );
@@ -979,7 +979,7 @@ fn var_declaration_with_type_union() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::VariableDeclaration(VariableDeclaration {
+        NormalExpressionData::VariableDeclaration(VariableDeclaration {
             id: None,
             kind: VariableKind::Var,
             type_annotation: Some(
@@ -996,7 +996,7 @@ fn var_declaration_with_type_union() {
                 .with_default_span()
             ),
             name: "x".to_string(),
-            init_expression: DataExpressionData::Integer(Integer::from(42))
+            init_expression: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span()
         })
     );
@@ -1008,7 +1008,7 @@ fn var_declaration_with_type_intersection() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::VariableDeclaration(VariableDeclaration {
+        NormalExpressionData::VariableDeclaration(VariableDeclaration {
             id: None,
             kind: VariableKind::Var,
             type_annotation: Some(
@@ -1021,7 +1021,7 @@ fn var_declaration_with_type_intersection() {
                 .with_default_span()
             ),
             name: "x".to_string(),
-            init_expression: DataExpressionData::Integer(Integer::from(42))
+            init_expression: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span()
         })
     );
@@ -1034,7 +1034,7 @@ fn var_declaration_with_type_intersection() {
 //     let val = parse_unwrap_data(src);
 //     assert_eq!(
 //         val,
-//         DataExpressionData::VariableDeclaration(VariableDeclaration {
+//         NormalExpressionData::VariableDeclaration(VariableDeclaration {
 //             id: None,
 //             kind: VariableKind::Var,
 //             type_annotation: Some(
@@ -1046,7 +1046,7 @@ fn var_declaration_with_type_intersection() {
 //             ),
 //             name: "x".to_string(),
 //             init_expression:
-//                 DataExpressionData::Integer(Integer::from(42))
+//                 NormalExpressionData::Integer(Integer::from(42))
 //                     .with_default_span()
 //             )
 //         })
@@ -1059,15 +1059,15 @@ fn equal_operators() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::ComparisonOperation(ComparisonOperation {
+        NormalExpressionData::ComparisonOperation(ComparisonOperation {
             operator: ComparisonOperator::StructuralEqual,
-            left: DataExpressionData::Integer(Integer::from(3))
+            left: NormalExpressionData::Integer(Integer::from(3))
                 .with_default_span(),
-            right: DataExpressionData::BinaryOperation(BinaryOperation {
+            right: NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: DataExpressionData::Integer(Integer::from(1))
+                left: NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
-                right: DataExpressionData::Integer(Integer::from(2))
+                right: NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
                 ty: None
             })
@@ -1079,15 +1079,15 @@ fn equal_operators() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::ComparisonOperation(ComparisonOperation {
+        NormalExpressionData::ComparisonOperation(ComparisonOperation {
             operator: ComparisonOperator::Equal,
-            left: DataExpressionData::Integer(Integer::from(3))
+            left: NormalExpressionData::Integer(Integer::from(3))
                 .with_default_span(),
-            right: DataExpressionData::BinaryOperation(BinaryOperation {
+            right: NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: DataExpressionData::Integer(Integer::from(1))
+                left: NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
-                right: DataExpressionData::Integer(Integer::from(2))
+                right: NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
                 ty: None
             })
@@ -1099,15 +1099,15 @@ fn equal_operators() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::ComparisonOperation(ComparisonOperation {
+        NormalExpressionData::ComparisonOperation(ComparisonOperation {
             operator: ComparisonOperator::NotStructuralEqual,
-            left: DataExpressionData::Integer(Integer::from(5))
+            left: NormalExpressionData::Integer(Integer::from(5))
                 .with_default_span(),
-            right: DataExpressionData::BinaryOperation(BinaryOperation {
+            right: NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: DataExpressionData::Integer(Integer::from(1))
+                left: NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
-                right: DataExpressionData::Integer(Integer::from(2))
+                right: NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
                 ty: None
             })
@@ -1118,15 +1118,15 @@ fn equal_operators() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::ComparisonOperation(ComparisonOperation {
+        NormalExpressionData::ComparisonOperation(ComparisonOperation {
             operator: ComparisonOperator::NotEqual,
-            left: DataExpressionData::Integer(Integer::from(5))
+            left: NormalExpressionData::Integer(Integer::from(5))
                 .with_default_span(),
-            right: DataExpressionData::BinaryOperation(BinaryOperation {
+            right: NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: DataExpressionData::Integer(Integer::from(1))
+                left: NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
-                right: DataExpressionData::Integer(Integer::from(2))
+                right: NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
                 ty: None
             })
@@ -1138,15 +1138,15 @@ fn equal_operators() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DataExpressionData::ComparisonOperation(ComparisonOperation {
+        NormalExpressionData::ComparisonOperation(ComparisonOperation {
             operator: ComparisonOperator::Is,
-            left: DataExpressionData::Integer(Integer::from(5))
+            left: NormalExpressionData::Integer(Integer::from(5))
                 .with_default_span(),
-            right: DataExpressionData::BinaryOperation(BinaryOperation {
+            right: NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: DataExpressionData::Integer(Integer::from(1))
+                left: NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
-                right: DataExpressionData::Integer(Integer::from(2))
+                right: NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
                 ty: None
             })
@@ -1159,18 +1159,18 @@ fn equal_operators() {
 fn null() {
     let src = "null";
     let val = parse_unwrap_data(src);
-    assert_eq!(val, DataExpressionData::Null);
+    assert_eq!(val, NormalExpressionData::Null);
 }
 
 #[test]
 fn boolean() {
     let src_true = "true";
     let val_true = parse_unwrap_data(src_true);
-    assert_eq!(val_true, DataExpressionData::Boolean(true.into()));
+    assert_eq!(val_true, NormalExpressionData::Boolean(true.into()));
 
     let src_false = "false";
     let val_false = parse_unwrap_data(src_false);
-    assert_eq!(val_false, DataExpressionData::Boolean(false.into()));
+    assert_eq!(val_false, NormalExpressionData::Boolean(false.into()));
 }
 
 #[test]
@@ -1179,7 +1179,7 @@ fn integer() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DataExpressionData::Integer(
+        NormalExpressionData::Integer(
             Integer::try_from_string("123456789123456789").unwrap()
         )
     );
@@ -1191,7 +1191,7 @@ fn negative_integer() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DataExpressionData::Integer(
+        NormalExpressionData::Integer(
             Integer::try_from_string("-123456789123456789").unwrap()
         )
     );
@@ -1203,7 +1203,7 @@ fn integer_with_underscores() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DataExpressionData::Integer(
+        NormalExpressionData::Integer(
             Integer::try_from_string("123456").unwrap()
         )
     );
@@ -1215,7 +1215,7 @@ fn hex_integer() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DataExpressionData::Integer(
+        NormalExpressionData::Integer(
             Integer::from_string_radix("1A2B3C4D5E6F", 16).unwrap()
         )
     );
@@ -1227,7 +1227,7 @@ fn octal_integer() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DataExpressionData::Integer(
+        NormalExpressionData::Integer(
             Integer::from_string_radix("755", 8).unwrap()
         )
     );
@@ -1239,7 +1239,7 @@ fn binary_integer() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DataExpressionData::Integer(
+        NormalExpressionData::Integer(
             Integer::from_string_radix("101010", 2).unwrap()
         )
     );
@@ -1251,7 +1251,7 @@ fn decimal_with_exponent() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DataExpressionData::Decimal(
+        NormalExpressionData::Decimal(
             Decimal::try_from_string("20000000000").unwrap()
         )
     );
@@ -1260,14 +1260,14 @@ fn decimal_with_exponent() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DataExpressionData::Decimal(Decimal::try_from_string("20.0").unwrap())
+        NormalExpressionData::Decimal(Decimal::try_from_string("20.0").unwrap())
     );
 
     let src = "1.23456789123456e2";
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DataExpressionData::Decimal(
+        NormalExpressionData::Decimal(
             Decimal::try_from_string("123.456789123456").unwrap()
         )
     );
@@ -1279,14 +1279,14 @@ fn decimal_with_negative_exponent() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DataExpressionData::Decimal(Decimal::try_from_string("0.02").unwrap())
+        NormalExpressionData::Decimal(Decimal::try_from_string("0.02").unwrap())
     );
 
     let src = "1.23456789123456e-2";
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DataExpressionData::Decimal(
+        NormalExpressionData::Decimal(
             Decimal::try_from_string("0.0123456789123456").unwrap()
         )
     );
@@ -1298,7 +1298,7 @@ fn decimal() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DataExpressionData::Decimal(
+        NormalExpressionData::Decimal(
             Decimal::try_from_string("123.456789123456").unwrap()
         )
     );
@@ -1319,7 +1319,7 @@ fn decimal_with_separator() {
         let num = parse_unwrap_data(src);
         assert_eq!(
             num,
-            DataExpressionData::Decimal(
+            NormalExpressionData::Decimal(
                 Decimal::try_from_string(expected_str).unwrap()
             ),
             "Failed to parse: {src}"
@@ -1333,7 +1333,7 @@ fn negative_decimal() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DataExpressionData::Decimal(
+        NormalExpressionData::Decimal(
             Decimal::try_from_string("-123.4").unwrap()
         )
     );
@@ -1345,7 +1345,7 @@ fn decimal_with_positive_exponent() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DataExpressionData::Decimal(
+        NormalExpressionData::Decimal(
             Decimal::try_from_string("123.456789123456").unwrap()
         )
     );
@@ -1355,7 +1355,7 @@ fn decimal_with_positive_exponent() {
 fn text() {
     let src = r#""Hello, world!""#;
     let text = parse_unwrap_data(src);
-    assert_eq!(text, DataExpressionData::Text("Hello, world!".into()));
+    assert_eq!(text, NormalExpressionData::Text("Hello, world!".into()));
 }
 
 #[test]
@@ -1365,7 +1365,7 @@ fn text_escape_sequences() {
 
     assert_eq!(
         text,
-        DataExpressionData::Text(
+        NormalExpressionData::Text(
             "Hello, \"world\"! \n New line \t tab 😀 ❤".into()
         )
     );
@@ -1375,28 +1375,28 @@ fn text_escape_sequences() {
 fn text_escape_sequences_2() {
     let src = r#""\u0048\u0065\u006C\u006C\u006F, \u2764\uFE0F, \uD83D\uDE00""#;
     let text = parse_unwrap_data(src);
-    assert_eq!(text, DataExpressionData::Text("Hello, ❤️, 😀".into()));
+    assert_eq!(text, NormalExpressionData::Text("Hello, ❤️, 😀".into()));
 }
 
 #[test]
 fn text_nested_escape_sequences() {
     let src = r#""\\\\""#;
     let text = parse_unwrap_data(src);
-    assert_eq!(text, DataExpressionData::Text("\\\\".into()));
+    assert_eq!(text, NormalExpressionData::Text("\\\\".into()));
 }
 
 #[test]
 fn text_nested_escape_sequences_2() {
     let src = r#""\\\"""#;
     let text = parse_unwrap_data(src);
-    assert_eq!(text, DataExpressionData::Text("\\\"".into()));
+    assert_eq!(text, NormalExpressionData::Text("\\\"".into()));
 }
 
 #[test]
 fn empty_list() {
     let src = "[]";
     let arr = parse_unwrap_data(src);
-    assert_eq!(arr, DataExpressionData::List(List::new(vec![])));
+    assert_eq!(arr, NormalExpressionData::List(List::new(vec![])));
 }
 
 #[test]
@@ -1406,15 +1406,15 @@ fn list_with_values() {
 
     assert_eq!(
         arr,
-        DataExpressionData::List(List::new(vec![
-            DataExpressionData::Integer(Integer::from(1)).with_default_span(),
-            DataExpressionData::Integer(Integer::from(2)).with_default_span(),
-            DataExpressionData::Integer(Integer::from(3)).with_default_span(),
-            DataExpressionData::Decimal(
+        NormalExpressionData::List(List::new(vec![
+            NormalExpressionData::Integer(Integer::from(1)).with_default_span(),
+            NormalExpressionData::Integer(Integer::from(2)).with_default_span(),
+            NormalExpressionData::Integer(Integer::from(3)).with_default_span(),
+            NormalExpressionData::Decimal(
                 Decimal::try_from_string("4.5").unwrap()
             )
             .with_default_span(),
-            DataExpressionData::Text("text".into()).with_default_span(),
+            NormalExpressionData::Text("text".into()).with_default_span(),
         ]))
     );
 }
@@ -1424,7 +1424,7 @@ fn empty_map() {
     let src = "{}";
     let obj = parse_unwrap_data(src);
 
-    assert_eq!(obj, DataExpressionData::Map(Map::new(vec![])));
+    assert_eq!(obj, NormalExpressionData::Map(Map::new(vec![])));
 }
 
 #[test]
@@ -1434,17 +1434,17 @@ fn list_of_lists() {
 
     assert_eq!(
         arr,
-        DataExpressionData::List(List::new(vec![
-            DataExpressionData::List(List::new(vec![
-                DataExpressionData::Integer(Integer::from(1))
+        NormalExpressionData::List(List::new(vec![
+            NormalExpressionData::List(List::new(vec![
+                NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
-                DataExpressionData::Integer(Integer::from(2))
+                NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
             ]))
             .with_default_span(),
-            DataExpressionData::Integer(Integer::from(3)).with_default_span(),
-            DataExpressionData::List(List::new(vec![
-                DataExpressionData::Integer(Integer::from(4))
+            NormalExpressionData::Integer(Integer::from(3)).with_default_span(),
+            NormalExpressionData::List(List::new(vec![
+                NormalExpressionData::Integer(Integer::from(4))
                     .with_default_span()
             ]))
             .with_default_span(),
@@ -1458,9 +1458,9 @@ fn single_entry_map() {
     let map = parse_unwrap_data(src);
     assert_eq!(
         map,
-        DataExpressionData::Map(Map::new(vec![(
-            DataExpressionData::Text("x".into()).with_default_span(),
-            DataExpressionData::Integer(Integer::from(1)).with_default_span()
+        NormalExpressionData::Map(Map::new(vec![(
+            NormalExpressionData::Text("x".into()).with_default_span(),
+            NormalExpressionData::Integer(Integer::from(1)).with_default_span()
         )]))
     );
 }
@@ -1469,7 +1469,7 @@ fn single_entry_map() {
 fn scoped_atom() {
     let src = "(1)";
     let atom = parse_unwrap_data(src);
-    assert_eq!(atom, DataExpressionData::Integer(Integer::from(1)));
+    assert_eq!(atom, NormalExpressionData::Integer(Integer::from(1)));
 }
 
 #[test]
@@ -1479,10 +1479,10 @@ fn scoped_list() {
 
     assert_eq!(
         arr,
-        DataExpressionData::List(List::new(vec![
-            DataExpressionData::Integer(Integer::from(1)).with_default_span(),
-            DataExpressionData::Integer(Integer::from(2)).with_default_span(),
-            DataExpressionData::Integer(Integer::from(3)).with_default_span(),
+        NormalExpressionData::List(List::new(vec![
+            NormalExpressionData::Integer(Integer::from(1)).with_default_span(),
+            NormalExpressionData::Integer(Integer::from(2)).with_default_span(),
+            NormalExpressionData::Integer(Integer::from(3)).with_default_span(),
         ]))
     );
 }
@@ -1494,19 +1494,19 @@ fn map_with_key_value_pairs() {
 
     assert_eq!(
         obj,
-        DataExpressionData::Map(Map::new(vec![
+        NormalExpressionData::Map(Map::new(vec![
             (
-                DataExpressionData::Text("key1".into()).with_default_span(),
-                DataExpressionData::Text("value1".into()).with_default_span()
+                NormalExpressionData::Text("key1".into()).with_default_span(),
+                NormalExpressionData::Text("value1".into()).with_default_span()
             ),
             (
-                DataExpressionData::Text("key2".into()).with_default_span(),
-                DataExpressionData::Integer(Integer::from(42))
+                NormalExpressionData::Text("key2".into()).with_default_span(),
+                NormalExpressionData::Integer(Integer::from(42))
                     .with_default_span()
             ),
             (
-                DataExpressionData::Text("key3".into()).with_default_span(),
-                DataExpressionData::Boolean(true.into()).with_default_span()
+                NormalExpressionData::Text("key3".into()).with_default_span(),
+                NormalExpressionData::Boolean(true.into()).with_default_span()
             ),
         ]))
     );
@@ -1518,22 +1518,22 @@ fn dynamic_map_keys() {
     let obj = parse_unwrap_data(src);
     assert_eq!(
         obj,
-        DataExpressionData::Map(Map::new(vec![
+        NormalExpressionData::Map(Map::new(vec![
             (
-                DataExpressionData::Integer(Integer::from(1))
+                NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
-                DataExpressionData::Text("value1".into()).with_default_span()
+                NormalExpressionData::Text("value1".into()).with_default_span()
             ),
             (
-                DataExpressionData::Integer(Integer::from(2))
+                NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
-                DataExpressionData::Integer(Integer::from(42))
+                NormalExpressionData::Integer(Integer::from(42))
                     .with_default_span()
             ),
             (
-                DataExpressionData::Integer(Integer::from(3))
+                NormalExpressionData::Integer(Integer::from(3))
                     .with_default_span(),
-                DataExpressionData::Boolean(true.into()).with_default_span()
+                NormalExpressionData::Boolean(true.into()).with_default_span()
             ),
         ]))
     );
@@ -1546,11 +1546,11 @@ fn add() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: DataExpressionData::Integer(Integer::from(1))
+            left: NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(2))
+            right: NormalExpressionData::Integer(Integer::from(2))
                 .with_default_span(),
             ty: None
         })
@@ -1564,22 +1564,22 @@ fn add_complex_values() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: DataExpressionData::BinaryOperation(BinaryOperation {
+            left: NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: DataExpressionData::List(List::new(vec![]))
+                left: NormalExpressionData::List(List::new(vec![]))
                     .with_default_span(),
-                right: DataExpressionData::Identifier("x".to_string())
+                right: NormalExpressionData::Identifier("x".to_string())
                     .with_default_span(),
                 ty: None
             })
             .with_default_span(),
-            right: DataExpressionData::BinaryOperation(BinaryOperation {
+            right: NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: DataExpressionData::Integer(Integer::from(1))
+                left: NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
-                right: DataExpressionData::Integer(Integer::from(2))
+                right: NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
                 ty: None
             })
@@ -1595,11 +1595,11 @@ fn subtract() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Subtract),
-            left: DataExpressionData::Integer(Integer::from(5))
+            left: NormalExpressionData::Integer(Integer::from(5))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(3))
+            right: NormalExpressionData::Integer(Integer::from(3))
                 .with_default_span(),
             ty: None
         })
@@ -1609,11 +1609,11 @@ fn subtract() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Subtract),
-            left: DataExpressionData::Integer(Integer::from(5))
+            left: NormalExpressionData::Integer(Integer::from(5))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(3))
+            right: NormalExpressionData::Integer(Integer::from(3))
                 .with_default_span(),
             ty: None
         })
@@ -1623,11 +1623,11 @@ fn subtract() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Subtract),
-            left: DataExpressionData::Integer(Integer::from(5))
+            left: NormalExpressionData::Integer(Integer::from(5))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(3))
+            right: NormalExpressionData::Integer(Integer::from(3))
                 .with_default_span(),
             ty: None
         })
@@ -1637,11 +1637,11 @@ fn subtract() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Subtract),
-            left: DataExpressionData::Integer(Integer::from(5))
+            left: NormalExpressionData::Integer(Integer::from(5))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(3))
+            right: NormalExpressionData::Integer(Integer::from(3))
                 .with_default_span(),
             ty: None
         })
@@ -1654,11 +1654,11 @@ fn multiply() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Multiply),
-            left: DataExpressionData::Integer(Integer::from(4))
+            left: NormalExpressionData::Integer(Integer::from(4))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(2))
+            right: NormalExpressionData::Integer(Integer::from(2))
                 .with_default_span(),
             ty: None
         })
@@ -1671,11 +1671,11 @@ fn divide() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Divide),
-            left: DataExpressionData::Integer(Integer::from(8))
+            left: NormalExpressionData::Integer(Integer::from(8))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(2))
+            right: NormalExpressionData::Integer(Integer::from(2))
                 .with_default_span(),
             ty: None
         })
@@ -1685,11 +1685,11 @@ fn divide() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Divide),
-            left: DataExpressionData::Integer(Integer::from(8))
+            left: NormalExpressionData::Integer(Integer::from(8))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(2))
+            right: NormalExpressionData::Integer(Integer::from(2))
                 .with_default_span(),
             ty: None
         })
@@ -1699,11 +1699,11 @@ fn divide() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Divide),
-            left: DataExpressionData::TypedInteger(TypedInteger::from(8u8))
+            left: NormalExpressionData::TypedInteger(TypedInteger::from(8u8))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(2))
+            right: NormalExpressionData::Integer(Integer::from(2))
                 .with_default_span(),
             ty: None
         })
@@ -1716,19 +1716,19 @@ fn complex_calculation() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: DataExpressionData::BinaryOperation(BinaryOperation {
+            left: NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: DataExpressionData::Integer(Integer::from(1))
+                left: NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
-                right: DataExpressionData::BinaryOperation(BinaryOperation {
+                right: NormalExpressionData::BinaryOperation(BinaryOperation {
                     operator: BinaryOperator::Arithmetic(
                         ArithmeticOperator::Multiply
                     ),
-                    left: DataExpressionData::Integer(Integer::from(2))
+                    left: NormalExpressionData::Integer(Integer::from(2))
                         .with_default_span(),
-                    right: DataExpressionData::Integer(Integer::from(3))
+                    right: NormalExpressionData::Integer(Integer::from(3))
                         .with_default_span(),
                     ty: None
                 })
@@ -1736,7 +1736,7 @@ fn complex_calculation() {
                 ty: None
             })
             .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(4))
+            right: NormalExpressionData::Integer(Integer::from(4))
                 .with_default_span(),
             ty: None
         })
@@ -1749,15 +1749,15 @@ fn nested_addition() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: DataExpressionData::Integer(Integer::from(1))
+            left: NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span(),
-            right: DataExpressionData::BinaryOperation(BinaryOperation {
+            right: NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: DataExpressionData::Integer(Integer::from(2))
+                left: NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
-                right: DataExpressionData::Integer(Integer::from(3))
+                right: NormalExpressionData::Integer(Integer::from(3))
                     .with_default_span(),
                 ty: None
             })
@@ -1774,15 +1774,15 @@ fn add_statements_1() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: DataExpressionData::Integer(Integer::from(1))
+            left: NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span(),
-            right: DataExpressionData::Statements(
+            right: NormalExpressionData::Statements(
                 Statements::new_unterminated(vec![
-                    DataExpressionData::Integer(Integer::from(2))
+                    NormalExpressionData::Integer(Integer::from(2))
                         .with_default_span(),
-                    DataExpressionData::Integer(Integer::from(3))
+                    NormalExpressionData::Integer(Integer::from(3))
                         .with_default_span(),
                 ])
             )
@@ -1799,18 +1799,18 @@ fn add_statements_2() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: DataExpressionData::Statements(Statements::new_unterminated(
+            left: NormalExpressionData::Statements(Statements::new_unterminated(
                 vec![
-                    DataExpressionData::Integer(Integer::from(1))
+                    NormalExpressionData::Integer(Integer::from(1))
                         .with_default_span(),
-                    DataExpressionData::Integer(Integer::from(2))
+                    NormalExpressionData::Integer(Integer::from(2))
                         .with_default_span(),
                 ]
             ))
             .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(3))
+            right: NormalExpressionData::Integer(Integer::from(3))
                 .with_default_span(),
             ty: None
         })
@@ -1823,12 +1823,12 @@ fn nested_expressions() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::List(List::new(vec![
-            DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::List(List::new(vec![
+            NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: DataExpressionData::Integer(Integer::from(1))
+                left: NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
-                right: DataExpressionData::Integer(Integer::from(2))
+                right: NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
                 ty: None
             })
@@ -1843,9 +1843,9 @@ fn multi_statement_expression() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Statements(Statements::new_unterminated(vec![
-            DataExpressionData::Integer(Integer::from(1)).with_default_span(),
-            DataExpressionData::Integer(Integer::from(2)).with_default_span(),
+        NormalExpressionData::Statements(Statements::new_unterminated(vec![
+            NormalExpressionData::Integer(Integer::from(1)).with_default_span(),
+            NormalExpressionData::Integer(Integer::from(2)).with_default_span(),
         ]))
     );
 }
@@ -1856,10 +1856,10 @@ fn nested_scope_statements() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Statements(Statements::new_unterminated(vec![
-            DataExpressionData::Integer(Integer::from(1)).with_default_span(),
-            DataExpressionData::Integer(Integer::from(2)).with_default_span(),
-            DataExpressionData::Integer(Integer::from(3)).with_default_span(),
+        NormalExpressionData::Statements(Statements::new_unterminated(vec![
+            NormalExpressionData::Integer(Integer::from(1)).with_default_span(),
+            NormalExpressionData::Integer(Integer::from(2)).with_default_span(),
+            NormalExpressionData::Integer(Integer::from(3)).with_default_span(),
         ]))
     );
 }
@@ -1869,10 +1869,10 @@ fn nested_scope_statements_closed() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Statements(Statements::new_terminated(vec![
-            DataExpressionData::Integer(Integer::from(1)).with_default_span(),
-            DataExpressionData::Integer(Integer::from(2)).with_default_span(),
-            DataExpressionData::Integer(Integer::from(3)).with_default_span(),
+        NormalExpressionData::Statements(Statements::new_terminated(vec![
+            NormalExpressionData::Integer(Integer::from(1)).with_default_span(),
+            NormalExpressionData::Integer(Integer::from(2)).with_default_span(),
+            NormalExpressionData::Integer(Integer::from(3)).with_default_span(),
         ]))
     );
 }
@@ -1883,14 +1883,14 @@ fn nested_statements_in_map() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Map(Map::new(vec![(
-            DataExpressionData::Text("key".into()).with_default_span(),
-            DataExpressionData::Statements(Statements::new_unterminated(vec![
-                DataExpressionData::Integer(Integer::from(1))
+        NormalExpressionData::Map(Map::new(vec![(
+                                                    NormalExpressionData::Text("key".into()).with_default_span(),
+                                                    NormalExpressionData::Statements(Statements::new_unterminated(vec![
+                                                        NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
-                DataExpressionData::Integer(Integer::from(2))
+                                                        NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
-                DataExpressionData::Integer(Integer::from(3))
+                                                        NormalExpressionData::Integer(Integer::from(3))
                     .with_default_span(),
             ]))
             .with_default_span()
@@ -1904,8 +1904,8 @@ fn single_statement() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Statements(Statements::new_terminated(vec![
-            DataExpressionData::Integer(Integer::from(1)).with_default_span()
+        NormalExpressionData::Statements(Statements::new_terminated(vec![
+            NormalExpressionData::Integer(Integer::from(1)).with_default_span()
         ]))
     );
 }
@@ -1914,21 +1914,21 @@ fn single_statement() {
 fn empty_statement() {
     let src = ";";
     let expr = parse_unwrap_data(src);
-    assert_eq!(expr, DataExpressionData::Statements(Statements::empty()));
+    assert_eq!(expr, NormalExpressionData::Statements(Statements::empty()));
 }
 
 #[test]
 fn empty_statement_multiple() {
     let src = ";;;";
     let expr = parse_unwrap_data(src);
-    assert_eq!(expr, DataExpressionData::Statements(Statements::empty()));
+    assert_eq!(expr, NormalExpressionData::Statements(Statements::empty()));
 }
 
 #[test]
 fn variable_expression() {
     let src = "myVar";
     let expr = parse_unwrap_data(src);
-    assert_eq!(expr, DataExpressionData::Identifier("myVar".to_string()));
+    assert_eq!(expr, NormalExpressionData::Identifier("myVar".to_string()));
 }
 
 #[test]
@@ -1937,11 +1937,11 @@ fn variable_expression_with_operations() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: DataExpressionData::Identifier("myVar".to_string())
+            left: NormalExpressionData::Identifier("myVar".to_string())
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(1))
+            right: NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span(),
             ty: None
         })
@@ -1954,15 +1954,15 @@ fn apply_expression() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Apply(Apply {
-            base: DataExpressionData::Identifier("myFunc".to_string())
+        NormalExpressionData::Apply(Apply {
+            base: NormalExpressionData::Identifier("myFunc".to_string())
                 .with_default_span(),
             arguments: vec![
-                DataExpressionData::Integer(Integer::from(1))
+                NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
-                DataExpressionData::Integer(Integer::from(2))
+                NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
-                DataExpressionData::Integer(Integer::from(3))
+                NormalExpressionData::Integer(Integer::from(3))
                     .with_default_span(),
             ],
         })
@@ -1975,8 +1975,8 @@ fn apply_empty() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Apply(Apply {
-            base: DataExpressionData::Identifier("myFunc".to_string())
+        NormalExpressionData::Apply(Apply {
+            base: NormalExpressionData::Identifier("myFunc".to_string())
                 .with_default_span(),
             arguments: vec![],
         })
@@ -1989,20 +1989,20 @@ fn apply_multiple() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Apply(Apply {
-            base: DataExpressionData::Apply(Apply {
-                base: DataExpressionData::Identifier("myFunc".to_string())
+        NormalExpressionData::Apply(Apply {
+            base: NormalExpressionData::Apply(Apply {
+                base: NormalExpressionData::Identifier("myFunc".to_string())
                     .with_default_span(),
                 arguments: vec![
-                    DataExpressionData::Integer(Integer::from(1))
+                    NormalExpressionData::Integer(Integer::from(1))
                         .with_default_span(),
                 ],
             })
             .with_default_span(),
             arguments: vec![
-                DataExpressionData::Integer(Integer::from(2))
+                NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
-                DataExpressionData::Integer(Integer::from(3))
+                NormalExpressionData::Integer(Integer::from(3))
                     .with_default_span(),
             ]
         })
@@ -2015,11 +2015,11 @@ fn apply_atom() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Apply(Apply {
-            base: DataExpressionData::Identifier("write_line".to_string())
+        NormalExpressionData::Apply(Apply {
+            base: NormalExpressionData::Identifier("write_line".to_string())
                 .with_default_span(),
             arguments: vec![
-                DataExpressionData::Text("test".into()).with_default_span()
+                NormalExpressionData::Text("test".into()).with_default_span()
             ]
         })
     );
@@ -2031,30 +2031,30 @@ fn property_access() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::PropertyAccess(PropertyAccess {
-            base: DataExpressionData::PropertyAccess(PropertyAccess {
-                base: DataExpressionData::PropertyAccess(PropertyAccess {
-                    base: DataExpressionData::PropertyAccess(PropertyAccess {
-                        base: DataExpressionData::Identifier(
+        NormalExpressionData::PropertyAccess(PropertyAccess {
+            base: NormalExpressionData::PropertyAccess(PropertyAccess {
+                base: NormalExpressionData::PropertyAccess(PropertyAccess {
+                    base: NormalExpressionData::PropertyAccess(PropertyAccess {
+                        base: NormalExpressionData::Identifier(
                             "myObj".to_string()
                         )
                         .with_default_span(),
-                        property: DataExpressionData::Text("myProp".into())
+                        property: NormalExpressionData::Text("myProp".into())
                             .with_default_span(),
                     })
                     .with_default_span(),
-                    property: DataExpressionData::Integer(Integer::from(0))
+                    property: NormalExpressionData::Integer(Integer::from(0))
                         .with_default_span(),
                 })
                 .with_default_span(),
-                property: DataExpressionData::BinaryOperation(
+                property: NormalExpressionData::BinaryOperation(
                     BinaryOperation {
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Add
                         ),
-                        left: DataExpressionData::Integer(Integer::from(42))
+                        left: NormalExpressionData::Integer(Integer::from(42))
                             .with_default_span(),
-                        right: DataExpressionData::Integer(Integer::from(2))
+                        right: NormalExpressionData::Integer(Integer::from(2))
                             .with_default_span(),
                         ty: None
                     }
@@ -2062,7 +2062,7 @@ fn property_access() {
                 .with_default_span(),
             })
             .with_default_span(),
-            property: DataExpressionData::Text("test".into())
+            property: NormalExpressionData::Text("test".into())
                 .with_default_span(),
         })
     );
@@ -2080,18 +2080,18 @@ fn property_access_assignment() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::PropertyAssignment(PropertyAssignment {
+        NormalExpressionData::PropertyAssignment(PropertyAssignment {
             operator: None,
-            base: DataExpressionData::PropertyAccess(PropertyAccess {
-                base: DataExpressionData::Identifier("user".to_string())
+            base: NormalExpressionData::PropertyAccess(PropertyAccess {
+                base: NormalExpressionData::Identifier("user".to_string())
                     .with_default_span(),
-                property: DataExpressionData::Text("props".into())
+                property: NormalExpressionData::Text("props".into())
                     .with_default_span(),
             })
             .with_default_span(),
-            property: DataExpressionData::Integer(Integer::from(0))
+            property: NormalExpressionData::Integer(Integer::from(0))
                 .with_default_span(),
-            assigned_expression: DataExpressionData::Integer(Integer::from(42))
+            assigned_expression: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span(),
         })
     );
@@ -2103,10 +2103,10 @@ fn property_access_getter() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::PropertyAccess(PropertyAccess {
-            base: DataExpressionData::Identifier("myObj".to_string())
+        NormalExpressionData::PropertyAccess(PropertyAccess {
+            base: NormalExpressionData::Identifier("myObj".to_string())
                 .with_default_span(),
-            property: DataExpressionData::Text("myProp".into())
+            property: NormalExpressionData::Text("myProp".into())
                 .with_default_span(),
         })
     );
@@ -2118,10 +2118,10 @@ fn property_access_scoped() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::PropertyAccess(PropertyAccess {
-            base: DataExpressionData::Identifier("myObj".to_string())
+        NormalExpressionData::PropertyAccess(PropertyAccess {
+            base: NormalExpressionData::Identifier("myObj".to_string())
                 .with_default_span(),
-            property: DataExpressionData::Integer(Integer::from(1))
+            property: NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span(),
         })
     );
@@ -2133,30 +2133,30 @@ fn property_access_multiple() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::PropertyAccess(PropertyAccess {
-            base: DataExpressionData::PropertyAccess(PropertyAccess {
-                base: DataExpressionData::PropertyAccess(PropertyAccess {
-                    base: DataExpressionData::PropertyAccess(PropertyAccess {
-                        base: DataExpressionData::Identifier(
+        NormalExpressionData::PropertyAccess(PropertyAccess {
+            base: NormalExpressionData::PropertyAccess(PropertyAccess {
+                base: NormalExpressionData::PropertyAccess(PropertyAccess {
+                    base: NormalExpressionData::PropertyAccess(PropertyAccess {
+                        base: NormalExpressionData::Identifier(
                             "myObj".to_string()
                         )
                         .with_default_span(),
-                        property: DataExpressionData::Text("myProp".into())
+                        property: NormalExpressionData::Text("myProp".into())
                             .with_default_span(),
                     })
                     .with_default_span(),
-                    property: DataExpressionData::Text("anotherProp".into())
+                    property: NormalExpressionData::Text("anotherProp".into())
                         .with_default_span(),
                 })
                 .with_default_span(),
-                property: DataExpressionData::BinaryOperation(
+                property: NormalExpressionData::BinaryOperation(
                     BinaryOperation {
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Add
                         ),
-                        left: DataExpressionData::Integer(Integer::from(1))
+                        left: NormalExpressionData::Integer(Integer::from(1))
                             .with_default_span(),
-                        right: DataExpressionData::Integer(Integer::from(2))
+                        right: NormalExpressionData::Integer(Integer::from(2))
                             .with_default_span(),
                         ty: None
                     }
@@ -2164,11 +2164,11 @@ fn property_access_multiple() {
                 .with_default_span(),
             })
             .with_default_span(),
-            property: DataExpressionData::Statements(
+            property: NormalExpressionData::Statements(
                 Statements::new_unterminated(vec![
-                    DataExpressionData::Identifier("x".to_string())
+                    NormalExpressionData::Identifier("x".to_string())
                         .with_default_span(),
-                    DataExpressionData::Identifier("y".to_string())
+                    NormalExpressionData::Identifier("y".to_string())
                         .with_default_span(),
                 ])
             )
@@ -2183,18 +2183,18 @@ fn property_access_and_apply() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Apply(Apply {
-            base: DataExpressionData::PropertyAccess(PropertyAccess {
-                base: DataExpressionData::Identifier("myObj".to_string())
+        NormalExpressionData::Apply(Apply {
+            base: NormalExpressionData::PropertyAccess(PropertyAccess {
+                base: NormalExpressionData::Identifier("myObj".to_string())
                     .with_default_span(),
-                property: DataExpressionData::Text("myProp".into())
+                property: NormalExpressionData::Text("myProp".into())
                     .with_default_span(),
             })
             .with_default_span(),
             arguments: vec![
-                DataExpressionData::Integer(Integer::from(1))
+                NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
-                DataExpressionData::Integer(Integer::from(2))
+                NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
             ],
         })
@@ -2207,17 +2207,17 @@ fn apply_and_property_access() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::PropertyAccess(PropertyAccess {
-            base: DataExpressionData::Apply(Apply {
-                base: DataExpressionData::Identifier("myFunc".to_string())
+        NormalExpressionData::PropertyAccess(PropertyAccess {
+            base: NormalExpressionData::Apply(Apply {
+                base: NormalExpressionData::Identifier("myFunc".to_string())
                     .with_default_span(),
                 arguments: vec![
-                    DataExpressionData::Integer(Integer::from(1))
+                    NormalExpressionData::Integer(Integer::from(1))
                         .with_default_span()
                 ],
             })
             .with_default_span(),
-            property: DataExpressionData::Text("myProp".into())
+            property: NormalExpressionData::Text("myProp".into())
                 .with_default_span(),
         })
     );
@@ -2229,22 +2229,22 @@ fn nested_apply_and_property_access() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::PropertyAccess(PropertyAccess {
-            base: DataExpressionData::PropertyAccess(PropertyAccess {
-                base: DataExpressionData::Apply(Apply {
-                    base: DataExpressionData::Identifier("x".to_string())
+        NormalExpressionData::PropertyAccess(PropertyAccess {
+            base: NormalExpressionData::PropertyAccess(PropertyAccess {
+                base: NormalExpressionData::Apply(Apply {
+                    base: NormalExpressionData::Identifier("x".to_string())
                         .with_default_span(),
                     arguments: vec![
-                        DataExpressionData::Integer(Integer::from(1))
+                        NormalExpressionData::Integer(Integer::from(1))
                             .with_default_span()
                     ],
                 })
                 .with_default_span(),
-                property: DataExpressionData::Text("y".into())
+                property: NormalExpressionData::Text("y".into())
                     .with_default_span(),
             })
             .with_default_span(),
-            property: DataExpressionData::Text("z".into()).with_default_span(),
+            property: NormalExpressionData::Text("z".into()).with_default_span(),
         })
     );
 }
@@ -2255,8 +2255,8 @@ fn entity_declaration_statement() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Statements(Statements::new_terminated(vec![
-            DataExpressionData::EntityDeclaration(
+        NormalExpressionData::Statements(Statements::new_terminated(vec![
+            NormalExpressionData::EntityDeclaration(
                 EntityDeclarationExpression {
                     id: None,
                     name: "User".to_string(),
@@ -2289,16 +2289,16 @@ fn entity_declaration_statement() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Statements(Statements::new_terminated(vec![
-            DataExpressionData::Map(Map::new(vec![
+        NormalExpressionData::Statements(Statements::new_terminated(vec![
+            NormalExpressionData::Map(Map::new(vec![
                 (
-                    DataExpressionData::Text("type".into()).with_default_span(),
-                    DataExpressionData::Integer(Integer::from(42))
+                    NormalExpressionData::Text("type".into()).with_default_span(),
+                    NormalExpressionData::Integer(Integer::from(42))
                         .with_default_span()
                 ),
                 (
-                    DataExpressionData::Text("name".into()).with_default_span(),
-                    DataExpressionData::Text("John".into()).with_default_span()
+                    NormalExpressionData::Text("name".into()).with_default_span(),
+                    NormalExpressionData::Text("John".into()).with_default_span()
                 ),
             ]))
             .with_default_span()
@@ -2312,13 +2312,13 @@ fn variable_declaration_statement() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Statements(Statements::new_terminated(vec![
-            DataExpressionData::VariableDeclaration(VariableDeclaration {
+        NormalExpressionData::Statements(Statements::new_terminated(vec![
+            NormalExpressionData::VariableDeclaration(VariableDeclaration {
                 id: None,
                 kind: VariableKind::Const,
                 type_annotation: None,
                 name: "x".to_string(),
-                init_expression: DataExpressionData::Integer(Integer::from(42))
+                init_expression: NormalExpressionData::Integer(Integer::from(42))
                     .with_default_span(),
             })
             .with_default_span()
@@ -2332,19 +2332,19 @@ fn variable_declaration_with_expression() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::VariableDeclaration(VariableDeclaration {
+        NormalExpressionData::VariableDeclaration(VariableDeclaration {
             id: None,
             kind: VariableKind::Var,
             type_annotation: None,
             name: "x".to_string(),
-            init_expression: DataExpressionData::BinaryOperation(
+            init_expression: NormalExpressionData::BinaryOperation(
                 BinaryOperation {
                     operator: BinaryOperator::Arithmetic(
                         ArithmeticOperator::Add
                     ),
-                    left: DataExpressionData::Integer(Integer::from(1))
+                    left: NormalExpressionData::Integer(Integer::from(1))
                         .with_default_span(),
-                    right: DataExpressionData::Integer(Integer::from(2))
+                    right: NormalExpressionData::Integer(Integer::from(2))
                         .with_default_span(),
                     ty: None
                 }
@@ -2360,11 +2360,11 @@ fn variable_assignment() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::VariableAssignment(VariableAssignment {
+        NormalExpressionData::VariableAssignment(VariableAssignment {
             id: None,
             operator: None,
             name: "x".to_string(),
-            expression: DataExpressionData::Integer(Integer::from(42))
+            expression: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span(),
         })
     );
@@ -2376,16 +2376,16 @@ fn variable_assignment_expression() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::VariableAssignment(VariableAssignment {
+        NormalExpressionData::VariableAssignment(VariableAssignment {
             id: None,
             operator: None,
             name: "x".to_string(),
-            expression: DataExpressionData::VariableAssignment(
+            expression: NormalExpressionData::VariableAssignment(
                 VariableAssignment {
                     id: None,
                     operator: None,
                     name: "y".to_string(),
-                    expression: DataExpressionData::Integer(Integer::from(1))
+                    expression: NormalExpressionData::Integer(Integer::from(1))
                         .with_default_span(),
                 }
             )
@@ -2400,12 +2400,12 @@ fn variable_assignment_expression_in_list() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::List(List::new(vec![
-            DataExpressionData::VariableAssignment(VariableAssignment {
+        NormalExpressionData::List(List::new(vec![
+            NormalExpressionData::VariableAssignment(VariableAssignment {
                 id: None,
                 operator: None,
                 name: "x".to_string(),
-                expression: DataExpressionData::Integer(Integer::from(1))
+                expression: NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
             })
             .with_default_span()
@@ -2419,12 +2419,12 @@ fn apply_in_list() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::List(List::new(vec![
-            DataExpressionData::Apply(Apply {
-                base: DataExpressionData::Identifier("myFunc".to_string())
+        NormalExpressionData::List(List::new(vec![
+            NormalExpressionData::Apply(Apply {
+                base: NormalExpressionData::Identifier("myFunc".to_string())
                     .with_default_span(),
                 arguments: vec![
-                    DataExpressionData::Integer(Integer::from(1))
+                    NormalExpressionData::Integer(Integer::from(1))
                         .with_default_span()
                 ],
             })
@@ -2439,7 +2439,7 @@ fn fraction() {
     let res = parse_unwrap_data("42/3");
     assert_eq!(
         res,
-        DataExpressionData::Decimal(Decimal::try_from_string("42/3").unwrap())
+        NormalExpressionData::Decimal(Decimal::try_from_string("42/3").unwrap())
     );
 
     let src = "1/3";
@@ -2453,13 +2453,13 @@ fn fraction() {
     let res = parse_unwrap_data("42.4/3");
     assert_eq!(
         res,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Divide),
-            left: DataExpressionData::Decimal(
+            left: NormalExpressionData::Decimal(
                 Decimal::try_from_string("42.4").unwrap()
             )
             .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(3))
+            right: NormalExpressionData::Integer(Integer::from(3))
                 .with_default_span(),
             ty: None
         })
@@ -2468,11 +2468,11 @@ fn fraction() {
     let res = parse_unwrap_data("42 /3");
     assert_eq!(
         res,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Divide),
-            left: DataExpressionData::Integer(Integer::from(42))
+            left: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(3))
+            right: NormalExpressionData::Integer(Integer::from(3))
                 .with_default_span(),
             ty: None
         })
@@ -2481,11 +2481,11 @@ fn fraction() {
     let res = parse_unwrap_data("42/ 3");
     assert_eq!(
         res,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Divide),
-            left: DataExpressionData::Integer(Integer::from(42))
+            left: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(3))
+            right: NormalExpressionData::Integer(Integer::from(3))
                 .with_default_span(),
             ty: None
         })
@@ -2508,16 +2508,16 @@ fn variable_assignment_multiple() {
     let expr = parse_unwrap(src);
     assert_eq!(
         expr,
-        DataExpressionData::VariableAssignment(VariableAssignment {
+        NormalExpressionData::VariableAssignment(VariableAssignment {
             id: None,
             operator: None,
             name: "x".to_string(),
-            expression: DataExpressionData::VariableAssignment(
+            expression: NormalExpressionData::VariableAssignment(
                 VariableAssignment {
                     id: None,
                     operator: None,
                     name: "y".to_string(),
-                    expression: DataExpressionData::Integer(Integer::from(42))
+                    expression: NormalExpressionData::Integer(Integer::from(42))
                         .with_default_span(),
                 }
             )
@@ -2533,28 +2533,28 @@ fn variable_declaration_and_assignment() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Statements(Statements::new_terminated(vec![
-            DataExpressionData::VariableDeclaration(VariableDeclaration {
+        NormalExpressionData::Statements(Statements::new_terminated(vec![
+            NormalExpressionData::VariableDeclaration(VariableDeclaration {
                 id: None,
                 kind: VariableKind::Var,
                 name: "x".to_string(),
-                init_expression: DataExpressionData::Integer(Integer::from(42))
+                init_expression: NormalExpressionData::Integer(Integer::from(42))
                     .with_default_span(),
                 type_annotation: None
             })
             .with_default_span(),
-            DataExpressionData::VariableAssignment(VariableAssignment {
+            NormalExpressionData::VariableAssignment(VariableAssignment {
                 id: None,
                 operator: None,
                 name: "x".to_string(),
-                expression: DataExpressionData::BinaryOperation(
+                expression: NormalExpressionData::BinaryOperation(
                     BinaryOperation {
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Multiply
                         ),
-                        left: DataExpressionData::Integer(Integer::from(100))
+                        left: NormalExpressionData::Integer(Integer::from(100))
                             .with_default_span(),
-                        right: DataExpressionData::Integer(Integer::from(10))
+                        right: NormalExpressionData::Integer(Integer::from(10))
                             .with_default_span(),
                         ty: None
                     }
@@ -2572,7 +2572,7 @@ fn placeholder() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
+        NormalExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
     );
 }
 
@@ -2695,19 +2695,19 @@ fn invalid_value_containers() {
 fn decimal_nan() {
     let src = "nan";
     let num = parse_unwrap_data(src);
-    assert_matches!(num, DataExpressionData::Decimal(Decimal::Nan));
+    assert_matches!(num, NormalExpressionData::Decimal(Decimal::Nan));
 }
 
 #[test]
 fn decimal_infinity() {
     let src = "infinity";
     let num = parse_unwrap_data(src);
-    assert_eq!(num, DataExpressionData::Decimal(Decimal::Infinity));
+    assert_eq!(num, NormalExpressionData::Decimal(Decimal::Infinity));
 
     let src = "-infinity";
     let num = parse_unwrap_data(src);
 
-    assert_eq!(num, DataExpressionData::Decimal(Decimal::NegInfinity));
+    assert_eq!(num, NormalExpressionData::Decimal(Decimal::NegInfinity));
 }
 
 #[test]
@@ -2716,11 +2716,11 @@ fn comment() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: DataExpressionData::Integer(Integer::from(1))
+            left: NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(2))
+            right: NormalExpressionData::Integer(Integer::from(2))
                 .with_default_span(),
             ty: None
         })
@@ -2730,11 +2730,11 @@ fn comment() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: DataExpressionData::Integer(Integer::from(1))
+            left: NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(2))
+            right: NormalExpressionData::Integer(Integer::from(2))
                 .with_default_span(),
             ty: None
         })
@@ -2747,11 +2747,11 @@ fn multiline_comment() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: DataExpressionData::Integer(Integer::from(1))
+            left: NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(2))
+            right: NormalExpressionData::Integer(Integer::from(2))
                 .with_default_span(),
             ty: None
         })
@@ -2761,11 +2761,11 @@ fn multiline_comment() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: DataExpressionData::Integer(Integer::from(1))
+            left: NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(2))
+            right: NormalExpressionData::Integer(Integer::from(2))
                 .with_default_span(),
             ty: None
         })
@@ -2778,11 +2778,11 @@ fn shebang() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::BinaryOperation(BinaryOperation {
+        NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: DataExpressionData::Integer(Integer::from(1))
+            left: NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span(),
-            right: DataExpressionData::Integer(Integer::from(2))
+            right: NormalExpressionData::Integer(Integer::from(2))
                 .with_default_span(),
             ty: None
         })
@@ -2803,10 +2803,10 @@ fn remote_execution() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::RemoteExecution(RemoteExecution {
-            left: DataExpressionData::Identifier("a".to_string())
+        NormalExpressionData::RemoteExecution(RemoteExecution {
+            left: NormalExpressionData::Identifier("a".to_string())
                 .with_default_span(),
-            right: DataExpressionData::Identifier("b".to_string())
+            right: NormalExpressionData::Identifier("b".to_string())
                 .with_default_span(),
             injected_variable_count: None,
         })
@@ -2818,10 +2818,10 @@ fn remote_execution_no_space() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::RemoteExecution(RemoteExecution {
-            left: DataExpressionData::Identifier("a".to_string())
+        NormalExpressionData::RemoteExecution(RemoteExecution {
+            left: NormalExpressionData::Identifier("a".to_string())
                 .with_default_span(),
-            right: DataExpressionData::Identifier("b".to_string())
+            right: NormalExpressionData::Identifier("b".to_string())
                 .with_default_span(),
             injected_variable_count: None,
         })
@@ -2834,20 +2834,20 @@ fn remote_execution_complex() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::RemoteExecution(RemoteExecution {
-            left: DataExpressionData::Identifier("a".to_string())
+        NormalExpressionData::RemoteExecution(RemoteExecution {
+            left: NormalExpressionData::Identifier("a".to_string())
                 .with_default_span(),
-            right: DataExpressionData::BinaryOperation(BinaryOperation {
+            right: NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                left: DataExpressionData::Identifier("b".to_string())
+                left: NormalExpressionData::Identifier("b".to_string())
                     .with_default_span(),
-                right: DataExpressionData::BinaryOperation(BinaryOperation {
+                right: NormalExpressionData::BinaryOperation(BinaryOperation {
                     operator: BinaryOperator::Arithmetic(
                         ArithmeticOperator::Multiply
                     ),
-                    left: DataExpressionData::Identifier("c".to_string())
+                    left: NormalExpressionData::Identifier("c".to_string())
                         .with_default_span(),
-                    right: DataExpressionData::Integer(Integer::from(2))
+                    right: NormalExpressionData::Integer(Integer::from(2))
                         .with_default_span(),
                     ty: None
                 })
@@ -2866,16 +2866,16 @@ fn remote_execution_statements() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Statements(Statements::new_unterminated(vec![
-            DataExpressionData::RemoteExecution(RemoteExecution {
-                left: DataExpressionData::Identifier("a".to_string())
+        NormalExpressionData::Statements(Statements::new_unterminated(vec![
+            NormalExpressionData::RemoteExecution(RemoteExecution {
+                left: NormalExpressionData::Identifier("a".to_string())
                     .with_default_span(),
-                right: DataExpressionData::Identifier("b".to_string())
+                right: NormalExpressionData::Identifier("b".to_string())
                     .with_default_span(),
                 injected_variable_count: None,
             })
             .with_default_span(),
-            DataExpressionData::Integer(Integer::from(1)).with_default_span(),
+            NormalExpressionData::Integer(Integer::from(1)).with_default_span(),
         ]))
     );
 }
@@ -2886,20 +2886,20 @@ fn remote_execution_inline_statements() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::RemoteExecution(RemoteExecution {
-            left: DataExpressionData::Identifier("a".to_string())
+        NormalExpressionData::RemoteExecution(RemoteExecution {
+            left: NormalExpressionData::Identifier("a".to_string())
                 .with_default_span(),
-            right: DataExpressionData::Statements(
+            right: NormalExpressionData::Statements(
                 Statements::new_unterminated(vec![
-                    DataExpressionData::Integer(Integer::from(1))
+                    NormalExpressionData::Integer(Integer::from(1))
                         .with_default_span(),
-                    DataExpressionData::BinaryOperation(BinaryOperation {
+                    NormalExpressionData::BinaryOperation(BinaryOperation {
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Add
                         ),
-                        left: DataExpressionData::Integer(Integer::from(2))
+                        left: NormalExpressionData::Integer(Integer::from(2))
                             .with_default_span(),
-                        right: DataExpressionData::Integer(Integer::from(3))
+                        right: NormalExpressionData::Integer(Integer::from(3))
                             .with_default_span(),
                         ty: None
                     })
@@ -2918,8 +2918,8 @@ fn unbox() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Unbox(Unbox {
-            expression: DataExpressionData::Identifier("x".to_string())
+        NormalExpressionData::Unbox(Unbox {
+            expression: NormalExpressionData::Identifier("x".to_string())
                 .with_default_span()
         })
     );
@@ -2931,9 +2931,9 @@ fn unbox_multiple() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::Unbox(Unbox {
-            expression: DataExpressionData::Unbox(Unbox {
-                expression: DataExpressionData::Identifier("x".to_string())
+        NormalExpressionData::Unbox(Unbox {
+            expression: NormalExpressionData::Unbox(Unbox {
+                expression: NormalExpressionData::Identifier("x".to_string())
                     .with_default_span()
             })
             .with_default_span()
@@ -2948,7 +2948,7 @@ fn pointer_address() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::RequestSharedRef(RequestSharedRef {
+        NormalExpressionData::RequestSharedRef(RequestSharedRef {
             address: PointerAddress::self_owned([0x12, 0x34, 0x56, 0x78, 0x9A]),
             mutability: ReferenceMutability::Immutable,
         })
@@ -2959,7 +2959,7 @@ fn pointer_address() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::RequestSharedRef(RequestSharedRef {
+        NormalExpressionData::RequestSharedRef(RequestSharedRef {
             address: PointerAddress::remote([
                 0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF, 0x12, 0x34,
                 0x56, 0x78, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -2981,11 +2981,11 @@ fn variable_add_assignment() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::VariableAssignment(VariableAssignment {
+        NormalExpressionData::VariableAssignment(VariableAssignment {
             id: None,
             operator: Some(ModificationOperator::AddAssign),
             name: "x".to_string(),
-            expression: DataExpressionData::Integer(Integer::from(42))
+            expression: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span(),
         })
     );
@@ -2997,11 +2997,11 @@ fn variable_sub_assignment() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::VariableAssignment(VariableAssignment {
+        NormalExpressionData::VariableAssignment(VariableAssignment {
             id: None,
             operator: Some(ModificationOperator::SubtractAssign),
             name: "x".into(),
-            expression: DataExpressionData::Integer(Integer::from(42))
+            expression: NormalExpressionData::Integer(Integer::from(42))
                 .with_default_span(),
         })
     );
@@ -3013,19 +3013,19 @@ fn variable_declaration_shared_mut() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::VariableDeclaration(VariableDeclaration {
+        NormalExpressionData::VariableDeclaration(VariableDeclaration {
             id: None,
             kind: VariableKind::Const,
             name: "x".to_string(),
             type_annotation: None,
-            init_expression: DataExpressionData::CreateShared(CreateShared {
+            init_expression: NormalExpressionData::CreateShared(CreateShared {
                 mutability: SharedContainerMutability::Mutable,
-                expression: DataExpressionData::List(List::new(vec![
-                    DataExpressionData::Integer(Integer::from(1))
+                expression: NormalExpressionData::List(List::new(vec![
+                    NormalExpressionData::Integer(Integer::from(1))
                         .with_default_span(),
-                    DataExpressionData::Integer(Integer::from(2))
+                    NormalExpressionData::Integer(Integer::from(2))
                         .with_default_span(),
-                    DataExpressionData::Integer(Integer::from(3))
+                    NormalExpressionData::Integer(Integer::from(3))
                         .with_default_span(),
                 ]))
                 .with_default_span()
@@ -3041,19 +3041,19 @@ fn variable_declaration_shared() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::VariableDeclaration(VariableDeclaration {
+        NormalExpressionData::VariableDeclaration(VariableDeclaration {
             id: None,
             kind: VariableKind::Const,
             name: "x".to_string(),
             type_annotation: None,
-            init_expression: DataExpressionData::CreateShared(CreateShared {
+            init_expression: NormalExpressionData::CreateShared(CreateShared {
                 mutability: SharedContainerMutability::Immutable,
-                expression: DataExpressionData::List(List::new(vec![
-                    DataExpressionData::Integer(Integer::from(1))
+                expression: NormalExpressionData::List(List::new(vec![
+                    NormalExpressionData::Integer(Integer::from(1))
                         .with_default_span(),
-                    DataExpressionData::Integer(Integer::from(2))
+                    NormalExpressionData::Integer(Integer::from(2))
                         .with_default_span(),
-                    DataExpressionData::Integer(Integer::from(3))
+                    NormalExpressionData::Integer(Integer::from(3))
                         .with_default_span(),
                 ]))
                 .with_default_span()
@@ -3068,12 +3068,12 @@ fn variable_declaration() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::VariableDeclaration(VariableDeclaration {
+        NormalExpressionData::VariableDeclaration(VariableDeclaration {
             id: None,
             kind: VariableKind::Const,
             name: "x".to_string(),
             type_annotation: None,
-            init_expression: DataExpressionData::Integer(Integer::from(1))
+            init_expression: NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span(),
         })
     );
@@ -3085,9 +3085,9 @@ fn negation() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::UnaryOperation(UnaryOperation {
+        NormalExpressionData::UnaryOperation(UnaryOperation {
             operator: UnaryOperator::Logical(LogicalUnaryOperator::Not),
-            expression: DataExpressionData::Identifier("x".to_string())
+            expression: NormalExpressionData::Identifier("x".to_string())
                 .with_default_span()
         })
     );
@@ -3096,9 +3096,9 @@ fn negation() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DataExpressionData::UnaryOperation(UnaryOperation {
+        NormalExpressionData::UnaryOperation(UnaryOperation {
             operator: UnaryOperator::Logical(LogicalUnaryOperator::Not),
-            expression: DataExpressionData::Boolean(true.into())
+            expression: NormalExpressionData::Boolean(true.into())
                 .with_default_span()
         })
     );
@@ -3107,13 +3107,13 @@ fn negation() {
     let expr = parse_unwrap_data(src);
     assert_matches!(
         expr,
-        DataExpressionData::UnaryOperation(UnaryOperation {
+        NormalExpressionData::UnaryOperation(UnaryOperation {
             operator: UnaryOperator::Logical(LogicalUnaryOperator::Not),
-            expression: DataExpression {
-                data: DataExpressionData::UnaryOperation(UnaryOperation {
+            expression: NormalExpression {
+                data: NormalExpressionData::UnaryOperation(UnaryOperation {
                     operator: UnaryOperator::Logical(LogicalUnaryOperator::Not),
-                    expression: DataExpression {
-                        data: DataExpressionData::List(_),
+                    expression: NormalExpression {
+                        data: NormalExpressionData::List(_),
                         ..
                     },
                 }),
@@ -3129,7 +3129,7 @@ fn token_spans() {
     let expr = parse_unwrap(src);
     assert_eq!(expr.span.start, 0);
     assert_eq!(expr.span.end, 10);
-    if let DataExpressionData::BinaryOperation(BinaryOperation {
+    if let NormalExpressionData::BinaryOperation(BinaryOperation {
         operator: _,
         left,
         right,

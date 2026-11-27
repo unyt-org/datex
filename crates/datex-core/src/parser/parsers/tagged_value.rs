@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        expressions::{DataExpression, DataExpressionData, Tagged},
+        expressions::{NormalExpression, NormalExpressionData, Tagged},
         spanned::Spanned,
     },
     parser::{
@@ -14,13 +14,13 @@ use crate::{
 impl Parser {
     pub(crate) fn parse_tagged_value(
         &mut self,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         // expect next token to be a tag
         let tag = self.expect_tag()?;
 
         // if followed by no tokens, return empty tag
         if !self.has_more_tokens() {
-            Ok(DataExpressionData::Tag(Tagged {
+            Ok(NormalExpressionData::Tag(Tagged {
                 tag,
                 expression: None,
             })
@@ -34,14 +34,14 @@ impl Parser {
                         maybe_expression,
                         &[], // TODO: recover?
                     )?;
-                    DataExpressionData::Tag(Tagged {
+                    NormalExpressionData::Tag(Tagged {
                         tag,
                         expression: Some(expression),
                     })
                     .with_default_span()
                 }
                 // else, return empty tag
-                _ => DataExpressionData::Tag(Tagged {
+                _ => NormalExpressionData::Tag(Tagged {
                     tag,
                     expression: None,
                 })
@@ -74,7 +74,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                ComparisonOperation, DataExpressionData, List, Map, Tagged,
+                ComparisonOperation, NormalExpressionData, List, Map, Tagged,
                 expression::Expression,
             },
             spanned::Spanned,
@@ -90,7 +90,7 @@ mod tests {
         let expr = parse("#MyTag");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Tag(Tagged {
+            &NormalExpressionData::Tag(Tagged {
                 tag: "MyTag".to_string(),
                 expression: None
             })
@@ -102,14 +102,14 @@ mod tests {
         let expr = parse("#MyTag { a: 42u8 }");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Tag(Tagged {
+            &NormalExpressionData::Tag(Tagged {
                 tag: "MyTag".to_string(),
                 expression: Some(
-                    DataExpressionData::Map(Map {
+                    NormalExpressionData::Map(Map {
                         entries: vec![(
-                            DataExpressionData::Text("a".into())
+                            NormalExpressionData::Text("a".into())
                                 .with_default_span(),
-                            DataExpressionData::TypedInteger(TypedInteger::U8(
+                            NormalExpressionData::TypedInteger(TypedInteger::U8(
                                 42
                             ))
                             .with_default_span(),
@@ -126,14 +126,14 @@ mod tests {
         let expr = parse("#MyTag [true, false]");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Tag(Tagged {
+            &NormalExpressionData::Tag(Tagged {
                 tag: "MyTag".to_string(),
                 expression: Some(
-                    DataExpressionData::List(List {
+                    NormalExpressionData::List(List {
                         items: vec![
-                            DataExpressionData::Boolean(true.into())
+                            NormalExpressionData::Boolean(true.into())
                                 .with_default_span(),
-                            DataExpressionData::Boolean(false.into())
+                            NormalExpressionData::Boolean(false.into())
                                 .with_default_span(),
                         ]
                     })
@@ -148,10 +148,10 @@ mod tests {
         let expr = parse("#MyTag (42u8)");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Tag(Tagged {
+            &NormalExpressionData::Tag(Tagged {
                 tag: "MyTag".to_string(),
                 expression: Some(
-                    DataExpressionData::TypedInteger(TypedInteger::U8(42))
+                    NormalExpressionData::TypedInteger(TypedInteger::U8(42))
                         .with_default_span()
                 )
             })
@@ -164,16 +164,16 @@ mod tests {
 
         assert_eq!(
             expr.data(),
-            &DataExpressionData::List(List {
+            &NormalExpressionData::List(List {
                 items: vec![
-                    DataExpressionData::Tag(Tagged {
+                    NormalExpressionData::Tag(Tagged {
                         tag: "Tag1".to_string(),
                         expression: Some(
-                            DataExpressionData::Map(Map {
+                            NormalExpressionData::Map(Map {
                                 entries: vec![(
-                                    DataExpressionData::Text("a".into())
+                                    NormalExpressionData::Text("a".into())
                                         .with_default_span(),
-                                    DataExpressionData::TypedInteger(
+                                    NormalExpressionData::TypedInteger(
                                         TypedInteger::U8(1)
                                     )
                                     .with_default_span(),
@@ -183,15 +183,15 @@ mod tests {
                         )
                     })
                     .with_default_span(),
-                    DataExpressionData::Tag(Tagged {
+                    NormalExpressionData::Tag(Tagged {
                         tag: "Tag2".to_string(),
                         expression: None
                     })
                     .with_default_span(),
-                    DataExpressionData::Tag(Tagged {
+                    NormalExpressionData::Tag(Tagged {
                         tag: "Tag3".to_string(),
                         expression: Some(
-                            DataExpressionData::TypedInteger(TypedInteger::U8(
+                            NormalExpressionData::TypedInteger(TypedInteger::U8(
                                 42
                             ))
                             .with_default_span()
@@ -208,17 +208,17 @@ mod tests {
         let expr = parse("#Test (4u8) == 4u8");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::ComparisonOperation(ComparisonOperation {
+            &NormalExpressionData::ComparisonOperation(ComparisonOperation {
                 operator: ComparisonOperator::StructuralEqual,
-                left: DataExpressionData::Tag(Tagged {
+                left: NormalExpressionData::Tag(Tagged {
                     tag: "Test".to_string(),
                     expression: Some(
-                        DataExpressionData::TypedInteger(TypedInteger::U8(4))
+                        NormalExpressionData::TypedInteger(TypedInteger::U8(4))
                             .with_default_span()
                     )
                 })
                 .with_default_span(),
-                right: DataExpressionData::TypedInteger(TypedInteger::U8(4))
+                right: NormalExpressionData::TypedInteger(TypedInteger::U8(4))
                     .with_default_span(),
             })
         );

@@ -1,5 +1,5 @@
 use crate::{
-    ast::expressions::DataExpression, shared_values::SharedContainerMutability,
+    ast::expressions::NormalExpression, shared_values::SharedContainerMutability,
 };
 
 #[cfg(feature = "compiler")]
@@ -10,5 +10,5 @@ pub struct CreateShared {
     /// The mutability of the shared container.
     pub mutability: SharedContainerMutability,
     /// The expression being stored in the shared container.
-    pub expression: DataExpression,
+    pub expression: NormalExpression,
 }

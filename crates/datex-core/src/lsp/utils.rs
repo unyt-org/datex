@@ -1,6 +1,6 @@
 use crate::{
     ast::expressions::{
-        DataExpression, DataExpressionData, List, Map, Statements,
+        NormalExpression, NormalExpressionData, List, Map, Statements,
         VariableAccess, VariableAssignment, VariableDeclaration,
     },
     compiler::{
@@ -261,11 +261,11 @@ impl LanguageServerBackend {
         last_word.to_string()
     }
 
-    /// Retrieves the DataExpression AST node at the given byte offset.
+    /// Retrieves the NormalExpression AST node at the given byte offset.
     pub fn get_expression_at_position(
         &self,
         position: &TextDocumentPositionParams,
-    ) -> Option<DataExpression> {
+    ) -> Option<NormalExpression> {
         let byte_offset = self.position_to_byte_offset(position);
         let mut workspace = self.compiler_workspace.borrow_mut();
         if let Some(rich_ast) = &mut workspace
@@ -276,7 +276,7 @@ impl LanguageServerBackend {
             let ast = &mut rich_ast.ast;
             let mut finder = ExpressionFinder::new(byte_offset);
             finder.visit_datex_expression(ast);
-            finder.found_expr.map(|e| DataExpression {
+            finder.found_expr.map(|e| NormalExpression {
                 span: e.1,
                 data: Box::new(e.0),
                 ty: None,
@@ -317,11 +317,11 @@ impl LanguageServerBackend {
     }
 }
 
-/// Visitor that finds the most specific DataExpression containing a given byte position.
+/// Visitor that finds the most specific NormalExpression containing a given byte position.
 /// If multiple expressions contain the position, the one with the smallest span is chosen.
 struct ExpressionFinder {
     pub search_pos: usize,
-    pub found_expr: Option<(DataExpressionData, core::ops::Range<usize>)>,
+    pub found_expr: Option<(NormalExpressionData, core::ops::Range<usize>)>,
 }
 
 impl ExpressionFinder {
@@ -338,8 +338,8 @@ impl ExpressionFinder {
     fn match_span(
         &mut self,
         span: &core::ops::Range<usize>,
-        expr_data: DataExpressionData,
-    ) -> Result<VisitAction<DataExpression>, ()> {
+        expr_data: NormalExpressionData,
+    ) -> Result<VisitAction<NormalExpression>, ()> {
         if span.start <= self.search_pos && self.search_pos <= span.end {
             // If we already found an expression, only replace it if this one is smaller (more specific)
             if let Some((_, existing_expr_span)) = &self.found_expr {
@@ -365,18 +365,18 @@ impl ExpressionVisitor<()> for ExpressionFinder {
         &mut self,
         stmts: &mut Statements,
         span: &core::ops::Range<usize>,
-    ) -> Result<VisitAction<DataExpression>, ()> {
-        self.match_span(span, DataExpressionData::Statements(stmts.clone()))
+    ) -> Result<VisitAction<NormalExpression>, ()> {
+        self.match_span(span, NormalExpressionData::Statements(stmts.clone()))
     }
 
     fn visit_variable_declaration(
         &mut self,
         var_decl: &mut VariableDeclaration,
         span: &core::ops::Range<usize>,
-    ) -> Result<VisitAction<DataExpression>, ()> {
+    ) -> Result<VisitAction<NormalExpression>, ()> {
         self.match_span(
             span,
-            DataExpressionData::VariableDeclaration(var_decl.clone()),
+            NormalExpressionData::VariableDeclaration(var_decl.clone()),
         )
     }
 
@@ -384,10 +384,10 @@ impl ExpressionVisitor<()> for ExpressionFinder {
         &mut self,
         var_assign: &mut VariableAssignment,
         span: &core::ops::Range<usize>,
-    ) -> Result<VisitAction<DataExpression>, ()> {
+    ) -> Result<VisitAction<NormalExpression>, ()> {
         self.match_span(
             span,
-            DataExpressionData::VariableAssignment(var_assign.clone()),
+            NormalExpressionData::VariableAssignment(var_assign.clone()),
         )
     }
 
@@ -395,10 +395,10 @@ impl ExpressionVisitor<()> for ExpressionFinder {
         &mut self,
         var_access: &mut VariableAccess,
         span: &core::ops::Range<usize>,
-    ) -> Result<VisitAction<DataExpression>, ()> {
+    ) -> Result<VisitAction<NormalExpression>, ()> {
         self.match_span(
             span,
-            DataExpressionData::VariableAccess(var_access.clone()),
+            NormalExpressionData::VariableAccess(var_access.clone()),
         )
     }
 
@@ -406,78 +406,78 @@ impl ExpressionVisitor<()> for ExpressionFinder {
         &mut self,
         list: &mut List,
         span: &core::ops::Range<usize>,
-    ) -> Result<VisitAction<DataExpression>, ()> {
-        self.match_span(span, DataExpressionData::List(list.clone()))
+    ) -> Result<VisitAction<NormalExpression>, ()> {
+        self.match_span(span, NormalExpressionData::List(list.clone()))
     }
 
     fn visit_map(
         &mut self,
         map: &mut Map,
         span: &core::ops::Range<usize>,
-    ) -> Result<VisitAction<DataExpression>, ()> {
-        self.match_span(span, DataExpressionData::Map(map.clone()))
+    ) -> Result<VisitAction<NormalExpression>, ()> {
+        self.match_span(span, NormalExpressionData::Map(map.clone()))
     }
 
     fn visit_integer(
         &mut self,
         value: &mut Integer,
         span: &core::ops::Range<usize>,
-    ) -> Result<VisitAction<DataExpression>, ()> {
-        self.match_span(span, DataExpressionData::Integer(value.clone()))
+    ) -> Result<VisitAction<NormalExpression>, ()> {
+        self.match_span(span, NormalExpressionData::Integer(value.clone()))
     }
 
     fn visit_typed_integer(
         &mut self,
         value: &mut TypedInteger,
         span: &core::ops::Range<usize>,
-    ) -> Result<VisitAction<DataExpression>, ()> {
-        self.match_span(span, DataExpressionData::TypedInteger(value.clone()))
+    ) -> Result<VisitAction<NormalExpression>, ()> {
+        self.match_span(span, NormalExpressionData::TypedInteger(value.clone()))
     }
 
     fn visit_decimal(
         &mut self,
         value: &mut Decimal,
         span: &core::ops::Range<usize>,
-    ) -> Result<VisitAction<DataExpression>, ()> {
-        self.match_span(span, DataExpressionData::Decimal(value.clone()))
+    ) -> Result<VisitAction<NormalExpression>, ()> {
+        self.match_span(span, NormalExpressionData::Decimal(value.clone()))
     }
 
     fn visit_typed_decimal(
         &mut self,
         value: &mut TypedDecimal,
         span: &core::ops::Range<usize>,
-    ) -> Result<VisitAction<DataExpression>, ()> {
-        self.match_span(span, DataExpressionData::TypedDecimal(value.clone()))
+    ) -> Result<VisitAction<NormalExpression>, ()> {
+        self.match_span(span, NormalExpressionData::TypedDecimal(value.clone()))
     }
 
     fn visit_text(
         &mut self,
         value: &mut Text,
         span: &core::ops::Range<usize>,
-    ) -> Result<VisitAction<DataExpression>, ()> {
-        self.match_span(span, DataExpressionData::Text(value.clone()))
+    ) -> Result<VisitAction<NormalExpression>, ()> {
+        self.match_span(span, NormalExpressionData::Text(value.clone()))
     }
 
     fn visit_boolean(
         &mut self,
         value: &mut Boolean,
         span: &core::ops::Range<usize>,
-    ) -> Result<VisitAction<DataExpression>, ()> {
-        self.match_span(span, DataExpressionData::Boolean(value.clone()))
+    ) -> Result<VisitAction<NormalExpression>, ()> {
+        self.match_span(span, NormalExpressionData::Boolean(value.clone()))
     }
 
     fn visit_endpoint(
         &mut self,
         value: &mut Endpoint,
         span: &core::ops::Range<usize>,
-    ) -> Result<VisitAction<DataExpression>, ()> {
-        self.match_span(span, DataExpressionData::Endpoint(value.clone()))
+    ) -> Result<VisitAction<NormalExpression>, ()> {
+        self.match_span(span, NormalExpressionData::Endpoint(value.clone()))
     }
 
     fn visit_null(
         &mut self,
         span: &core::ops::Range<usize>,
-    ) -> Result<VisitAction<DataExpression>, ()> {
-        self.match_span(span, DataExpressionData::Null)
+    ) -> Result<VisitAction<NormalExpression>, ()> {
+        self.match_span(span, NormalExpressionData::Null)
     }
 }

@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            DataExpression, DataExpressionData, VariableDeclaration,
+            NormalExpression, NormalExpressionData, VariableDeclaration,
             VariableKind,
         },
         spanned::Spanned,
@@ -13,7 +13,7 @@ use crate::prelude::*;
 impl Parser {
     pub(crate) fn parse_variable_declaration(
         &mut self,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         Ok(match self.peek()?.token.clone() {
             // handle var and const declarations
             Token::Variable | Token::Const => {
@@ -40,7 +40,7 @@ impl Parser {
                 // initializer expression
                 let init_expression = self.parse_expression(0)?;
 
-                DataExpressionData::VariableDeclaration(VariableDeclaration {
+                NormalExpressionData::VariableDeclaration(VariableDeclaration {
                     id: None,
                     kind,
                     name,
@@ -69,7 +69,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                DataExpressionData, TypeExpressionData, Union,
+                NormalExpressionData, TypeExpressionData, Union,
                 VariableDeclaration, VariableKind, expression::Expression,
             },
             spanned::Spanned,
@@ -83,12 +83,12 @@ mod tests {
         let expr = parse("var myVar = true");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::VariableDeclaration(VariableDeclaration {
+            &NormalExpressionData::VariableDeclaration(VariableDeclaration {
                 id: None,
                 kind: VariableKind::Var,
                 name: "myVar".to_string(),
                 type_annotation: None,
-                init_expression: (DataExpressionData::Boolean(true.into())
+                init_expression: (NormalExpressionData::Boolean(true.into())
                     .with_default_span()),
             })
         );
@@ -99,12 +99,12 @@ mod tests {
         let expr = parse("const myConst = false");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::VariableDeclaration(VariableDeclaration {
+            &NormalExpressionData::VariableDeclaration(VariableDeclaration {
                 id: None,
                 kind: VariableKind::Const,
                 name: "myConst".to_string(),
                 type_annotation: None,
-                init_expression: (DataExpressionData::Boolean(false.into())
+                init_expression: (NormalExpressionData::Boolean(false.into())
                     .with_default_span()),
             })
         );
@@ -115,7 +115,7 @@ mod tests {
         let expr = parse("var myVar: boolean = true");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::VariableDeclaration(VariableDeclaration {
+            &NormalExpressionData::VariableDeclaration(VariableDeclaration {
                 id: None,
                 kind: VariableKind::Var,
                 name: "myVar".to_string(),
@@ -123,7 +123,7 @@ mod tests {
                     TypeExpressionData::Identifier("boolean".to_string())
                         .with_default_span()
                 ),
-                init_expression: (DataExpressionData::Boolean(true.into())
+                init_expression: (NormalExpressionData::Boolean(true.into())
                     .with_default_span()),
             })
         );
@@ -134,7 +134,7 @@ mod tests {
         let expr = parse("const myConst: integer|text = true");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::VariableDeclaration(VariableDeclaration {
+            &NormalExpressionData::VariableDeclaration(VariableDeclaration {
                 id: None,
                 kind: VariableKind::Const,
                 name: "myConst".to_string(),
@@ -147,7 +147,7 @@ mod tests {
                     ]))
                     .with_default_span()
                 ),
-                init_expression: (DataExpressionData::Boolean(true.into())
+                init_expression: (NormalExpressionData::Boolean(true.into())
                     .with_default_span()),
             })
         );

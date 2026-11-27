@@ -1,6 +1,6 @@
 use crate::{
     ast::expressions::{
-        DataExpressionData, PropertyAssignment, expression::Expression,
+        NormalExpressionData, PropertyAssignment, expression::Expression,
     },
     compiler::{
         ast_node_to_instructions::AstNodeToInstructions,
@@ -38,7 +38,7 @@ impl AstNodeToInstructions for PropertyAssignment {
             // depending on the key, handle different property assignments
 
             match &property.data() {
-                DataExpressionData::Text(key)
+                NormalExpressionData::Text(key)
                     if key.len() <= u8::MAX as usize =>
                 {
                     yield Ok(RegularInstruction::set_entry_text(
@@ -47,7 +47,7 @@ impl AstNodeToInstructions for PropertyAssignment {
                     .into());
                 }
 
-                DataExpressionData::Integer(index)
+                NormalExpressionData::Integer(index)
                     if let Some(index) = index.as_u32() =>
                 {
                     yield Ok(RegularInstruction::set_entry_index(index).into());

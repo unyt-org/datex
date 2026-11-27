@@ -16,8 +16,8 @@ use crate::{
 use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, CallableTypeExpression,
-        ComparisonOperation, Conditional, CreateShared, DataExpression,
-        DataExpressionData, DeriveRef, DeriveSharedRef,
+        ComparisonOperation, Conditional, CreateShared, NormalExpression,
+        NormalExpressionData, DeriveRef, DeriveSharedRef,
         EntityDeclarationExpression, FixedSizeList, GenericAccess,
         GenericInstantiation, Intersection, List, Map, PropertyAccess,
         PropertyAssignment, RangeDeclaration, RemoteExecution,
@@ -196,7 +196,7 @@ impl<'a> TypeInference<'a> {
 
     pub fn infer(
         &mut self,
-        ast: &mut DataExpression,
+        ast: &mut NormalExpression,
         options: InferExpressionTypeOptions,
     ) -> Result<InferOutcome, SimpleOrDetailedTypeError> {
         // Enable error collection if needed
@@ -247,7 +247,7 @@ impl<'a> TypeInference<'a> {
 
     fn infer_expression(
         &mut self,
-        expr: &mut DataExpression,
+        expr: &mut NormalExpression,
     ) -> Result<Type, SpannedTypeError> {
         self.visit_datex_expression(expr)?;
         Ok(expr
@@ -285,7 +285,7 @@ impl<'a> TypeInference<'a> {
     fn record_error(
         &mut self,
         error: SpannedTypeError,
-    ) -> Result<VisitAction<DataExpression>, SpannedTypeError> {
+    ) -> Result<VisitAction<NormalExpression>, SpannedTypeError> {
         if let Some(collected_errors) = &mut self.errors {
             let action = match *error.error {
                 TypeError::Unimplemented(_) => {
@@ -673,8 +673,8 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     fn handle_expression_error(
         &mut self,
         error: SpannedTypeError,
-        _: &DataExpression,
-    ) -> Result<VisitAction<DataExpression>, SpannedTypeError> {
+        _: &NormalExpression,
+    ) -> Result<VisitAction<NormalExpression>, SpannedTypeError> {
         self.record_error(error)
     }
 
@@ -1299,8 +1299,8 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             span: &Range<usize>,
         ) -> ExpressionVisitResult<SpannedTypeError> {
             // TODO implement variant access
-            // Ok(VisitAction::ReplaceRecurse(DataExpression::new(
-            //         DataExpressionData::RequestSharedRef(RequestSharedRef {
+            // Ok(VisitAction::ReplaceRecurse(NormalExpression::new(
+            //         NormalExpressionData::RequestSharedRef(RequestSharedRef {
             //             address,
             //             mutability: ReferenceMutability::Immutable,
             //         }),
@@ -1343,8 +1343,8 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 )
             })?;
 
-            Ok(VisitAction::ReplaceRecurse(DataExpression::new(
-                DataExpressionData::ResolveCoreLibId(CoreLibId::Type(
+            Ok(VisitAction::ReplaceRecurse(NormalExpression::new(
+                NormalExpressionData::ResolveCoreLibId(CoreLibId::Type(
                     variant_id.into(),
                 )),
                 span.clone(),
@@ -1540,7 +1540,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, DataExpression, DataExpressionData, List, Map,
+                BinaryOperation, NormalExpression, NormalExpressionData, List, Map,
                 VariableDeclaration, VariableKind,
             },
             spanned::Spanned,
@@ -1618,7 +1618,7 @@ mod tests {
     /// Infers type errors for the given expression.
     /// Panics if precompilation succeeds.
     fn errors_for_expression(
-        expr: &mut DataExpression,
+        expr: &mut NormalExpression,
     ) -> Vec<SpannedTypeError> {
         let runtime = Runtime::stub();
         let mut scope_stack = PrecompilerScopeStack::default();
@@ -1666,7 +1666,7 @@ mod tests {
 
     /// Infers the AST of the given expression.
     /// Panics if type inference fails.
-    fn ast_for_expression(expr: &mut DataExpression) -> RichAst {
+    fn ast_for_expression(expr: &mut NormalExpression) -> RichAst {
         let runtime = Runtime::stub();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
@@ -1715,7 +1715,7 @@ mod tests {
 
     /// Infers the type of the given expression.
     /// Panics if type inference fails.
-    fn infer_from_expression(expr: &mut DataExpression) -> Type {
+    fn infer_from_expression(expr: &mut NormalExpression) -> Type {
         let runtime = Runtime::stub();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
@@ -1855,7 +1855,7 @@ mod tests {
     fn infer_literal_types() {
         assert_eq!(
             infer_from_expression(
-                &mut DataExpressionData::Boolean(true.into())
+                &mut NormalExpressionData::Boolean(true.into())
                     .with_default_span()
             ),
             Type::from(LiteralTypeDefinition::Boolean(true.into()),)
@@ -1863,7 +1863,7 @@ mod tests {
 
         assert_eq!(
             infer_from_expression(
-                &mut DataExpressionData::Boolean(false.into())
+                &mut NormalExpressionData::Boolean(false.into())
                     .with_default_span()
             ),
             Type::from(LiteralTypeDefinition::Boolean(false.into()),)
@@ -1871,7 +1871,7 @@ mod tests {
 
         assert_eq!(
             infer_from_expression(
-                &mut DataExpressionData::Decimal(Decimal::from(1.23))
+                &mut NormalExpressionData::Decimal(Decimal::from(1.23))
                     .with_default_span()
             ),
             Type::from(LiteralTypeDefinition::Decimal(Decimal::from(1.23)),)
@@ -1879,19 +1879,19 @@ mod tests {
 
         assert_eq!(
             infer_from_expression(
-                &mut DataExpressionData::Integer(Integer::from(42))
+                &mut NormalExpressionData::Integer(Integer::from(42))
                     .with_default_span()
             ),
             Type::from(LiteralTypeDefinition::Integer(Integer::from(42)),)
         );
         assert_eq!(
             infer_from_expression(
-                &mut DataExpressionData::List(List::new(vec![
-                    DataExpressionData::Integer(Integer::from(1))
+                &mut NormalExpressionData::List(List::new(vec![
+                    NormalExpressionData::Integer(Integer::from(1))
                         .with_default_span(),
-                    DataExpressionData::Integer(Integer::from(2))
+                    NormalExpressionData::Integer(Integer::from(2))
                         .with_default_span(),
-                    DataExpressionData::Integer(Integer::from(3))
+                    NormalExpressionData::Integer(Integer::from(3))
                         .with_default_span()
                 ]))
                 .with_default_span()
@@ -1918,9 +1918,9 @@ mod tests {
 
         assert_eq!(
             infer_from_expression(
-                &mut DataExpressionData::Map(Map::new(vec![(
-                    DataExpressionData::Text("a".into()).with_default_span(),
-                    DataExpressionData::Integer(Integer::from(1))
+                &mut NormalExpressionData::Map(Map::new(vec![(
+                    NormalExpressionData::Text("a".into()).with_default_span(),
+                    NormalExpressionData::Integer(Integer::from(1))
                         .with_default_span()
                 )]))
                 .with_default_span()
@@ -2566,12 +2566,12 @@ mod tests {
         const x = 10
         */
         let mut expr =
-            DataExpressionData::VariableDeclaration(VariableDeclaration {
+            NormalExpressionData::VariableDeclaration(VariableDeclaration {
                 id: None,
                 kind: VariableKind::Const,
                 name: "x".to_string(),
                 type_annotation: None,
-                init_expression: (DataExpressionData::Integer(Integer::from(
+                init_expression: (NormalExpressionData::Integer(Integer::from(
                     10,
                 ))
                 .with_default_span()),
@@ -2597,11 +2597,11 @@ mod tests {
         let decimal = Type::core(CoreLibBaseTypeId::Decimal);
 
         // integer - integer = integer
-        let mut expr = DataExpressionData::BinaryOperation(BinaryOperation {
+        let mut expr = NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Subtract),
-            left: (DataExpressionData::Integer(Integer::from(1))
+            left: (NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span()),
-            right: (DataExpressionData::Integer(Integer::from(2))
+            right: (NormalExpressionData::Integer(Integer::from(2))
                 .with_default_span()),
             ty: None,
         })
@@ -2610,11 +2610,11 @@ mod tests {
         assert_eq!(infer_from_expression(&mut expr), integer);
 
         // decimal + decimal = decimal
-        let mut expr = DataExpressionData::BinaryOperation(BinaryOperation {
+        let mut expr = NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DataExpressionData::Decimal(Decimal::from(1.0))
+            left: (NormalExpressionData::Decimal(Decimal::from(1.0))
                 .with_default_span()),
-            right: (DataExpressionData::Decimal(Decimal::from(2.0))
+            right: (NormalExpressionData::Decimal(Decimal::from(2.0))
                 .with_default_span()),
             ty: None,
         })
@@ -2622,11 +2622,11 @@ mod tests {
         assert_eq!(infer_from_expression(&mut expr), decimal);
 
         // integer + decimal = type error
-        let mut expr = DataExpressionData::BinaryOperation(BinaryOperation {
+        let mut expr = NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DataExpressionData::Integer(Integer::from(1))
+            left: (NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span()),
-            right: (DataExpressionData::Decimal(Decimal::from(2.0))
+            right: (NormalExpressionData::Decimal(Decimal::from(2.0))
                 .with_default_span()),
             ty: None,
         })

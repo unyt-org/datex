@@ -1,4 +1,4 @@
-use crate::ast::expressions::DataExpression;
+use crate::ast::expressions::NormalExpression;
 
 #[cfg(feature = "compiler")]
 mod ast_node_to_instructions;
@@ -6,5 +6,5 @@ mod ast_node_to_instructions;
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreateMut {
     /// The expression being referenced.
-    pub expression: DataExpression,
+    pub expression: NormalExpression,
 }

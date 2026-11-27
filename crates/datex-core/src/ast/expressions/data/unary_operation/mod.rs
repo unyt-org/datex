@@ -1,6 +1,6 @@
 //! This module defines the representation for unary operation expressions in the AST.
 use crate::{
-    ast::expressions::DataExpression, global::operators::UnaryOperator,
+    ast::expressions::NormalExpression, global::operators::UnaryOperator,
 };
 
 #[cfg(feature = "compiler")]
@@ -11,5 +11,5 @@ pub struct UnaryOperation {
     /// The unary operator for this operation.
     pub operator: UnaryOperator,
     /// The expression the operator is applied to.
-    pub expression: DataExpression,
+    pub expression: NormalExpression,
 }

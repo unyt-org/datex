@@ -1,5 +1,5 @@
 use crate::{
-    ast::expressions::DataExpressionData,
+    ast::expressions::NormalExpressionData,
     compiler::{
         ast_node_to_instructions::AstNodeToInstructions,
         context::CompilationContext, error::CompilerError,
@@ -12,7 +12,7 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
 };
 
-impl AstNodeToInstructions for DataExpressionData {
+impl AstNodeToInstructions for NormalExpressionData {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
@@ -26,60 +26,60 @@ impl AstNodeToInstructions for DataExpressionData {
     > {
         Box::new(gen move {
             match self {
-                DataExpressionData::Integer(integer) => {
+                NormalExpressionData::Integer(integer) => {
                     yield Ok(BytecodeItem::from(RegularInstruction::Integer(
                         integer.clone(),
                     )))
                 }
-                DataExpressionData::TypedInteger(typed_integer) => {
+                NormalExpressionData::TypedInteger(typed_integer) => {
                     yield_all_ok!(
                         typed_integer
                             .to_instructions(compilation_context, cache)
                     );
                 }
 
-                DataExpressionData::Instant(instant) => {
+                NormalExpressionData::Instant(instant) => {
                     yield_all_ok!(
                         instant.to_instructions(compilation_context, cache)
                     );
                 }
 
-                DataExpressionData::Decimal(decimal) => {
+                NormalExpressionData::Decimal(decimal) => {
                     yield_all_ok!(
                         decimal.to_instructions(compilation_context, cache)
                     );
                 }
 
-                DataExpressionData::TypedDecimal(typed_decimal) => {
+                NormalExpressionData::TypedDecimal(typed_decimal) => {
                     yield_all_ok!(
                         typed_decimal
                             .to_instructions(compilation_context, cache)
                     );
                 }
 
-                DataExpressionData::Text(text) => {
+                NormalExpressionData::Text(text) => {
                     yield_all_ok!(
                         text.to_instructions(compilation_context, cache)
                     );
                 }
 
-                DataExpressionData::Boolean(boolean) => {
+                NormalExpressionData::Boolean(boolean) => {
                     yield_all_ok!(
                         boolean.to_instructions(compilation_context, cache)
                     );
                 }
 
-                DataExpressionData::Endpoint(endpoint) => {
+                NormalExpressionData::Endpoint(endpoint) => {
                     yield_all_ok!(
                         endpoint.to_instructions(compilation_context, cache)
                     );
                 }
 
-                DataExpressionData::Null => {
+                NormalExpressionData::Null => {
                     yield Ok(BytecodeItem::from(RegularInstruction::null()));
                 }
 
-                DataExpressionData::List(list) => {
+                NormalExpressionData::List(list) => {
                     yield_all!(list.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -88,7 +88,7 @@ impl AstNodeToInstructions for DataExpressionData {
                     ));
                 }
 
-                DataExpressionData::Map(map) => {
+                NormalExpressionData::Map(map) => {
                     yield_all!(map.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -98,7 +98,7 @@ impl AstNodeToInstructions for DataExpressionData {
                 }
 
                 // unary operations
-                DataExpressionData::UnaryOperation(unary_operation) => {
+                NormalExpressionData::UnaryOperation(unary_operation) => {
                     yield_all!(unary_operation.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -108,7 +108,7 @@ impl AstNodeToInstructions for DataExpressionData {
                 }
 
                 // binary operations
-                DataExpressionData::BinaryOperation(binary_operation) => {
+                NormalExpressionData::BinaryOperation(binary_operation) => {
                     yield_all!(binary_operation.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -118,7 +118,7 @@ impl AstNodeToInstructions for DataExpressionData {
                 }
 
                 // comparisons
-                DataExpressionData::ComparisonOperation(
+                NormalExpressionData::ComparisonOperation(
                     comparison_operation,
                 ) => {
                     yield_all!(comparison_operation.ast_node_to_instructions(
@@ -130,7 +130,7 @@ impl AstNodeToInstructions for DataExpressionData {
                 }
 
                 // apply
-                DataExpressionData::Apply(apply) => {
+                NormalExpressionData::Apply(apply) => {
                     yield_all!(apply.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -140,7 +140,7 @@ impl AstNodeToInstructions for DataExpressionData {
                 }
 
                 // interface methods
-                DataExpressionData::InterfaceMethodCall(
+                NormalExpressionData::InterfaceMethodCall(
                     interface_method_call,
                 ) => {
                     yield_all!(interface_method_call.ast_node_to_instructions(
@@ -152,7 +152,7 @@ impl AstNodeToInstructions for DataExpressionData {
                 }
 
                 // property access
-                DataExpressionData::PropertyAccess(property_access) => {
+                NormalExpressionData::PropertyAccess(property_access) => {
                     yield_all!(property_access.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -161,7 +161,7 @@ impl AstNodeToInstructions for DataExpressionData {
                     ));
                 }
 
-                DataExpressionData::GenericInstantiation(
+                NormalExpressionData::GenericInstantiation(
                     generic_instantiation,
                 ) => {
                     yield_all!(generic_instantiation.ast_node_to_instructions(
@@ -172,7 +172,7 @@ impl AstNodeToInstructions for DataExpressionData {
                     ));
                 }
 
-                DataExpressionData::PropertyAssignment(property_assignment) => {
+                NormalExpressionData::PropertyAssignment(property_assignment) => {
                     yield_all!(property_assignment.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -181,7 +181,7 @@ impl AstNodeToInstructions for DataExpressionData {
                     ));
                 }
 
-                DataExpressionData::RequestSharedRef(request_shared_ref) => {
+                NormalExpressionData::RequestSharedRef(request_shared_ref) => {
                     yield_all!(request_shared_ref.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -190,7 +190,7 @@ impl AstNodeToInstructions for DataExpressionData {
                     ));
                 }
 
-                DataExpressionData::UnboxAssignment(unbox_assignment) => {
+                NormalExpressionData::UnboxAssignment(unbox_assignment) => {
                     yield_all!(unbox_assignment.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -200,7 +200,7 @@ impl AstNodeToInstructions for DataExpressionData {
                 }
 
                 // root property
-                DataExpressionData::RootPropertyAccess(
+                NormalExpressionData::RootPropertyAccess(
                     root_property_access,
                 ) => {
                     yield_all!(root_property_access.ast_node_to_instructions(
@@ -212,7 +212,7 @@ impl AstNodeToInstructions for DataExpressionData {
                 }
 
                 // refs
-                DataExpressionData::DeriveRef(derive_ref) => {
+                NormalExpressionData::DeriveRef(derive_ref) => {
                     yield_all!(derive_ref.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -222,7 +222,7 @@ impl AstNodeToInstructions for DataExpressionData {
                 }
 
                 // shared refs
-                DataExpressionData::DeriveSharedRef(derive_shared_ref) => {
+                NormalExpressionData::DeriveSharedRef(derive_shared_ref) => {
                     yield_all!(derive_shared_ref.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -232,7 +232,7 @@ impl AstNodeToInstructions for DataExpressionData {
                 }
 
                 // shared values
-                DataExpressionData::CreateShared(create_shared) => {
+                NormalExpressionData::CreateShared(create_shared) => {
                     yield_all!(create_shared.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -241,7 +241,7 @@ impl AstNodeToInstructions for DataExpressionData {
                     ));
                 }
 
-                DataExpressionData::TypeExpression(type_expression) => {
+                NormalExpressionData::TypeExpression(type_expression) => {
                     yield Ok(RegularInstruction::TypeExpression.into());
                     yield_all!(type_expression.ast_node_to_instructions(
                         compilation_context,
@@ -251,7 +251,7 @@ impl AstNodeToInstructions for DataExpressionData {
                     ));
                 }
 
-                DataExpressionData::Range(range_dec) => {
+                NormalExpressionData::Range(range_dec) => {
                     yield_all!(range_dec.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -260,7 +260,7 @@ impl AstNodeToInstructions for DataExpressionData {
                     ));
                 }
 
-                DataExpressionData::Unbox(unbox) => {
+                NormalExpressionData::Unbox(unbox) => {
                     yield_all!(unbox.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -269,7 +269,7 @@ impl AstNodeToInstructions for DataExpressionData {
                     ));
                 }
 
-                DataExpressionData::Tag(tag_expression) => {
+                NormalExpressionData::Tag(tag_expression) => {
                     yield_all!(tag_expression.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -278,14 +278,14 @@ impl AstNodeToInstructions for DataExpressionData {
                     ));
                 }
 
-                DataExpressionData::ResolveCoreLibId(core_lib_id) => {
+                NormalExpressionData::ResolveCoreLibId(core_lib_id) => {
                     yield Ok(RegularInstruction::get_core_lib_value(
                         (*core_lib_id).into(),
                     )
                     .into());
                 }
 
-                DataExpressionData::CallableDeclaration(
+                NormalExpressionData::CallableDeclaration(
                     callable_declaration,
                 ) => {
                     yield_all!(callable_declaration.ast_node_to_instructions(
@@ -296,7 +296,7 @@ impl AstNodeToInstructions for DataExpressionData {
                     ));
                 }
 
-                DataExpressionData::Conditional(conditional) => {
+                NormalExpressionData::Conditional(conditional) => {
                     yield_all!(conditional.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -304,7 +304,7 @@ impl AstNodeToInstructions for DataExpressionData {
                         ctx_metadata
                     ));
                 }
-                DataExpressionData::RemoteExecution(remote_execution) => {
+                NormalExpressionData::RemoteExecution(remote_execution) => {
                     yield_all!(remote_execution.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -313,7 +313,7 @@ impl AstNodeToInstructions for DataExpressionData {
                     ));
                 }
 
-                DataExpressionData::VariableDeclaration(
+                NormalExpressionData::VariableDeclaration(
                     _variable_declaration,
                 ) => {
                     yield_all!(_variable_declaration.ast_node_to_instructions(
@@ -323,7 +323,7 @@ impl AstNodeToInstructions for DataExpressionData {
                         ctx_metadata
                     ));
                 }
-                DataExpressionData::Statements(statements) => {
+                NormalExpressionData::Statements(statements) => {
                     yield_all!(statements.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -332,7 +332,7 @@ impl AstNodeToInstructions for DataExpressionData {
                     ));
                 }
 
-                DataExpressionData::VariableAssignment(variable_assignment) => {
+                NormalExpressionData::VariableAssignment(variable_assignment) => {
                     yield_all!(variable_assignment.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -341,7 +341,7 @@ impl AstNodeToInstructions for DataExpressionData {
                     ));
                 }
 
-                DataExpressionData::VariableAccess(variable_access) => {
+                NormalExpressionData::VariableAccess(variable_access) => {
                     yield_all!(variable_access.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -350,7 +350,7 @@ impl AstNodeToInstructions for DataExpressionData {
                     ));
                 }
 
-                DataExpressionData::Placeholder(value_access_type) => {
+                NormalExpressionData::Placeholder(value_access_type) => {
                     yield_all!(value_access_type.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -358,16 +358,16 @@ impl AstNodeToInstructions for DataExpressionData {
                         ctx_metadata
                     ));
                 }
-                DataExpressionData::Noop => todo!(),
-                DataExpressionData::NativeImplementationIndicator => todo!(),
-                DataExpressionData::OmitRecursive => todo!(),
-                DataExpressionData::Identifier(_) => todo!(),
-                DataExpressionData::Sender => todo!(),
-                DataExpressionData::Receiver => todo!(),
-                DataExpressionData::MoveSharedValue(
+                NormalExpressionData::Noop => todo!(),
+                NormalExpressionData::NativeImplementationIndicator => todo!(),
+                NormalExpressionData::OmitRecursive => todo!(),
+                NormalExpressionData::Identifier(_) => todo!(),
+                NormalExpressionData::Sender => todo!(),
+                NormalExpressionData::Receiver => todo!(),
+                NormalExpressionData::MoveSharedValue(
                     _self_owned_pointer_address,
                 ) => todo!(),
-                DataExpressionData::Compile(compile_expression) => {
+                NormalExpressionData::Compile(compile_expression) => {
                     yield_all!(compile_expression.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -375,7 +375,7 @@ impl AstNodeToInstructions for DataExpressionData {
                         ctx_metadata
                     ));
                 }
-                DataExpressionData::TypeDeclaration(
+                NormalExpressionData::TypeDeclaration(
                     type_declaration_expression,
                 ) => {
                     yield_all!(
@@ -387,7 +387,7 @@ impl AstNodeToInstructions for DataExpressionData {
                         )
                     );
                 }
-                DataExpressionData::EntityDeclaration(
+                NormalExpressionData::EntityDeclaration(
                     entity_declaration_expression,
                 ) => {
                     yield_all!(
@@ -399,7 +399,7 @@ impl AstNodeToInstructions for DataExpressionData {
                         )
                     );
                 }
-                DataExpressionData::CreateMut(create_mut) => {
+                NormalExpressionData::CreateMut(create_mut) => {
                     yield_all!(create_mut.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -407,7 +407,7 @@ impl AstNodeToInstructions for DataExpressionData {
                         ctx_metadata
                     ));
                 }
-                DataExpressionData::Clone(clone_expression) => {
+                NormalExpressionData::Clone(clone_expression) => {
                     yield_all!(clone_expression.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -415,11 +415,11 @@ impl AstNodeToInstructions for DataExpressionData {
                         ctx_metadata
                     ));
                 }
-                DataExpressionData::StackIndex(_stack_index) => todo!(),
-                DataExpressionData::StackAssignment(_stack_assignment) => {
+                NormalExpressionData::StackIndex(_stack_index) => todo!(),
+                NormalExpressionData::StackAssignment(_stack_assignment) => {
                     todo!()
                 }
-                DataExpressionData::StackListAssignment(
+                NormalExpressionData::StackListAssignment(
                     stack_list_assignment,
                 ) => {
                     yield_all!(stack_list_assignment.ast_node_to_instructions(
@@ -429,7 +429,7 @@ impl AstNodeToInstructions for DataExpressionData {
                         ctx_metadata
                     ));
                 }
-                DataExpressionData::UnboxSlotAssignment(
+                NormalExpressionData::UnboxSlotAssignment(
                     unbox_slot_assignment,
                 ) => {
                     yield_all!(unbox_slot_assignment.ast_node_to_instructions(
@@ -439,7 +439,7 @@ impl AstNodeToInstructions for DataExpressionData {
                         ctx_metadata
                     ));
                 }
-                DataExpressionData::VariantAccess(variant_access) => {
+                NormalExpressionData::VariantAccess(variant_access) => {
                     yield_all!(variant_access.ast_node_to_instructions(
                         compilation_context,
                         cache,
@@ -447,7 +447,7 @@ impl AstNodeToInstructions for DataExpressionData {
                         ctx_metadata
                     ));
                 }
-                DataExpressionData::EntityValue(entity_value_expression) => {
+                NormalExpressionData::EntityValue(entity_value_expression) => {
                     yield_all!(
                         entity_value_expression.ast_node_to_instructions(
                             compilation_context,
@@ -458,7 +458,7 @@ impl AstNodeToInstructions for DataExpressionData {
                     );
                 }
 
-                DataExpressionData::Recover => unreachable!(),
+                NormalExpressionData::Recover => unreachable!(),
             }
         })
     }

@@ -1,6 +1,6 @@
 //! This module defines the representation for assignment expressions in the AST.
 use crate::{
-    ast::expressions::DataExpression, global::operators::ModificationOperator,
+    ast::expressions::NormalExpression, global::operators::ModificationOperator,
 };
 
 #[cfg(feature = "compiler")]
@@ -12,9 +12,9 @@ pub struct PropertyAssignment {
     /// The operator used for the assignment, if any.
     pub operator: Option<ModificationOperator>,
     /// The base object whose property is being assigned.
-    pub base: DataExpression,
+    pub base: NormalExpression,
     /// The property being assigned to.
-    pub property: DataExpression,
+    pub property: NormalExpression,
     /// The expression being assigned.
-    pub assigned_expression: DataExpression,
+    pub assigned_expression: NormalExpression,
 }

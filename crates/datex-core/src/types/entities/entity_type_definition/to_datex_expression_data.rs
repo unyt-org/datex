@@ -1,11 +1,11 @@
 use crate::{
-    ast::expressions::DataExpressionData,
+    ast::expressions::NormalExpressionData,
     traits::to_datex_expression_data::ToDatexExpressionData,
     types::entities::entity_type_definition::EntityTypeDefinition,
 };
 
 impl ToDatexExpressionData for EntityTypeDefinition {
-    fn to_datex_expression_data(&self) -> DataExpressionData {
+    fn to_datex_expression_data(&self) -> NormalExpressionData {
         todo!()
     }
 }

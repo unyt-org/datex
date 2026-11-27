@@ -1,5 +1,5 @@
 use crate::{
-    ast::expressions::DataExpression, global::operators::ModificationOperator,
+    ast::expressions::NormalExpression, global::operators::ModificationOperator,
 };
 
 #[cfg(feature = "compiler")]
@@ -11,7 +11,7 @@ pub struct UnboxAssignment {
     /// The operator used for the assignment, if any.
     pub operator: Option<ModificationOperator>,
     /// The unbox expression being assigned to.
-    pub unbox_expression: DataExpression,
+    pub unbox_expression: NormalExpression,
     /// The expression being assigned.
-    pub assigned_expression: DataExpression,
+    pub assigned_expression: NormalExpression,
 }

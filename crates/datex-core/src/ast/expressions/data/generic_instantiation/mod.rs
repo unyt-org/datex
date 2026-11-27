@@ -1,6 +1,6 @@
 //! This module defines the representation for generic instantiation expressions in the AST.
 use crate::{
-    ast::expressions::{DataExpression, TypeExpression},
+    ast::expressions::{NormalExpression, TypeExpression},
     prelude::*,
 };
 
@@ -11,7 +11,7 @@ mod ast_node_to_instructions;
 #[derive(Clone, Debug, PartialEq)]
 pub struct GenericInstantiation {
     /// The base expression being instantiated.
-    pub base: DataExpression,
+    pub base: NormalExpression,
     /// The generic arguments for the instantiation.
     pub generic_arguments: Vec<TypeExpression>,
 }

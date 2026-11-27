@@ -1,11 +1,11 @@
 use crate::{
-    ast::expressions::DataExpressionData,
+    ast::expressions::NormalExpressionData,
     traits::to_datex_expression_data::ToDatexExpressionData,
     values::core_values::integer::Integer,
 };
 
 impl ToDatexExpressionData for Integer {
-    fn to_datex_expression_data(&self) -> DataExpressionData {
-        DataExpressionData::Integer(self.clone())
+    fn to_datex_expression_data(&self) -> NormalExpressionData {
+        NormalExpressionData::Integer(self.clone())
     }
 }

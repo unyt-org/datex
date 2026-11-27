@@ -1,5 +1,5 @@
 use crate::{
-    ast::expressions::DataExpression,
+    ast::expressions::NormalExpression,
     types::type_definition_with_metadata::LocalReferenceMutability,
 };
 
@@ -12,5 +12,5 @@ pub struct DeriveRef {
     /// The mutability of the local reference.
     pub mutability: LocalReferenceMutability,
     /// The expression being referenced.
-    pub expression: DataExpression,
+    pub expression: NormalExpression,
 }

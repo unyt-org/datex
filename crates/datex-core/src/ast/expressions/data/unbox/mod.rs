@@ -1,5 +1,5 @@
 //! This module defines the representation for unbox expressions in the AST.
-use crate::ast::expressions::DataExpression;
+use crate::ast::expressions::NormalExpression;
 
 #[cfg(feature = "compiler")]
 mod ast_node_to_instructions;
@@ -8,5 +8,5 @@ mod ast_node_to_instructions;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Unbox {
     /// The expression to be unboxed.
-    pub expression: DataExpression,
+    pub expression: NormalExpression,
 }

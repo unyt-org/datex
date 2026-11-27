@@ -1,4 +1,4 @@
-//! This module reexports various components related to expressions in the AST, such as [data_expression::DataExpression] and [type_expressions::TypeExpression].
+//! This module reexports various components related to expressions in the AST, such as [data_expression::NormalExpression] and [type_expressions::TypeExpression].
 pub use crate::prelude::*;
 
 // Reexport all data modules for expressions

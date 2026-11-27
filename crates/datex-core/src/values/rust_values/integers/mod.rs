@@ -9,82 +9,82 @@ mod try_clone;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data {
     use crate::{
-        ast::expressions::DataExpressionData,
+        ast::expressions::NormalExpressionData,
         traits::to_datex_expression_data::ToDatexExpressionData,
         values::core_values::integer::typed_integer::TypedInteger,
     };
 
     impl ToDatexExpressionData for u8 {
-        fn to_datex_expression_data(&self) -> DataExpressionData {
-            DataExpressionData::TypedInteger(TypedInteger::U8(*self))
+        fn to_datex_expression_data(&self) -> NormalExpressionData {
+            NormalExpressionData::TypedInteger(TypedInteger::U8(*self))
         }
     }
 
     impl ToDatexExpressionData for u16 {
-        fn to_datex_expression_data(&self) -> DataExpressionData {
-            DataExpressionData::TypedInteger(TypedInteger::U16(*self))
+        fn to_datex_expression_data(&self) -> NormalExpressionData {
+            NormalExpressionData::TypedInteger(TypedInteger::U16(*self))
         }
     }
 
     impl ToDatexExpressionData for u32 {
-        fn to_datex_expression_data(&self) -> DataExpressionData {
-            DataExpressionData::TypedInteger(TypedInteger::U32(*self))
+        fn to_datex_expression_data(&self) -> NormalExpressionData {
+            NormalExpressionData::TypedInteger(TypedInteger::U32(*self))
         }
     }
 
     impl ToDatexExpressionData for u64 {
-        fn to_datex_expression_data(&self) -> DataExpressionData {
-            DataExpressionData::TypedInteger(TypedInteger::U64(*self))
+        fn to_datex_expression_data(&self) -> NormalExpressionData {
+            NormalExpressionData::TypedInteger(TypedInteger::U64(*self))
         }
     }
 
     impl ToDatexExpressionData for u128 {
-        fn to_datex_expression_data(&self) -> DataExpressionData {
-            DataExpressionData::TypedInteger(TypedInteger::U128(*self))
+        fn to_datex_expression_data(&self) -> NormalExpressionData {
+            NormalExpressionData::TypedInteger(TypedInteger::U128(*self))
         }
     }
 
     impl ToDatexExpressionData for i8 {
-        fn to_datex_expression_data(&self) -> DataExpressionData {
-            DataExpressionData::TypedInteger(TypedInteger::I8(*self))
+        fn to_datex_expression_data(&self) -> NormalExpressionData {
+            NormalExpressionData::TypedInteger(TypedInteger::I8(*self))
         }
     }
 
     impl ToDatexExpressionData for i16 {
-        fn to_datex_expression_data(&self) -> DataExpressionData {
-            DataExpressionData::TypedInteger(TypedInteger::I16(*self))
+        fn to_datex_expression_data(&self) -> NormalExpressionData {
+            NormalExpressionData::TypedInteger(TypedInteger::I16(*self))
         }
     }
 
     impl ToDatexExpressionData for i32 {
-        fn to_datex_expression_data(&self) -> DataExpressionData {
-            DataExpressionData::TypedInteger(TypedInteger::I32(*self))
+        fn to_datex_expression_data(&self) -> NormalExpressionData {
+            NormalExpressionData::TypedInteger(TypedInteger::I32(*self))
         }
     }
 
     impl ToDatexExpressionData for i64 {
-        fn to_datex_expression_data(&self) -> DataExpressionData {
-            DataExpressionData::TypedInteger(TypedInteger::I64(*self))
+        fn to_datex_expression_data(&self) -> NormalExpressionData {
+            NormalExpressionData::TypedInteger(TypedInteger::I64(*self))
         }
     }
 
     impl ToDatexExpressionData for i128 {
-        fn to_datex_expression_data(&self) -> DataExpressionData {
-            DataExpressionData::TypedInteger(TypedInteger::I128(*self))
+        fn to_datex_expression_data(&self) -> NormalExpressionData {
+            NormalExpressionData::TypedInteger(TypedInteger::I128(*self))
         }
     }
 
     impl ToDatexExpressionData for usize {
-        fn to_datex_expression_data(&self) -> DataExpressionData {
+        fn to_datex_expression_data(&self) -> NormalExpressionData {
             #[cfg(target_pointer_width = "32")]
             {
-                DataExpressionData::TypedInteger(TypedInteger::U32(
+                NormalExpressionData::TypedInteger(TypedInteger::U32(
                     *self as u32,
                 ))
             }
             #[cfg(target_pointer_width = "64")]
             {
-                DataExpressionData::TypedInteger(TypedInteger::U64(
+                NormalExpressionData::TypedInteger(TypedInteger::U64(
                     *self as u64,
                 ))
             }
@@ -92,16 +92,16 @@ mod to_datex_expression_data {
     }
 
     impl ToDatexExpressionData for isize {
-        fn to_datex_expression_data(&self) -> DataExpressionData {
+        fn to_datex_expression_data(&self) -> NormalExpressionData {
             #[cfg(target_pointer_width = "32")]
             {
-                DataExpressionData::TypedInteger(TypedInteger::I32(
+                NormalExpressionData::TypedInteger(TypedInteger::I32(
                     *self as i32,
                 ))
             }
             #[cfg(target_pointer_width = "64")]
             {
-                DataExpressionData::TypedInteger(TypedInteger::I64(
+                NormalExpressionData::TypedInteger(TypedInteger::I64(
                     *self as i64,
                 ))
             }

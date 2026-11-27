@@ -1,5 +1,5 @@
 use crate::{
-    ast::expressions::{DataExpressionData, Map},
+    ast::expressions::{NormalExpressionData, Map},
     compiler::{
         ast_node_to_instructions::AstNodeToInstructions,
         context::CompilationContext, error::CompilerError,
@@ -26,7 +26,7 @@ impl AstNodeToInstructions for Map {
     > {
         Box::new(gen move {
             let has_only_text_keys = self.entries.iter().all(|(key, _)| {
-                matches!(&*key.data, DataExpressionData::Text(_))
+                matches!(&*key.data, NormalExpressionData::Text(_))
             });
 
             yield Ok(RegularInstruction::map(
@@ -37,7 +37,7 @@ impl AstNodeToInstructions for Map {
             for (key, value) in &self.entries {
                 match &*key.data {
                     // text -> insert key string
-                    DataExpressionData::Text(text) => {
+                    NormalExpressionData::Text(text) => {
                         if text.len() < 256 {
                             yield Ok(RegularInstruction::key_value_short_text(
                                 text.as_string(),

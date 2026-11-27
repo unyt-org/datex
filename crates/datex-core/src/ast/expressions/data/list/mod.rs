@@ -1,5 +1,5 @@
 //! This module defines the representation for list expressions in the AST.
-use crate::{ast::expressions::DataExpression, prelude::*};
+use crate::{ast::expressions::NormalExpression, prelude::*};
 
 #[cfg(feature = "compiler")]
 mod ast_node_to_instructions;
@@ -7,17 +7,17 @@ mod ast_node_to_instructions;
 #[derive(Clone, Debug, PartialEq)]
 pub struct List {
     /// The items in the list expression.
-    pub items: Vec<DataExpression>,
+    pub items: Vec<NormalExpression>,
 }
 
 impl List {
-    pub fn new(items: Vec<DataExpression>) -> Self {
+    pub fn new(items: Vec<NormalExpression>) -> Self {
         List { items }
     }
 }
 
-impl FromIterator<DataExpression> for List {
-    fn from_iter<T: IntoIterator<Item = DataExpression>>(iter: T) -> Self {
+impl FromIterator<NormalExpression> for List {
+    fn from_iter<T: IntoIterator<Item =NormalExpression>>(iter: T) -> Self {
         let items = iter.into_iter().collect();
         List { items }
     }
