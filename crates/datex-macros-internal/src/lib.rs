@@ -123,6 +123,6 @@ pub fn datex(args: TokenStream, input: TokenStream) -> TokenStream {
 
 
 #[proc_macro]
-pub fn use_remote(args: TokenStream) -> TokenStream {
+pub fn use_remote(_args: TokenStream) -> TokenStream {
     todo!()
 }

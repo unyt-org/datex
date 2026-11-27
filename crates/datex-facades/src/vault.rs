@@ -1,4 +1,3 @@
-use alloc::vec::Vec;
 use alloc::string::String;
 
 /// This trait represents a persistent data storage which can be used to store raw bytes with an associated key for a specific endpoint.
