@@ -51,7 +51,7 @@ impl CodeGenerator for RustCodeGenerator {
             let param_type = self.fold_type_definition(param.1.clone().convert_to_definition(), false);
             quote! { #param_name: #param_type }
         }).collect::<Vec<_>>();
-        
+
         let doc_comment = if let Some(docs) = &borrowed_callable.docs {
             self.fold_doc_comment(docs)
         } else {
@@ -60,7 +60,8 @@ impl CodeGenerator for RustCodeGenerator {
 
         quote! {
             #doc_comment
-            pub fn #ident(#(#parameters),*) #return_type {
+            #[datex(external)]
+            pub async fn #ident(#[runtime] runtime: &Runtime, #(#parameters),*) #return_type {
                 todo!()
             }
         }
