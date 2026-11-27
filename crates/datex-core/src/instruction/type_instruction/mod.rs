@@ -163,9 +163,6 @@ impl TypeInstruction {
             TypeInstruction::DefinitionWithMetadata(data) => {
                 write!(string, "[metadata: {}]", data)
             }
-            TypeInstruction::Boxed => {
-                write!(string, "[boxed]")
-            }
             TypeInstruction::Map(data) => {
                 write!(
                     string,

@@ -890,62 +890,12 @@ checksum = "a4ae5f15dda3c708c0ade84bfee31ccab44a3da4f88015ed22f63732abe300c8"
 name = "datex-code-generator"
 version = "0.0.1"
 dependencies = [
- "datex-core 0.0.14",
-]
-
-[[package]]
-name = "datex-core"
-version = "0.0.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49e52a26c1e26e5603f06a64ba84bed882aef6df2cec42a0b7498b8fbc8d32f0"
-dependencies = [
- "async-select",
- "bigdecimal",
- "binrw",
- "cfg-if",
- "chrono",
- "datex-crypto-facade",
- "datex-crypto-native",
- "datex-macros-internal 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "dotenvy",
- "erased-serde",
- "fnv64-rs",
- "foldhash 0.2.0",
- "futures",
- "futures-core",
- "futures-util",
- "hex",
+ "datex-core",
  "indexmap 2.14.0",
- "internment",
- "inventory",
- "itertools 0.14.0",
- "linkme",
- "log",
- "logos",
- "modular-bitfield",
- "num",
- "num-bigint",
- "num-integer",
- "num-traits",
- "num_enum",
- "ordered-float",
- "pretty",
- "ringmap",
- "seq-macro",
- "serde",
- "serde-big-array",
- "serde-val 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json",
- "serde_repr",
- "serde_with",
- "stacker",
- "strum",
- "strum_macros",
- "syntect",
- "thiserror 2.0.18",
- "tokio",
- "twox-hash",
- "url",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.118",
 ]
 
 [[package]]
@@ -964,7 +914,7 @@ dependencies = [
  "datex-impls-esp32",
  "datex-impls-native",
  "datex-impls-web",
- "datex-macros-internal 0.0.3",
+ "datex-macros-internal",
  "dhat",
  "dotenvy",
  "embassy-executor",
@@ -1004,7 +954,7 @@ dependencies = [
  "seq-macro",
  "serde",
  "serde-big-array",
- "serde-val 0.1.0 (git+https://github.com/unyt-org/serde-value)",
+ "serde-val",
  "serde_json",
  "serde_repr",
  "serde_with",
@@ -1022,27 +972,6 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-time",
  "webrtc",
-]
-
-[[package]]
-name = "datex-crypto-facade"
-version = "0.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "337cd47bb87f8282ac74f393eb249a064ea11ad9d31d2687714dd871db76b437"
-dependencies = [
- "bs58",
-]
-
-[[package]]
-name = "datex-crypto-native"
-version = "0.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf929d72be68e057a30df43fbd1a229370388340c5947be083da7237d7a14314"
-dependencies = [
- "datex-crypto-facade",
- "openssl",
- "rand 0.10.2",
- "uuid",
 ]
 
 [[package]]
@@ -1107,7 +1036,7 @@ dependencies = [
 name = "datex-macro-utils"
 version = "0.0.3"
 dependencies = [
- "datex-core 0.0.15",
+ "datex-core",
  "proc-macro2",
  "quote",
  "syn 2.0.118",
@@ -1126,20 +1055,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "datex-macros-internal"
-version = "0.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ea5c2946c65e0b2af09cf83c87bed1e61fb994999afe61d38c3168c5eaa1c3e"
-dependencies = [
- "deluxe",
- "pathdiff",
- "proc-macro-crate 3.5.0",
- "proc-macro2",
- "quote",
- "syn 3.0.4",
-]
-
-[[package]]
 name = "datex-traits"
 version = "0.0.1"
 
@@ -1147,7 +1062,7 @@ version = "0.0.1"
 name = "datex_macros"
 version = "0.1.11"
 dependencies = [
- "datex-core 0.0.15",
+ "datex-core",
  "datex-macro-utils",
  "proc-macro2",
  "quote",
@@ -3392,6 +3307,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "prettyplease"
+version = "0.2.37"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "479ca8adacdd7ce8f1fb39ce9ecccbfe93a3f1344b3d0d97f20bc0196208f62b"
+dependencies = [
+ "proc-macro2",
+ "syn 2.0.118",
+]
+
+[[package]]
 name = "primeorder"
 version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3960,16 +3885,6 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11fc7cc2c76d73e0f27ee52abbd64eec84d46f370c88371120433196934e4b7f"
 dependencies = [
- "serde",
-]
-
-[[package]]
-name = "serde-val"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8075daef7fd08d39b83bf3606feab616391269df779fae7172f5558b3b220d10"
-dependencies = [
- "ordered-float",
  "serde",
 ]
 

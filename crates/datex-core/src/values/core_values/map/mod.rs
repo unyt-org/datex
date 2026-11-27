@@ -301,7 +301,7 @@ impl Map {
         Ok(())
     }
 
-    pub(crate) fn iter(&self) -> MapIterator<'_> {
+    pub fn iter(&self) -> MapIterator<'_> {
         MapIterator {
             map: self,
             index: 0,

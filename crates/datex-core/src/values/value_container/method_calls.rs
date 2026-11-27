@@ -20,6 +20,8 @@ use core::{
     ops::{Deref, DerefMut},
 };
 use log::info;
+use crate::runtime::execution::InvalidProgramError;
+use crate::traits::convert_value_container::ConvertValueContainer;
 
 // TODO: move somewhere else, this is an impl of ApplyArgument
 impl ApplyArgument {
@@ -60,16 +62,29 @@ impl ApplyArgument {
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError>
     {
         let val = self.value.collapsed_value();
-        let entity_type = Self::try_get_entity_type(val, runtime)?;
-        let method = Self::try_get_method_data(&entity_type, method_name);
+        let entity_type = Self::try_get_entity_type(val, runtime);
+        let method = match &entity_type {
+            Ok(entity_type) => Self::try_get_method_data(entity_type, method_name),
+            Err(_) => Err(ExecutionError::ExpectedEntityValue),
+        };
 
         match method {
+            // FIXME borrow across await point
             Ok(method) => {
                 self.try_call_method_async_direct(method.deref(), args, runtime)
                     .await
             }
-            // FIXME: only temp test, method should always be declared in the type
             Err(_) => {
+                let is_owned = self
+                    .value
+                    .owner()
+                    .is_local_or_equals_endpoint(runtime.endpoint());
+                if is_owned {
+                    // fallback to builtin methods if not found in entity type
+                    return self.call_builtin_method(method_name, runtime).await;
+                }
+
+                // FIXME: only temp test, method should always be declared in the type
                 drop(method);
                 info!("fallback to remote call for method: {}", method_name);
                 let owner = self.value.owner();
@@ -124,6 +139,51 @@ impl ApplyArgument {
             .await
         }
     }
+
+    /// FIXME: only temporary until traits are implemented
+    /// Calls builtin methods on the value container.
+    /// Update methods are handled separately since the have separate instruction codes and are not part of the entity methods.
+    async fn call_builtin_method(
+        self,
+        name: &str,
+        runtime: &Runtime,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
+        match name {
+            // The entries method returns all endpoint properties of an endpoint value as a map.
+            // TODO: implement generally for all values, currently only implemented for endpoints
+            "entries" => {
+                // get local endpoint entries
+                if let Ok(endpoint) = self.value.try_into_value::<Endpoint>() {
+                    if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
+                        let entries = runtime.endpoint_properties().clone();
+                        Ok((Some(entries.to_value_container()), vec![]))
+                    } else {
+                        // call @@local->entries() method on owner endpoint
+                        let res = runtime
+                            .execute_instructions_remote_single_receiver(
+                                endpoint,
+                                vec![
+                                    RegularInstruction::call_method(
+                                        "entries".to_string(), // FIXME: don't use method name here
+                                        0
+                                    )
+                                        .into(),
+                                    InstructionInput::ValueContainer(Endpoint::LOCAL.to_value_container()),
+                                ],
+                                false,
+                            )
+                            .await?;
+                        Ok((res, vec![]))
+                    }
+                }
+                else {
+                    Err(ExecutionError::InvalidProgram(Box::new(InvalidProgramError::InvalidType)))
+                }
+            }
+            _ => Err(ExecutionError::MethodNotFound(name.to_string())),
+        }
+    }
+
 
     async fn try_call_method_on_owner(
         owner_endpoint: Endpoint,
