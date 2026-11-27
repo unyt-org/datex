@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        expressions::{DataExpression, DataExpressionData, Map},
+        expressions::{NormalExpression, NormalExpressionData, Map},
         spanned::Spanned,
     },
     parser::{Parser, SpannedParserError, lexer::Token},
@@ -8,7 +8,7 @@ use crate::{
 
 use crate::prelude::*;
 impl Parser {
-    pub fn parse_map(&mut self) -> Result<DataExpression, SpannedParserError> {
+    pub fn parse_map(&mut self) -> Result<NormalExpression, SpannedParserError> {
         let start = self.expect(Token::LeftCurly)?.span.start;
         let mut entries = Vec::new();
 
@@ -23,7 +23,7 @@ impl Parser {
             }
         }
         let end = self.expect(Token::RightCurly)?.span.end;
-        Ok(DataExpressionData::Map(Map { entries }).with_span(start..end))
+        Ok(NormalExpressionData::Map(Map { entries }).with_span(start..end))
     }
 }
 
@@ -33,7 +33,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, DataExpressionData, Map,
+                BinaryOperation, NormalExpressionData, Map,
                 expression::Expression,
             },
             spanned::Spanned,
@@ -48,7 +48,7 @@ mod tests {
         let expr = parse("{}");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Map(Map { entries: vec![] })
+            &NormalExpressionData::Map(Map { entries: vec![] })
         );
     }
 
@@ -57,18 +57,18 @@ mod tests {
         let expr = parse(r#"{"key1": true, "key2": false}"#);
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Map(Map {
+            &NormalExpressionData::Map(Map {
                 entries: vec![
                     (
-                        DataExpressionData::Text("key1".into())
+                        NormalExpressionData::Text("key1".into())
                             .with_default_span(),
-                        DataExpressionData::Boolean(true.into())
+                        NormalExpressionData::Boolean(true.into())
                             .with_default_span()
                     ),
                     (
-                        DataExpressionData::Text("key2".into())
+                        NormalExpressionData::Text("key2".into())
                             .with_default_span(),
-                        DataExpressionData::Boolean(false.into())
+                        NormalExpressionData::Boolean(false.into())
                             .with_default_span()
                     ),
                 ]
@@ -81,18 +81,18 @@ mod tests {
         let expr = parse("{key1: true, key2: false}");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Map(Map {
+            &NormalExpressionData::Map(Map {
                 entries: vec![
                     (
-                        DataExpressionData::Text("key1".into())
+                        NormalExpressionData::Text("key1".into())
                             .with_default_span(),
-                        DataExpressionData::Boolean(true.into())
+                        NormalExpressionData::Boolean(true.into())
                             .with_default_span()
                     ),
                     (
-                        DataExpressionData::Text("key2".into())
+                        NormalExpressionData::Text("key2".into())
                             .with_default_span(),
-                        DataExpressionData::Boolean(false.into())
+                        NormalExpressionData::Boolean(false.into())
                             .with_default_span()
                     ),
                 ]
@@ -105,18 +105,18 @@ mod tests {
         let expr = parse("{if: true, type: false}");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Map(Map {
+            &NormalExpressionData::Map(Map {
                 entries: vec![
                     (
-                        DataExpressionData::Text("if".into())
+                        NormalExpressionData::Text("if".into())
                             .with_default_span(),
-                        DataExpressionData::Boolean(true.into())
+                        NormalExpressionData::Boolean(true.into())
                             .with_default_span()
                     ),
                     (
-                        DataExpressionData::Text("type".into())
+                        NormalExpressionData::Text("type".into())
                             .with_default_span(),
-                        DataExpressionData::Boolean(false.into())
+                        NormalExpressionData::Boolean(false.into())
                             .with_default_span()
                     ),
                 ]
@@ -129,29 +129,29 @@ mod tests {
         let expr = parse("{(x): true, (y + true): false}");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Map(Map {
+            &NormalExpressionData::Map(Map {
                 entries: vec![
                     (
-                        DataExpressionData::Identifier("x".to_string())
+                        NormalExpressionData::Identifier("x".to_string())
                             .with_default_span(),
-                        DataExpressionData::Boolean(true.into())
+                        NormalExpressionData::Boolean(true.into())
                             .with_default_span()
                     ),
                     (
-                        DataExpressionData::BinaryOperation(BinaryOperation {
-                            left: (DataExpressionData::Identifier(
+                        NormalExpressionData::BinaryOperation(BinaryOperation {
+                            left: (NormalExpressionData::Identifier(
                                 "y".to_string()
                             )
                             .with_default_span()),
                             operator: BinaryOperator::Arithmetic(
                                 ArithmeticOperator::Add
                             ),
-                            right: (DataExpressionData::Boolean(true.into())
+                            right: (NormalExpressionData::Boolean(true.into())
                                 .with_default_span()),
                             ty: None,
                         })
                         .with_default_span(),
-                        DataExpressionData::Boolean(false.into())
+                        NormalExpressionData::Boolean(false.into())
                             .with_default_span()
                     ),
                 ]

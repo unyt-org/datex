@@ -2,7 +2,7 @@
 
 use datex_core::{
     ast::{
-        expressions::{DataExpressionData, Map},
+        expressions::{NormalExpressionData, Map},
         spanned::Spanned,
     },
     traits::to_datex_expression_data::ToDatexExpressionData,
@@ -42,15 +42,15 @@ fn test_to_datex_expression_data() {
 
     assert_eq!(
         datex_expression_data,
-        DataExpressionData::Map(Map::new(vec![
+        NormalExpressionData::Map(Map::new(vec![
             (
-                DataExpressionData::Text("field1".into()).with_default_span(),
-                DataExpressionData::TypedInteger(TypedInteger::I32(42))
+                NormalExpressionData::Text("field1".into()).with_default_span(),
+                NormalExpressionData::TypedInteger(TypedInteger::I32(42))
                     .with_default_span()
             ),
             (
-                DataExpressionData::Text("field2".into()).with_default_span(),
-                DataExpressionData::Text("Hello, Datex!".into())
+                NormalExpressionData::Text("field2".into()).with_default_span(),
+                NormalExpressionData::Text("Hello, Datex!".into())
                     .with_default_span()
             ),
         ]))
@@ -68,15 +68,15 @@ fn test_to_datex_expression_data_with_value() {
 
     assert_eq!(
         datex_expression_data,
-        DataExpressionData::Map(Map::new(vec![
+        NormalExpressionData::Map(Map::new(vec![
             (
-                DataExpressionData::Text("field1".into()).with_default_span(),
-                DataExpressionData::TypedInteger(TypedInteger::I32(42))
+                NormalExpressionData::Text("field1".into()).with_default_span(),
+                NormalExpressionData::TypedInteger(TypedInteger::I32(42))
                     .with_default_span()
             ),
             (
-                DataExpressionData::Text("field2".into()).with_default_span(),
-                DataExpressionData::Text("Hello, Datex!".into())
+                NormalExpressionData::Text("field2".into()).with_default_span(),
+                NormalExpressionData::Text("Hello, Datex!".into())
                     .with_default_span()
             ),
         ]))
@@ -97,28 +97,28 @@ fn test_to_datex_expression_data_nested() {
 
     assert_eq!(
         datex_expression_data,
-        DataExpressionData::Map(Map::new(vec![
+        NormalExpressionData::Map(Map::new(vec![
             (
-                DataExpressionData::Text("nested".into()).with_default_span(),
-                DataExpressionData::Map(Map::new(vec![
+                NormalExpressionData::Text("nested".into()).with_default_span(),
+                NormalExpressionData::Map(Map::new(vec![
                     (
-                        DataExpressionData::Text("field1".into())
+                        NormalExpressionData::Text("field1".into())
                             .with_default_span(),
-                        DataExpressionData::TypedInteger(TypedInteger::I32(42))
+                        NormalExpressionData::TypedInteger(TypedInteger::I32(42))
                             .with_default_span()
                     ),
                     (
-                        DataExpressionData::Text("field2".into())
+                        NormalExpressionData::Text("field2".into())
                             .with_default_span(),
-                        DataExpressionData::Text("Hello, Datex!".into())
+                        NormalExpressionData::Text("Hello, Datex!".into())
                             .with_default_span()
                     ),
                 ]))
                 .with_default_span()
             ),
             (
-                DataExpressionData::Text("field3".into()).with_default_span(),
-                DataExpressionData::Text("Nested Test".into())
+                NormalExpressionData::Text("field3".into()).with_default_span(),
+                NormalExpressionData::Text("Nested Test".into())
                     .with_default_span()
             ),
         ]))

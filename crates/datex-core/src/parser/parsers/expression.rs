@@ -2,7 +2,7 @@ use crate::{
     ast::{
         expressions::{
             Apply, BinaryOperation, CloneExpression, ComparisonOperation,
-            CreateMut, CreateShared, DataExpression, DataExpressionData,
+            CreateMut, CreateShared, NormalExpression, NormalExpressionData,
             DeriveRef, DeriveSharedRef, GenericInstantiation,
             InterfaceMethodCall, PropertyAccess, PropertyAssignment,
             RangeDeclaration, RemoteExecution, RequestSharedRef,
@@ -36,7 +36,7 @@ impl Parser {
     pub(crate) fn parse_expression(
         &mut self,
         min_bp: u8,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         if self.expression_depth >= MAX_EXPRESSION_DEPTH {
             let span = match self.peek() {
                 Ok(token) => token.span.clone(),
@@ -62,7 +62,7 @@ impl Parser {
     pub(crate) fn parse_expression_inner(
         &mut self,
         min_bp: u8,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         let mut lhs = self.parse_prefix()?;
 
         while self.has_more_tokens() {
@@ -82,10 +82,10 @@ impl Parser {
 
     fn parse_binary_operation(
         &mut self,
-        lhs: DataExpression,
+        lhs: NormalExpression,
         op: SpannedToken,
         r_bp: u8,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         Ok(match op.token {
             Token::Arrow => {
                 self.advance()?; // consume the operator
@@ -93,7 +93,7 @@ impl Parser {
                 let method_name = self.parse_identifier_string()?.0;
                 let (rhs, end_token) = self.parse_apply_arguments()?;
                 let span = lhs.span.start..end_token;
-                DataExpressionData::InterfaceMethodCall(InterfaceMethodCall {
+                NormalExpressionData::InterfaceMethodCall(InterfaceMethodCall {
                     target: lhs,
                     method_name,
                     arguments: rhs,
@@ -109,7 +109,7 @@ impl Parser {
 
                 let span = lhs.span.start..rhs.span.end;
 
-                DataExpressionData::PropertyAccess(PropertyAccess {
+                NormalExpressionData::PropertyAccess(PropertyAccess {
                     base: (lhs),
                     property: (rhs),
                 })
@@ -129,7 +129,7 @@ impl Parser {
                 let rhs = self.parse_expression(r_bp)?;
                 let span = lhs.span.start..rhs.span.end;
 
-                DataExpressionData::BinaryOperation(BinaryOperation {
+                NormalExpressionData::BinaryOperation(BinaryOperation {
                     left: (lhs),
                     operator: Parser::binary_operator_from_token(&op),
                     right: (rhs),
@@ -151,7 +151,7 @@ impl Parser {
                 let rhs = self.parse_expression(r_bp)?;
                 let span = lhs.span.start..rhs.span.end;
 
-                DataExpressionData::ComparisonOperation(ComparisonOperation {
+                NormalExpressionData::ComparisonOperation(ComparisonOperation {
                     left: (lhs),
                     operator: Parser::comparison_operator_from_token(&op),
                     right: (rhs),
@@ -165,7 +165,7 @@ impl Parser {
                 match generic_params {
                     Ok((params, end_span)) => {
                         let span = lhs.span.start..end_span.end;
-                        DataExpressionData::GenericInstantiation(
+                        NormalExpressionData::GenericInstantiation(
                             GenericInstantiation {
                                 base: (lhs),
                                 generic_arguments: params,
@@ -178,7 +178,7 @@ impl Parser {
                         let rhs = self.parse_expression(r_bp)?;
                         let span = lhs.span.start..rhs.span.end;
 
-                        DataExpressionData::ComparisonOperation(
+                        NormalExpressionData::ComparisonOperation(
                             ComparisonOperation {
                                 left: (lhs),
                                 operator: ComparisonOperator::LessThan,
@@ -202,7 +202,7 @@ impl Parser {
                 self.advance()?; // consume the operator
                 let rhs = self.parse_expression(r_bp)?;
                 let span = lhs.span.start..rhs.span.end;
-                DataExpressionData::RemoteExecution(RemoteExecution {
+                NormalExpressionData::RemoteExecution(RemoteExecution {
                     left: (lhs),
                     right: (rhs),
                     injected_variable_count: None,
@@ -212,7 +212,7 @@ impl Parser {
 
             Token::Range => {
                 self.advance()?; // consume the operator
-                if matches!(lhs.data(), &DataExpressionData::Range(_)) {
+                if matches!(lhs.data(), &NormalExpressionData::Range(_)) {
                     return Err(SpannedParserError {
                         error: ParserError::InvalidToken,
                         span: lhs.span,
@@ -221,7 +221,7 @@ impl Parser {
 
                 let rhs = self.parse_expression(r_bp)?;
                 let span = lhs.span.start..rhs.span.end;
-                DataExpressionData::Range(RangeDeclaration {
+                NormalExpressionData::Range(RangeDeclaration {
                     start: (lhs),
                     end: (rhs),
                 })
@@ -233,7 +233,7 @@ impl Parser {
                 let (args, end) = self.parse_apply_arguments()?;
                 let span = lhs.span.start..end;
 
-                DataExpressionData::Apply(Apply {
+                NormalExpressionData::Apply(Apply {
                     base: (lhs),
                     arguments: args,
                 })
@@ -244,10 +244,10 @@ impl Parser {
 
     fn parse_assignment(
         &mut self,
-        lhs: DataExpression,
+        lhs: NormalExpression,
         op: SpannedToken,
         r_bp: u8,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         self.advance()?; // consume the operator
         let rhs = self.parse_expression(r_bp)?;
         let span = lhs.span.start..rhs.span.end;
@@ -263,8 +263,8 @@ impl Parser {
         // select assignment type based on lhs
         Ok(match *lhs.data {
             // variable assignment
-            DataExpressionData::Identifier(name) => {
-                DataExpressionData::VariableAssignment(VariableAssignment {
+            NormalExpressionData::Identifier(name) => {
+                NormalExpressionData::VariableAssignment(VariableAssignment {
                     id: None,
                     name,
                     operator: assignment_operator,
@@ -272,8 +272,8 @@ impl Parser {
                 })
             }
             // property assignment
-            DataExpressionData::PropertyAccess(prop_access) => {
-                DataExpressionData::PropertyAssignment(PropertyAssignment {
+            NormalExpressionData::PropertyAccess(prop_access) => {
+                NormalExpressionData::PropertyAssignment(PropertyAssignment {
                     operator: assignment_operator,
                     base: prop_access.base,
                     property: prop_access.property,
@@ -281,16 +281,16 @@ impl Parser {
                 })
             }
             // unbox assignment
-            DataExpressionData::Unbox(unbox) => {
-                DataExpressionData::UnboxAssignment(UnboxAssignment {
+            NormalExpressionData::Unbox(unbox) => {
+                NormalExpressionData::UnboxAssignment(UnboxAssignment {
                     operator: assignment_operator,
                     unbox_expression: unbox.expression,
                     assigned_expression: (rhs),
                 })
             }
             // slot assignment
-            DataExpressionData::StackIndex(slot) => {
-                DataExpressionData::StackAssignment(StackAssignment {
+            NormalExpressionData::StackIndex(slot) => {
+                NormalExpressionData::StackAssignment(StackAssignment {
                     index: slot,
                     expression: (rhs),
                 })
@@ -309,7 +309,7 @@ impl Parser {
     // TODO #666: handle single value without parentheses as argument
     fn parse_apply_arguments(
         &mut self,
-    ) -> Result<(Vec<DataExpression>, usize), SpannedParserError> {
+    ) -> Result<(Vec<NormalExpression>, usize), SpannedParserError> {
         let op = self.peek()?.clone();
 
         match op.token {
@@ -397,7 +397,7 @@ impl Parser {
         }
     }
 
-    fn parse_prefix(&mut self) -> Result<DataExpression, SpannedParserError> {
+    fn parse_prefix(&mut self) -> Result<NormalExpression, SpannedParserError> {
         match self.peek()?.token {
             // minus:
             Token::Minus => {
@@ -407,15 +407,15 @@ impl Parser {
 
                 Ok(match *rhs.data {
                     // special case: if the rhs is a literal integer/decimal, parse it as negative literal
-                    DataExpressionData::Integer(value) => {
-                        DataExpressionData::Integer(-value)
+                    NormalExpressionData::Integer(value) => {
+                        NormalExpressionData::Integer(-value)
                     }
-                    DataExpressionData::Decimal(value) => {
-                        DataExpressionData::Decimal(-value)
+                    NormalExpressionData::Decimal(value) => {
+                        NormalExpressionData::Decimal(-value)
                     }
-                    DataExpressionData::TypedInteger(value) => match -value {
+                    NormalExpressionData::TypedInteger(value) => match -value {
                         Ok(neg_value) => {
-                            DataExpressionData::TypedInteger(neg_value)
+                            NormalExpressionData::TypedInteger(neg_value)
                         }
                         Err(_e) => {
                             return Err(SpannedParserError {
@@ -426,11 +426,11 @@ impl Parser {
                             });
                         }
                     },
-                    DataExpressionData::TypedDecimal(value) => {
-                        DataExpressionData::TypedDecimal(-value)
+                    NormalExpressionData::TypedDecimal(value) => {
+                        NormalExpressionData::TypedDecimal(-value)
                     }
                     // default case: unary minus operation
-                    _ => DataExpressionData::UnaryOperation(UnaryOperation {
+                    _ => NormalExpressionData::UnaryOperation(UnaryOperation {
                         operator: UnaryOperator::Arithmetic(
                             ArithmeticUnaryOperator::Minus,
                         ),
@@ -446,20 +446,20 @@ impl Parser {
                 let span = op.span.start..rhs.span.end;
                 Ok(match *rhs.data {
                     // special case: unary plus is a no-op for integer and decimal literals
-                    DataExpressionData::Integer(value) => {
-                        DataExpressionData::Integer(value)
+                    NormalExpressionData::Integer(value) => {
+                        NormalExpressionData::Integer(value)
                     }
-                    DataExpressionData::Decimal(value) => {
-                        DataExpressionData::Decimal(value)
+                    NormalExpressionData::Decimal(value) => {
+                        NormalExpressionData::Decimal(value)
                     }
-                    DataExpressionData::TypedInteger(value) => {
-                        DataExpressionData::TypedInteger(value)
+                    NormalExpressionData::TypedInteger(value) => {
+                        NormalExpressionData::TypedInteger(value)
                     }
-                    DataExpressionData::TypedDecimal(value) => {
-                        DataExpressionData::TypedDecimal(value)
+                    NormalExpressionData::TypedDecimal(value) => {
+                        NormalExpressionData::TypedDecimal(value)
                     }
                     // default case: unary plus operation
-                    _ => DataExpressionData::UnaryOperation(UnaryOperation {
+                    _ => NormalExpressionData::UnaryOperation(UnaryOperation {
                         operator: UnaryOperator::Arithmetic(
                             ArithmeticUnaryOperator::Plus,
                         ),
@@ -473,7 +473,7 @@ impl Parser {
                 let op = self.advance()?;
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
-                Ok(DataExpressionData::UnaryOperation(UnaryOperation {
+                Ok(NormalExpressionData::UnaryOperation(UnaryOperation {
                     operator: UnaryOperator::Logical(LogicalUnaryOperator::Not),
                     expression: (rhs),
                 })
@@ -497,7 +497,7 @@ impl Parser {
                 let span_end = rhs.span.end;
 
                 let span = op.span.start..span_end;
-                Ok(DataExpressionData::CreateShared(CreateShared {
+                Ok(NormalExpressionData::CreateShared(CreateShared {
                     mutability,
                     expression: (rhs),
                 })
@@ -508,7 +508,7 @@ impl Parser {
                 let op = self.advance()?;
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
-                Ok(DataExpressionData::CreateMut(CreateMut {
+                Ok(NormalExpressionData::CreateMut(CreateMut {
                     expression: (rhs),
                 })
                 .with_span(span))
@@ -518,7 +518,7 @@ impl Parser {
                 let op = self.advance()?;
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
-                Ok(DataExpressionData::Clone(CloneExpression {
+                Ok(NormalExpressionData::Clone(CloneExpression {
                     expression: (rhs),
                 })
                 .with_span(span))
@@ -528,7 +528,7 @@ impl Parser {
                 let op = self.advance()?;
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
-                Ok(DataExpressionData::DeriveRef(DeriveRef {
+                Ok(NormalExpressionData::DeriveRef(DeriveRef {
                     mutability: LocalReferenceMutability::Immutable,
                     expression: (rhs),
                 })
@@ -539,7 +539,7 @@ impl Parser {
                 let op = self.advance()?;
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
-                Ok(DataExpressionData::DeriveRef(DeriveRef {
+                Ok(NormalExpressionData::DeriveRef(DeriveRef {
                     mutability: LocalReferenceMutability::Mutable,
                     expression: (rhs),
                 })
@@ -559,7 +559,7 @@ impl Parser {
                     let span = op.span.start..next.span.end;
                     self.advance()?; // consume pointer address
 
-                    Ok(DataExpressionData::RequestSharedRef(RequestSharedRef {
+                    Ok(NormalExpressionData::RequestSharedRef(RequestSharedRef {
                         mutability: ReferenceMutability::Immutable,
                         address,
                     })
@@ -570,7 +570,7 @@ impl Parser {
                     let rhs = self.parse_expression(UNARY_BP)?;
                     let span = op.span.start..rhs.span.end;
 
-                    Ok(DataExpressionData::DeriveSharedRef(DeriveSharedRef {
+                    Ok(NormalExpressionData::DeriveSharedRef(DeriveSharedRef {
                         mutability: ReferenceMutability::Immutable,
                         expression: (rhs),
                     })
@@ -591,7 +591,7 @@ impl Parser {
                     let span = op.span.start..next.span.end;
                     self.advance()?; // consume pointer address
 
-                    Ok(DataExpressionData::RequestSharedRef(RequestSharedRef {
+                    Ok(NormalExpressionData::RequestSharedRef(RequestSharedRef {
                         mutability: ReferenceMutability::Mutable,
                         address,
                     })
@@ -602,7 +602,7 @@ impl Parser {
                     let rhs = self.parse_expression(UNARY_BP)?;
                     let span = op.span.start..rhs.span.end;
 
-                    Ok(DataExpressionData::DeriveSharedRef(DeriveSharedRef {
+                    Ok(NormalExpressionData::DeriveSharedRef(DeriveSharedRef {
                         mutability: ReferenceMutability::Mutable,
                         expression: (rhs),
                     })
@@ -614,7 +614,7 @@ impl Parser {
                 let op = self.advance()?;
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
-                Ok(DataExpressionData::Unbox(Unbox { expression: (rhs) })
+                Ok(NormalExpressionData::Unbox(Unbox { expression: (rhs) })
                     .with_span(span))
             }
 
@@ -694,7 +694,7 @@ mod tests {
         ast::{
             expressions::{
                 Apply, BinaryOperation, ComparisonOperation, CreateMut,
-                CreateShared, DataExpressionData, DeriveRef, DeriveSharedRef,
+                CreateShared, NormalExpressionData, DeriveRef, DeriveSharedRef,
                 GenericInstantiation, InterfaceMethodCall, PropertyAccess,
                 PropertyAssignment, RemoteExecution, RequestSharedRef,
                 StackAssignment, Statements, TypeExpressionData,
@@ -731,11 +731,11 @@ mod tests {
         let expr = parse("true + false");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::BinaryOperation(BinaryOperation {
-                left: (DataExpressionData::Boolean(true.into())
+            &NormalExpressionData::BinaryOperation(BinaryOperation {
+                left: (NormalExpressionData::Boolean(true.into())
                     .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                right: (DataExpressionData::Boolean(false.into())
+                right: (NormalExpressionData::Boolean(false.into())
                     .with_default_span()),
                 ty: None,
             })
@@ -747,17 +747,17 @@ mod tests {
         let expr = parse("true + false * null");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::BinaryOperation(BinaryOperation {
-                left: (DataExpressionData::Boolean(true.into())
+            &NormalExpressionData::BinaryOperation(BinaryOperation {
+                left: (NormalExpressionData::Boolean(true.into())
                     .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                right: (DataExpressionData::BinaryOperation(BinaryOperation {
-                    left: (DataExpressionData::Boolean(false.into())
+                right: (NormalExpressionData::BinaryOperation(BinaryOperation {
+                    left: (NormalExpressionData::Boolean(false.into())
                         .with_default_span()),
                     operator: BinaryOperator::Arithmetic(
                         ArithmeticOperator::Multiply
                     ),
-                    right: (DataExpressionData::Null.with_default_span()),
+                    right: (NormalExpressionData::Null.with_default_span()),
                     ty: None,
                 })
                 .with_default_span()),
@@ -771,11 +771,11 @@ mod tests {
         let expr = parse("-true");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::UnaryOperation(UnaryOperation {
+            &NormalExpressionData::UnaryOperation(UnaryOperation {
                 operator: UnaryOperator::Arithmetic(
                     ArithmeticUnaryOperator::Minus
                 ),
-                expression: (DataExpressionData::Boolean(true.into())
+                expression: (NormalExpressionData::Boolean(true.into())
                     .with_default_span()),
             })
         );
@@ -786,10 +786,10 @@ mod tests {
         let expr = parse("myObject.myProperty");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::PropertyAccess(PropertyAccess {
-                base: (DataExpressionData::Identifier("myObject".to_string())
+            &NormalExpressionData::PropertyAccess(PropertyAccess {
+                base: (NormalExpressionData::Identifier("myObject".to_string())
                     .with_default_span()),
-                property: (DataExpressionData::Text("myProperty".into())
+                property: (NormalExpressionData::Text("myProperty".into())
                     .with_default_span()),
             })
         );
@@ -800,10 +800,10 @@ mod tests {
         let expr = parse("myObject.if");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::PropertyAccess(PropertyAccess {
-                base: (DataExpressionData::Identifier("myObject".to_string())
+            &NormalExpressionData::PropertyAccess(PropertyAccess {
+                base: (NormalExpressionData::Identifier("myObject".to_string())
                     .with_default_span()),
-                property: (DataExpressionData::Text("if".into())
+                property: (NormalExpressionData::Text("if".into())
                     .with_default_span()),
             })
         );
@@ -814,17 +814,17 @@ mod tests {
         let expr = parse("myObject.innerObject.myProperty");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::PropertyAccess(PropertyAccess {
-                base: (DataExpressionData::PropertyAccess(PropertyAccess {
-                    base: (DataExpressionData::Identifier(
+            &NormalExpressionData::PropertyAccess(PropertyAccess {
+                base: (NormalExpressionData::PropertyAccess(PropertyAccess {
+                    base: (NormalExpressionData::Identifier(
                         "myObject".to_string()
                     )
                     .with_default_span()),
-                    property: (DataExpressionData::Text("innerObject".into())
+                    property: (NormalExpressionData::Text("innerObject".into())
                         .with_default_span()),
                 })
                 .with_default_span()),
-                property: (DataExpressionData::Text("myProperty".into())
+                property: (NormalExpressionData::Text("myProperty".into())
                     .with_default_span()),
             })
         );
@@ -835,18 +835,18 @@ mod tests {
         let expr = parse("-myObject.value1 + myObject.value2 * true");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::BinaryOperation(BinaryOperation {
-                left: (DataExpressionData::UnaryOperation(UnaryOperation {
+            &NormalExpressionData::BinaryOperation(BinaryOperation {
+                left: (NormalExpressionData::UnaryOperation(UnaryOperation {
                     operator: UnaryOperator::Arithmetic(
                         ArithmeticUnaryOperator::Minus
                     ),
-                    expression: (DataExpressionData::PropertyAccess(
+                    expression: (NormalExpressionData::PropertyAccess(
                         PropertyAccess {
-                            base: (DataExpressionData::Identifier(
+                            base: (NormalExpressionData::Identifier(
                                 "myObject".to_string()
                             )
                             .with_default_span()),
-                            property: (DataExpressionData::Text(
+                            property: (NormalExpressionData::Text(
                                 "value1".into()
                             )
                             .with_default_span()),
@@ -856,14 +856,14 @@ mod tests {
                 })
                 .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                right: (DataExpressionData::BinaryOperation(BinaryOperation {
-                    left: (DataExpressionData::PropertyAccess(
+                right: (NormalExpressionData::BinaryOperation(BinaryOperation {
+                    left: (NormalExpressionData::PropertyAccess(
                         PropertyAccess {
-                            base: (DataExpressionData::Identifier(
+                            base: (NormalExpressionData::Identifier(
                                 "myObject".to_string()
                             )
                             .with_default_span()),
-                            property: (DataExpressionData::Text(
+                            property: (NormalExpressionData::Text(
                                 "value2".into()
                             )
                             .with_default_span()),
@@ -873,7 +873,7 @@ mod tests {
                     operator: BinaryOperator::Arithmetic(
                         ArithmeticOperator::Multiply
                     ),
-                    right: (DataExpressionData::Boolean(true.into())
+                    right: (NormalExpressionData::Boolean(true.into())
                         .with_default_span()),
                     ty: None,
                 })
@@ -888,15 +888,15 @@ mod tests {
         let expr = parse("myFunction(arg1, arg2)");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Apply(Apply {
-                base: (DataExpressionData::Identifier(
+            &NormalExpressionData::Apply(Apply {
+                base: (NormalExpressionData::Identifier(
                     "myFunction".to_string()
                 )
                 .with_default_span()),
                 arguments: vec![
-                    DataExpressionData::Identifier("arg1".to_string())
+                    NormalExpressionData::Identifier("arg1".to_string())
                         .with_default_span(),
-                    DataExpressionData::Identifier("arg2".to_string())
+                    NormalExpressionData::Identifier("arg2".to_string())
                         .with_default_span(),
                 ],
             })
@@ -908,8 +908,8 @@ mod tests {
         let expr = parse("myFunction()");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Apply(Apply {
-                base: (DataExpressionData::Identifier(
+            &NormalExpressionData::Apply(Apply {
+                base: (NormalExpressionData::Identifier(
                     "myFunction".to_string()
                 )
                 .with_default_span()),
@@ -923,13 +923,13 @@ mod tests {
         let expr = parse("myFunction arg1");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Apply(Apply {
-                base: (DataExpressionData::Identifier(
+            &NormalExpressionData::Apply(Apply {
+                base: (NormalExpressionData::Identifier(
                     "myFunction".to_string()
                 )
                 .with_default_span()),
                 arguments: vec![
-                    DataExpressionData::Identifier("arg1".to_string())
+                    NormalExpressionData::Identifier("arg1".to_string())
                         .with_default_span(),
                 ],
             })
@@ -941,18 +941,18 @@ mod tests {
         let expr = parse("myObject.myFunction(arg1)");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Apply(Apply {
-                base: (DataExpressionData::PropertyAccess(PropertyAccess {
-                    base: (DataExpressionData::Identifier(
+            &NormalExpressionData::Apply(Apply {
+                base: (NormalExpressionData::PropertyAccess(PropertyAccess {
+                    base: (NormalExpressionData::Identifier(
                         "myObject".to_string()
                     )
                     .with_default_span()),
-                    property: (DataExpressionData::Text("myFunction".into())
+                    property: (NormalExpressionData::Text("myFunction".into())
                         .with_default_span()),
                 })
                 .with_default_span()),
                 arguments: vec![
-                    DataExpressionData::Identifier("arg1".into())
+                    NormalExpressionData::Identifier("arg1".into())
                         .with_default_span(),
                 ],
             })
@@ -964,18 +964,18 @@ mod tests {
         let expr = parse("myFunction(arg1)(arg2)");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Apply(Apply {
-                base: (DataExpressionData::Apply(Apply {
-                    base: (DataExpressionData::Identifier("myFunction".into())
+            &NormalExpressionData::Apply(Apply {
+                base: (NormalExpressionData::Apply(Apply {
+                    base: (NormalExpressionData::Identifier("myFunction".into())
                         .with_default_span()),
                     arguments: vec![
-                        DataExpressionData::Identifier("arg1".into())
+                        NormalExpressionData::Identifier("arg1".into())
                             .with_default_span(),
                     ],
                 })
                 .with_default_span()),
                 arguments: vec![
-                    DataExpressionData::Identifier("arg2".into())
+                    NormalExpressionData::Identifier("arg2".into())
                         .with_default_span(),
                 ],
             })
@@ -987,10 +987,10 @@ mod tests {
         let expr = parse("endpoint::xy");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::RemoteExecution(RemoteExecution {
-                left: (DataExpressionData::Identifier("endpoint".to_string())
+            &NormalExpressionData::RemoteExecution(RemoteExecution {
+                left: (NormalExpressionData::Identifier("endpoint".to_string())
                     .with_default_span()),
-                right: (DataExpressionData::Identifier("xy".to_string())
+                right: (NormalExpressionData::Identifier("xy".to_string())
                     .with_default_span()),
                 injected_variable_count: None,
             })
@@ -1002,16 +1002,16 @@ mod tests {
         let expr = parse("endpoint::remoteFunction(arg1)");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::RemoteExecution(RemoteExecution {
-                left: (DataExpressionData::Identifier("endpoint".to_string())
+            &NormalExpressionData::RemoteExecution(RemoteExecution {
+                left: (NormalExpressionData::Identifier("endpoint".to_string())
                     .with_default_span()),
-                right: (DataExpressionData::Apply(Apply {
-                    base: (DataExpressionData::Identifier(
+                right: (NormalExpressionData::Apply(Apply {
+                    base: (NormalExpressionData::Identifier(
                         "remoteFunction".to_string()
                     )
                     .with_default_span()),
                     arguments: vec![
-                        DataExpressionData::Identifier("arg1".to_string())
+                        NormalExpressionData::Identifier("arg1".to_string())
                             .with_default_span(),
                     ],
                 })
@@ -1026,16 +1026,16 @@ mod tests {
         let expr = parse("endpoint::(statement1; statement2)");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::RemoteExecution(RemoteExecution {
-                left: (DataExpressionData::Identifier("endpoint".to_string())
+            &NormalExpressionData::RemoteExecution(RemoteExecution {
+                left: (NormalExpressionData::Identifier("endpoint".to_string())
                     .with_default_span()),
-                right: (DataExpressionData::Statements(Statements {
+                right: (NormalExpressionData::Statements(Statements {
                     statements: vec![
-                        DataExpressionData::Identifier(
+                        NormalExpressionData::Identifier(
                             "statement1".to_string()
                         )
                         .with_default_span(),
-                        DataExpressionData::Identifier(
+                        NormalExpressionData::Identifier(
                             "statement2".to_string()
                         )
                         .with_default_span(),
@@ -1054,11 +1054,11 @@ mod tests {
         let expr = parse("true and false");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::BinaryOperation(BinaryOperation {
-                left: (DataExpressionData::Boolean(true.into())
+            &NormalExpressionData::BinaryOperation(BinaryOperation {
+                left: (NormalExpressionData::Boolean(true.into())
                     .with_default_span()),
                 operator: BinaryOperator::Logical(LogicalOperator::And),
-                right: (DataExpressionData::Boolean(false.into())
+                right: (NormalExpressionData::Boolean(false.into())
                     .with_default_span()),
                 ty: None,
             })
@@ -1070,11 +1070,11 @@ mod tests {
         let expr = parse("true or false");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::BinaryOperation(BinaryOperation {
-                left: (DataExpressionData::Boolean(true.into())
+            &NormalExpressionData::BinaryOperation(BinaryOperation {
+                left: (NormalExpressionData::Boolean(true.into())
                     .with_default_span()),
                 operator: BinaryOperator::Logical(LogicalOperator::Or),
-                right: (DataExpressionData::Boolean(false.into())
+                right: (NormalExpressionData::Boolean(false.into())
                     .with_default_span()),
                 ty: None,
             })
@@ -1086,11 +1086,11 @@ mod tests {
         let expr = parse("1 & 2");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::BinaryOperation(BinaryOperation {
-                left: (DataExpressionData::Integer(1.into())
+            &NormalExpressionData::BinaryOperation(BinaryOperation {
+                left: (NormalExpressionData::Integer(1.into())
                     .with_default_span()),
                 operator: BinaryOperator::Bitwise(BitwiseOperator::And),
-                right: (DataExpressionData::Integer(2.into())
+                right: (NormalExpressionData::Integer(2.into())
                     .with_default_span()),
                 ty: None,
             })
@@ -1102,11 +1102,11 @@ mod tests {
         let expr = parse("1 | 2");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::BinaryOperation(BinaryOperation {
-                left: (DataExpressionData::Integer(1.into())
+            &NormalExpressionData::BinaryOperation(BinaryOperation {
+                left: (NormalExpressionData::Integer(1.into())
                     .with_default_span()),
                 operator: BinaryOperator::Bitwise(BitwiseOperator::Or),
-                right: (DataExpressionData::Integer(2.into())
+                right: (NormalExpressionData::Integer(2.into())
                     .with_default_span()),
                 ty: None,
             })
@@ -1118,15 +1118,15 @@ mod tests {
         let expr = parse("true or false and true");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::BinaryOperation(BinaryOperation {
-                left: (DataExpressionData::Boolean(true.into())
+            &NormalExpressionData::BinaryOperation(BinaryOperation {
+                left: (NormalExpressionData::Boolean(true.into())
                     .with_default_span()),
                 operator: BinaryOperator::Logical(LogicalOperator::Or),
-                right: (DataExpressionData::BinaryOperation(BinaryOperation {
-                    left: (DataExpressionData::Boolean(false.into())
+                right: (NormalExpressionData::BinaryOperation(BinaryOperation {
+                    left: (NormalExpressionData::Boolean(false.into())
                         .with_default_span()),
                     operator: BinaryOperator::Logical(LogicalOperator::And),
-                    right: (DataExpressionData::Boolean(true.into())
+                    right: (NormalExpressionData::Boolean(true.into())
                         .with_default_span()),
                     ty: None,
                 })
@@ -1141,9 +1141,9 @@ mod tests {
         let expr = parse("shared myVar");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::CreateShared(CreateShared {
+            &NormalExpressionData::CreateShared(CreateShared {
                 mutability: SharedContainerMutability::Immutable,
-                expression: (DataExpressionData::Identifier(
+                expression: (NormalExpressionData::Identifier(
                     "myVar".to_string()
                 )
                 .with_default_span()),
@@ -1156,8 +1156,8 @@ mod tests {
         let expr = parse("mut myVar");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::CreateMut(CreateMut {
-                expression: (DataExpressionData::Identifier(
+            &NormalExpressionData::CreateMut(CreateMut {
+                expression: (NormalExpressionData::Identifier(
                     "myVar".to_string()
                 )
                 .with_default_span()),
@@ -1170,9 +1170,9 @@ mod tests {
         let expr = parse("shared mut myVar");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::CreateShared(CreateShared {
+            &NormalExpressionData::CreateShared(CreateShared {
                 mutability: SharedContainerMutability::Mutable,
-                expression: (DataExpressionData::Identifier(
+                expression: (NormalExpressionData::Identifier(
                     "myVar".to_string()
                 )
                 .with_default_span()),
@@ -1185,9 +1185,9 @@ mod tests {
         let expr = parse("&myVar");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::DeriveRef(DeriveRef {
+            &NormalExpressionData::DeriveRef(DeriveRef {
                 mutability: LocalReferenceMutability::Immutable,
-                expression: (DataExpressionData::Identifier(
+                expression: (NormalExpressionData::Identifier(
                     "myVar".to_string()
                 )
                 .with_default_span()),
@@ -1200,9 +1200,9 @@ mod tests {
         let expr = parse("'myVar");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::DeriveSharedRef(DeriveSharedRef {
+            &NormalExpressionData::DeriveSharedRef(DeriveSharedRef {
                 mutability: ReferenceMutability::Immutable,
-                expression: (DataExpressionData::Identifier(
+                expression: (NormalExpressionData::Identifier(
                     "myVar".to_string()
                 )
                 .with_default_span()),
@@ -1215,9 +1215,9 @@ mod tests {
         let expr = parse("&mut myVar");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::DeriveRef(DeriveRef {
+            &NormalExpressionData::DeriveRef(DeriveRef {
                 mutability: LocalReferenceMutability::Mutable,
-                expression: (DataExpressionData::Identifier(
+                expression: (NormalExpressionData::Identifier(
                     "myVar".to_string()
                 )
                 .with_default_span()),
@@ -1230,9 +1230,9 @@ mod tests {
         let expr = parse("'mut myVar");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::DeriveSharedRef(DeriveSharedRef {
+            &NormalExpressionData::DeriveSharedRef(DeriveSharedRef {
                 mutability: ReferenceMutability::Mutable,
-                expression: (DataExpressionData::Identifier(
+                expression: (NormalExpressionData::Identifier(
                     "myVar".to_string()
                 )
                 .with_default_span()),
@@ -1245,15 +1245,15 @@ mod tests {
         let expr = parse("&myObject.myProperty");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::DeriveRef(DeriveRef {
+            &NormalExpressionData::DeriveRef(DeriveRef {
                 mutability: LocalReferenceMutability::Immutable,
-                expression: (DataExpressionData::PropertyAccess(
+                expression: (NormalExpressionData::PropertyAccess(
                     PropertyAccess {
-                        base: (DataExpressionData::Identifier(
+                        base: (NormalExpressionData::Identifier(
                             "myObject".to_string()
                         )
                         .with_default_span()),
-                        property: (DataExpressionData::Text(
+                        property: (NormalExpressionData::Text(
                             "myProperty".into()
                         )
                         .with_default_span()),
@@ -1269,15 +1269,15 @@ mod tests {
         let expr = parse("'myObject.myProperty");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::DeriveSharedRef(DeriveSharedRef {
+            &NormalExpressionData::DeriveSharedRef(DeriveSharedRef {
                 mutability: ReferenceMutability::Immutable,
-                expression: (DataExpressionData::PropertyAccess(
+                expression: (NormalExpressionData::PropertyAccess(
                     PropertyAccess {
-                        base: (DataExpressionData::Identifier(
+                        base: (NormalExpressionData::Identifier(
                             "myObject".to_string()
                         )
                         .with_default_span()),
-                        property: (DataExpressionData::Text(
+                        property: (NormalExpressionData::Text(
                             "myProperty".into()
                         )
                         .with_default_span()),
@@ -1293,11 +1293,11 @@ mod tests {
         let expr = parse("&mut &myVar");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::DeriveRef(DeriveRef {
+            &NormalExpressionData::DeriveRef(DeriveRef {
                 mutability: LocalReferenceMutability::Mutable,
-                expression: (DataExpressionData::DeriveRef(DeriveRef {
+                expression: (NormalExpressionData::DeriveRef(DeriveRef {
                     mutability: LocalReferenceMutability::Immutable,
-                    expression: (DataExpressionData::Identifier(
+                    expression: (NormalExpressionData::Identifier(
                         "myVar".to_string()
                     )
                     .with_default_span()),
@@ -1312,12 +1312,12 @@ mod tests {
         let expr = parse("'mut 'myVar");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::DeriveSharedRef(DeriveSharedRef {
+            &NormalExpressionData::DeriveSharedRef(DeriveSharedRef {
                 mutability: ReferenceMutability::Mutable,
-                expression: (DataExpressionData::DeriveSharedRef(
+                expression: (NormalExpressionData::DeriveSharedRef(
                     DeriveSharedRef {
                         mutability: ReferenceMutability::Immutable,
-                        expression: (DataExpressionData::Identifier(
+                        expression: (NormalExpressionData::Identifier(
                             "myVar".to_string()
                         )
                         .with_default_span()),
@@ -1333,8 +1333,8 @@ mod tests {
         let expr = parse("*myRef");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Unbox(Unbox {
-                expression: (DataExpressionData::Identifier(
+            &NormalExpressionData::Unbox(Unbox {
+                expression: (NormalExpressionData::Identifier(
                     "myRef".to_string()
                 )
                 .with_default_span()),
@@ -1347,10 +1347,10 @@ mod tests {
         let expr = parse("*&myVar");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Unbox(Unbox {
-                expression: (DataExpressionData::DeriveRef(DeriveRef {
+            &NormalExpressionData::Unbox(Unbox {
+                expression: (NormalExpressionData::DeriveRef(DeriveRef {
                     mutability: LocalReferenceMutability::Immutable,
-                    expression: (DataExpressionData::Identifier(
+                    expression: (NormalExpressionData::Identifier(
                         "myVar".to_string()
                     )
                     .with_default_span()),
@@ -1365,11 +1365,11 @@ mod tests {
         let expr = parse("*'myVar");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Unbox(Unbox {
-                expression: (DataExpressionData::DeriveSharedRef(
+            &NormalExpressionData::Unbox(Unbox {
+                expression: (NormalExpressionData::DeriveSharedRef(
                     DeriveSharedRef {
                         mutability: ReferenceMutability::Immutable,
-                        expression: (DataExpressionData::Identifier(
+                        expression: (NormalExpressionData::Identifier(
                             "myVar".to_string()
                         )
                         .with_default_span()),
@@ -1385,9 +1385,9 @@ mod tests {
         let expr = parse("**myRef");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Unbox(Unbox {
-                expression: (DataExpressionData::Unbox(Unbox {
-                    expression: (DataExpressionData::Identifier(
+            &NormalExpressionData::Unbox(Unbox {
+                expression: (NormalExpressionData::Unbox(Unbox {
+                    expression: (NormalExpressionData::Identifier(
                         "myRef".to_string()
                     )
                     .with_default_span()),
@@ -1402,17 +1402,17 @@ mod tests {
         let expr = parse("*myRef + *myRef2");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::BinaryOperation(BinaryOperation {
-                left: (DataExpressionData::Unbox(Unbox {
-                    expression: (DataExpressionData::Identifier(
+            &NormalExpressionData::BinaryOperation(BinaryOperation {
+                left: (NormalExpressionData::Unbox(Unbox {
+                    expression: (NormalExpressionData::Identifier(
                         "myRef".to_string()
                     )
                     .with_default_span()),
                 })
                 .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                right: (DataExpressionData::Unbox(Unbox {
-                    expression: (DataExpressionData::Identifier(
+                right: (NormalExpressionData::Unbox(Unbox {
+                    expression: (NormalExpressionData::Identifier(
                         "myRef2".to_string()
                     )
                     .with_default_span()),
@@ -1428,11 +1428,11 @@ mod tests {
         let expr = parse("x = true");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::VariableAssignment(VariableAssignment {
+            &NormalExpressionData::VariableAssignment(VariableAssignment {
                 id: None,
                 name: "x".to_string(),
                 operator: None,
-                expression: (DataExpressionData::Boolean(true.into())
+                expression: (NormalExpressionData::Boolean(true.into())
                     .with_default_span()),
             })
         );
@@ -1463,13 +1463,13 @@ mod tests {
         let expr = parse("obj.prop = true");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::PropertyAssignment(PropertyAssignment {
+            &NormalExpressionData::PropertyAssignment(PropertyAssignment {
                 operator: None,
-                base: (DataExpressionData::Identifier("obj".to_string())
+                base: (NormalExpressionData::Identifier("obj".to_string())
                     .with_default_span()),
-                property: (DataExpressionData::Text("prop".into())
+                property: (NormalExpressionData::Text("prop".into())
                     .with_default_span()),
-                assigned_expression: (DataExpressionData::Boolean(true.into())
+                assigned_expression: (NormalExpressionData::Boolean(true.into())
                     .with_default_span()),
             })
         );
@@ -1480,11 +1480,11 @@ mod tests {
         let expr = parse("x += 42");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::VariableAssignment(VariableAssignment {
+            &NormalExpressionData::VariableAssignment(VariableAssignment {
                 id: None,
                 name: "x".to_string(),
                 operator: Some(ModificationOperator::AddAssign),
-                expression: (DataExpressionData::Integer(42.into())
+                expression: (NormalExpressionData::Integer(42.into())
                     .with_default_span()),
             })
         );
@@ -1495,9 +1495,9 @@ mod tests {
         let expr = parse("\\2 = 100");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::StackAssignment(StackAssignment {
+            &NormalExpressionData::StackAssignment(StackAssignment {
                 index: StackIndex(2),
-                expression: (DataExpressionData::Integer(100.into())
+                expression: (NormalExpressionData::Integer(100.into())
                     .with_default_span()),
             })
         );
@@ -1508,13 +1508,13 @@ mod tests {
         let expr = parse("*myRef = 200");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::UnboxAssignment(UnboxAssignment {
+            &NormalExpressionData::UnboxAssignment(UnboxAssignment {
                 operator: None,
-                unbox_expression: (DataExpressionData::Identifier(
+                unbox_expression: (NormalExpressionData::Identifier(
                     "myRef".to_string()
                 )
                 .with_default_span()),
-                assigned_expression: (DataExpressionData::Integer(200.into())
+                assigned_expression: (NormalExpressionData::Integer(200.into())
                     .with_default_span()),
             })
         );
@@ -1525,16 +1525,16 @@ mod tests {
         let expr = parse("**myRef = 300");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::UnboxAssignment(UnboxAssignment {
+            &NormalExpressionData::UnboxAssignment(UnboxAssignment {
                 operator: None,
-                unbox_expression: (DataExpressionData::Unbox(Unbox {
-                    expression: (DataExpressionData::Identifier(
+                unbox_expression: (NormalExpressionData::Unbox(Unbox {
+                    expression: (NormalExpressionData::Identifier(
                         "myRef".to_string()
                     )
                     .with_default_span()),
                 })
                 .with_default_span()),
-                assigned_expression: (DataExpressionData::Integer(300.into())
+                assigned_expression: (NormalExpressionData::Integer(300.into())
                     .with_default_span()),
             })
         );
@@ -1545,11 +1545,11 @@ mod tests {
         let expr = parse("a == b");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (DataExpressionData::Identifier("a".to_string())
+            &NormalExpressionData::ComparisonOperation(ComparisonOperation {
+                left: (NormalExpressionData::Identifier("a".to_string())
                     .with_default_span()),
                 operator: ComparisonOperator::StructuralEqual,
-                right: (DataExpressionData::Identifier("b".to_string())
+                right: (NormalExpressionData::Identifier("b".to_string())
                     .with_default_span()),
             })
         );
@@ -1560,11 +1560,11 @@ mod tests {
         let expr = parse("a is b");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (DataExpressionData::Identifier("a".to_string())
+            &NormalExpressionData::ComparisonOperation(ComparisonOperation {
+                left: (NormalExpressionData::Identifier("a".to_string())
                     .with_default_span()),
                 operator: ComparisonOperator::Is,
-                right: (DataExpressionData::Identifier("b".to_string())
+                right: (NormalExpressionData::Identifier("b".to_string())
                     .with_default_span()),
             })
         );
@@ -1575,11 +1575,11 @@ mod tests {
         let expr = parse("a === b");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (DataExpressionData::Identifier("a".to_string())
+            &NormalExpressionData::ComparisonOperation(ComparisonOperation {
+                left: (NormalExpressionData::Identifier("a".to_string())
                     .with_default_span()),
                 operator: ComparisonOperator::Equal,
-                right: (DataExpressionData::Identifier("b".to_string())
+                right: (NormalExpressionData::Identifier("b".to_string())
                     .with_default_span()),
             })
         );
@@ -1590,11 +1590,11 @@ mod tests {
         let expr = parse("a != b");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (DataExpressionData::Identifier("a".to_string())
+            &NormalExpressionData::ComparisonOperation(ComparisonOperation {
+                left: (NormalExpressionData::Identifier("a".to_string())
                     .with_default_span()),
                 operator: ComparisonOperator::NotStructuralEqual,
-                right: (DataExpressionData::Identifier("b".to_string())
+                right: (NormalExpressionData::Identifier("b".to_string())
                     .with_default_span()),
             })
         );
@@ -1605,11 +1605,11 @@ mod tests {
         let expr = parse("a !== b");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (DataExpressionData::Identifier("a".to_string())
+            &NormalExpressionData::ComparisonOperation(ComparisonOperation {
+                left: (NormalExpressionData::Identifier("a".to_string())
                     .with_default_span()),
                 operator: ComparisonOperator::NotEqual,
-                right: (DataExpressionData::Identifier("b".to_string())
+                right: (NormalExpressionData::Identifier("b".to_string())
                     .with_default_span()),
             })
         );
@@ -1620,11 +1620,11 @@ mod tests {
         let expr = parse("a < b");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (DataExpressionData::Identifier("a".to_string())
+            &NormalExpressionData::ComparisonOperation(ComparisonOperation {
+                left: (NormalExpressionData::Identifier("a".to_string())
                     .with_default_span()),
                 operator: ComparisonOperator::LessThan,
-                right: (DataExpressionData::Identifier("b".to_string())
+                right: (NormalExpressionData::Identifier("b".to_string())
                     .with_default_span()),
             })
         );
@@ -1635,8 +1635,8 @@ mod tests {
         let expr = parse("MyType<Arg1>");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::GenericInstantiation(GenericInstantiation {
-                base: (DataExpressionData::Identifier("MyType".to_string())
+            &NormalExpressionData::GenericInstantiation(GenericInstantiation {
+                base: (NormalExpressionData::Identifier("MyType".to_string())
                     .with_default_span()),
                 generic_arguments: vec![
                     TypeExpressionData::Identifier("Arg1".to_string())
@@ -1651,8 +1651,8 @@ mod tests {
         let expr = parse("MyType<Arg1, Arg2>");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::GenericInstantiation(GenericInstantiation {
-                base: (DataExpressionData::Identifier("MyType".to_string())
+            &NormalExpressionData::GenericInstantiation(GenericInstantiation {
+                base: (NormalExpressionData::Identifier("MyType".to_string())
                     .with_default_span()),
                 generic_arguments: vec![
                     TypeExpressionData::Identifier("Arg1".to_string())
@@ -1669,10 +1669,10 @@ mod tests {
         let expr = parse("MyType<Arg1>(42)");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Apply(Apply {
-                base: (DataExpressionData::GenericInstantiation(
+            &NormalExpressionData::Apply(Apply {
+                base: (NormalExpressionData::GenericInstantiation(
                     GenericInstantiation {
-                        base: (DataExpressionData::Identifier(
+                        base: (NormalExpressionData::Identifier(
                             "MyType".to_string()
                         )
                         .with_default_span()),
@@ -1684,7 +1684,7 @@ mod tests {
                 )
                 .with_default_span()),
                 arguments: vec![
-                    DataExpressionData::Integer(42.into()).with_default_span(),
+                    NormalExpressionData::Integer(42.into()).with_default_span(),
                 ],
             })
         );
@@ -1695,11 +1695,11 @@ mod tests {
         let expr = parse("a > b");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (DataExpressionData::Identifier("a".to_string())
+            &NormalExpressionData::ComparisonOperation(ComparisonOperation {
+                left: (NormalExpressionData::Identifier("a".to_string())
                     .with_default_span()),
                 operator: ComparisonOperator::GreaterThan,
-                right: (DataExpressionData::Identifier("b".to_string())
+                right: (NormalExpressionData::Identifier("b".to_string())
                     .with_default_span()),
             })
         );
@@ -1710,11 +1710,11 @@ mod tests {
         let expr = parse("a <= b");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (DataExpressionData::Identifier("a".to_string())
+            &NormalExpressionData::ComparisonOperation(ComparisonOperation {
+                left: (NormalExpressionData::Identifier("a".to_string())
                     .with_default_span()),
                 operator: ComparisonOperator::LessThanOrEqual,
-                right: (DataExpressionData::Identifier("b".to_string())
+                right: (NormalExpressionData::Identifier("b".to_string())
                     .with_default_span()),
             })
         );
@@ -1725,11 +1725,11 @@ mod tests {
         let expr = parse("a >= b");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (DataExpressionData::Identifier("a".to_string())
+            &NormalExpressionData::ComparisonOperation(ComparisonOperation {
+                left: (NormalExpressionData::Identifier("a".to_string())
                     .with_default_span()),
                 operator: ComparisonOperator::GreaterThanOrEqual,
-                right: (DataExpressionData::Identifier("b".to_string())
+                right: (NormalExpressionData::Identifier("b".to_string())
                     .with_default_span()),
             })
         );
@@ -1740,17 +1740,17 @@ mod tests {
         let expr = parse("a == b + c");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (DataExpressionData::Identifier("a".to_string())
+            &NormalExpressionData::ComparisonOperation(ComparisonOperation {
+                left: (NormalExpressionData::Identifier("a".to_string())
                     .with_default_span()),
                 operator: ComparisonOperator::StructuralEqual,
-                right: (DataExpressionData::BinaryOperation(BinaryOperation {
-                    left: (DataExpressionData::Identifier("b".to_string())
+                right: (NormalExpressionData::BinaryOperation(BinaryOperation {
+                    left: (NormalExpressionData::Identifier("b".to_string())
                         .with_default_span()),
                     operator: BinaryOperator::Arithmetic(
                         ArithmeticOperator::Add
                     ),
-                    right: (DataExpressionData::Identifier("c".to_string())
+                    right: (NormalExpressionData::Identifier("c".to_string())
                         .with_default_span()),
                     ty: None,
                 })
@@ -1764,9 +1764,9 @@ mod tests {
         let expr = parse("!true");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::UnaryOperation(UnaryOperation {
+            &NormalExpressionData::UnaryOperation(UnaryOperation {
                 operator: UnaryOperator::Logical(LogicalUnaryOperator::Not),
-                expression: (DataExpressionData::Boolean(true.into())
+                expression: (NormalExpressionData::Boolean(true.into())
                     .with_default_span()),
             })
         );
@@ -1775,7 +1775,7 @@ mod tests {
     #[test]
     fn parse_unary_plus_integer() {
         let expr = parse("+42");
-        assert_eq!(expr.data(), &DataExpressionData::Integer(42.into()));
+        assert_eq!(expr.data(), &NormalExpressionData::Integer(42.into()));
     }
 
     #[test]
@@ -1783,11 +1783,11 @@ mod tests {
         let expr = parse("+x");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::UnaryOperation(UnaryOperation {
+            &NormalExpressionData::UnaryOperation(UnaryOperation {
                 operator: UnaryOperator::Arithmetic(
                     ArithmeticUnaryOperator::Plus
                 ),
-                expression: (DataExpressionData::Identifier("x".to_string())
+                expression: (NormalExpressionData::Identifier("x".to_string())
                     .with_default_span()),
             })
         );
@@ -1796,7 +1796,7 @@ mod tests {
     #[test]
     fn parse_unary_minus_integer() {
         let expr = parse("-42");
-        assert_eq!(expr.data(), &DataExpressionData::Integer((-42).into()));
+        assert_eq!(expr.data(), &NormalExpressionData::Integer((-42).into()));
     }
 
     #[test]
@@ -1804,11 +1804,11 @@ mod tests {
         let expr = parse("-x");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::UnaryOperation(UnaryOperation {
+            &NormalExpressionData::UnaryOperation(UnaryOperation {
                 operator: UnaryOperator::Arithmetic(
                     ArithmeticUnaryOperator::Minus
                 ),
-                expression: (DataExpressionData::Identifier("x".to_string())
+                expression: (NormalExpressionData::Identifier("x".to_string())
                     .with_default_span()),
             })
         );
@@ -1819,11 +1819,11 @@ mod tests {
         let expr = parse("2 ^ 3");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::BinaryOperation(BinaryOperation {
-                left: (DataExpressionData::Integer(2.into())
+            &NormalExpressionData::BinaryOperation(BinaryOperation {
+                left: (NormalExpressionData::Integer(2.into())
                     .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Power),
-                right: (DataExpressionData::Integer(3.into())
+                right: (NormalExpressionData::Integer(3.into())
                     .with_default_span()),
                 ty: None,
             })
@@ -1835,17 +1835,17 @@ mod tests {
         let expr = parse("2 ^ 3 ^ 4");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::BinaryOperation(BinaryOperation {
-                left: (DataExpressionData::Integer(2.into())
+            &NormalExpressionData::BinaryOperation(BinaryOperation {
+                left: (NormalExpressionData::Integer(2.into())
                     .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Power),
-                right: (DataExpressionData::BinaryOperation(BinaryOperation {
-                    left: (DataExpressionData::Integer(3.into())
+                right: (NormalExpressionData::BinaryOperation(BinaryOperation {
+                    left: (NormalExpressionData::Integer(3.into())
                         .with_default_span()),
                     operator: BinaryOperator::Arithmetic(
                         ArithmeticOperator::Power
                     ),
-                    right: (DataExpressionData::Integer(4.into())
+                    right: (NormalExpressionData::Integer(4.into())
                         .with_default_span()),
                     ty: None,
                 })
@@ -1860,20 +1860,20 @@ mod tests {
         let expr = parse("(2 ^ 3) ^ 4");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::BinaryOperation(BinaryOperation {
-                left: (DataExpressionData::BinaryOperation(BinaryOperation {
-                    left: (DataExpressionData::Integer(2.into())
+            &NormalExpressionData::BinaryOperation(BinaryOperation {
+                left: (NormalExpressionData::BinaryOperation(BinaryOperation {
+                    left: (NormalExpressionData::Integer(2.into())
                         .with_default_span()),
                     operator: BinaryOperator::Arithmetic(
                         ArithmeticOperator::Power
                     ),
-                    right: (DataExpressionData::Integer(3.into())
+                    right: (NormalExpressionData::Integer(3.into())
                         .with_default_span()),
                     ty: None,
                 })
                 .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Power),
-                right: (DataExpressionData::Integer(4.into())
+                right: (NormalExpressionData::Integer(4.into())
                     .with_default_span()),
                 ty: None,
             })
@@ -1885,7 +1885,7 @@ mod tests {
         let expr = parse("'$ABCDEFABCE");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::RequestSharedRef(RequestSharedRef {
+            &NormalExpressionData::RequestSharedRef(RequestSharedRef {
                 address: PointerAddress::try_from("ABCDEFABCE").unwrap(),
                 mutability: ReferenceMutability::Immutable,
             })
@@ -1897,7 +1897,7 @@ mod tests {
         let expr = parse("'mut $ABCDEFABCE");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::RequestSharedRef(RequestSharedRef {
+            &NormalExpressionData::RequestSharedRef(RequestSharedRef {
                 address: PointerAddress::try_from("ABCDEFABCE").unwrap(),
                 mutability: ReferenceMutability::Mutable,
             })
@@ -1916,12 +1916,12 @@ mod tests {
         let input = parse("hello->struct 4");
         assert_eq!(
             input.data(),
-            &DataExpressionData::InterfaceMethodCall(InterfaceMethodCall {
-                target: (DataExpressionData::Identifier("hello".to_string())
+            &NormalExpressionData::InterfaceMethodCall(InterfaceMethodCall {
+                target: (NormalExpressionData::Identifier("hello".to_string())
                     .with_default_span()),
                 method_name: "struct".to_string(),
                 arguments: vec![
-                    DataExpressionData::Integer(4.into()).with_default_span()
+                    NormalExpressionData::Integer(4.into()).with_default_span()
                 ],
             })
         );
@@ -1929,21 +1929,21 @@ mod tests {
         let input = parse("hello->struct(5, 2)");
         assert_eq!(
             input.data(),
-            &DataExpressionData::InterfaceMethodCall(InterfaceMethodCall {
-                target: (DataExpressionData::Identifier("hello".to_string())
+            &NormalExpressionData::InterfaceMethodCall(InterfaceMethodCall {
+                target: (NormalExpressionData::Identifier("hello".to_string())
                     .with_default_span()),
                 method_name: "struct".to_string(),
                 arguments: vec![
-                    DataExpressionData::Integer(5.into()).with_default_span(),
-                    DataExpressionData::Integer(2.into()).with_default_span()
+                    NormalExpressionData::Integer(5.into()).with_default_span(),
+                    NormalExpressionData::Integer(2.into()).with_default_span()
                 ],
             })
         );
         let input = parse("hello->struct()");
         assert_eq!(
             input.data(),
-            &DataExpressionData::InterfaceMethodCall(InterfaceMethodCall {
-                target: (DataExpressionData::Identifier("hello".to_string())
+            &NormalExpressionData::InterfaceMethodCall(InterfaceMethodCall {
+                target: (NormalExpressionData::Identifier("hello".to_string())
                     .with_default_span()),
                 method_name: "struct".to_string(),
                 arguments: vec![],

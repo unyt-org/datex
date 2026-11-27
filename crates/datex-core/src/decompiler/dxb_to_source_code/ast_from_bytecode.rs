@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            Apply, BinaryOperation, DataExpression, DataExpressionData,
+            Apply, BinaryOperation, NormalExpression, NormalExpressionData,
             InterfaceMethodCall, List, Map, PropertyAssignment, Statements,
             TypeExpression, TypeExpressionData, UnaryOperation,
             UnboundedStatement, VariableAssignment, expression::Expression,
@@ -63,12 +63,12 @@ use core::cell::RefCell;
 
 #[derive(Debug)]
 enum CollectedAstResult {
-    Expression(DataExpression),
+    Expression(NormalExpression),
     TypeExpression(TypeExpression),
-    KeyValuePair((DataExpression, DataExpression)),
+    KeyValuePair((NormalExpression, NormalExpression)),
 }
-impl From<DataExpression> for CollectedAstResult {
-    fn from(value: DataExpression) -> Self {
+impl From<NormalExpression> for CollectedAstResult {
+    fn from(value: NormalExpression) -> Self {
         CollectedAstResult::Expression(value)
     }
 }
@@ -82,9 +82,9 @@ impl From<TypeExpression> for CollectedAstResult {
 impl
     CollectionResultsPopper<
         CollectedAstResult,
-        DataExpression,
-        DataExpression,
-        DataExpression,
+        NormalExpression,
+        NormalExpression,
+        NormalExpression,
         TypeExpression,
         TypeExpression,
     > for CollectedResults<CollectedAstResult>
@@ -98,8 +98,8 @@ impl
         }
     }
 
-    /// Pops a DataExpression from the collected results.
-    fn try_extract_value(result: CollectedAstResult) -> Option<DataExpression> {
+    /// Pops a NormalExpression from the collected results.
+    fn try_extract_value(result: CollectedAstResult) -> Option<NormalExpression> {
         match result {
             CollectedAstResult::Expression(expr) => Some(expr),
             _ => None,
@@ -117,7 +117,7 @@ impl
     /// Pops a key-value pair from the collected results.
     fn try_extract_key_value_pair(
         result: CollectedAstResult,
-    ) -> Option<(DataExpression, DataExpression)> {
+    ) -> Option<(NormalExpression, NormalExpression)> {
         match result {
             CollectedAstResult::KeyValuePair((key, value)) => {
                 Some((key, value))
@@ -128,7 +128,7 @@ impl
 }
 
 // TODO: don't convert to AST directly, first generate disassembler tree, then convert to AST?
-pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
+pub fn ast_from_bytecode(dxb: &[u8]) -> Result<NormalExpression, DXBParserError> {
     let mut collector = InstructionCollector::<CollectedAstResult>::default();
 
     let mut next_stack_index = StackIndex(0);
@@ -154,79 +154,79 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                     });
 
                 let expr = regular_instruction.map(|regular_instruction|
-                    Result::<DataExpression, DXBParserError>::Ok(match regular_instruction {
+                    Result::<NormalExpression, DXBParserError>::Ok(match regular_instruction {
                         // Handle different regular instructions here
                         RegularInstruction::Int8(integer_data) => {
-                            DataExpressionData::TypedInteger(
+                            NormalExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::Int16(integer_data) => {
-                            DataExpressionData::TypedInteger(
+                            NormalExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::Int32(integer_data) => {
-                            DataExpressionData::TypedInteger(
+                            NormalExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::Instant(instant_data) => {
-                            DataExpressionData::Instant(
+                            NormalExpressionData::Instant(
                                 Instant(
                                     instant_data.0,
                                 ),
                             )
                         }
                         RegularInstruction::Int64(integer_data) => {
-                            DataExpressionData::TypedInteger(
+                            NormalExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::Int128(integer_data) => {
-                            DataExpressionData::TypedInteger(
+                            NormalExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::UInt8(integer_data) => {
-                            DataExpressionData::TypedInteger(
+                            NormalExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::UInt16(integer_data) => {
-                            DataExpressionData::TypedInteger(
+                            NormalExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::UInt32(integer_data) => {
-                            DataExpressionData::TypedInteger(
+                            NormalExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::UInt64(integer_data) => {
-                            DataExpressionData::TypedInteger(
+                            NormalExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::UInt128(integer_data) => {
-                            DataExpressionData::TypedInteger(
+                            NormalExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
                         RegularInstruction::BigInteger(integer_data) => {
-                            DataExpressionData::TypedInteger(
+                            NormalExpressionData::TypedInteger(
                                 TypedInteger::IBig(integer_data),
                             )
                         }
                         RegularInstruction::Integer(integer_data) => {
-                            DataExpressionData::Integer(integer_data)
+                            NormalExpressionData::Integer(integer_data)
                         }
 
                         // compact lists
                         RegularInstruction::CompactList(list_data) => {
                             // u8 list can just be mapped directly
                             if list_data.core_lib_type == CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)) {
-                               DataExpressionData::List(List::new(list_data.elements.iter().map(|b| DataExpressionData::TypedInteger(TypedInteger::from(*b)).with_default_span()).collect()))
+                               NormalExpressionData::List(List::new(list_data.elements.iter().map(|b| NormalExpressionData::TypedInteger(TypedInteger::from(*b)).with_default_span()).collect()))
                             }
                             else {
                                 todo!()
@@ -237,124 +237,124 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                             unreachable!("decompiler ast from bytcode ranges not implemented");
                         }
                         RegularInstruction::Sender => {
-                            DataExpressionData::Sender
+                            NormalExpressionData::Sender
                         }
                         RegularInstruction::Receiver => {
-                            DataExpressionData::Receiver
+                            NormalExpressionData::Receiver
                         }
                         RegularInstruction::Endpoint(endpoint) => {
-                            DataExpressionData::Endpoint(endpoint)
+                            NormalExpressionData::Endpoint(endpoint)
                         }
                         RegularInstruction::DecimalF32(f32_data) => {
-                            DataExpressionData::TypedDecimal(
+                            NormalExpressionData::TypedDecimal(
                                 TypedDecimal::from(f32_data.0),
                             )
                         }
                         RegularInstruction::DecimalF64(f64_data) => {
-                            DataExpressionData::TypedDecimal(
+                            NormalExpressionData::TypedDecimal(
                                 TypedDecimal::from(f64_data.0),
                             )
                         }
                         RegularInstruction::DecimalAsInt16(
                             decimal_i16_data,
-                        ) => DataExpressionData::Decimal(Decimal::from(
+                        ) => NormalExpressionData::Decimal(Decimal::from(
                             decimal_i16_data.0 as f64,
                         )),
                         RegularInstruction::DecimalAsInt32(
                             decimal_i32_data,
-                        ) => DataExpressionData::Decimal(Decimal::from(
+                        ) => NormalExpressionData::Decimal(Decimal::from(
                             decimal_i32_data.0 as f64,
                         )),
                         RegularInstruction::BigDecimal(decimal_data) => {
-                            DataExpressionData::TypedDecimal(
+                            NormalExpressionData::TypedDecimal(
                                 TypedDecimal::Decimal(decimal_data),
                             )
                         }
                         RegularInstruction::Decimal(decimal_data) => {
-                            DataExpressionData::Decimal(decimal_data)
+                            NormalExpressionData::Decimal(decimal_data)
                         }
                         RegularInstruction::ShortText(short_text_data) => {
-                            DataExpressionData::Text(short_text_data.0.into())
+                            NormalExpressionData::Text(short_text_data.0.into())
                         }
                         RegularInstruction::Text(text_data) => {
-                            DataExpressionData::Text(text_data.0.into())
+                            NormalExpressionData::Text(text_data.0.into())
                         }
                         RegularInstruction::True => {
-                            DataExpressionData::Boolean(true.into())
+                            NormalExpressionData::Boolean(true.into())
                         }
                         RegularInstruction::False => {
-                            DataExpressionData::Boolean(false.into())
+                            NormalExpressionData::Boolean(false.into())
                         }
                         RegularInstruction::Null => {
-                            DataExpressionData::Null
+                            NormalExpressionData::Null
                         }
                         RegularInstruction::Uninitialized => {
-                            DataExpressionData::NativeImplementationIndicator // TODO: how to display?
+                            NormalExpressionData::NativeImplementationIndicator // TODO: how to display?
                         }
                         RegularInstruction::RequestRemoteSharedRef(raw_address) => {
-                            DataExpressionData::RequestSharedRef(RequestSharedRef {
+                            NormalExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: PointerAddress::from(raw_address),
                                 mutability: ReferenceMutability::Immutable,
                             })
                         }
                         RegularInstruction::RequestRemoteSharedRefMut(raw_address) => {
-                            DataExpressionData::RequestSharedRef(RequestSharedRef {
+                            NormalExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: PointerAddress::from(raw_address),
                                 mutability: ReferenceMutability::Mutable,
                             })
                         }
                         RegularInstruction::GetLocalSharedRef(raw_address) => {
-                            DataExpressionData::RequestSharedRef(RequestSharedRef {
+                            NormalExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: PointerAddress::from(raw_address),
                                 mutability: ReferenceMutability::Immutable,
                             })
                         }
 
                         RegularInstruction::GetCoreLibValue(id) => {
-                            DataExpressionData::ResolveCoreLibId(
+                            NormalExpressionData::ResolveCoreLibId(
                                 id.try_into().map_err(|_| DXBParserError::InvalidCoreLibId(id))?,
                             )
                         }
 
                         RegularInstruction::SharedRef(shared_ref) => {
-                            DataExpressionData::RequestSharedRef(RequestSharedRef {
+                            NormalExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: shared_ref.address,
                                 mutability: shared_ref.ref_mutability,
                             })
                         }
 
                         RegularInstruction::CloneStackValue(stack_index) => {
-                            DataExpressionData::Clone(CloneExpression {
-                                expression: (DataExpressionData::StackIndex(stack_index).with_default_span())
+                            NormalExpressionData::Clone(CloneExpression {
+                                expression: (NormalExpressionData::StackIndex(stack_index).with_default_span())
                             })
                         }
 
                         RegularInstruction::BorrowStackValue(stack_index) => {
-                            DataExpressionData::StackIndex(stack_index)
+                            NormalExpressionData::StackIndex(stack_index)
                         }
 
                         RegularInstruction::GetStackValueSharedRef(stack_index) => {
-                            DataExpressionData::DeriveSharedRef(DeriveSharedRef {
+                            NormalExpressionData::DeriveSharedRef(DeriveSharedRef {
                                 mutability: ReferenceMutability::Immutable,
-                                expression: (DataExpressionData::StackIndex(stack_index).with_default_span()),
+                                expression: (NormalExpressionData::StackIndex(stack_index).with_default_span()),
                             })
                         }
 
                         RegularInstruction::GetStackValueSharedRefMut(stack_index) => {
-                            DataExpressionData::DeriveSharedRef(DeriveSharedRef {
+                            NormalExpressionData::DeriveSharedRef(DeriveSharedRef {
                                 mutability: ReferenceMutability::Mutable,
-                                expression: (DataExpressionData::StackIndex(stack_index).with_default_span()),
+                                expression: (NormalExpressionData::StackIndex(stack_index).with_default_span()),
                             })
                         }
 
                         RegularInstruction::TakeStackValue(stack_index) => {
-                            DataExpressionData::StackIndex(stack_index)
+                            NormalExpressionData::StackIndex(stack_index)
                         }
 
                         RegularInstruction::GetRootProperty(
                             root_property,
                         ) => {
-                            DataExpressionData::RootPropertyAccess(RootPropertyAccess {
+                            NormalExpressionData::RootPropertyAccess(RootPropertyAccess {
                                 property_name: root_property.to_string(),
                             })
                         }
@@ -367,7 +367,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                             impl_count: _,
                             impls: _,
                         }) => {
-                            DataExpressionData::Tag(Tagged {
+                            NormalExpressionData::Tag(Tagged {
                                 tag: tag
                                     .expect("has_tag is true, so tag must be Some")
                                     .0,
@@ -556,7 +556,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                             | RegularInstruction::ShortList(_) => {
                                 let elements =
                                     collected_results.collect_value_results();
-                                DataExpressionData::List(List::new(elements))
+                                NormalExpressionData::List(List::new(elements))
                                     .with_default_span()
                                     .into()
                             }
@@ -564,7 +564,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                             | RegularInstruction::ShortMap(_) => {
                                 let entries = collected_results
                                     .collect_key_value_pair_results();
-                                DataExpressionData::Map(Map::new(entries))
+                                NormalExpressionData::Map(Map::new(entries))
                                     .with_default_span()
                                     .into()
                             }
@@ -574,7 +574,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                             ) => {
                                 let statements =
                                     collected_results.collect_value_results();
-                                DataExpressionData::Statements(Statements {
+                                NormalExpressionData::Statements(Statements {
                                     statements,
                                     is_terminated: terminated,
                                     unbounded: None,
@@ -595,7 +595,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                             ) => {
                                 let value =
                                     collected_results.pop_value();
-                                let key = DataExpressionData::Text(
+                                let key = NormalExpressionData::Text(
                                     short_text_data.0.into(),
                                 )
                                     .with_default_span();
@@ -610,7 +610,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 let right =
                                     collected_results.pop_value();
                                 let left = collected_results.pop_value();
-                                DataExpressionData::BinaryOperation(
+                                NormalExpressionData::BinaryOperation(
                                     BinaryOperation {
                                         operator: BinaryOperator::from(
                                             unsafe {
@@ -636,7 +636,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                     collected_results.pop_value();
                                 let left = collected_results.pop_value();
 
-                                DataExpressionData::ComparisonOperation(
+                                NormalExpressionData::ComparisonOperation(
                                     ComparisonOperation {
                                         operator: ComparisonOperator::from(
                                             regular_instruction,
@@ -653,7 +653,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                             RegularInstruction::CreateShared | RegularInstruction::CreateSharedMut
                             ) => {
                                 let expr = collected_results.pop_value();
-                                DataExpressionData::CreateShared(
+                                NormalExpressionData::CreateShared(
                                     CreateShared {
                                         mutability: match instruction {
                                             RegularInstruction::CreateShared => {
@@ -672,7 +672,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                             }
 
                             RegularInstruction::SharedRefWithValue(shared_ref) => {
-                                DataExpressionData::RequestSharedRef(RequestSharedRef {
+                                NormalExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(shared_ref.address),
                                     mutability: shared_ref.ref_mutability,
                                 })
@@ -682,7 +682,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
 
                             RegularInstruction::DeriveSharedReference => {
                                 let expr = collected_results.pop_value();
-                                DataExpressionData::DeriveSharedRef(
+                                NormalExpressionData::DeriveSharedRef(
                                     DeriveSharedRef {
                                         mutability: ReferenceMutability::Immutable,
                                         expression: (expr),
@@ -693,7 +693,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                             }
                             RegularInstruction::DeriveSharedReferenceMut => {
                                 let expr = collected_results.pop_value();
-                                DataExpressionData::DeriveSharedRef(
+                                NormalExpressionData::DeriveSharedRef(
                                     DeriveSharedRef {
                                         mutability: ReferenceMutability::Mutable,
                                         expression: (expr),
@@ -703,7 +703,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                     .into()
                             }
                             RegularInstruction::SetSharedContainerValue => {
-                                DataExpressionData::UnboxAssignment(UnboxAssignment {
+                                NormalExpressionData::UnboxAssignment(UnboxAssignment {
                                     assigned_expression: (collected_results.pop_value()),
                                     operator: None,
                                     unbox_expression: (collected_results.pop_value()),
@@ -717,7 +717,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                             | RegularInstruction::BitwiseNot
                             | RegularInstruction::Unbox => {
                                 let expr = collected_results.pop_value();
-                                DataExpressionData::UnaryOperation(
+                                NormalExpressionData::UnaryOperation(
                                     UnaryOperation {
                                         operator: UnaryOperator::from(
                                             regular_instruction,
@@ -735,13 +735,13 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 let types = collected_results.pop_types(callable.signature.total_type_count());
                                 let signature = resolve_signature(types, callable.signature);
 
-                                let body = DataExpressionData::Statements(Statements {
+                                let body = NormalExpressionData::Statements(Statements {
                                     statements: vec![ast_from_bytecode(&callable.body.body)?],
                                     is_terminated: false,
                                     unbounded: None,
                                 }).with_default_span();
 
-                                DataExpressionData::callable_declaration(CallableDeclaration {
+                                NormalExpressionData::callable_declaration(CallableDeclaration {
                                     signature,
                                     body,
                                     injected_variable_count: Some(injected_values.len() as u32),
@@ -758,13 +758,13 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 let types = collected_results.pop_types(callable_declaration.signature.total_type_count());
                                 let signature = resolve_signature(types, callable_declaration.signature);
 
-                                let body = DataExpressionData::Statements(Statements {
+                                let body = NormalExpressionData::Statements(Statements {
                                     statements: vec![ast_from_bytecode(&callable_declaration.body.body)?],
                                     is_terminated: false,
                                     unbounded: None,
                                 }).with_default_span();
 
-                                DataExpressionData::callable_declaration(CallableDeclaration {
+                                NormalExpressionData::callable_declaration(CallableDeclaration {
                                     signature,
                                     body,
                                     injected_variable_count: None,
@@ -782,7 +782,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 // TODO: handle impls
                                 let value_expression = collected_results.pop_value();
                                 let inner_expression = if let Some(tag) = tag {
-                                    DataExpressionData::Tag(Tagged {
+                                    NormalExpressionData::Tag(Tagged {
                                         tag: tag.0,
                                         expression: Some(value_expression),
                                     })
@@ -794,7 +794,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 if is_entity {
                                     let _shared_container = collected_results.pop_value();
 
-                                    DataExpressionData::EntityValue(EntityValueExpression {
+                                    NormalExpressionData::EntityValue(EntityValueExpression {
                                         entity_name: "TODO".to_string(), // TODO: resolve name
                                         entity_address: None,
                                         value: inner_expression,
@@ -811,7 +811,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 if let FullOrPartialResult::Full { results, .. } =
                                     result
                                 {
-                                    DataExpressionData::Statements(
+                                    NormalExpressionData::Statements(
                                         Statements {
                                             statements: results
                                                 .collect_value_results(),
@@ -832,7 +832,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                             }
 
                             RegularInstruction::MoveWithValue(move_with_value) => {
-                                DataExpressionData::MoveSharedValue(move_with_value.previous_address)
+                                NormalExpressionData::MoveSharedValue(move_with_value.previous_address)
                                     .with_default_span()
                                     .into()
                             }
@@ -840,7 +840,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                             RegularInstruction::PushToStack => {
                                 let expr = collected_results.pop_value();
 
-                                let res = DataExpressionData::StackAssignment(
+                                let res = NormalExpressionData::StackAssignment(
                                     StackAssignment {
                                         index: next_stack_index,
                                         expression: (expr),
@@ -855,7 +855,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
 
                             RegularInstruction::PushListToStack => {
                                 let expression = collected_results.pop_value();
-                                DataExpressionData::StackListAssignment(StackListAssignment {
+                                NormalExpressionData::StackListAssignment(StackListAssignment {
                                     expression,
                                 })
                                     .with_default_span()
@@ -864,7 +864,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
 
                             RegularInstruction::SetStackValue(slot_address) => {
                                 let expr = collected_results.pop_value();
-                                DataExpressionData::VariableAssignment(
+                                NormalExpressionData::VariableAssignment(
                                     VariableAssignment {
                                         id: None,
                                         name: format!(
@@ -890,7 +890,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 // base is the last collected argument
                                 let base =
                                     arguments.remove(arguments.len() - 1);
-                                DataExpressionData::Apply(Apply {
+                                NormalExpressionData::Apply(Apply {
                                     base,
                                     arguments,
                                 })
@@ -904,7 +904,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 // base is the last collected argument
                                 let base =
                                     arguments.remove(arguments.len() - 1);
-                                DataExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                NormalExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
                                     base,
                                     method_data.method_name.0,
                                     arguments,
@@ -919,11 +919,11 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 index_data,
                             ) => {
                                 let base = collected_results.pop_value();
-                                DataExpressionData::PropertyAccess(
+                                NormalExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
                                         base: (base),
                                         property: (
-                                            DataExpressionData::Integer(
+                                            NormalExpressionData::Integer(
                                                 Integer::from(index_data.0),
                                             )
                                                 .with_default_span()
@@ -936,11 +936,11 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
 
                             RegularInstruction::TakeEntryText(text_data) | RegularInstruction::GetEntryText(text_data) => {
                                 let base = collected_results.pop_value();
-                                DataExpressionData::PropertyAccess(
+                                NormalExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
                                         base: (base),
                                         property: (
-                                            DataExpressionData::Text(
+                                            NormalExpressionData::Text(
                                                 text_data.0.into(),
                                             )
                                                 .with_default_span()
@@ -955,7 +955,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 let base = collected_results.pop_value();
                                 let property =
                                     collected_results.pop_value();
-                                DataExpressionData::PropertyAccess(
+                                NormalExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
                                         base: (base),
                                         property: (property),
@@ -971,11 +971,11 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 let base = collected_results.pop_value();
                                 let value =
                                     collected_results.pop_value();
-                                DataExpressionData::PropertyAssignment(
+                                NormalExpressionData::PropertyAssignment(
                                     PropertyAssignment {
                                         base: (base),
                                         property: (
-                                            DataExpressionData::Integer(
+                                            NormalExpressionData::Integer(
                                                 Integer::from(index_data.0),
                                             )
                                                 .with_default_span()
@@ -994,11 +994,11 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                     splice_data.insert_count
                                 );
                                 let splice_args = vec![
-                                    DataExpressionData::Integer(splice_data.start_index.into()).with_default_span(),
-                                    DataExpressionData::Integer(splice_data.delete_count.into()).with_default_span(),
-                                    DataExpressionData::List(List { items: values }).with_default_span()
+                                    NormalExpressionData::Integer(splice_data.start_index.into()).with_default_span(),
+                                    NormalExpressionData::Integer(splice_data.delete_count.into()).with_default_span(),
+                                    NormalExpressionData::List(List { items: values }).with_default_span()
                                 ];
-                                DataExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                NormalExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
                                     target,
                                     "splice".to_string(),
                                     splice_args,
@@ -1011,7 +1011,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 let delete_count = collected_results.pop_value();
                                 let start_index = collected_results.pop_value();
 
-                                DataExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                NormalExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
                                     target,
                                     "splice".to_string(),
                                     vec![
@@ -1025,7 +1025,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 let target = collected_results.pop_value();
                                 let value = collected_results.pop_value();
 
-                                DataExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                NormalExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
                                     target,
                                     "append".to_string(),
                                     vec![value],
@@ -1033,7 +1033,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                             }
                             RegularInstruction::Clear => {
                                 let target = collected_results.pop_value();
-                                DataExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                NormalExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
                                     target,
                                     "clear".to_string(),
                                     vec![],
@@ -1043,7 +1043,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 let base = collected_results.pop_value();
                                 let value =
                                     collected_results.pop_value();
-                                DataExpressionData::UnboxAssignment(UnboxAssignment {
+                                NormalExpressionData::UnboxAssignment(UnboxAssignment {
                                     operator: Some(ModificationOperator::AddAssign),
                                     unbox_expression: base,
                                     assigned_expression: value,
@@ -1055,7 +1055,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 let base = collected_results.pop_value();
                                 let value =
                                     collected_results.pop_value();
-                                DataExpressionData::UnboxAssignment(UnboxAssignment {
+                                NormalExpressionData::UnboxAssignment(UnboxAssignment {
                                     operator: Some(ModificationOperator::SubtractAssign),
                                     unbox_expression: base,
                                     assigned_expression: value,
@@ -1068,11 +1068,11 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                 let base = collected_results.pop_value();
                                 let value =
                                     collected_results.pop_value();
-                                DataExpressionData::PropertyAssignment(
+                                NormalExpressionData::PropertyAssignment(
                                     PropertyAssignment {
                                         base: (base),
                                         property: (
-                                            DataExpressionData::Text(
+                                            NormalExpressionData::Text(
                                                 text_data.0.into(),
                                             )
                                                 .with_default_span()
@@ -1091,7 +1091,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                                     collected_results.pop_value();
                                 let property =
                                     collected_results.pop_value();
-                                DataExpressionData::PropertyAssignment(
+                                NormalExpressionData::PropertyAssignment(
                                     PropertyAssignment {
                                         base: (base),
                                         property: (property),
@@ -1105,13 +1105,13 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
                             RegularInstruction::RemoteExecution(remote_execution_data) => {
                                 let receivers = collected_results.pop_value();
 
-                                let body = DataExpressionData::Statements(Statements {
+                                let body = NormalExpressionData::Statements(Statements {
                                     statements: vec![ast_from_bytecode(&remote_execution_data.body)?],
                                     is_terminated: false,
                                     unbounded: None,
                                 }).with_default_span();
 
-                                DataExpressionData::RemoteExecution(RemoteExecution {
+                                NormalExpressionData::RemoteExecution(RemoteExecution {
                                     left: (receivers),
                                     right: (body),
                                     injected_variable_count: None,
@@ -1130,7 +1130,7 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<DataExpression, DXBParserError> {
 
                         Instruction::Type(_type_instruction) => {
                             // FIXME: Implement as from bytecode for nested type instruction
-                            DataExpressionData::TypeExpression(TypeExpression::new(TypeExpressionData::GetCoreLibType(CoreLibBaseTypeId::Never.into()), Default::default()))
+                            NormalExpressionData::TypeExpression(TypeExpression::new(TypeExpressionData::GetCoreLibType(CoreLibBaseTypeId::Never.into()), Default::default()))
                                 .with_default_span().into()
                         }
                     };
@@ -1201,7 +1201,7 @@ fn resolve_signature(
 mod tests {
     use super::*;
     use crate::{
-        ast::{expressions::DataExpressionData, spanned::Spanned},
+        ast::{expressions::NormalExpressionData, spanned::Spanned},
         global::operators::binary::ArithmeticOperator,
         instruction::instruction_codes::InstructionCode,
         values::core_values::integer::typed_integer::TypedInteger,
@@ -1213,7 +1213,7 @@ mod tests {
         let ast = ast_from_bytecode(&bytecode).unwrap();
         assert_eq!(
             ast,
-            DataExpressionData::TypedInteger(TypedInteger::from(42u8))
+            NormalExpressionData::TypedInteger(TypedInteger::from(42u8))
                 .with_default_span()
         );
     }
@@ -1222,7 +1222,7 @@ mod tests {
     fn ast_from_bytecode_null() {
         let bytecode: Vec<u8> = vec![InstructionCode::NULL as u8];
         let ast = ast_from_bytecode(&bytecode).unwrap();
-        assert_eq!(ast, DataExpressionData::Null.with_default_span());
+        assert_eq!(ast, NormalExpressionData::Null.with_default_span());
     }
 
     #[test]
@@ -1231,7 +1231,7 @@ mod tests {
         let ast = ast_from_bytecode(&bytecode).unwrap();
         assert_eq!(
             ast,
-            DataExpressionData::Boolean(true.into()).with_default_span()
+            NormalExpressionData::Boolean(true.into()).with_default_span()
         );
     }
 
@@ -1249,7 +1249,7 @@ mod tests {
         let ast = ast_from_bytecode(&bytecode).unwrap();
         assert_eq!(
             ast,
-            DataExpressionData::Text("Hello".into()).with_default_span()
+            NormalExpressionData::Text("Hello".into()).with_default_span()
         );
     }
 
@@ -1266,10 +1266,10 @@ mod tests {
         let ast = ast_from_bytecode(&bytecode).unwrap();
         assert_eq!(
             ast,
-            DataExpressionData::List(List::new(vec![
-                DataExpressionData::TypedInteger(TypedInteger::from(42u8))
+            NormalExpressionData::List(List::new(vec![
+                NormalExpressionData::TypedInteger(TypedInteger::from(42u8))
                     .with_default_span(),
-                DataExpressionData::TypedInteger(TypedInteger::from(21u8))
+                NormalExpressionData::TypedInteger(TypedInteger::from(21u8))
                     .with_default_span(),
             ]))
             .with_default_span()
@@ -1293,15 +1293,15 @@ mod tests {
         let ast = ast_from_bytecode(&bytecode).unwrap();
         assert_eq!(
             ast,
-            DataExpressionData::List(List::new(vec![
-                DataExpressionData::List(List::new(vec![
-                    DataExpressionData::TypedInteger(TypedInteger::from(1u8))
+            NormalExpressionData::List(List::new(vec![
+                NormalExpressionData::List(List::new(vec![
+                    NormalExpressionData::TypedInteger(TypedInteger::from(1u8))
                         .with_default_span(),
-                    DataExpressionData::TypedInteger(TypedInteger::from(2u8))
+                    NormalExpressionData::TypedInteger(TypedInteger::from(2u8))
                         .with_default_span(),
                 ]))
                 .with_default_span(),
-                DataExpressionData::TypedInteger(TypedInteger::from(3u8))
+                NormalExpressionData::TypedInteger(TypedInteger::from(3u8))
                     .with_default_span(),
             ]))
             .with_default_span()
@@ -1322,11 +1322,11 @@ mod tests {
         let ast = ast_from_bytecode(&bytecode).unwrap();
         assert_eq!(
             ast,
-            DataExpressionData::Statements(Statements {
+            NormalExpressionData::Statements(Statements {
                 statements: vec![
-                    DataExpressionData::TypedInteger(TypedInteger::from(42u8))
+                    NormalExpressionData::TypedInteger(TypedInteger::from(42u8))
                         .with_default_span(),
-                    DataExpressionData::TypedInteger(TypedInteger::from(21u8))
+                    NormalExpressionData::TypedInteger(TypedInteger::from(21u8))
                         .with_default_span(),
                 ],
                 is_terminated: true,
@@ -1354,20 +1354,20 @@ mod tests {
         let ast = ast_from_bytecode(&bytecode).unwrap();
         assert_eq!(
             ast,
-            DataExpressionData::List(List::new(vec![
-                DataExpressionData::TypedInteger(TypedInteger::from(1u8))
+            NormalExpressionData::List(List::new(vec![
+                NormalExpressionData::TypedInteger(TypedInteger::from(1u8))
                     .with_default_span(),
-                DataExpressionData::TypedInteger(TypedInteger::from(2u8))
+                NormalExpressionData::TypedInteger(TypedInteger::from(2u8))
                     .with_default_span(),
-                DataExpressionData::BinaryOperation(BinaryOperation {
+                NormalExpressionData::BinaryOperation(BinaryOperation {
                     operator: BinaryOperator::Arithmetic(
                         ArithmeticOperator::Add
                     ),
-                    left: (DataExpressionData::TypedInteger(
+                    left: (NormalExpressionData::TypedInteger(
                         TypedInteger::from(3u8)
                     )
                     .with_default_span()),
-                    right: (DataExpressionData::TypedInteger(
+                    right: (NormalExpressionData::TypedInteger(
                         TypedInteger::from(4u8)
                     )
                     .with_default_span()),
@@ -1395,16 +1395,16 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast,
-    //         DataExpressionData::Apply(Apply {
+    //         NormalExpressionData::Apply(Apply {
     //             base: (
-    //                 DataExpressionData::TypeExpression(
+    //                 NormalExpressionData::TypeExpression(
     //                     TypeExpressionData::Text("OK".to_string())
     //                         .with_default_span()
     //                 )
     //                 .with_default_span()
     //             ),
     //             arguments: vec![
-    //                 DataExpressionData::TypedInteger(TypedInteger::from(43u8))
+    //                 NormalExpressionData::TypedInteger(TypedInteger::from(43u8))
     //                     .with_default_span()
     //             ],
     //         })
@@ -1426,11 +1426,11 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast,
-    //         DataExpressionData::Statements(Statements {
+    //         NormalExpressionData::Statements(Statements {
     //             statements: vec![
-    //                 DataExpressionData::TypedInteger(TypedInteger::from(10u8))
+    //                 NormalExpressionData::TypedInteger(TypedInteger::from(10u8))
     //                     .with_default_span(),
-    //                 DataExpressionData::TypedInteger(TypedInteger::from(20u8))
+    //                 NormalExpressionData::TypedInteger(TypedInteger::from(20u8))
     //                     .with_default_span(),
     //             ],
     //             is_terminated: true,
@@ -1457,9 +1457,9 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast,
-    //         DataExpressionData::Apply(Apply {
+    //         NormalExpressionData::Apply(Apply {
     //             base: (
-    //                 DataExpressionData::Text("test".to_string())
+    //                 NormalExpressionData::Text("test".to_string())
     //                     .with_default_span()
     //             ),
     //             arguments: vec![],
@@ -1483,13 +1483,13 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast,
-    //         DataExpressionData::Apply(Apply {
+    //         NormalExpressionData::Apply(Apply {
     //             base: (
-    //                 DataExpressionData::Text("sin".to_string())
+    //                 NormalExpressionData::Text("sin".to_string())
     //                     .with_default_span()
     //             ),
     //             arguments: vec![
-    //                 DataExpressionData::TypedInteger(TypedInteger::from(0u8))
+    //                 NormalExpressionData::TypedInteger(TypedInteger::from(0u8))
     //                     .with_default_span()
     //             ],
     //         })
@@ -1516,15 +1516,15 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast,
-    //         DataExpressionData::Apply(Apply {
+    //         NormalExpressionData::Apply(Apply {
     //             base: (
-    //                 DataExpressionData::Text("add".to_string())
+    //                 NormalExpressionData::Text("add".to_string())
     //                     .with_default_span()
     //             ),
     //             arguments: vec![
-    //                 DataExpressionData::TypedInteger(TypedInteger::from(1u8))
+    //                 NormalExpressionData::TypedInteger(TypedInteger::from(1u8))
     //                     .with_default_span(),
-    //                 DataExpressionData::TypedInteger(TypedInteger::from(2u8))
+    //                 NormalExpressionData::TypedInteger(TypedInteger::from(2u8))
     //                     .with_default_span(),
     //             ],
     //         })
@@ -1547,13 +1547,13 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast.data,
-    //         DataExpressionData::PropertyAccess(PropertyAccess {
+    //         NormalExpressionData::PropertyAccess(PropertyAccess {
     //             base: (
-    //                 DataExpressionData::TypedInteger(TypedInteger::from(42u8))
+    //                 NormalExpressionData::TypedInteger(TypedInteger::from(42u8))
     //                     .with_default_span()
     //             ),
     //             property: (
-    //                 DataExpressionData::Text("abc".to_string())
+    //                 NormalExpressionData::Text("abc".to_string())
     //                     .with_default_span()
     //             ),
     //         })
@@ -1578,20 +1578,20 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast.data,
-    //         DataExpressionData::PropertyAssignment(PropertyAssignment {
+    //         NormalExpressionData::PropertyAssignment(PropertyAssignment {
     //             base: (
-    //                 DataExpressionData::TypedInteger(TypedInteger::from(
+    //                 NormalExpressionData::TypedInteger(TypedInteger::from(
     //                     200u8
     //                 ))
     //                 .with_default_span()
     //             ),
     //             property: (
-    //                 DataExpressionData::Text("xyz".to_string())
+    //                 NormalExpressionData::Text("xyz".to_string())
     //                     .with_default_span()
     //             ),
     //             operator: None,
     //             assigned_expression: (
-    //                 DataExpressionData::TypedInteger(TypedInteger::from(
+    //                 NormalExpressionData::TypedInteger(TypedInteger::from(
     //                     100u8
     //                 ))
     //                 .with_default_span(),
@@ -1615,13 +1615,13 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast.data,
-    //         DataExpressionData::PropertyAccess(PropertyAccess {
+    //         NormalExpressionData::PropertyAccess(PropertyAccess {
     //             base: (
-    //                 DataExpressionData::TypedInteger(TypedInteger::from(42u8))
+    //                 NormalExpressionData::TypedInteger(TypedInteger::from(42u8))
     //                     .with_default_span()
     //             ),
     //             property: (
-    //                 DataExpressionData::Integer(Integer::from(5u8))
+    //                 NormalExpressionData::Integer(Integer::from(5u8))
     //                     .with_default_span()
     //             ),
     //         })
@@ -1646,20 +1646,20 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast.data,
-    //         DataExpressionData::PropertyAssignment(PropertyAssignment {
+    //         NormalExpressionData::PropertyAssignment(PropertyAssignment {
     //             base: (
-    //                 DataExpressionData::TypedInteger(TypedInteger::from(
+    //                 NormalExpressionData::TypedInteger(TypedInteger::from(
     //                     250u8
     //                 ))
     //                 .with_default_span()
     //             ),
     //             property: (
-    //                 DataExpressionData::Integer(Integer::from(10u8))
+    //                 NormalExpressionData::Integer(Integer::from(10u8))
     //                     .with_default_span()
     //             ),
     //             operator: None,
     //             assigned_expression: (
-    //                 DataExpressionData::TypedInteger(TypedInteger::from(
+    //                 NormalExpressionData::TypedInteger(TypedInteger::from(
     //                     150u8
     //                 ))
     //                 .with_default_span(),
@@ -1686,13 +1686,13 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast.data,
-    //         DataExpressionData::PropertyAccess(PropertyAccess {
+    //         NormalExpressionData::PropertyAccess(PropertyAccess {
     //             base: (
-    //                 DataExpressionData::TypedInteger(TypedInteger::from(42u8))
+    //                 NormalExpressionData::TypedInteger(TypedInteger::from(42u8))
     //                     .with_default_span()
     //             ),
     //             property: (
-    //                 DataExpressionData::Text("name".to_string())
+    //                 NormalExpressionData::Text("name".to_string())
     //                     .with_default_span()
     //             ),
     //         })
@@ -1719,20 +1719,20 @@ mod tests {
     //     let ast = ast_from_bytecode(&bytecode).unwrap();
     //     assert_eq!(
     //         ast.data,
-    //         DataExpressionData::PropertyAssignment(PropertyAssignment {
+    //         NormalExpressionData::PropertyAssignment(PropertyAssignment {
     //             base: (
-    //                 DataExpressionData::TypedInteger(TypedInteger::from(
+    //                 NormalExpressionData::TypedInteger(TypedInteger::from(
     //                     100u8
     //                 ))
     //                 .with_default_span()
     //             ),
     //             property: (
-    //                 DataExpressionData::Text("age".to_string())
+    //                 NormalExpressionData::Text("age".to_string())
     //                     .with_default_span()
     //             ),
     //             operator: None,
     //             assigned_expression: (
-    //                 DataExpressionData::TypedInteger(TypedInteger::from(30u8))
+    //                 NormalExpressionData::TypedInteger(TypedInteger::from(30u8))
     //                     .with_default_span(),
     //             ),
     //         })

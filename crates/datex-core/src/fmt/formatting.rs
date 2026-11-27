@@ -4,7 +4,7 @@ use pretty::DocAllocator;
 
 use crate::{
     ast::expressions::{
-        BinaryOperation, DataExpression, DataExpressionData, List, Map,
+        BinaryOperation, NormalExpression, NormalExpressionData, List, Map,
         VariableAccess, VariableDeclaration, expression::Expression,
     },
     fmt::{
@@ -23,40 +23,40 @@ use crate::{
 impl<'a> Formatter<'a> {
     pub fn datex_expression_to_source_code(
         &'a self,
-        expr: &'a DataExpression,
+        expr: &'a NormalExpression,
     ) -> Format<'a> {
         let a = &self.alloc;
         match expr.data() {
-            DataExpressionData::Integer(i) => a.as_string(i),
-            DataExpressionData::TypedInteger(ti) => {
+            NormalExpressionData::Integer(i) => a.as_string(i),
+            NormalExpressionData::TypedInteger(ti) => {
                 self.typed_integer_to_source_code(ti, &expr.span)
             }
-            DataExpressionData::Decimal(d) => a.as_string(d),
-            DataExpressionData::TypedDecimal(td) => {
+            NormalExpressionData::Decimal(d) => a.as_string(d),
+            NormalExpressionData::TypedDecimal(td) => {
                 self.typed_decimal_to_source_code(td, &expr.span)
             }
-            DataExpressionData::Boolean(b) => a.as_string(b),
-            DataExpressionData::Text(t) => self.text_to_source_code(t.as_str()),
-            DataExpressionData::Endpoint(e) => a.text(e.to_string()),
-            DataExpressionData::Null => a.text("null"),
-            DataExpressionData::Identifier(_l) => unreachable!(
+            NormalExpressionData::Boolean(b) => a.as_string(b),
+            NormalExpressionData::Text(t) => self.text_to_source_code(t.as_str()),
+            NormalExpressionData::Endpoint(e) => a.text(e.to_string()),
+            NormalExpressionData::Null => a.text("null"),
+            NormalExpressionData::Identifier(_l) => unreachable!(
                 "Identifiers should have been resolved before formatting"
             ),
-            DataExpressionData::Map(map) => self.map_to_source_code(map),
-            DataExpressionData::List(list) => self.list_to_source_code(list),
-            DataExpressionData::DeriveRef(create_ref) => {
+            NormalExpressionData::Map(map) => self.map_to_source_code(map),
+            NormalExpressionData::List(list) => self.list_to_source_code(list),
+            NormalExpressionData::DeriveRef(create_ref) => {
                 (match create_ref.mutability {
                     LocalReferenceMutability::Immutable => a.text("&"),
                     LocalReferenceMutability::Mutable => a.text("&mut "),
                 }) + self.format_datex_expression(&create_ref.expression)
             }
-            DataExpressionData::DeriveSharedRef(create_shared_ref) => {
+            NormalExpressionData::DeriveSharedRef(create_shared_ref) => {
                 (match create_shared_ref.mutability {
                     ReferenceMutability::Immutable => a.text("'"),
                     ReferenceMutability::Mutable => a.text("'mut "),
                 }) + self.format_datex_expression(&create_shared_ref.expression)
             }
-            DataExpressionData::BinaryOperation(BinaryOperation {
+            NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator,
                 left,
                 right,
@@ -91,7 +91,7 @@ impl<'a> Formatter<'a> {
                     + right_doc)
                     .group()
             }
-            DataExpressionData::Statements(statements) => {
+            NormalExpressionData::Statements(statements) => {
                 let is_terminated = statements.is_terminated;
                 let docs: Vec<_> = statements
                     .statements
@@ -126,7 +126,7 @@ impl<'a> Formatter<'a> {
                 );
                 joined.group()
             }
-            DataExpressionData::VariableDeclaration(VariableDeclaration {
+            NormalExpressionData::VariableDeclaration(VariableDeclaration {
                 id: _,
                 init_expression,
                 kind,
@@ -147,13 +147,13 @@ impl<'a> Formatter<'a> {
                     + self.operator_with_spaces(a.text("="))
                     + self.format_datex_expression(init_expression)
             }
-            DataExpressionData::TypeExpression(type_expr) => {
+            NormalExpressionData::TypeExpression(type_expr) => {
                 let a = &self.alloc;
                 let inner = self.format_type_expression(type_expr);
                 (a.text("type<") + a.line_() + inner + a.line_() + a.text(">"))
                     .group()
             }
-            DataExpressionData::VariableAccess(VariableAccess {
+            NormalExpressionData::VariableAccess(VariableAccess {
                 name, ..
             }) => a.text(name),
             e => panic!("Formatter not implemented for {:?}", e),

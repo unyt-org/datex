@@ -1,10 +1,10 @@
-use crate::ast::expressions::DataExpressionData;
+use crate::ast::expressions::NormalExpressionData;
 
-/// This trait defines a method for converting any value into a [DataExpressionData] representation.
+/// This trait defines a method for converting any value into a [NormalExpressionData] representation.
 /// It is implemented for all layers of values, e.g. [ValueContainer], [Value], [CoreValue], and native values.
 pub trait ToDatexExpressionData {
-    /// Converts the implementing type into a [DataExpressionData] representation.
-    fn to_datex_expression_data(&self) -> DataExpressionData;
+    /// Converts the implementing type into a [NormalExpressionData] representation.
+    fn to_datex_expression_data(&self) -> NormalExpressionData;
 }
 
 // TODO: move tests
@@ -13,7 +13,7 @@ mod tests {
     use crate::{
         alloc::boxed::Box,
         ast::{
-            expressions::{DataExpressionData, List, RangeDeclaration},
+            expressions::{NormalExpressionData, List, RangeDeclaration},
             spanned::Spanned,
         },
         values::{
@@ -35,7 +35,7 @@ mod tests {
     fn integer_to_ast() {
         let value = ValueContainer::from(Integer::from(42));
         let ast = value.to_datex_expression_data();
-        assert_eq!(ast, DataExpressionData::Integer(Integer::from(42)));
+        assert_eq!(ast, NormalExpressionData::Integer(Integer::from(42)));
     }
 
     #[test]
@@ -44,7 +44,7 @@ mod tests {
         let ast = value.to_datex_expression_data();
         assert_eq!(
             ast,
-            DataExpressionData::TypedInteger(TypedInteger::from(42i8))
+            NormalExpressionData::TypedInteger(TypedInteger::from(42i8))
         );
     }
 
@@ -52,7 +52,7 @@ mod tests {
     fn decimal_to_ast() {
         let value = ValueContainer::from(Decimal::from(1.23));
         let ast = value.to_datex_expression_data();
-        assert_eq!(ast, DataExpressionData::Decimal(Decimal::from(1.23)));
+        assert_eq!(ast, NormalExpressionData::Decimal(Decimal::from(1.23)));
     }
 
     #[test]
@@ -61,7 +61,7 @@ mod tests {
         let ast = value.to_datex_expression_data();
         assert_eq!(
             ast,
-            DataExpressionData::TypedDecimal(TypedDecimal::from(2.71f32))
+            NormalExpressionData::TypedDecimal(TypedDecimal::from(2.71f32))
         );
     }
 
@@ -69,21 +69,21 @@ mod tests {
     fn boolean_to_ast() {
         let value = ValueContainer::from(true);
         let ast = value.to_datex_expression_data();
-        assert_eq!(ast, DataExpressionData::Boolean(true.into()));
+        assert_eq!(ast, NormalExpressionData::Boolean(true.into()));
     }
 
     #[test]
     fn text_to_ast() {
         let value = ValueContainer::from("Hello, World!".to_string());
         let ast = value.to_datex_expression_data();
-        assert_eq!(ast, DataExpressionData::Text("Hello, World!".into()));
+        assert_eq!(ast, NormalExpressionData::Text("Hello, World!".into()));
     }
 
     #[test]
     fn null_to_ast() {
         let value = ValueContainer::Local(Value::null());
         let ast = value.to_datex_expression_data();
-        assert_eq!(ast, DataExpressionData::Null);
+        assert_eq!(ast, NormalExpressionData::Null);
     }
 
     #[test]
@@ -96,12 +96,12 @@ mod tests {
         let ast = value.to_datex_expression_data();
         assert_eq!(
             ast,
-            DataExpressionData::List(List::new(vec![
-                DataExpressionData::Integer(Integer::from(1))
+            NormalExpressionData::List(List::new(vec![
+                NormalExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
-                DataExpressionData::Integer(Integer::from(2))
+                NormalExpressionData::Integer(Integer::from(2))
                     .with_default_span(),
-                DataExpressionData::Integer(Integer::from(3))
+                NormalExpressionData::Integer(Integer::from(3))
                     .with_default_span(),
             ]))
         );
@@ -116,10 +116,10 @@ mod tests {
         let ast = range.to_datex_expression_data();
         assert_eq!(
             ast,
-            DataExpressionData::Range(RangeDeclaration {
-                start: (DataExpressionData::Integer(Integer::from(11))
+            NormalExpressionData::Range(RangeDeclaration {
+                start: (NormalExpressionData::Integer(Integer::from(11))
                     .with_default_span()),
-                end: (DataExpressionData::Integer(Integer::from(13))
+                end: (NormalExpressionData::Integer(Integer::from(13))
                     .with_default_span()),
             })
         );

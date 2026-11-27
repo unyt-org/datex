@@ -1,5 +1,5 @@
 use crate::{
-    ast::{expressions::DataExpressionData, spanned::Spanned},
+    ast::{expressions::NormalExpressionData, spanned::Spanned},
     traits::{
         to_datex_expression_data::ToDatexExpressionData,
         to_type_expression_data::ToTypeExpressionData,
@@ -8,8 +8,8 @@ use crate::{
 };
 
 impl ToDatexExpressionData for Type {
-    fn to_datex_expression_data(&self) -> DataExpressionData {
-        DataExpressionData::TypeExpression(
+    fn to_datex_expression_data(&self) -> NormalExpressionData {
+        NormalExpressionData::TypeExpression(
             self.to_type_expression_data().with_default_span(),
         )
     }

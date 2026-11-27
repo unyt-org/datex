@@ -26,7 +26,7 @@ use crate::{
     ast::{
         expressions::{
             BinaryOperation, CallableDeclaration, CloneExpression,
-            DataExpression, DataExpressionData, DeriveRef, DeriveSharedRef,
+            NormalExpression, NormalExpressionData, DeriveRef, DeriveSharedRef,
             EntityDeclarationExpression, PropertyAccess, PropertyAssignment,
             RemoteExecution, RequestSharedRef, ResolvedVariable, Statements,
             TypeDeclarationExpression, TypeExpressionData, TypeVariantAccess,
@@ -85,7 +85,7 @@ pub struct Precompiler<'a> {
 /// Precompile the AST by resolving variable references and collecting metadata.
 /// Exits early on first error encountered, returning a SpannedCompilerError.
 pub fn precompile_ast_simple_error(
-    ast: DataExpression,
+    ast: NormalExpression,
     scope_stack: &mut PrecompilerScopeStack,
     ast_metadata: Rc<RefCell<AstMetadata>>,
     runtime: Runtime,
@@ -112,7 +112,7 @@ pub fn precompile_ast_simple_error(
 /// Precompile the AST by resolving variable references and collecting metadata.
 /// Collects all errors encountered, returning a DetailedCompilerErrorsWithRichAst.
 pub fn precompile_ast_detailed_errors(
-    ast: DataExpression,
+    ast: NormalExpression,
     scope_stack: &mut PrecompilerScopeStack,
     ast_metadata: Rc<RefCell<AstMetadata>>,
     runtime: Runtime,
@@ -138,7 +138,7 @@ pub fn precompile_ast_detailed_errors(
 
 /// Precompile the AST by resolving variable references and collecting metadata.
 pub fn precompile_ast(
-    ast: DataExpression,
+    ast: NormalExpression,
     scope_stack: &mut PrecompilerScopeStack,
     ast_metadata: Rc<RefCell<AstMetadata>>,
     options: PrecompilerOptions,
@@ -200,7 +200,7 @@ impl<'a> Precompiler<'a> {
     /// Precompile the AST by resolving variable references and collecting metadata.
     fn precompile(
         mut self,
-        mut ast: DataExpression,
+        mut ast: NormalExpression,
         options: PrecompilerOptions,
     ) -> Result<RichAst, SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst>
     {
@@ -209,14 +209,14 @@ impl<'a> Precompiler<'a> {
         }
 
         // Hoist top-level type declaration if any
-        if let DataExpressionData::TypeDeclaration(type_declaration) =
+        if let NormalExpressionData::TypeDeclaration(type_declaration) =
             ast.data_mut()
         {
             self.hoist_type_variable(type_declaration);
         }
 
         // Hoist top-level entity declaration if any
-        if let DataExpressionData::EntityDeclaration(entity_declaration) =
+        if let NormalExpressionData::EntityDeclaration(entity_declaration) =
             ast.data_mut()
         {
             self.hoist_entity_variable(entity_declaration);
@@ -297,10 +297,10 @@ impl<'a> Precompiler<'a> {
 
     fn scope_type_for_expression(
         &mut self,
-        expr: &DataExpression,
+        expr: &NormalExpression,
     ) -> NewScopeType {
         match &expr.data() {
-            DataExpressionData::RemoteExecution(_) => NewScopeType::None,
+            NormalExpressionData::RemoteExecution(_) => NewScopeType::None,
             _ => NewScopeType::NewScope,
         }
     }
@@ -467,7 +467,7 @@ impl Precompiler<'_> {
         identifier: &str,
         span: &Range<usize>,
         access_type: ValueAccessType,
-    ) -> Result<Option<DataExpression>, SpannedCompilerError> {
+    ) -> Result<Option<NormalExpression>, SpannedCompilerError> {
         let result = self.resolve_variable(identifier).map_err(|error| {
             SpannedCompilerError::new_with_span(error, span.clone())
         });
@@ -475,7 +475,7 @@ impl Precompiler<'_> {
         Ok(if let MaybeAction::Do(resolved_variable) = action {
             Some(match resolved_variable {
                 ResolvedVariable::VariableId(id) => {
-                    DataExpressionData::VariableAccess(VariableAccess {
+                    NormalExpressionData::VariableAccess(VariableAccess {
                         id,
                         name: identifier.to_owned(),
                         access_type,
@@ -483,11 +483,11 @@ impl Precompiler<'_> {
                     .with_span(span.clone())
                 }
                 ResolvedVariable::CoreLibId(core_lib_id) => {
-                    DataExpressionData::ResolveCoreLibId(core_lib_id)
+                    NormalExpressionData::ResolveCoreLibId(core_lib_id)
                         .with_span(span.clone())
                 }
                 ResolvedVariable::PointerAddress(pointer_address) => {
-                    DataExpressionData::RequestSharedRef(RequestSharedRef {
+                    NormalExpressionData::RequestSharedRef(RequestSharedRef {
                         address: pointer_address,
                         mutability: ReferenceMutability::Immutable,
                     })
@@ -519,11 +519,11 @@ impl Precompiler<'_> {
 
     fn visit_child_realm(
         &mut self,
-        expression: &mut DataExpression,
+        expression: &mut NormalExpression,
         vars: Vec<ParameterData>,
     ) -> Result<
         (
-            Result<Vec<DataExpression>, VisitAction<DataExpression>>,
+            Result<Vec<NormalExpression>, VisitAction<NormalExpression>>,
             u32,
         ),
         SpannedCompilerError,
@@ -559,14 +559,14 @@ impl Precompiler<'_> {
                 for (variable_id, access_type) in unresolved_variables {
                     let placeholder_var_name = "__placeholder".to_string();
                     statements.push(
-                        DataExpressionData::VariableDeclaration(
+                        NormalExpressionData::VariableDeclaration(
                             VariableDeclaration {
                                 id: Some(variable_id),
                                 name: placeholder_var_name,
                                 type_annotation: None,
                                 kind: VariableKind::Const,
                                 init_expression:
-                                    DataExpressionData::Placeholder(access_type)
+                                    NormalExpressionData::Placeholder(access_type)
                                         .with_default_span(),
                             },
                         )
@@ -592,8 +592,8 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     fn handle_expression_error(
         &mut self,
         error: SpannedCompilerError,
-        _expression: &DataExpression,
-    ) -> Result<VisitAction<DataExpression>, SpannedCompilerError> {
+        _expression: &NormalExpression,
+    ) -> Result<VisitAction<NormalExpression>, SpannedCompilerError> {
         if let Some(collected_errors) = self.collected_errors.as_mut() {
             collected_errors.record_error(error);
             Ok(VisitAction::ContinueRecursion)
@@ -602,7 +602,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         }
     }
 
-    fn before_visit_datex_expression(&mut self, expr: &mut DataExpression) {
+    fn before_visit_datex_expression(&mut self, expr: &mut NormalExpression) {
         match self.scope_type_for_expression(expr) {
             NewScopeType::NewScopeWithNewRealm => {
                 self.scope_stack.push_scope();
@@ -621,7 +621,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         self.is_first_level_expression = false;
     }
 
-    fn after_visit_datex_expression(&mut self, expr: &mut DataExpression) {
+    fn after_visit_datex_expression(&mut self, expr: &mut NormalExpression) {
         match self.scope_type_for_expression(expr) {
             NewScopeType::NewScope | NewScopeType::NewScopeWithNewRealm
                 // always keep top level scope
@@ -659,14 +659,14 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         match result {
             Ok(mut statements) => {
                 statements.push(
-                    DataExpressionData::callable_declaration(
+                    NormalExpressionData::callable_declaration(
                         callable_declaration.clone(),
                     )
                     .with_span(span.clone()),
                 );
 
                 Ok(VisitAction::Replace(
-                    DataExpressionData::Statements(Statements {
+                    NormalExpressionData::Statements(Statements {
                         statements,
                         is_terminated: false,
                         unbounded: None,
@@ -693,14 +693,14 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         match result {
             Ok(mut statements) => {
                 statements.push(
-                    DataExpressionData::RemoteExecution(
+                    NormalExpressionData::RemoteExecution(
                         remote_execution.clone(),
                     )
                     .with_span(span.clone()),
                 );
 
                 Ok(VisitAction::Replace(
-                    DataExpressionData::Statements(Statements {
+                    NormalExpressionData::Statements(Statements {
                         statements,
                         is_terminated: false,
                         unbounded: None,
@@ -721,7 +721,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         property_assignment.walk_children(self)?;
 
         // if base is a variable access, change access type to Borrow
-        if let DataExpressionData::VariableAccess(variable_access) =
+        if let NormalExpressionData::VariableAccess(variable_access) =
             property_assignment.base.data_mut()
         {
             variable_access.access_type = ValueAccessType::Borrow;
@@ -737,7 +737,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         create_ref.walk_children(self)?;
 
         // for &x, access to x should be a borrow access
-        if let DataExpressionData::VariableAccess(variable_access) =
+        if let NormalExpressionData::VariableAccess(variable_access) =
             create_ref.expression.data_mut()
         {
             variable_access.access_type = ValueAccessType::Borrow;
@@ -754,7 +754,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         // if lhs is variable, access it as Borrow
         property_access.walk_children(self)?;
 
-        if let DataExpressionData::VariableAccess(variable_access) =
+        if let NormalExpressionData::VariableAccess(variable_access) =
             property_access.base.data_mut()
         {
             variable_access.access_type = ValueAccessType::Borrow;
@@ -775,7 +775,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
             statements.statements.iter_mut().enumerate()
         {
             match statement_expressions.data_mut() {
-                DataExpressionData::TypeDeclaration(type_declaration) => {
+                NormalExpressionData::TypeDeclaration(type_declaration) => {
                     let name = &type_declaration.name;
                     if registered_names.contains(name) {
                         self.collect_error(
@@ -786,7 +786,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                     registered_names.insert(name.clone());
                     self.hoist_type_variable(type_declaration);
                 }
-                DataExpressionData::EntityDeclaration(entity_declaration) => {
+                NormalExpressionData::EntityDeclaration(entity_declaration) => {
                     let name = &entity_declaration.name;
                     if registered_names.contains(name) {
                         self.collect_error(
@@ -798,16 +798,16 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                     self.hoist_entity_variable(entity_declaration);
                 }
                 // also terminate execution block for remote execution if the result is not used
-                DataExpressionData::RemoteExecution(remote_execution)
+                NormalExpressionData::RemoteExecution(remote_execution)
                     // if not last statement, or last statement and terminated
                     if (i != statements_length - 1 || is_terminated) => {
                         match remote_execution.right.data_mut() {
-                            DataExpressionData::Statements(statements) => {
+                            NormalExpressionData::Statements(statements) => {
                                 statements.is_terminated = true;
                             }
                             _ => {
                                 remote_execution.right =
-                                    DataExpressionData::Statements(
+                                    NormalExpressionData::Statements(
                                         Statements {
                                             is_terminated: true,
                                             unbounded: None,
@@ -881,13 +881,13 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
             let right = &mut binary_operation.right;
 
             let lit_left =
-                if let DataExpressionData::Identifier(name) = left.data() {
+                if let NormalExpressionData::Identifier(name) = left.data() {
                     name.clone()
                 } else {
                     return Ok(VisitAction::ContinueRecursion);
                 };
             let lit_right =
-                if let DataExpressionData::Identifier(name) = right.data() {
+                if let NormalExpressionData::Identifier(name) = right.data() {
                     name.clone()
                 } else {
                     return Ok(VisitAction::ContinueRecursion);
@@ -908,8 +908,8 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                 } else {
                     // is right is not defined, fallback to variant access
                     // could be divison though, where user misspelled rhs (unhandled, will throw)
-                    Ok(VisitAction::Replace(DataExpression::new(
-                        DataExpressionData::VariantAccess(VariantAccess {
+                    Ok(VisitAction::Replace(NormalExpression::new(
+                        NormalExpressionData::VariantAccess(VariantAccess {
                             base: left_var,
                             name: lit_left,
                             variant: lit_right,
@@ -994,19 +994,19 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         // if expression is an identifier, set access type to shared (mut)
-        if let DataExpressionData::Identifier(name) =
+        if let NormalExpressionData::Identifier(name) =
             get_shared_ref.expression.data()
         {
             let access_type = ValueAccessType::from(&get_shared_ref.mutability);
             self.visit_identifier_with_access_type(name, span, access_type)
         }
         // if expression is placeholder, set access type to shared (mut)
-        else if let DataExpressionData::Placeholder(_access_type) =
+        else if let NormalExpressionData::Placeholder(_access_type) =
             get_shared_ref.expression.data()
         {
             let access_type = ValueAccessType::from(&get_shared_ref.mutability);
             Ok(VisitAction::ReplaceRecurse(
-                DataExpressionData::Placeholder(access_type)
+                NormalExpressionData::Placeholder(access_type)
                     .with_span(span.clone()),
             ))
         } else {
@@ -1034,7 +1034,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                     ),
                 );
             Ok(VisitAction::Replace(
-                DataExpressionData::VariableAccess(VariableAccess {
+                NormalExpressionData::VariableAccess(VariableAccess {
                     id: variable_id,
                     name: "__placeholder".to_string(),
                     access_type: placeholder_type.clone(),
@@ -1052,7 +1052,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         // if expression is an identifier, set access type to clone
-        if let DataExpressionData::Identifier(name) = &clone.expression.data() {
+        if let NormalExpressionData::Identifier(name) = &clone.expression.data() {
             self.visit_identifier_with_access_type(
                 name,
                 span,
@@ -1060,11 +1060,11 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
             )
         }
         // if expression is placeholder, set access type to clone
-        else if let DataExpressionData::Placeholder(_access_type) =
+        else if let NormalExpressionData::Placeholder(_access_type) =
             clone.expression.data()
         {
             Ok(VisitAction::Replace(
-                DataExpressionData::Placeholder(ValueAccessType::Clone)
+                NormalExpressionData::Placeholder(ValueAccessType::Clone)
                     .with_span(span.clone()),
             ))
         } else {
@@ -1079,7 +1079,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         call.walk_children(self)?;
 
-        if let DataExpressionData::VariableAccess(variable_access) =
+        if let NormalExpressionData::VariableAccess(variable_access) =
             call.target.data_mut()
         {
             variable_access.access_type = ValueAccessType::Borrow;
@@ -1094,7 +1094,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         // if expression is an identifier, set access type to clone
-        if let DataExpressionData::Identifier(name) = &unbox.expression.data() {
+        if let NormalExpressionData::Identifier(name) = &unbox.expression.data() {
             let expression = self.get_identifier_with_access_type(
                 name,
                 unbox.expression.span(),
@@ -1102,18 +1102,18 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
             )?;
             match expression {
                 Some(expression) => Ok(VisitAction::ReplaceRecurse(
-                    DataExpressionData::Unbox(Unbox { expression })
+                    NormalExpressionData::Unbox(Unbox { expression })
                         .with_span(span.clone()),
                 )),
                 None => Ok(VisitAction::AbortRecursion),
             }
         }
         // if expression is placeholder, set access type to clone
-        else if let DataExpressionData::Placeholder(_access_type) =
+        else if let NormalExpressionData::Placeholder(_access_type) =
             &unbox.expression.data()
         {
             Ok(VisitAction::Replace(
-                DataExpressionData::Placeholder(ValueAccessType::Borrow)
+                NormalExpressionData::Placeholder(ValueAccessType::Borrow)
                     .with_span(span.clone()),
             ))
         } else {
@@ -1127,7 +1127,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         // if expression is an identifier, set access type to clone
-        if let DataExpressionData::Identifier(name) =
+        if let NormalExpressionData::Identifier(name) =
             unbox_assignment.unbox_expression.data()
         {
             let expression = self.get_identifier_with_access_type(
@@ -1137,7 +1137,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
             )?;
             match expression {
                 Some(expression) => Ok(VisitAction::ReplaceRecurse(
-                    DataExpressionData::UnboxAssignment(UnboxAssignment {
+                    NormalExpressionData::UnboxAssignment(UnboxAssignment {
                         operator: unbox_assignment.operator,
                         unbox_expression: expression,
                         assigned_expression: unbox_assignment
@@ -1161,7 +1161,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         self.visit_datex_expression(&mut comparison_operation.left)?;
         self.visit_datex_expression(&mut comparison_operation.right)?;
 
-        if let DataExpressionData::VariableAccess(VariableAccess {
+        if let NormalExpressionData::VariableAccess(VariableAccess {
             access_type,
             ..
         }) = comparison_operation.left.data_mut()
@@ -1169,7 +1169,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
             *access_type = ValueAccessType::Borrow
         };
 
-        if let DataExpressionData::VariableAccess(VariableAccess {
+        if let NormalExpressionData::VariableAccess(VariableAccess {
             access_type,
             ..
         }) = comparison_operation.right.data_mut()
@@ -1199,8 +1199,8 @@ mod tests {
         ast::{
             expressions::{
                 BinaryOperation, CallableDeclaration, CallableSignature,
-                ComparisonOperation, CreateShared, DataExpression,
-                DataExpressionData, DeriveRef, DeriveSharedRef,
+                ComparisonOperation, CreateShared, NormalExpression,
+                NormalExpressionData, DeriveRef, DeriveSharedRef,
                 EntityDeclarationExpression, InterfaceMethodCall, Map,
                 PropertyAccess, PropertyAssignment, RemoteExecution,
                 ResolvedVariable, Statements, StructuralMap,
@@ -1243,7 +1243,7 @@ mod tests {
     use core::{assert_matches, cell::RefCell, str::FromStr};
 
     fn precompile(
-        ast: DataExpression,
+        ast: NormalExpression,
         options: PrecompilerOptions,
     ) -> Result<RichAst, SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst>
     {
@@ -1337,8 +1337,8 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Statements(Statements::new_unterminated(vec![
-                DataExpressionData::EntityDeclaration(
+            NormalExpressionData::Statements(Statements::new_unterminated(vec![
+                NormalExpressionData::EntityDeclaration(
                     EntityDeclarationExpression {
                         id: Some(0),
                         name: "User".to_string(),
@@ -1359,7 +1359,7 @@ mod tests {
                     }
                 )
                 .with_default_span(),
-                DataExpressionData::VariableAccess(VariableAccess {
+                NormalExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "User".to_string(),
                     access_type: ValueAccessType::default(),
@@ -1390,8 +1390,8 @@ mod tests {
         assert_matches!(
             result,
             Ok(RichAst {
-                ast: DataExpression {
-                    data: DataExpressionData::ResolveCoreLibId(
+                ast: NormalExpression {
+                    data: NormalExpressionData::ResolveCoreLibId(
                         CoreLibId::Type(CoreLibTypeId::Base(
                             CoreLibBaseTypeId::Boolean,
                         )),
@@ -1405,8 +1405,8 @@ mod tests {
         assert_matches!(
             result,
             Ok(RichAst {
-                ast: DataExpression {
-                    data: DataExpressionData::ResolveCoreLibId(
+                ast: NormalExpression {
+                    data: NormalExpressionData::ResolveCoreLibId(
                         CoreLibId::Type(CoreLibTypeId::Base(
                             CoreLibBaseTypeId::Integer,
                         )),
@@ -1420,7 +1420,7 @@ mod tests {
         let result = parse_and_precompile("integer/u8");
         assert_eq!(
             result.unwrap().ast,
-            DataExpressionData::VariantAccess(VariantAccess {
+            NormalExpressionData::VariantAccess(VariantAccess {
                 base: ResolvedVariable::CoreLibId(CoreLibId::Type(
                     CoreLibBaseTypeId::Integer.into()
                 )),
@@ -1438,7 +1438,7 @@ mod tests {
             parse_and_precompile("integer/u8").expect("Precompilation failed");
         assert_eq!(
             result.ast,
-            DataExpressionData::VariantAccess(VariantAccess {
+            NormalExpressionData::VariantAccess(VariantAccess {
                 base: ResolvedVariable::CoreLibId(CoreLibId::Type(
                     CoreLibBaseTypeId::Integer.into()
                 )),
@@ -1452,7 +1452,7 @@ mod tests {
         let result = parse_and_precompile("integer/invalid").unwrap();
         assert_eq!(
             result.ast,
-            DataExpressionData::VariantAccess(VariantAccess {
+            NormalExpressionData::VariantAccess(VariantAccess {
                 base: ResolvedVariable::CoreLibId(CoreLibId::Type(
                     CoreLibBaseTypeId::Integer.into()
                 )),
@@ -1470,24 +1470,24 @@ mod tests {
         let result =
             parse_and_precompile("var a = 42; var b = 69; a/b").unwrap();
         let statements =
-            if let DataExpressionData::Statements(stmts) = result.ast.data() {
+            if let NormalExpressionData::Statements(stmts) = result.ast.data() {
                 stmts
             } else {
                 panic!("Expected statements");
             };
         assert_eq!(
             *statements.statements.get(2).unwrap(),
-            DataExpressionData::BinaryOperation(BinaryOperation {
+            NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(
                     ArithmeticOperator::Divide
                 ),
-                left: (DataExpressionData::VariableAccess(VariableAccess {
+                left: (NormalExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "a".to_string(),
                     access_type: ValueAccessType::MoveOrCopy,
                 })
                 .with_default_span()),
-                right: (DataExpressionData::VariableAccess(VariableAccess {
+                right: (NormalExpressionData::VariableAccess(VariableAccess {
                     id: 1,
                     name: "b".to_string(),
                     access_type: ValueAccessType::MoveOrCopy,
@@ -1502,24 +1502,24 @@ mod tests {
         let result =
             parse_and_precompile("var a = 10; entity b = 42; a/b").unwrap();
         let statements =
-            if let DataExpressionData::Statements(stmts) = result.ast.data() {
+            if let NormalExpressionData::Statements(stmts) = result.ast.data() {
                 stmts
             } else {
                 panic!("Expected statements");
             };
         assert_eq!(
             *statements.statements.get(2).unwrap(),
-            DataExpressionData::BinaryOperation(BinaryOperation {
+            NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(
                     ArithmeticOperator::Divide
                 ),
-                left: DataExpressionData::VariableAccess(VariableAccess {
+                left: NormalExpressionData::VariableAccess(VariableAccess {
                     id: 1,
                     name: "a".to_string(),
                     access_type: ValueAccessType::MoveOrCopy,
                 })
                 .with_default_span(),
-                right: DataExpressionData::VariableAccess(VariableAccess {
+                right: NormalExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "b".to_string(),
                     access_type: ValueAccessType::MoveOrCopy,
@@ -1538,8 +1538,8 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Statements(Statements::new_terminated(vec![
-                DataExpressionData::EntityDeclaration(
+            NormalExpressionData::Statements(Statements::new_terminated(vec![
+                NormalExpressionData::EntityDeclaration(
                     EntityDeclarationExpression {
                         id: Some(0),
                         name: "MyInt".to_string(),
@@ -1551,12 +1551,12 @@ mod tests {
                     }
                 )
                 .with_default_span(),
-                DataExpressionData::VariableDeclaration(VariableDeclaration {
+                NormalExpressionData::VariableDeclaration(VariableDeclaration {
                     id: Some(1),
                     kind: VariableKind::Var,
                     name: "x".to_string(),
                     // must refer to variable id 0
-                    init_expression: (DataExpressionData::VariableAccess(
+                    init_expression: (NormalExpressionData::VariableAccess(
                         VariableAccess {
                             id: 0,
                             name: "MyInt".to_string(),
@@ -1579,13 +1579,13 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Statements(Statements::new_terminated(vec![
-                DataExpressionData::VariableDeclaration(VariableDeclaration {
+            NormalExpressionData::Statements(Statements::new_terminated(vec![
+                NormalExpressionData::VariableDeclaration(VariableDeclaration {
                     id: Some(1),
                     kind: VariableKind::Var,
                     name: "x".to_string(),
                     // must refer to variable id 0
-                    init_expression: (DataExpressionData::VariableAccess(
+                    init_expression: (NormalExpressionData::VariableAccess(
                         VariableAccess {
                             id: 0,
                             name: "MyInt".to_string(),
@@ -1596,7 +1596,7 @@ mod tests {
                     type_annotation: None,
                 })
                 .with_default_span(),
-                DataExpressionData::EntityDeclaration(
+                NormalExpressionData::EntityDeclaration(
                     EntityDeclarationExpression {
                         id: Some(0),
                         name: "MyInt".to_string(),
@@ -1621,8 +1621,8 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Statements(Statements::new_terminated(vec![
-                DataExpressionData::EntityDeclaration(
+            NormalExpressionData::Statements(Statements::new_terminated(vec![
+                NormalExpressionData::EntityDeclaration(
                     EntityDeclarationExpression {
                         id: Some(0),
                         name: "x".to_string(),
@@ -1638,7 +1638,7 @@ mod tests {
                     }
                 )
                 .with_default_span(),
-                DataExpressionData::EntityDeclaration(
+                NormalExpressionData::EntityDeclaration(
                     EntityDeclarationExpression {
                         id: Some(1),
                         name: "MyInt".to_string(),
@@ -1675,8 +1675,8 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Statements(Statements::new_unterminated(vec![
-                DataExpressionData::EntityDeclaration(
+            NormalExpressionData::Statements(Statements::new_unterminated(vec![
+                NormalExpressionData::EntityDeclaration(
                     EntityDeclarationExpression {
                         id: Some(0),
                         name: "x".to_string(),
@@ -1688,11 +1688,11 @@ mod tests {
                     }
                 )
                 .with_default_span(),
-                DataExpressionData::Statements(Statements::new_terminated(
+                NormalExpressionData::Statements(Statements::new_terminated(
                     vec![
-                        DataExpressionData::Integer(Integer::from(1))
+                        NormalExpressionData::Integer(Integer::from(1))
                             .with_default_span(),
-                        DataExpressionData::EntityDeclaration(
+                        NormalExpressionData::EntityDeclaration(
                             EntityDeclarationExpression {
                                 id: Some(1),
                                 name: "NestedVar".to_string(),
@@ -1724,7 +1724,7 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::EntityDeclaration(
+            NormalExpressionData::EntityDeclaration(
                 EntityDeclarationExpression {
                     id: Some(0),
                     name: "x".to_string(),
@@ -1746,15 +1746,15 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Statements(Statements::new_unterminated(vec![
-                DataExpressionData::VariableDeclaration(VariableDeclaration {
+            NormalExpressionData::Statements(Statements::new_unterminated(vec![
+                NormalExpressionData::VariableDeclaration(VariableDeclaration {
                     id: Some(0),
                     kind: VariableKind::Const,
                     name: "x".to_string(),
-                    init_expression: (DataExpressionData::DeriveRef(
+                    init_expression: (NormalExpressionData::DeriveRef(
                         DeriveRef {
                             mutability: LocalReferenceMutability::Immutable,
-                            expression: (DataExpressionData::Integer(
+                            expression: (NormalExpressionData::Integer(
                                 Integer::from(42)
                             )
                             .with_default_span())
@@ -1764,8 +1764,8 @@ mod tests {
                     type_annotation: None,
                 })
                 .with_default_span(),
-                DataExpressionData::Unbox(Unbox {
-                    expression: (DataExpressionData::VariableAccess(
+                NormalExpressionData::Unbox(Unbox {
+                    expression: (NormalExpressionData::VariableAccess(
                         VariableAccess {
                             id: 0,
                             name: "x".to_string(),
@@ -1787,17 +1787,17 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Statements(Statements::new_unterminated(vec![
-                DataExpressionData::VariableDeclaration(VariableDeclaration {
+            NormalExpressionData::Statements(Statements::new_unterminated(vec![
+                NormalExpressionData::VariableDeclaration(VariableDeclaration {
                     id: Some(0),
                     kind: VariableKind::Const,
                     name: "x".to_string(),
-                    init_expression: (DataExpressionData::DeriveSharedRef(
+                    init_expression: (NormalExpressionData::DeriveSharedRef(
                         DeriveSharedRef {
                             mutability: ReferenceMutability::Immutable,
-                            expression: (DataExpressionData::CreateShared(
+                            expression: (NormalExpressionData::CreateShared(
                                 CreateShared {
-                                    expression: (DataExpressionData::Integer(
+                                    expression: (NormalExpressionData::Integer(
                                         Integer::from(42)
                                     )
                                     .with_default_span()),
@@ -1812,8 +1812,8 @@ mod tests {
                     type_annotation: None,
                 })
                 .with_default_span(),
-                DataExpressionData::Unbox(Unbox {
-                    expression: (DataExpressionData::VariableAccess(
+                NormalExpressionData::Unbox(Unbox {
+                    expression: (NormalExpressionData::VariableAccess(
                         VariableAccess {
                             id: 0,
                             name: "x".to_string(),
@@ -1835,7 +1835,7 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
+            NormalExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
                 .with_default_span()
         );
     }
@@ -1847,7 +1847,7 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Placeholder(ValueAccessType::SharedRef)
+            NormalExpressionData::Placeholder(ValueAccessType::SharedRef)
                 .with_default_span()
         );
 
@@ -1856,7 +1856,7 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Placeholder(ValueAccessType::SharedRef)
+            NormalExpressionData::Placeholder(ValueAccessType::SharedRef)
                 .with_default_span()
         );
     }
@@ -1868,7 +1868,7 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Placeholder(ValueAccessType::SharedRefMut)
+            NormalExpressionData::Placeholder(ValueAccessType::SharedRefMut)
                 .with_default_span()
         );
 
@@ -1877,7 +1877,7 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Placeholder(ValueAccessType::SharedRefMut)
+            NormalExpressionData::Placeholder(ValueAccessType::SharedRefMut)
                 .with_default_span()
         );
     }
@@ -1889,7 +1889,7 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Placeholder(ValueAccessType::Clone)
+            NormalExpressionData::Placeholder(ValueAccessType::Clone)
                 .with_default_span()
         );
 
@@ -1898,7 +1898,7 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Placeholder(ValueAccessType::Clone)
+            NormalExpressionData::Placeholder(ValueAccessType::Clone)
                 .with_default_span()
         );
     }
@@ -1910,19 +1910,19 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Statements(Statements::new_unterminated(vec![
-                DataExpressionData::VariableDeclaration(VariableDeclaration {
+            NormalExpressionData::Statements(Statements::new_unterminated(vec![
+                NormalExpressionData::VariableDeclaration(VariableDeclaration {
                     id: Some(0),
                     kind: VariableKind::Var,
                     name: "x".to_string(),
-                    init_expression: (DataExpressionData::Integer(
+                    init_expression: (NormalExpressionData::Integer(
                         Integer::from(42)
                     )
                     .with_default_span()),
                     type_annotation: None,
                 })
                 .with_default_span(),
-                DataExpressionData::VariableAccess(VariableAccess {
+                NormalExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "x".to_string(),
                     access_type: ValueAccessType::SharedRef,
@@ -1940,19 +1940,19 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Statements(Statements::new_unterminated(vec![
-                DataExpressionData::VariableDeclaration(VariableDeclaration {
+            NormalExpressionData::Statements(Statements::new_unterminated(vec![
+                NormalExpressionData::VariableDeclaration(VariableDeclaration {
                     id: Some(0),
                     kind: VariableKind::Var,
                     name: "x".to_string(),
-                    init_expression: (DataExpressionData::Integer(
+                    init_expression: (NormalExpressionData::Integer(
                         Integer::from(42)
                     )
                     .with_default_span()),
                     type_annotation: None,
                 })
                 .with_default_span(),
-                DataExpressionData::VariableAccess(VariableAccess {
+                NormalExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "x".to_string(),
                     access_type: ValueAccessType::SharedRefMut,
@@ -1970,19 +1970,19 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Statements(Statements::new_unterminated(vec![
-                DataExpressionData::VariableDeclaration(VariableDeclaration {
+            NormalExpressionData::Statements(Statements::new_unterminated(vec![
+                NormalExpressionData::VariableDeclaration(VariableDeclaration {
                     id: Some(0),
                     kind: VariableKind::Var,
                     name: "x".to_string(),
-                    init_expression: (DataExpressionData::Integer(
+                    init_expression: (NormalExpressionData::Integer(
                         Integer::from(42)
                     )
                     .with_default_span()),
                     type_annotation: None,
                 })
                 .with_default_span(),
-                DataExpressionData::VariableAccess(VariableAccess {
+                NormalExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "x".to_string(),
                     access_type: ValueAccessType::Clone,
@@ -2000,20 +2000,20 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DataExpressionData::Statements(Statements::new_unterminated(vec![
-                DataExpressionData::VariableDeclaration(VariableDeclaration {
+            NormalExpressionData::Statements(Statements::new_unterminated(vec![
+                NormalExpressionData::VariableDeclaration(VariableDeclaration {
                     id: Some(0),
                     kind: VariableKind::Var,
                     name: "x".to_string(),
-                    init_expression: (DataExpressionData::Integer(
+                    init_expression: (NormalExpressionData::Integer(
                         Integer::from(42)
                     )
                     .with_default_span()),
                     type_annotation: None,
                 })
                 .with_default_span(),
-                DataExpressionData::Unbox(Unbox {
-                    expression: DataExpressionData::VariableAccess(
+                NormalExpressionData::Unbox(Unbox {
+                    expression: NormalExpressionData::VariableAccess(
                         VariableAccess {
                             id: 0,
                             name: "x".to_string(),
@@ -2035,15 +2035,15 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast.data(),
-            &DataExpressionData::Statements(Statements::new_terminated(vec![
-                DataExpressionData::RemoteExecution(RemoteExecution {
-                    left: (DataExpressionData::Endpoint(
+            &NormalExpressionData::Statements(Statements::new_terminated(vec![
+                NormalExpressionData::RemoteExecution(RemoteExecution {
+                    left: (NormalExpressionData::Endpoint(
                         Endpoint::from_str("@example").unwrap()
                     )
                     .with_default_span()),
-                    right: (DataExpressionData::Statements(
+                    right: (NormalExpressionData::Statements(
                         Statements::new_terminated(vec![
-                            DataExpressionData::Integer(Integer::from(1))
+                            NormalExpressionData::Integer(Integer::from(1))
                                 .with_default_span()
                         ])
                     )
@@ -2062,16 +2062,16 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast.data(),
-            &DataExpressionData::Statements(Statements::new_unterminated(
+            &NormalExpressionData::Statements(Statements::new_unterminated(
                 vec![
-                    DataExpressionData::RemoteExecution(RemoteExecution {
-                        left: DataExpressionData::Endpoint(
+                    NormalExpressionData::RemoteExecution(RemoteExecution {
+                        left: NormalExpressionData::Endpoint(
                             Endpoint::from_str("@example").unwrap()
                         )
                         .with_default_span(),
-                        right: DataExpressionData::Statements(
+                        right: NormalExpressionData::Statements(
                             Statements::new_terminated(vec![
-                                DataExpressionData::Integer(Integer::from(1))
+                                NormalExpressionData::Integer(Integer::from(1))
                                     .with_default_span()
                             ])
                         )
@@ -2079,7 +2079,7 @@ mod tests {
                         injected_variable_count: Some(0),
                     })
                     .with_default_span(),
-                    DataExpressionData::Integer(Integer::from(2))
+                    NormalExpressionData::Integer(Integer::from(2))
                         .with_default_span(),
                 ]
             ))
@@ -2093,17 +2093,17 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast.data(),
-            &DataExpressionData::Statements(Statements::new_terminated(vec![
-                DataExpressionData::RemoteExecution(RemoteExecution {
-                    left: DataExpressionData::Endpoint(
+            &NormalExpressionData::Statements(Statements::new_terminated(vec![
+                NormalExpressionData::RemoteExecution(RemoteExecution {
+                    left: NormalExpressionData::Endpoint(
                         Endpoint::from_str("@example").unwrap()
                     )
                     .with_default_span(),
-                    right: DataExpressionData::Statements(
+                    right: NormalExpressionData::Statements(
                         Statements::new_terminated(vec![
-                            DataExpressionData::Integer(Integer::from(1))
+                            NormalExpressionData::Integer(Integer::from(1))
                                 .with_default_span(),
-                            DataExpressionData::Integer(Integer::from(2))
+                            NormalExpressionData::Integer(Integer::from(2))
                                 .with_default_span(),
                         ],)
                     )
@@ -2122,14 +2122,14 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast.data(),
-            &DataExpressionData::Statements(Statements::new_unterminated(
+            &NormalExpressionData::Statements(Statements::new_unterminated(
                 vec![
-                    DataExpressionData::VariableDeclaration(
+                    NormalExpressionData::VariableDeclaration(
                         VariableDeclaration {
                             id: Some(0),
                             kind: VariableKind::Var,
                             name: "x".to_string(),
-                            init_expression: DataExpressionData::Integer(
+                            init_expression: NormalExpressionData::Integer(
                                 Integer::from(10)
                             )
                             .with_default_span(),
@@ -2137,12 +2137,12 @@ mod tests {
                         }
                     )
                     .with_default_span(),
-                    DataExpressionData::RemoteExecution(RemoteExecution {
-                        left: DataExpressionData::Endpoint(
+                    NormalExpressionData::RemoteExecution(RemoteExecution {
+                        left: NormalExpressionData::Endpoint(
                             Endpoint::from_str("@example").unwrap()
                         )
                         .with_default_span(),
-                        right: DataExpressionData::VariableAccess(
+                        right: NormalExpressionData::VariableAccess(
                             VariableAccess {
                                 id: 0,
                                 name: "x".to_string(),
@@ -2165,14 +2165,14 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast.data(),
-            &DataExpressionData::Statements(Statements::new_unterminated(
+            &NormalExpressionData::Statements(Statements::new_unterminated(
                 vec![
-                    DataExpressionData::VariableDeclaration(
+                    NormalExpressionData::VariableDeclaration(
                         VariableDeclaration {
                             id: Some(0),
                             kind: VariableKind::Var,
                             name: "x".to_string(),
-                            init_expression: DataExpressionData::Integer(
+                            init_expression: NormalExpressionData::Integer(
                                 Integer::from(10)
                             )
                             .with_default_span(),
@@ -2180,7 +2180,7 @@ mod tests {
                         }
                     )
                     .with_default_span(),
-                    DataExpressionData::callable_declaration(
+                    NormalExpressionData::callable_declaration(
                         CallableDeclaration {
                             signature: CallableSignature {
                                 name: Some("y".to_string()),
@@ -2191,7 +2191,7 @@ mod tests {
                                 return_type: None,
                                 yeet_type: None,
                             },
-                            body: DataExpressionData::VariableAccess(
+                            body: NormalExpressionData::VariableAccess(
                                 VariableAccess {
                                     id: 0,
                                     name: "x".to_string(),
@@ -2217,14 +2217,14 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast.data(),
-            &DataExpressionData::Statements(Statements::new_unterminated(
+            &NormalExpressionData::Statements(Statements::new_unterminated(
                 vec![
-                    DataExpressionData::VariableDeclaration(
+                    NormalExpressionData::VariableDeclaration(
                         VariableDeclaration {
                             id: Some(0),
                             kind: VariableKind::Var,
                             name: "x".to_string(),
-                            init_expression: DataExpressionData::Integer(
+                            init_expression: NormalExpressionData::Integer(
                                 Integer::from(10)
                             )
                                 .with_default_span(),
@@ -2232,7 +2232,7 @@ mod tests {
                         }
                     )
                         .with_default_span(),
-                    DataExpressionData::callable_declaration(CallableDeclaration {
+                    NormalExpressionData::callable_declaration(CallableDeclaration {
                         signature: CallableSignature {
                             name: Some("y".to_string()),
                             kind: CallableKind::Function,
@@ -2251,17 +2251,17 @@ mod tests {
                             return_type: None,
                             yeet_type: None,
                         },
-                        body: DataExpressionData::BinaryOperation(
+                        body: NormalExpressionData::BinaryOperation(
                             BinaryOperation {
                                 operator: BinaryOperator::Arithmetic(
                                     ArithmeticOperator::Add
                                 ),
-                                left: DataExpressionData::BinaryOperation(
+                                left: NormalExpressionData::BinaryOperation(
                                     BinaryOperation {
                                         operator: BinaryOperator::Arithmetic(
                                             ArithmeticOperator::Add
                                         ),
-                                        left: DataExpressionData::VariableAccess(
+                                        left: NormalExpressionData::VariableAccess(
                                             VariableAccess {
                                                 id: 1,
                                                 name: "a".to_string(),
@@ -2269,7 +2269,7 @@ mod tests {
                                             }
                                         )
                                         .with_default_span(),
-                                        right: DataExpressionData::VariableAccess(
+                                        right: NormalExpressionData::VariableAccess(
                                             VariableAccess {
                                                 id: 2,
                                                 name: "b".to_string(),
@@ -2281,7 +2281,7 @@ mod tests {
                                     }
                                 )
                                 .with_default_span(),
-                                right: DataExpressionData::VariableAccess(
+                                right: NormalExpressionData::VariableAccess(
                                     VariableAccess {
                                         id: 0,
                                         name: "x".to_string(),
@@ -2308,26 +2308,26 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast.data(),
-            &DataExpressionData::Statements(Statements::new_terminated(vec![
-                DataExpressionData::VariableDeclaration(VariableDeclaration {
+            &NormalExpressionData::Statements(Statements::new_terminated(vec![
+                NormalExpressionData::VariableDeclaration(VariableDeclaration {
                     id: Some(0),
                     kind: VariableKind::Var,
                     name: "x".to_string(),
-                    init_expression: DataExpressionData::Integer(
+                    init_expression: NormalExpressionData::Integer(
                         Integer::from(10)
                     )
                     .with_default_span(),
                     type_annotation: None,
                 })
                 .with_default_span(),
-                DataExpressionData::RemoteExecution(RemoteExecution {
-                    left: DataExpressionData::Endpoint(
+                NormalExpressionData::RemoteExecution(RemoteExecution {
+                    left: NormalExpressionData::Endpoint(
                         Endpoint::from_str("@example").unwrap()
                     )
                     .with_default_span(),
-                    right: DataExpressionData::Statements(
+                    right: NormalExpressionData::Statements(
                         Statements::new_terminated(vec![
-                            DataExpressionData::VariableAccess(
+                            NormalExpressionData::VariableAccess(
                                 VariableAccess {
                                     id: 0,
                                     name: "x".to_string(),
@@ -2335,12 +2335,12 @@ mod tests {
                                 }
                             )
                             .with_default_span(),
-                            DataExpressionData::BinaryOperation(
+                            NormalExpressionData::BinaryOperation(
                                 BinaryOperation {
                                     operator: BinaryOperator::Arithmetic(
                                         ArithmeticOperator::Add
                                     ),
-                                    left: DataExpressionData::VariableAccess(
+                                    left: NormalExpressionData::VariableAccess(
                                         VariableAccess {
                                             id: 0,
                                             name: "x".to_string(),
@@ -2349,7 +2349,7 @@ mod tests {
                                         }
                                     )
                                     .with_default_span(),
-                                    right: DataExpressionData::Integer(
+                                    right: NormalExpressionData::Integer(
                                         Integer::from(1)
                                     )
                                     .with_default_span(),
@@ -2376,40 +2376,40 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast.data(),
-            &DataExpressionData::Statements(Statements::new_terminated(vec![
-                DataExpressionData::VariableDeclaration(VariableDeclaration {
+            &NormalExpressionData::Statements(Statements::new_terminated(vec![
+                NormalExpressionData::VariableDeclaration(VariableDeclaration {
                     id: Some(0),
                     kind: VariableKind::Var,
                     name: "x".to_string(),
-                    init_expression: DataExpressionData::Integer(Integer::from(10))
+                    init_expression: NormalExpressionData::Integer(Integer::from(10))
                         .with_default_span()
                     ,
                     type_annotation: None,
                 })
                     .with_default_span(),
-                DataExpressionData::VariableDeclaration(VariableDeclaration {
+                NormalExpressionData::VariableDeclaration(VariableDeclaration {
                     id: Some(1),
                     kind: VariableKind::Var,
                     name: "y".to_string(),
                     init_expression: (
-                        DataExpressionData::Integer(Integer::from(11))
+                        NormalExpressionData::Integer(Integer::from(11))
                             .with_default_span()
                     ),
                     type_annotation: None,
                 })
                     .with_default_span(),
-                DataExpressionData::RemoteExecution(RemoteExecution {
-                    left: (DataExpressionData::Endpoint(Endpoint::from_str("@example").unwrap()).with_default_span()),
-                    right: (DataExpressionData::Statements(Statements::new_terminated(vec![
-                        DataExpressionData::VariableAccess(VariableAccess {
+                NormalExpressionData::RemoteExecution(RemoteExecution {
+                    left: (NormalExpressionData::Endpoint(Endpoint::from_str("@example").unwrap()).with_default_span()),
+                    right: (NormalExpressionData::Statements(Statements::new_terminated(vec![
+                        NormalExpressionData::VariableAccess(VariableAccess {
                             id: 0,
                             name: "x".to_string(),
                             access_type: ValueAccessType::MoveOrCopy,
                         }).with_default_span(),
-                        DataExpressionData::RemoteExecution(RemoteExecution {
-                            left: (DataExpressionData::Endpoint(Endpoint::from_str("@example2").unwrap()).with_default_span()),
-                            right: (DataExpressionData::Statements(Statements::new_terminated(vec![
-                                DataExpressionData::VariableAccess(VariableAccess {
+                        NormalExpressionData::RemoteExecution(RemoteExecution {
+                            left: (NormalExpressionData::Endpoint(Endpoint::from_str("@example2").unwrap()).with_default_span()),
+                            right: (NormalExpressionData::Statements(Statements::new_terminated(vec![
+                                NormalExpressionData::VariableAccess(VariableAccess {
                                     id: 1,
                                     name: "y".to_string(),
                                     access_type: ValueAccessType::MoveOrCopy,
@@ -2432,14 +2432,14 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast.data(),
-            &DataExpressionData::Statements(Statements::new_unterminated(
+            &NormalExpressionData::Statements(Statements::new_unterminated(
                 vec![
-                    DataExpressionData::VariableDeclaration(
+                    NormalExpressionData::VariableDeclaration(
                         VariableDeclaration {
                             id: Some(0),
                             kind: VariableKind::Var,
                             name: "x".to_string(),
-                            init_expression: (DataExpressionData::Integer(
+                            init_expression: (NormalExpressionData::Integer(
                                 Integer::from(42)
                             )
                             .with_default_span()),
@@ -2447,9 +2447,9 @@ mod tests {
                         }
                     )
                     .with_default_span(),
-                    DataExpressionData::DeriveRef(DeriveRef {
+                    NormalExpressionData::DeriveRef(DeriveRef {
                         mutability: LocalReferenceMutability::Immutable,
-                        expression: (DataExpressionData::VariableAccess(
+                        expression: (NormalExpressionData::VariableAccess(
                             VariableAccess {
                                 id: 0,
                                 name: "x".to_string(),
@@ -2472,18 +2472,18 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast.data(),
-            &DataExpressionData::Statements(Statements::new_unterminated(
+            &NormalExpressionData::Statements(Statements::new_unterminated(
                 vec![
-                    DataExpressionData::VariableDeclaration(
+                    NormalExpressionData::VariableDeclaration(
                         VariableDeclaration {
                             id: Some(0),
                             kind: VariableKind::Var,
                             name: "x".to_string(),
-                            init_expression: (DataExpressionData::Map(Map {
+                            init_expression: (NormalExpressionData::Map(Map {
                                 entries: vec![(
-                                    DataExpressionData::Text("a".into())
+                                    NormalExpressionData::Text("a".into())
                                         .with_default_span(),
-                                    DataExpressionData::Integer(Integer::from(
+                                    NormalExpressionData::Integer(Integer::from(
                                         42
                                     ))
                                     .with_default_span()
@@ -2494,11 +2494,11 @@ mod tests {
                         }
                     )
                     .with_default_span(),
-                    DataExpressionData::DeriveRef(DeriveRef {
+                    NormalExpressionData::DeriveRef(DeriveRef {
                         mutability: LocalReferenceMutability::Immutable,
-                        expression: (DataExpressionData::PropertyAccess(
+                        expression: (NormalExpressionData::PropertyAccess(
                             PropertyAccess {
-                                base: (DataExpressionData::VariableAccess(
+                                base: (NormalExpressionData::VariableAccess(
                                     VariableAccess {
                                         id: 0,
                                         name: "x".to_string(),
@@ -2506,7 +2506,7 @@ mod tests {
                                     }
                                 )
                                 .with_default_span()),
-                                property: (DataExpressionData::Text(
+                                property: (NormalExpressionData::Text(
                                     "a".into()
                                 )
                                 .with_default_span()),
@@ -2529,16 +2529,16 @@ mod tests {
 
         assert_eq!(
             rich_ast.ast.data(),
-            &DataExpressionData::Statements(Statements::new_terminated(vec![
-                DataExpressionData::VariableDeclaration(VariableDeclaration {
+            &NormalExpressionData::Statements(Statements::new_terminated(vec![
+                NormalExpressionData::VariableDeclaration(VariableDeclaration {
                     id: Some(0),
                     kind: VariableKind::Var,
                     name: "x".to_string(),
-                    init_expression: (DataExpressionData::Map(Map {
+                    init_expression: (NormalExpressionData::Map(Map {
                         entries: vec![(
-                            DataExpressionData::Text("a".into())
+                            NormalExpressionData::Text("a".into())
                                 .with_default_span(),
-                            DataExpressionData::Integer(Integer::from(42))
+                            NormalExpressionData::Integer(Integer::from(42))
                                 .with_default_span()
                         )],
                     })
@@ -2546,9 +2546,9 @@ mod tests {
                     type_annotation: None,
                 })
                 .with_default_span(),
-                DataExpressionData::PropertyAssignment(PropertyAssignment {
+                NormalExpressionData::PropertyAssignment(PropertyAssignment {
                     operator: None,
-                    base: (DataExpressionData::VariableAccess(
+                    base: (NormalExpressionData::VariableAccess(
                         VariableAccess {
                             id: 0,
                             name: "x".to_string(),
@@ -2556,9 +2556,9 @@ mod tests {
                         }
                     )
                     .with_default_span()),
-                    property: (DataExpressionData::Text("a".into())
+                    property: (NormalExpressionData::Text("a".into())
                         .with_default_span()),
-                    assigned_expression: (DataExpressionData::Integer(
+                    assigned_expression: (NormalExpressionData::Integer(
                         Integer::from(43)
                     )
                     .with_default_span()),
@@ -2573,7 +2573,7 @@ mod tests {
         let result = parse_and_precompile("var x = 0; x->test()").unwrap();
 
         let statements =
-            if let DataExpressionData::Statements(stmts) = result.ast.data() {
+            if let NormalExpressionData::Statements(stmts) = result.ast.data() {
                 stmts
             } else {
                 panic!("Expected statements");
@@ -2581,8 +2581,8 @@ mod tests {
 
         assert_eq!(
             *statements.statements.get(1).unwrap(),
-            DataExpressionData::InterfaceMethodCall(InterfaceMethodCall {
-                target: (DataExpressionData::VariableAccess(VariableAccess {
+            NormalExpressionData::InterfaceMethodCall(InterfaceMethodCall {
+                target: (NormalExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "x".to_string(),
                     access_type: ValueAccessType::Borrow,
@@ -2605,17 +2605,17 @@ mod tests {
         )
         .unwrap();
         let statements =
-            if let DataExpressionData::Statements(stmts) = result.ast.data() {
+            if let NormalExpressionData::Statements(stmts) = result.ast.data() {
                 stmts
             } else {
                 panic!("Expected statements");
             };
         assert_eq!(
-                *statements.statements.get(1).unwrap(),
-                DataExpressionData::ComparisonOperation(ComparisonOperation {
+            *statements.statements.get(1).unwrap(),
+            NormalExpressionData::ComparisonOperation(ComparisonOperation {
                     operator: crate::global::operators::ComparisonOperator::StructuralEqual,
                     left: (
-                        DataExpressionData::VariableAccess(VariableAccess {
+                        NormalExpressionData::VariableAccess(VariableAccess {
                             id: 0,
                             name: "a".to_string(),
                             access_type: ValueAccessType::Borrow,
@@ -2623,10 +2623,10 @@ mod tests {
                         .with_default_span()
                     ),
                     right: (
-                        DataExpressionData::BinaryOperation(BinaryOperation {
+                        NormalExpressionData::BinaryOperation(BinaryOperation {
                             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
                             left: (
-                                DataExpressionData::VariableAccess(VariableAccess {
+                                NormalExpressionData::VariableAccess(VariableAccess {
                                     id: 0,
                                     name: "a".to_string(),
                                     access_type: ValueAccessType::MoveOrCopy,
@@ -2634,7 +2634,7 @@ mod tests {
                                 .with_default_span()
                             ),
                             right: (
-                                DataExpressionData::VariableAccess(VariableAccess {
+                                NormalExpressionData::VariableAccess(VariableAccess {
                                     id: 0,
                                     name: "a".to_string(),
                                     access_type: ValueAccessType::MoveOrCopy,

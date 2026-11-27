@@ -25,16 +25,16 @@ mod to_instructions;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data {
     use crate::{
-        ast::expressions::DataExpressionData,
+        ast::expressions::NormalExpressionData,
         traits::to_datex_expression_data::ToDatexExpressionData,
         values::core_values::integer::Integer,
     };
     use core::time::Duration;
 
     impl ToDatexExpressionData for Duration {
-        fn to_datex_expression_data(&self) -> DataExpressionData {
+        fn to_datex_expression_data(&self) -> NormalExpressionData {
             // TODO: use amount once implemented
-            DataExpressionData::Integer(Integer::from(self.as_millis()))
+            NormalExpressionData::Integer(Integer::from(self.as_millis()))
         }
     }
 }

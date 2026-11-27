@@ -1,5 +1,5 @@
 use crate::{
-    ast::expressions::DataExpression,
+    ast::expressions::NormalExpression,
     compiler::precompiler::precompiled_ast::RichAst,
     core_compiler::value_compiler::InjectedValueValidationError,
     parser::errors::{ParserError, SpannedParserError},
@@ -17,7 +17,7 @@ use core::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompilerError {
-    UnexpectedTerm(Box<DataExpression>),
+    UnexpectedTerm(Box<NormalExpression>),
     SerializationError(String),
     BigDecimalOutOfBoundsError,
     IntegerOutOfBoundsError,
@@ -46,7 +46,7 @@ pub enum CompilerError {
     InvalidJump,
 }
 impl CompilerError {
-    pub fn unexpected_term(expr: DataExpression) -> Self {
+    pub fn unexpected_term(expr: NormalExpression) -> Self {
         CompilerError::UnexpectedTerm(Box::new(expr))
     }
     pub fn type_error(err: TypeError) -> Self {

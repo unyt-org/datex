@@ -1,7 +1,7 @@
 //! This module contains the main compiler logic for DATEX, precompilation, and compilation to DXB bytecode.
 use crate::{
     ast::expressions::{
-        DataExpression, DataExpressionData, Statements, UnboundedStatement,
+        NormalExpression, NormalExpressionData, Statements, UnboundedStatement,
         VariableId, VariableKind, expression::Expression,
     },
     compiler::{
@@ -261,10 +261,10 @@ pub fn compile_script_or_return_static_value(
 /// Ensure that the root ast node is a statements node
 /// Returns if the initial ast was terminated
 fn ensure_statements(
-    ast: &mut DataExpression,
+    ast: &mut NormalExpression,
     unbounded_section: Option<UnboundedStatement>,
 ) -> bool {
-    if let DataExpressionData::Statements(Statements {
+    if let NormalExpressionData::Statements(Statements {
         is_terminated,
         unbounded,
         ..
@@ -275,7 +275,7 @@ fn ensure_statements(
     } else {
         // wrap in statements
         let original_ast = ast.clone();
-        *ast.data_mut() = DataExpressionData::Statements(Statements {
+        *ast.data_mut() = NormalExpressionData::Statements(Statements {
             statements: vec![original_ast],
             is_terminated: false,
             unbounded: unbounded_section,
@@ -319,7 +319,7 @@ pub fn parse_datex_script_to_rich_ast_simple_error(
     } else {
         matches!(
             valid_parse_result.data(),
-            &DataExpressionData::Statements(Statements {
+            &NormalExpressionData::Statements(Statements {
                 is_terminated: true,
                 ..
             })
@@ -446,7 +446,7 @@ macro_rules! compile {
 
 /// Precompiles a DATEX expression AST into an AST with metadata.
 fn precompile_to_rich_ast(
-    valid_parse_result: DataExpression,
+    valid_parse_result: NormalExpression,
     scope: &mut CompilationScope,
     precompiler_options: PrecompilerOptions,
     runtime: Runtime,
@@ -485,7 +485,7 @@ fn precompile_to_rich_ast(
 pub fn compile_child_realm_instructions(
     compilation_context: &mut CompilationContext,
     cache: &mut SharedReferencesCache,
-    ast: &DataExpression,
+    ast: &NormalExpression,
     injected_variable_count: u32,
     metadata: &mut AstMetadata,
     existing_variables: Vec<Variable>,

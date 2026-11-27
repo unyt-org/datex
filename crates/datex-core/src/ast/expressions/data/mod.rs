@@ -1,9 +1,9 @@
-//! This module defines the representation for [DataExpressionData] that can hold the various kinds of data used in expressions.
+//! This module defines the representation for [NormalExpressionData] that can hold the various kinds of data used in expressions.
 pub use crate::prelude::*;
 use crate::{
     ast::{
         expressions::{
-            DataExpression, TypeExpression, ValueAccessType,
+            NormalExpression, TypeExpression, ValueAccessType,
             expression::Expression,
         },
         spanned::Spanned,
@@ -144,9 +144,9 @@ pub use entity_type_declaration::*;
 #[cfg(feature = "compiler")]
 mod ast_node_to_instructions;
 
-/// The different kinds of type expressions in the AST
+/// The different kinds of normal (non-type) expressions in the AST
 #[derive(Clone, Debug, PartialEq, Default)]
-pub enum DataExpressionData {
+pub enum NormalExpressionData {
     /// This is a marker for recovery from parse errors.
     /// We should never use this manually.
     #[default]
@@ -306,19 +306,19 @@ pub enum DataExpressionData {
     EntityValue(EntityValueExpression),
 }
 
-impl DataExpressionData {
+impl NormalExpressionData {
     pub fn callable_declaration(
         callable_declaration: CallableDeclaration,
     ) -> Self {
-        DataExpressionData::CallableDeclaration(Box::new(callable_declaration))
+        NormalExpressionData::CallableDeclaration(Box::new(callable_declaration))
     }
 }
 
-impl Spanned for DataExpressionData {
-    type Output = DataExpression;
+impl Spanned for NormalExpressionData {
+    type Output = NormalExpression;
 
     fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
-        DataExpression {
+        NormalExpression {
             data: Box::new(self),
             span: span.into(),
             ty: None,
@@ -326,7 +326,7 @@ impl Spanned for DataExpressionData {
     }
 
     fn with_default_span(self) -> Self::Output {
-        DataExpression {
+        NormalExpression {
             data: Box::new(self),
             span: (0..0),
             ty: None,
@@ -334,11 +334,11 @@ impl Spanned for DataExpressionData {
     }
 }
 
-impl Spanned for Box<DataExpressionData> {
-    type Output = DataExpression;
+impl Spanned for Box<NormalExpressionData> {
+    type Output = NormalExpression;
 
     fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
-        DataExpression {
+        NormalExpression {
             data: self,
             span: span.into(),
             ty: None,
@@ -346,7 +346,7 @@ impl Spanned for Box<DataExpressionData> {
     }
 
     fn with_default_span(self) -> Self::Output {
-        DataExpression {
+        NormalExpression {
             data: self,
             span: (0..0),
             ty: None,
@@ -354,13 +354,13 @@ impl Spanned for Box<DataExpressionData> {
     }
 }
 
-// directly convert DataExpression to a ValueContainer
-impl TryFrom<&DataExpressionData> for ValueContainer {
+// directly convert NormalExpression to a ValueContainer
+impl TryFrom<&NormalExpressionData> for ValueContainer {
     type Error = ();
 
-    fn try_from(expr: &DataExpressionData) -> Result<Self, Self::Error> {
+    fn try_from(expr: &NormalExpressionData) -> Result<Self, Self::Error> {
         Ok(match expr {
-            DataExpressionData::UnaryOperation(UnaryOperation {
+            NormalExpressionData::UnaryOperation(UnaryOperation {
                 operator,
                 expression,
             }) => {
@@ -383,19 +383,19 @@ impl TryFrom<&DataExpressionData> for ValueContainer {
                     _ => Err(())?,
                 }
             }
-            DataExpressionData::Null => ValueContainer::Local(Value::null()),
-            DataExpressionData::Boolean(b) => ValueContainer::from(b.clone()),
-            DataExpressionData::Text(s) => ValueContainer::from(s.clone()),
-            DataExpressionData::Decimal(d) => ValueContainer::from(d.clone()),
-            DataExpressionData::Integer(i) => ValueContainer::from(i.clone()),
-            DataExpressionData::TypedInteger(i) => {
+            NormalExpressionData::Null => ValueContainer::Local(Value::null()),
+            NormalExpressionData::Boolean(b) => ValueContainer::from(b.clone()),
+            NormalExpressionData::Text(s) => ValueContainer::from(s.clone()),
+            NormalExpressionData::Decimal(d) => ValueContainer::from(d.clone()),
+            NormalExpressionData::Integer(i) => ValueContainer::from(i.clone()),
+            NormalExpressionData::TypedInteger(i) => {
                 ValueContainer::from(i.clone())
             }
-            DataExpressionData::TypedDecimal(d) => {
+            NormalExpressionData::TypedDecimal(d) => {
                 ValueContainer::from(d.clone())
             }
-            DataExpressionData::Endpoint(e) => ValueContainer::from(e.clone()),
-            DataExpressionData::List(list) => {
+            NormalExpressionData::Endpoint(e) => ValueContainer::from(e.clone()),
+            NormalExpressionData::List(list) => {
                 let entries = list
                     .items
                     .iter()
@@ -403,7 +403,7 @@ impl TryFrom<&DataExpressionData> for ValueContainer {
                     .collect::<Result<Vec<ValueContainer>, ()>>()?;
                 ValueContainer::from(core_values::list::List::from(entries))
             }
-            DataExpressionData::Map(pairs) => {
+            NormalExpressionData::Map(pairs) => {
                 let entries = pairs
                     .entries
                     .iter()

@@ -1,5 +1,5 @@
 use crate::{
-    ast::{expressions::DataExpression, spanned::Spanned},
+    ast::{expressions::NormalExpression, spanned::Spanned},
     decompiler::DecompileOptions,
     prelude::*,
     traits::to_datex_expression_data::ToDatexExpressionData,
@@ -27,7 +27,7 @@ pub fn value_to_source_code_default(
 }
 
 pub fn ast_to_source_code(
-    ast: DataExpression,
+    ast: NormalExpression,
     options: DecompileOptions,
 ) -> String {
     let colorized = options.formatting_options.colorized;

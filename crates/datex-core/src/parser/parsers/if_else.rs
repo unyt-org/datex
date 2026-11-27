@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        expressions::{Conditional, DataExpression, DataExpressionData},
+        expressions::{Conditional, NormalExpression, NormalExpressionData},
         spanned::Spanned,
     },
     parser::{Parser, SpannedParserError, lexer::Token},
@@ -9,7 +9,7 @@ use crate::{
 impl Parser {
     pub(crate) fn parse_if_else(
         &mut self,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         let start = self.expect(Token::If)?.span.start;
 
         let condition = self.parse_parenthesized_statements()?;
@@ -24,7 +24,7 @@ impl Parser {
             None
         };
 
-        Ok(DataExpressionData::Conditional(Conditional {
+        Ok(NormalExpressionData::Conditional(Conditional {
             condition: (condition),
             then_branch: (then_branch),
             else_branch,
@@ -34,7 +34,7 @@ impl Parser {
 
     fn parse_parenthesized_statements_or_if_else(
         &mut self,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         if let Ok(token) = self.peek()
             && token.token == Token::If
         {
@@ -50,7 +50,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                Conditional, DataExpressionData, expression::Expression,
+                Conditional, NormalExpressionData, expression::Expression,
             },
             spanned::Spanned,
         },
@@ -61,10 +61,10 @@ mod tests {
         let expr = parse("if (true) (42)");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Conditional(Conditional {
-                condition: DataExpressionData::Boolean(true.into())
+            &NormalExpressionData::Conditional(Conditional {
+                condition: NormalExpressionData::Boolean(true.into())
                     .with_default_span(),
-                then_branch: DataExpressionData::Integer(42.into())
+                then_branch: NormalExpressionData::Integer(42.into())
                     .with_default_span(),
                 else_branch: None,
             })
@@ -76,13 +76,13 @@ mod tests {
         let expr = parse("if (false) (0) else (1)");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Conditional(Conditional {
-                condition: DataExpressionData::Boolean(false.into())
+            &NormalExpressionData::Conditional(Conditional {
+                condition: NormalExpressionData::Boolean(false.into())
                     .with_default_span(),
-                then_branch: DataExpressionData::Integer(0.into())
+                then_branch: NormalExpressionData::Integer(0.into())
                     .with_default_span(),
                 else_branch: Some(
-                    DataExpressionData::Integer(1.into()).with_default_span()
+                    NormalExpressionData::Integer(1.into()).with_default_span()
                 ),
             })
         )
@@ -93,19 +93,19 @@ mod tests {
         let expr = parse("if (true) (1) else if (false) (2) else (3)");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Conditional(Conditional {
-                condition: (DataExpressionData::Boolean(true.into())
+            &NormalExpressionData::Conditional(Conditional {
+                condition: (NormalExpressionData::Boolean(true.into())
                     .with_default_span()),
-                then_branch: (DataExpressionData::Integer(1.into())
+                then_branch: (NormalExpressionData::Integer(1.into())
                     .with_default_span()),
                 else_branch: Some(
-                    DataExpressionData::Conditional(Conditional {
-                        condition: DataExpressionData::Boolean(false.into())
+                    NormalExpressionData::Conditional(Conditional {
+                        condition: NormalExpressionData::Boolean(false.into())
                             .with_default_span(),
-                        then_branch: DataExpressionData::Integer(2.into())
+                        then_branch: NormalExpressionData::Integer(2.into())
                             .with_default_span(),
                         else_branch: Some(
-                            DataExpressionData::Integer(3.into())
+                            NormalExpressionData::Integer(3.into())
                                 .with_default_span()
                         ),
                     })

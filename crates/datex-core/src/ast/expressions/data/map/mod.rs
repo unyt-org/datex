@@ -1,5 +1,5 @@
 //! This module defines the representation for map expressions in the AST.
-use crate::{ast::expressions::DataExpression, prelude::*};
+use crate::{ast::expressions::NormalExpression, prelude::*};
 
 #[cfg(feature = "compiler")]
 mod ast_node_to_instructions;
@@ -7,11 +7,11 @@ mod ast_node_to_instructions;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Map {
     /// The entries in the map expression (key-value pairs).
-    pub entries: Vec<(DataExpression, DataExpression)>,
+    pub entries: Vec<(NormalExpression, NormalExpression)>,
 }
 
-impl FromIterator<(DataExpression, DataExpression)> for Map {
-    fn from_iter<T: IntoIterator<Item = (DataExpression, DataExpression)>>(
+impl FromIterator<(NormalExpression, NormalExpression)> for Map {
+    fn from_iter<T: IntoIterator<Item = (NormalExpression, NormalExpression)>>(
         iter: T,
     ) -> Self {
         let entries = iter.into_iter().collect();
@@ -20,7 +20,7 @@ impl FromIterator<(DataExpression, DataExpression)> for Map {
 }
 
 impl Map {
-    pub fn new(entries: Vec<(DataExpression, DataExpression)>) -> Self {
+    pub fn new(entries: Vec<(NormalExpression, NormalExpression)>) -> Self {
         Map { entries }
     }
 }

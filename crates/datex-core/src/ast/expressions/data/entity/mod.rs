@@ -1,6 +1,6 @@
 //! This module defines the representation for entity value expressions in the AST.
 use crate::{
-    ast::expressions::DataExpression, prelude::*, shared_values::PointerAddress,
+    ast::expressions::NormalExpression, prelude::*, shared_values::PointerAddress,
 };
 
 #[cfg(feature = "compiler")]
@@ -14,5 +14,5 @@ pub struct EntityValueExpression {
     /// The address of the entity, if any.
     pub entity_address: Option<PointerAddress>,
     /// The value of the entity.
-    pub value: DataExpression,
+    pub value: NormalExpression,
 }

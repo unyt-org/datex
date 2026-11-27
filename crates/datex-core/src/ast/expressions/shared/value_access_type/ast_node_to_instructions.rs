@@ -14,7 +14,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 
-/// implementation used for [DataExpressionData::Placeholder]
+/// implementation used for [NormalExpressionData::Placeholder]
 impl AstNodeToInstructions for ValueAccessType {
     fn ast_node_to_instructions<'a>(
         &'a self,

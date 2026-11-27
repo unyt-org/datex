@@ -2,7 +2,7 @@ use core::ops::Range;
 
 use crate::{
     ast::{
-        expressions::{DataExpression, DataExpressionData},
+        expressions::{NormalExpression, NormalExpressionData},
         spanned::Spanned,
     },
     parser::{Parser, SpannedParserError, errors::ParserError, lexer::Token},
@@ -44,7 +44,7 @@ impl Parser {
 
     pub(crate) fn parse_key(
         &mut self,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         Ok(match self.peek()?.token.clone() {
             // allow integers as keys
             Token::IntegerLiteral(value) => {
@@ -59,7 +59,7 @@ impl Parser {
             _ => self
                 .parse_identifier_string()
                 .map(|(string, span)| {
-                    DataExpressionData::Text(string.into()).with_span(span)
+                    NormalExpressionData::Text(string.into()).with_span(span)
                 })
                 .map_err(|err| {
                     err.with_expected_tokens(vec![

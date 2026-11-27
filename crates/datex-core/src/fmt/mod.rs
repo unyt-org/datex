@@ -3,7 +3,7 @@ use core::ops::Range;
 
 use crate::{
     ast::expressions::{
-        CallableTypeExpression, DataExpression, IdentifierWithPointerAddress,
+        CallableTypeExpression, NormalExpression, IdentifierWithPointerAddress,
         TypeExpression, TypeExpressionData, TypeVariantAccess, VariableAccess,
         expression::Expression,
     },
@@ -85,8 +85,8 @@ impl<'a> Formatter<'a> {
         self.render_expression(&self.ast.ast)
     }
 
-    /// Renders a DataExpression into a source code string.
-    fn render_expression(&self, expr: &DataExpression) -> String {
+    /// Renders a NormalExpression into a source code string.
+    fn render_expression(&self, expr: &NormalExpression) -> String {
         self.format_datex_expression(expr)
             .pretty(self.options.max_width)
             .to_string()
@@ -97,18 +97,18 @@ impl<'a> Formatter<'a> {
         self.options.indent as isize
     }
 
-    // Formats a DataExpression into a DocBuilder for pretty printing.
+    // Formats a NormalExpression into a DocBuilder for pretty printing.
     fn format_datex_expression(
         &'a self,
-        expr: &'a DataExpression,
+        expr: &'a NormalExpression,
     ) -> Format<'a> {
         self.format_datex_expression_with_parent(expr, None, false)
     }
 
-    /// Formats a DataExpression into a DocBuilder for pretty printing.
+    /// Formats a NormalExpression into a DocBuilder for pretty printing.
     fn format_datex_expression_with_parent(
         &'a self,
-        expr: &'a DataExpression,
+        expr: &'a NormalExpression,
         parent_ctx: Option<ParentContext<'a>>,
         is_left_child_of_parent: bool,
     ) -> Format<'a> {

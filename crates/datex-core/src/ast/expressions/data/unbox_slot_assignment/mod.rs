@@ -1,5 +1,5 @@
 use crate::{
-    ast::expressions::DataExpression,
+    ast::expressions::NormalExpression,
     global::{operators::ModificationOperator, stack_index::StackIndex},
 };
 
@@ -13,5 +13,5 @@ pub struct UnboxSlotAssignment {
     /// The stack index of the unbox slot being assigned to.
     pub stack_index: StackIndex,
     /// The expression being assigned.
-    pub assigned_expression: DataExpression,
+    pub assigned_expression: NormalExpression,
 }

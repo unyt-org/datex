@@ -1,6 +1,6 @@
 use crate::{
     ast::expressions::{
-        DataExpressionData, PropertyAccess, expression::Expression,
+        NormalExpressionData, PropertyAccess, expression::Expression,
     },
     compiler::{
         ast_node_to_instructions::AstNodeToInstructions,
@@ -32,14 +32,14 @@ impl AstNodeToInstructions for PropertyAccess {
             // depending on the key, handle different property accesses
             match self.property.data() {
                 // simple text key if length fits in u8
-                DataExpressionData::Text(key) if key.len() <= 255 => {
+                NormalExpressionData::Text(key) if key.len() <= 255 => {
                     yield Ok(RegularInstruction::get_entry_text(
                         key.as_string(),
                     )
                     .into());
                 }
                 // index access if integer fits in u32
-                DataExpressionData::Integer(index)
+                NormalExpressionData::Integer(index)
                     if let Some(index) = index.as_u32() =>
                 {
                     yield Ok(RegularInstruction::get_entry_index(index).into());

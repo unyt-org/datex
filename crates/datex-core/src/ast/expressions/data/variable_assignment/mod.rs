@@ -1,5 +1,5 @@
 use crate::{
-    ast::expressions::{DataExpression, VariableId},
+    ast::expressions::{NormalExpression, VariableId},
     global::operators::ModificationOperator,
     prelude::*,
 };
@@ -16,5 +16,5 @@ pub struct VariableAssignment {
     /// The operator used for the assignment, if any.
     pub operator: Option<ModificationOperator>,
     /// The expression being assigned to the variable.
-    pub expression: DataExpression,
+    pub expression: NormalExpression,
 }

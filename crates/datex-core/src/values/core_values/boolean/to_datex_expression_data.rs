@@ -1,11 +1,11 @@
 use crate::{
-    ast::expressions::DataExpressionData,
+    ast::expressions::NormalExpressionData,
     traits::to_datex_expression_data::ToDatexExpressionData,
     values::core_values::boolean::Boolean,
 };
 
 impl ToDatexExpressionData for Boolean {
-    fn to_datex_expression_data(&self) -> DataExpressionData {
-        DataExpressionData::Boolean(self.clone())
+    fn to_datex_expression_data(&self) -> NormalExpressionData {
+        NormalExpressionData::Boolean(self.clone())
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        expressions::{CompileExpression, DataExpression, DataExpressionData},
+        expressions::{CompileExpression, NormalExpression, NormalExpressionData},
         spanned::Spanned,
     },
     parser::{Parser, SpannedParserError, lexer::Token},
@@ -8,12 +8,12 @@ use crate::{
 impl Parser {
     pub(crate) fn parse_compile_expression(
         &mut self,
-    ) -> Result<DataExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         let start = self.expect(Token::Compile)?.span.start;
 
         let compile_expression = self.parse_expression(0)?;
 
-        Ok(DataExpressionData::Compile(CompileExpression {
+        Ok(NormalExpressionData::Compile(CompileExpression {
             expression: compile_expression,
         })
         .with_span(start..self.get_current_source_position()))
@@ -26,7 +26,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, CompileExpression, DataExpressionData,
+                BinaryOperation, CompileExpression, NormalExpressionData,
                 Statements, expression::Expression,
             },
             spanned::Spanned,
@@ -42,8 +42,8 @@ mod tests {
         let expr = parse("compile ()");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Compile(CompileExpression {
-                expression: DataExpressionData::Statements(Statements {
+            &NormalExpressionData::Compile(CompileExpression {
+                expression: NormalExpressionData::Statements(Statements {
                     statements: vec![],
                     is_terminated: false,
                     unbounded: None,
@@ -58,15 +58,15 @@ mod tests {
         let expr = parse("compile (1 + 2)");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Compile(CompileExpression {
-                expression: (DataExpressionData::BinaryOperation(
+            &NormalExpressionData::Compile(CompileExpression {
+                expression: (NormalExpressionData::BinaryOperation(
                     BinaryOperation {
-                        left: (DataExpressionData::Integer(Integer::from(1))
+                        left: (NormalExpressionData::Integer(Integer::from(1))
                             .with_default_span()),
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Add
                         ),
-                        right: (DataExpressionData::Integer(Integer::from(2))
+                        right: (NormalExpressionData::Integer(Integer::from(2))
                             .with_default_span()),
                         ty: None,
                     }
@@ -81,8 +81,8 @@ mod tests {
         let expr = parse("compile 42");
         assert_eq!(
             expr.data(),
-            &DataExpressionData::Compile(CompileExpression {
-                expression: (DataExpressionData::Integer(Integer::from(42))
+            &NormalExpressionData::Compile(CompileExpression {
+                expression: (NormalExpressionData::Integer(Integer::from(42))
                     .with_default_span())
             })
         );

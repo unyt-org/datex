@@ -1,7 +1,7 @@
 //! This module defines the representation for variable declaration expressions in the AST.
 use crate::{
     ast::expressions::{
-        DataExpression, TypeExpression, VariableId, VariableKind,
+        NormalExpression, TypeExpression, VariableId, VariableKind,
     },
     prelude::*,
 };
@@ -21,5 +21,5 @@ pub struct VariableDeclaration {
     /// The type annotation for the variable, if any (set by the precompiler).
     pub type_annotation: Option<TypeExpression>,
     /// The initialization expression for the variable.
-    pub init_expression: DataExpression,
+    pub init_expression: NormalExpression,
 }

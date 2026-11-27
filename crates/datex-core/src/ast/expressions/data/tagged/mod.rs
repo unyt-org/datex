@@ -1,7 +1,7 @@
 //! This module defines the representation for tagged expressions in the AST.
 use core::fmt::Display;
 
-use crate::{ast::expressions::DataExpression, prelude::*};
+use crate::{ast::expressions::NormalExpression, prelude::*};
 
 #[cfg(feature = "compiler")]
 mod ast_node_to_instructions;
@@ -12,7 +12,7 @@ pub struct Tagged {
     pub tag: String,
     /// The expression associated with this tag, if any.
     /// For tagged empty expressions, this will be `None`.
-    pub expression: Option<DataExpression>,
+    pub expression: Option<NormalExpression>,
 }
 
 impl Display for Tagged {

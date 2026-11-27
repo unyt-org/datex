@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        expressions::{DataExpressionData, RangeDeclaration},
+        expressions::{NormalExpressionData, RangeDeclaration},
         spanned::Spanned,
     },
     traits::to_datex_expression_data::ToDatexExpressionData,
@@ -8,8 +8,8 @@ use crate::{
 };
 
 impl ToDatexExpressionData for Range {
-    fn to_datex_expression_data(&self) -> DataExpressionData {
-        DataExpressionData::Range(RangeDeclaration {
+    fn to_datex_expression_data(&self) -> NormalExpressionData {
+        NormalExpressionData::Range(RangeDeclaration {
             start: (self.start.to_datex_expression_data().with_default_span()),
             end: (self.end.to_datex_expression_data().with_default_span()),
         })
