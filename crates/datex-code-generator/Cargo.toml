@@ -14,7 +14,7 @@ license-file = "../../LICENSE"
 crate-type = ["rlib"]
 
 [dependencies]
-datex-core = { version = "0.0.14", default-features = false, features = [
+datex-core = { path = "../datex-core", version = "0.0.15", default-features = false, features = [
     "target_native",
     "decompiler",
     "disassembler",
