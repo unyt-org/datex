@@ -1,5 +1,5 @@
 use crate::{
-    ast::expressions::RangeTypeExpr,
+    ast::expressions::RangeTypeExpression,
     compiler::{
         ast_node_to_instructions::AstNodeToInstructions,
         context::CompilationContext, error::CompilerError,
@@ -13,7 +13,7 @@ use crate::{
 };
 use core::ops::Deref;
 
-impl AstNodeToInstructions for RangeTypeExpr {
+impl AstNodeToInstructions for RangeTypeExpression {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,

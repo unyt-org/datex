@@ -6,7 +6,7 @@ mod ast_node_to_instructions;
 
 /// Represents a range type expression in the AST, including its start and end types.
 #[derive(Clone, Debug, PartialEq)]
-pub struct RangeTypeExpr {
+pub struct RangeTypeExpression {
     /// The start type of the range.
     pub start: Box<TypeExpression>,
     /// The end type of the range.

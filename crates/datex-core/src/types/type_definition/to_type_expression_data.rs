@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            Intersection, RangeTypeExpr, StructuralList, StructuralMap,
+            Intersection, RangeTypeExpression, StructuralList, StructuralMap,
             TypeExpression, TypeExpressionData, Union,
         },
         spanned::Spanned,
@@ -41,7 +41,7 @@ impl ToTypeExpressionData for TypeDefinition {
                 }
             },
             TypeDefinition::Range(RangeTypeDefinition { start, end }) => {
-                TypeExpressionData::Range(RangeTypeExpr {
+                TypeExpressionData::Range(RangeTypeExpression {
                     start: Box::new(
                         start.to_type_expression_data().with_default_span(),
                     ),

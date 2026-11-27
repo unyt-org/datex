@@ -7,7 +7,7 @@ mod map;
 use crate::{
     ast::{
         expressions::{
-            Intersection, RangeTypeExpr, TypeExpression, TypeExpressionData,
+            Intersection, RangeTypeExpression, TypeExpression, TypeExpressionData,
             TypeVariantAccess, Union,
         },
         spanned::Spanned,
@@ -64,7 +64,7 @@ impl Parser {
                 self.advance()?; // consume operator
                 let rhs = self.parse_type_expression(r_bp)?;
                 let span = lhs.span.start..rhs.span.end;
-                TypeExpressionData::Range(RangeTypeExpr {
+                TypeExpressionData::Range(RangeTypeExpression {
                     start: Box::new(lhs),
                     end: Box::new(rhs),
                 })
@@ -230,7 +230,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                Intersection, RangeTypeExpr, TypeExpression,
+                Intersection, RangeTypeExpression, TypeExpression,
                 TypeExpressionData, TypeVariantAccess, Union,
                 expression::Expression,
             },
@@ -271,7 +271,7 @@ mod tests {
         let expr = parse_type_expression("a .. b");
         assert_eq!(
             expr.data(),
-            &TypeExpressionData::Range(RangeTypeExpr {
+            &TypeExpressionData::Range(RangeTypeExpression {
                 start: Box::new(
                     TypeExpressionData::Identifier("a".to_string())
                         .with_default_span()

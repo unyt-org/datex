@@ -1,6 +1,6 @@
 //! This module contains the implementation of the visitor pattern for traversing and transforming the AST of [TypeExpression]s.
 use crate::{
-    ast::expressions::{RangeTypeExpr, expression::Expression},
+    ast::expressions::{RangeTypeExpression, expression::Expression},
     prelude::*,
     values::core_values::{boolean::Boolean, text::Text},
 };
@@ -449,7 +449,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
 
     fn visit_range_type(
         &mut self,
-        range: &mut RangeTypeExpr,
+        range: &mut RangeTypeExpression,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
