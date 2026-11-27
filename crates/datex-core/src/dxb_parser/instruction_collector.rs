@@ -47,6 +47,7 @@ pub trait CollectionResultsPopper<
         values
     }
 
+    #[track_caller]
     fn pop_types(&mut self, count: u32) -> Vec<Type> {
         let mut types = Vec::with_capacity(count as usize);
         for _ in 0..count {
@@ -55,16 +56,20 @@ pub trait CollectionResultsPopper<
         types.reverse();
         types
     }
+    #[track_caller]
     fn pop_value(&mut self) -> Val {
         self.try_pop_value().expect("Expected value result")
     }
+    #[track_caller]
     fn pop_type(&mut self) -> Type {
         self.try_pop_type().expect("Expected type result")
     }
+    #[track_caller]
     fn pop_type_definition(&mut self) -> TypeDefinition {
         self.try_pop_type_definition()
             .expect("Expected type definition result")
     }
+    #[track_caller]
     fn pop_key_value_pair(&mut self) -> (Key, KeyVal) {
         self.try_pop_key_value_pair()
             .expect("Expected key-value pair result")

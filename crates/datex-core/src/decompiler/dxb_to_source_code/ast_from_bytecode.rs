@@ -60,6 +60,12 @@ use crate::{
 };
 use alloc::format;
 use core::cell::RefCell;
+use crate::runtime::execution::ExecutionError;
+use crate::shared_values::SharedContainerOwnership;
+use crate::types::entity_type::EntityType;
+use crate::types::r#type::Type;
+use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
+use crate::values::value_container::ValueContainer;
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -735,11 +741,15 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<NormalExpression, DXBParserError>
                                 let types = collected_results.pop_types(callable.signature.total_type_count());
                                 let signature = resolve_signature(types, callable.signature);
 
-                                let body = NormalExpressionData::Statements(Statements {
-                                    statements: vec![ast_from_bytecode(&callable.body.body)?],
-                                    is_terminated: false,
-                                    unbounded: None,
-                                }).with_default_span();
+                                let body = if callable.body.body.is_empty() {
+                                    NormalExpressionData::NativeImplementationIndicator.with_default_span()
+                                } else {
+                                    NormalExpressionData::Statements(Statements {
+                                        statements: vec![ast_from_bytecode(&callable.body.body)?],
+                                        is_terminated: false,
+                                        unbounded: None,
+                                    }).with_default_span()
+                                };
 
                                 NormalExpressionData::callable_declaration(CallableDeclaration {
                                     signature,
@@ -1119,6 +1129,10 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<NormalExpression, DXBParserError>
                                     .with_default_span()
                                     .into()
                             }
+                            RegularInstruction::TypeExpression => {
+                                let ty = collected_results.pop_type();
+                                NormalExpressionData::TypeExpression(ty).with_default_span().into()
+                            }
 
                             e => {
                                 todo!(
@@ -1128,10 +1142,40 @@ pub fn ast_from_bytecode(dxb: &[u8]) -> Result<NormalExpression, DXBParserError>
                             }
                         },
 
-                        Instruction::Type(_type_instruction) => {
-                            // FIXME: Implement as from bytecode for nested type instruction
-                            NormalExpressionData::TypeExpression(TypeExpression::new(TypeExpressionData::GetCoreLibType(CoreLibBaseTypeId::Never.into()), Default::default()))
-                                .with_default_span().into()
+                        Instruction::Type(type_instruction) => {
+                            let type_expr = match type_instruction {
+                                TypeInstruction::EntityType => {
+                                    let _shared_container = collected_results.pop_value();
+                                    // TODO: resolve entity name and address
+                                    TypeExpressionData::Identifier("__UnresolvedEntity__".to_string())
+                                },
+                                TypeInstruction::DefinitionWithMetadata(metadata) => {
+                                    let definition = collected_results.pop_type_definition();
+                                    match metadata {
+                                        TypeMetadata::Shared {
+                                            mutability,
+                                            ownership,
+                                        } => {
+                                            // TODO: mut prefix etc
+                                            TypeExpressionData::Shared(Box::new(definition))
+                                        }
+                                        _ => *definition.data, // TODO: mutability
+                                    }
+                                }
+                                TypeInstruction::Boxed => {
+                                    let inner_type = collected_results.pop_type();
+                                    *inner_type.data // TODO: wrap in Boxed type expression
+                                }
+                                TypeInstruction::CoreType(id) => {
+                                    TypeExpressionData::GetCoreLibType(id)
+                                }
+                                _ => todo!(
+                                    "Unhandled collected type instruction: {:?}",
+                                    type_instruction
+                                ),
+                            };
+
+                            TypeExpression::new(type_expr, Default::default()).into()
                         }
                     };
                     collector.push_result(expr);
