@@ -887,6 +887,68 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4ae5f15dda3c708c0ade84bfee31ccab44a3da4f88015ed22f63732abe300c8"
 
 [[package]]
+name = "datex-code-generator"
+version = "0.0.1"
+dependencies = [
+ "datex-core 0.0.14",
+]
+
+[[package]]
+name = "datex-core"
+version = "0.0.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "49e52a26c1e26e5603f06a64ba84bed882aef6df2cec42a0b7498b8fbc8d32f0"
+dependencies = [
+ "async-select",
+ "bigdecimal",
+ "binrw",
+ "cfg-if",
+ "chrono",
+ "datex-crypto-facade",
+ "datex-crypto-native",
+ "datex-macros-internal 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "dotenvy",
+ "erased-serde",
+ "fnv64-rs",
+ "foldhash 0.2.0",
+ "futures",
+ "futures-core",
+ "futures-util",
+ "hex",
+ "indexmap 2.14.0",
+ "internment",
+ "inventory",
+ "itertools 0.14.0",
+ "linkme",
+ "log",
+ "logos",
+ "modular-bitfield",
+ "num",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "num_enum",
+ "ordered-float",
+ "pretty",
+ "ringmap",
+ "seq-macro",
+ "serde",
+ "serde-big-array",
+ "serde-val 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json",
+ "serde_repr",
+ "serde_with",
+ "stacker",
+ "strum",
+ "strum_macros",
+ "syntect",
+ "thiserror 2.0.18",
+ "tokio",
+ "twox-hash",
+ "url",
+]
+
+[[package]]
 name = "datex-core"
 version = "0.0.15"
 dependencies = [
@@ -898,11 +960,11 @@ dependencies = [
  "cfg-if",
  "chrono",
  "criterion",
- "datex-esp-impls",
  "datex-facades",
- "datex-macros-internal",
- "datex-nat-impls",
- "datex-web-impls",
+ "datex-impls-esp32",
+ "datex-impls-native",
+ "datex-impls-web",
+ "datex-macros-internal 0.0.3",
  "dhat",
  "dotenvy",
  "embassy-executor",
@@ -942,7 +1004,7 @@ dependencies = [
  "seq-macro",
  "serde",
  "serde-big-array",
- "serde-val",
+ "serde-val 0.1.0 (git+https://github.com/unyt-org/serde-value)",
  "serde_json",
  "serde_repr",
  "serde_with",
@@ -963,7 +1025,35 @@ dependencies = [
 ]
 
 [[package]]
-name = "datex-esp-impls"
+name = "datex-crypto-facade"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "337cd47bb87f8282ac74f393eb249a064ea11ad9d31d2687714dd871db76b437"
+dependencies = [
+ "bs58",
+]
+
+[[package]]
+name = "datex-crypto-native"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf929d72be68e057a30df43fbd1a229370388340c5947be083da7237d7a14314"
+dependencies = [
+ "datex-crypto-facade",
+ "openssl",
+ "rand 0.10.2",
+ "uuid",
+]
+
+[[package]]
+name = "datex-facades"
+version = "0.0.1"
+dependencies = [
+ "bs58",
+]
+
+[[package]]
+name = "datex-impls-esp32"
 version = "0.0.1"
 dependencies = [
  "aes",
@@ -986,17 +1076,38 @@ dependencies = [
 ]
 
 [[package]]
-name = "datex-facades"
+name = "datex-impls-native"
 version = "0.0.1"
 dependencies = [
- "bs58",
+ "datex-facades",
+ "openssl",
+ "rand 0.10.2",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "datex-impls-web"
+version = "0.0.1"
+dependencies = [
+ "datex-facades",
+ "der",
+ "ed25519-dalek",
+ "pkcs8",
+ "spki",
+ "strum",
+ "strum_macros",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "x25519-dalek",
 ]
 
 [[package]]
 name = "datex-macro-utils"
 version = "0.0.3"
 dependencies = [
- "datex-core",
+ "datex-core 0.0.15",
  "proc-macro2",
  "quote",
  "syn 2.0.118",
@@ -1015,14 +1126,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "datex-nat-impls"
-version = "0.0.1"
+name = "datex-macros-internal"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ea5c2946c65e0b2af09cf83c87bed1e61fb994999afe61d38c3168c5eaa1c3e"
 dependencies = [
- "datex-facades",
- "openssl",
- "rand 0.10.2",
- "tokio",
- "uuid",
+ "deluxe",
+ "pathdiff",
+ "proc-macro-crate 3.5.0",
+ "proc-macro2",
+ "quote",
+ "syn 3.0.4",
 ]
 
 [[package]]
@@ -1030,25 +1144,10 @@ name = "datex-traits"
 version = "0.0.1"
 
 [[package]]
-name = "datex-web-impls"
-version = "0.0.1"
-dependencies = [
- "datex-facades",
- "der",
- "ed25519-dalek",
- "pkcs8",
- "spki",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "x25519-dalek",
-]
-
-[[package]]
 name = "datex_macros"
 version = "0.1.11"
 dependencies = [
- "datex-core",
+ "datex-core 0.0.15",
  "datex-macro-utils",
  "proc-macro2",
  "quote",
@@ -3861,6 +3960,16 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11fc7cc2c76d73e0f27ee52abbd64eec84d46f370c88371120433196934e4b7f"
 dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "serde-val"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8075daef7fd08d39b83bf3606feab616391269df779fae7172f5558b3b220d10"
+dependencies = [
+ "ordered-float",
  "serde",
 ]
 
