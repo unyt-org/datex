@@ -1,10 +1,15 @@
 pub mod dxb_id;
 pub mod dxb_parsed;
 pub mod dxb_raw;
+pub mod dxb_trait;
 pub mod error;
 pub mod incoming_section;
 
 use dxb_id::BlockId;
+use dxb_parsed::ParsedDXB;
+use dxb_raw::RawDXB;
+use dxb_trait::DxB;
+
 use error::{DXBBlockParseError, DxbHeaderParsingError};
 use incoming_section::IncomingEndpointContextId;
 
@@ -30,6 +35,27 @@ use crate::prelude::*;
 
 const SIZE_BYTE_POSITION: usize = 3; // magic number (2 bytes) + version (1 byte)
 const SIZE_BYTES: usize = 2;
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub enum DXB {
+    RawDXB(RawDXB),
+    ParsedDXB(ParsedDXB),
+}
+
+impl DXB {
+    fn to_bytes(self) -> Vec<u8> {
+        match self {
+            DXB::RawDXB(block) => block.to_bytes(),
+            DXB::ParsedDXB(block) => block.to_bytes(),
+        }
+    }
+}
+
+impl Default for DXB {
+    fn default() -> Self {
+        DXB::RawDXB(RawDXB::default())
+    }
+}
 
 // TODO #110: RawDXBBlock that is received in com_hub, only containing RoutingHeader, BlockHeader and raw bytes
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
