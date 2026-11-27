@@ -35,7 +35,7 @@ pub mod network_response;
 pub mod network_tracing;
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use core::{
-    cell::{Ref, RefCell, UnsafeCell},
+    cell::{RefCell, UnsafeCell},
     cmp::PartialEq,
     fmt::{Debug, Formatter},
     panic,

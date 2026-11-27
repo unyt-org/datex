@@ -7,10 +7,7 @@ use crate::{
 };
 use datex_macros_internal::Datex;
 use indexmap::IndexMap;
-use log::info;
-use datex_facades::crypto::Crypto;
 use datex_facades::vault::Vault;
-use crate::crypto::CryptoImpl;
 use crate::network::com_hub::key_manager::own_endpoint_keys::OwnEndpointKeys;
 use crate::vault::VaultImpl;
 

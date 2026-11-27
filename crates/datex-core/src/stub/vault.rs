@@ -4,17 +4,17 @@ use crate::prelude::*;
 pub struct VaultStub;
 
 impl Vault for VaultStub {
-    fn new(location: &str) -> Self {
+    fn new(_location: &str) -> Self {
         VaultStub
     }
     /// Has no effect in the stub implementation
-    fn store(&self, endpoint: &str, key: &str, data: &str) {}
+    fn store(&self, _endpoint: &str, _key: &str, _data: &str) {}
 
     /// Stub implementation always returns None
-    fn get(&self, endpoint: &str, key: &str) -> Option<String> {
+    fn get(&self, _endpoint: &str, _key: &str) -> Option<String> {
         None
     }
 
     /// Has no effect in the stub implementation
-    fn delete(&self, endpoint: &str, key: &str) {}
+    fn delete(&self, _endpoint: &str, _key: &str) {}
 }

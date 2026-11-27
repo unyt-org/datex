@@ -28,7 +28,7 @@ impl Crypto for CryptoStub {
         _to_digest: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError> {
         Box::pin(async {
-            Ok([0u8; 32]).into()
+            Ok([0u8; 32])
         })
     }
 
@@ -43,7 +43,7 @@ impl Crypto for CryptoStub {
     fn gen_ed25519<'a>()
     -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::CryptoError> {
         Box::pin(async {
-            Ok(([0u8; 32], [0u8; 32])).into()
+            Ok(([0u8; 32], [0u8; 32]))
         })
     }
 
@@ -64,7 +64,7 @@ impl Crypto for CryptoStub {
         _data: &'a [u8],
     ) -> AsyncCryptoResult<'a, bool, Self::CryptoError> {
         Box::pin(async {
-            Ok(true).into()
+            Ok(true)
         })
     }
 
