@@ -113,7 +113,8 @@ pub trait CodeGenerator {
         let code_str = self.code_to_string(&code);
         ctx.add_module(name.to_string(), code_str);
     }
-
+    
+    fn fold_doc_comment(&mut self, comment: &str) -> Self::Code;
     fn fold_callable(&mut self, module_context: &mut ModuleGeneratorContext<Self::Code>, name: &str, callable: SharedRef<Callable>) -> Self::Code;
     fn fold_constant_declaration(&mut self, name: &str, type_declaration: Self::Code, value: Self::Code) -> Self::Code;
     fn fold_text(&mut self, text: &str) -> Self::Code;

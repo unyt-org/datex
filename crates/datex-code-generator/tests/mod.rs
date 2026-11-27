@@ -38,7 +38,7 @@ fn test() {
                 },
                 body: CallableBody::Hidden,
                 creator: Default::default(),
-                docs: None,
+                docs: Some("This is an example function that \ntakes two parameters and returns a string.".to_string()),
             }.shared(&runtime).to_value_container()
         ),
         (

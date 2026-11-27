@@ -26,6 +26,13 @@ impl CodeGenerator for RustCodeGenerator {
         combined
     }
 
+    fn fold_doc_comment(&mut self, comment: &str) -> Self::Code {
+        let doc_comment = format!("/// {}", comment.replace("\n", "\n/// "));
+        let doc_comment_token: TokenStream = syn::parse_str(&doc_comment)
+            .expect("Failed to parse doc comment");
+        doc_comment_token
+    }
+
     fn fold_callable(&mut self, module_context: &mut ModuleGeneratorContext<Self::Code>, name: &str, callable: SharedRef<Callable>) -> Self::Code {
         let ident = syn::Ident::new(name, proc_macro2::Span::call_site());
 
@@ -37,15 +44,22 @@ impl CodeGenerator for RustCodeGenerator {
         } else {
             quote! {}
         };
-        
+
         let parameters = signature.parameters.iter().enumerate().map(|(index, param)| {
             let name = param.0.clone().unwrap_or_else(|| format!("param_{}", index));
             let param_name = syn::Ident::new(&name, proc_macro2::Span::call_site());
             let param_type = self.fold_type_definition(param.1.clone().convert_to_definition(), false);
             quote! { #param_name: #param_type }
-        });
+        }).collect::<Vec<_>>();
+        
+        let doc_comment = if let Some(docs) = &borrowed_callable.docs {
+            self.fold_doc_comment(docs)
+        } else {
+            TokenStream::new()
+        };
 
         quote! {
+            #doc_comment
             pub fn #ident(#(#parameters),*) #return_type {
                 todo!()
             }
