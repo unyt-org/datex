@@ -85,7 +85,7 @@ pub enum TypeExpressionData {
     // size known to compile time, arbitrary types
     StructuralList(StructuralList),
 
-    Range(RangeTypeExpr),
+    Range(RangeTypeExpression),
 
     // [text; 3], integer[10]
     // fixed size and known to compile time, only one type

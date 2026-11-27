@@ -20,5 +20,4 @@ datex-core = { version = "0.0.14", default-features = false, features = [
     "disassembler",
     "syntax_highlighting_legacy",
     "compiler",
-    "allow_unsigned_blocks",
 ] }

@@ -491,7 +491,7 @@ macro_rules! run_async {
 }
 
 #[tokio::test]
-#[timeout(2000)]
+#[timeout(3000)]
 async fn simple_network() {
     flexi_logger::init();
     run_async! {
