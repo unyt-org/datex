@@ -1,0 +1,421 @@
+//! This module defines the representation for [NormalExpressionData] that can hold the various kinds of data used in expressions.
+pub use crate::prelude::*;
+use crate::{
+    ast::{
+        expressions::{
+            NormalExpression, TypeExpression, ValueAccessType,
+            expression::Expression,
+        },
+        spanned::Spanned,
+    },
+    global::{
+        operators::{ArithmeticUnaryOperator, UnaryOperator},
+        stack_index::StackIndex,
+    },
+    libs::core::core_lib_id::CoreLibId,
+    shared_values::SelfOwnedPointerAddress,
+    values::{
+        core_value::CoreValue,
+        core_value_with_classification::CoreValueWithClassification,
+        core_values::{
+            self,
+            boolean::Boolean,
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
+            instant::Instant,
+            integer::{Integer, typed_integer::TypedInteger},
+            text::Text,
+        },
+        value::Value,
+        value_container::ValueContainer,
+    },
+};
+use core::ops::{self, Neg};
+
+// Reexport all data modules for expressions
+mod apply;
+pub use apply::*;
+
+mod property_assignment;
+pub use property_assignment::*;
+
+mod binary_operation;
+pub use binary_operation::*;
+
+mod callable_declaration;
+pub use callable_declaration::*;
+
+mod clone;
+pub use clone::*;
+
+mod comparison_operation;
+pub use comparison_operation::*;
+
+mod compile;
+pub use compile::*;
+
+mod conditional;
+pub use conditional::*;
+
+mod entity;
+pub use entity::*;
+
+mod generic_instantiation;
+pub use generic_instantiation::*;
+
+mod list;
+pub use list::*;
+
+mod map;
+pub use map::*;
+
+mod method_call;
+pub use method_call::*;
+
+mod property_access;
+pub use property_access::*;
+
+mod range;
+pub use range::*;
+
+mod derive_shared_ref;
+pub use derive_shared_ref::*;
+
+mod remote_execution;
+pub use remote_execution::*;
+
+mod variable_assignment;
+pub use variable_assignment::*;
+
+mod stack_assignment;
+pub use stack_assignment::*;
+
+mod stack_list_assignment;
+pub use stack_list_assignment::*;
+
+mod statement;
+pub use statement::*;
+
+mod tagged;
+pub use tagged::*;
+
+mod type_declaration;
+pub use type_declaration::*;
+
+mod unary_operation;
+pub use unary_operation::*;
+
+mod unbox;
+pub use unbox::*;
+
+mod variable_access;
+pub use variable_access::*;
+
+mod variable_declaration;
+pub use variable_declaration::*;
+
+mod variant_access;
+pub use variant_access::*;
+
+mod unbox_assignment;
+pub use unbox_assignment::*;
+
+mod unbox_slot_assignment;
+pub use unbox_slot_assignment::*;
+
+mod request_shared_ref;
+pub use request_shared_ref::*;
+
+mod root_property_access;
+pub use root_property_access::*;
+
+mod derive_ref;
+pub use derive_ref::*;
+
+mod create_shared;
+pub use create_shared::*;
+
+mod create_mut;
+pub use create_mut::*;
+
+mod entity_type_declaration;
+pub use entity_type_declaration::*;
+
+#[cfg(feature = "compiler")]
+mod ast_node_to_instructions;
+
+/// The different kinds of normal (non-type) expressions in the AST
+#[derive(Clone, Debug, PartialEq, Default)]
+pub enum NormalExpressionData {
+    /// This is a marker for recovery from parse errors.
+    /// We should never use this manually.
+    #[default]
+    Noop,
+
+    Recover,
+    NativeImplementationIndicator,
+
+    /// null
+    Null,
+
+    /// (...)
+    OmitRecursive,
+
+    /// Boolean (true or false)
+    Boolean(Boolean),
+    /// Text, e.g "Hello, world!"
+    Text(Text),
+    /// Decimal, e.g 123.456789123456
+    Decimal(Decimal),
+
+    /// Typed Decimal, e.g. 123.456i8
+    TypedDecimal(TypedDecimal),
+
+    /// Integer, e.g 123456789123456789
+    Integer(Integer),
+
+    /// DateTime, e.g. 2026-04-13T18:28:09.415Z (stored as Instant)
+    Instant(Instant),
+
+    Range(RangeDeclaration),
+
+    /// Typed Integer, e.g. 123i8
+    TypedInteger(TypedInteger),
+
+    /// Identifier (variable / core type usage)
+    Identifier(String),
+
+    /// Endpoint, e.g. @test_a or @test_b
+    Endpoint(Endpoint),
+    /// List, e.g  `[1, 2, 3, "text"]`
+    List(List),
+    /// Map, e.g {"xy": 2, (3): 4, xy: "xy"}
+    Map(Map),
+
+    Sender,
+    Receiver,
+
+    /// One or more statements, e.g (1; 2; 3)
+    Statements(Statements),
+    /// reference access to shared value, e.g. '$ABC / 'mut $ABC
+    RequestSharedRef(RequestSharedRef),
+
+    /// move a shared value, e.g. $ABC
+    MoveSharedValue(SelfOwnedPointerAddress),
+
+    ResolveCoreLibId(CoreLibId),
+
+    /// compile ( ... )
+    Compile(CompileExpression),
+
+    /// Conditional expression, e.g. if (true) { 1 } else { 2 }
+    Conditional(Conditional),
+
+    // TODO #611: Give information on type kind (nominal & structural)
+    /// Variable declaration, e.g. const x = 1, const mut x = 1, or var y = 2. VariableId is always set to 0 by the ast parser.
+    VariableDeclaration(VariableDeclaration),
+    /// Variable assignment, e.g. x = 42 or y += 1
+    VariableAssignment(VariableAssignment),
+    /// Variable access - only generated by the precompiler, not by the parser
+    VariableAccess(VariableAccess),
+
+    // TODO #612: Shall we avoid hoisting for type aliases?
+    // This would remove the ability to have recursive type
+    // definitions.
+    /// Type declaration, e.g. type MyType = { x: 42, y: "John" };
+    TypeDeclaration(TypeDeclarationExpression),
+
+    /// Entity declaration, e.g. entity MyEntity = { x: 42, y: "John" };
+    EntityDeclaration(EntityDeclarationExpression),
+
+    /// Type expression, e.g. type(1 | 2)
+    TypeExpression(TypeExpression),
+
+    /// callable (function/procedure) declaration, e.g. function my_function() -> type ( ... )
+    CallableDeclaration(Box<CallableDeclaration>),
+
+    /// Create a new shared container
+    CreateShared(CreateShared),
+    /// Create a new reference
+    DeriveRef(DeriveRef),
+
+    /// Derive a new shared reference
+    DeriveSharedRef(DeriveSharedRef),
+
+    /// Creates a new mutable value
+    CreateMut(CreateMut),
+
+    /// Unbox
+    Unbox(Unbox),
+
+    /// Clone
+    Clone(CloneExpression),
+
+    /// relative StackIndex, e.g. \0, \1, \2, ...
+    StackIndex(StackIndex),
+
+    /// Tag, e.g. #Variant1
+    Tag(Tagged),
+
+    /// Property access on the root, e.g. $.print
+    RootPropertyAccess(RootPropertyAccess),
+
+    /// Stack assignment e.g. {0} = ...
+    StackAssignment(StackAssignment),
+
+    /// Push list to stack, e.g. {...} = ...
+    StackListAssignment(StackListAssignment),
+
+    /// Binary operation, e.g. x + y
+    BinaryOperation(BinaryOperation),
+
+    /// Comparison operation, e.g. x < y
+    ComparisonOperation(ComparisonOperation),
+
+    /// Unbox assignment, e.g. *(...) = y, **(...) += y
+    UnboxAssignment(UnboxAssignment),
+    UnboxSlotAssignment(UnboxSlotAssignment),
+
+    /// Property assignment, e.g. obj.property = value
+    PropertyAssignment(PropertyAssignment),
+
+    /// Unary operation, e.g. -x, !x
+    UnaryOperation(UnaryOperation),
+
+    /// Apply a value to another value, e.g. function call or type cast
+    Apply(Apply),
+
+    /// Call an interface method, e.g. obj->method()
+    InterfaceMethodCall(InterfaceMethodCall),
+
+    /// Apply a property access to an argument
+    PropertyAccess(PropertyAccess),
+
+    /// Generic instantiation, e.g. MyType<u8>
+    GenericInstantiation(GenericInstantiation),
+
+    /// The '?' placeholder expression
+    Placeholder(ValueAccessType),
+
+    /// Remote execution, e.g. @example :: 41 + 1
+    RemoteExecution(RemoteExecution),
+
+    /// Variant access, e.g. integer/u8
+    VariantAccess(VariantAccess),
+
+    EntityValue(EntityValueExpression),
+}
+
+impl NormalExpressionData {
+    pub fn callable_declaration(
+        callable_declaration: CallableDeclaration,
+    ) -> Self {
+        NormalExpressionData::CallableDeclaration(Box::new(callable_declaration))
+    }
+}
+
+impl Spanned for NormalExpressionData {
+    type Output = NormalExpression;
+
+    fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
+        NormalExpression {
+            data: Box::new(self),
+            span: span.into(),
+            ty: None,
+        }
+    }
+
+    fn with_default_span(self) -> Self::Output {
+        NormalExpression {
+            data: Box::new(self),
+            span: (0..0),
+            ty: None,
+        }
+    }
+}
+
+impl Spanned for Box<NormalExpressionData> {
+    type Output = NormalExpression;
+
+    fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
+        NormalExpression {
+            data: self,
+            span: span.into(),
+            ty: None,
+        }
+    }
+
+    fn with_default_span(self) -> Self::Output {
+        NormalExpression {
+            data: self,
+            span: (0..0),
+            ty: None,
+        }
+    }
+}
+
+// directly convert NormalExpression to a ValueContainer
+impl TryFrom<&NormalExpressionData> for ValueContainer {
+    type Error = ();
+
+    fn try_from(expr: &NormalExpressionData) -> Result<Self, Self::Error> {
+        Ok(match expr {
+            NormalExpressionData::UnaryOperation(UnaryOperation {
+                operator,
+                expression,
+            }) => {
+                let value = ValueContainer::try_from(expression.data())?;
+                match value {
+                    ValueContainer::Local(Value::Core(
+                        CoreValueWithClassification {
+                            inner: CoreValue::Integer(_) | CoreValue::Decimal(_),
+                            ..
+                        },
+                    )) => match operator {
+                        UnaryOperator::Arithmetic(
+                            ArithmeticUnaryOperator::Plus,
+                        ) => value,
+                        UnaryOperator::Arithmetic(
+                            ArithmeticUnaryOperator::Minus,
+                        ) => value.neg().map_err(|_| ())?,
+                        _ => Err(())?,
+                    },
+                    _ => Err(())?,
+                }
+            }
+            NormalExpressionData::Null => ValueContainer::Local(Value::null()),
+            NormalExpressionData::Boolean(b) => ValueContainer::from(b.clone()),
+            NormalExpressionData::Text(s) => ValueContainer::from(s.clone()),
+            NormalExpressionData::Decimal(d) => ValueContainer::from(d.clone()),
+            NormalExpressionData::Integer(i) => ValueContainer::from(i.clone()),
+            NormalExpressionData::TypedInteger(i) => {
+                ValueContainer::from(i.clone())
+            }
+            NormalExpressionData::TypedDecimal(d) => {
+                ValueContainer::from(d.clone())
+            }
+            NormalExpressionData::Endpoint(e) => ValueContainer::from(e.clone()),
+            NormalExpressionData::List(list) => {
+                let entries = list
+                    .items
+                    .iter()
+                    .map(|e| ValueContainer::try_from(e.data()))
+                    .collect::<Result<Vec<ValueContainer>, ()>>()?;
+                ValueContainer::from(core_values::list::List::from(entries))
+            }
+            NormalExpressionData::Map(pairs) => {
+                let entries = pairs
+                    .entries
+                    .iter()
+                    .map(|(k, v)| {
+                        let key = ValueContainer::try_from(k.data())?;
+                        let value = ValueContainer::try_from(v.data())?;
+                        Ok((key, value))
+                    })
+                    .collect::<Result<Vec<(ValueContainer, ValueContainer)>, ()>>()?;
+                ValueContainer::from(core_values::map::Map::from(entries))
+            }
+            _ => Err(())?,
+        })
+    }
+}

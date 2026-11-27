@@ -1,0 +1,23 @@
+[package]
+name = "datex-code-generator"
+version = "0.0.1"
+description = "DATEX Code Generator trait and utilities"
+authors = [
+    "Benedikt Strehle <benedikt@unyt.org>",
+    "Jonas Strehle <jonas@unyt.org>",
+    "Norbert Brzezinski <norbert@unyt.org>",
+]
+edition = "2024"
+license-file = "../../LICENSE"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+datex-core = { version = "0.0.14", default-features = false, features = [
+    "target_native",
+    "decompiler",
+    "disassembler",
+    "syntax_highlighting_legacy",
+    "compiler",
+] }

@@ -100,24 +100,24 @@ the lexer into an Abstract Syntax Tree (AST).
 
 We have to extend the expression grammar to include our expression or operator.
 This is done by adding a new entry or modifying an existing one in the
-`DatexExpression` enum.
+`NormalExpression` enum.
 
 ```rust
-pub enum DatexExpression {
+pub enum NormalExpression {
     /// Only keywords holding no value, e.g. `null`, `if`, `else`, `while`
     Null,
     /// Custom data type holding a Rust value
     Text(String),
     
     /// Custom data type holding a vector of expressions
-    Array(Vec<DatexExpression>),
+    Array(Vec<NormalExpression>),
 
     /// Custom syntax to represent variable declarations (e.g. `val x = 5`)
-    ///                 val           x       DatexExpression<5>
-    VariableDeclaration(VariableType, String, Box<DatexExpression>),
+    ///                 val           x       NormalExpression<5>
+    VariableDeclaration(VariableType, String, Box<NormalExpression>),
 
     /// Binary operation OP LHS RHS
-    BinaryOperation(BinaryOperator, Box<DatexExpression>, Box<DatexExpression>),
+    BinaryOperation(BinaryOperator, Box<NormalExpression>, Box<NormalExpression>),
 
     // other existing expressions...
 }
@@ -126,8 +126,8 @@ pub enum DatexExpression {
 We have to declare an entry here that can hold all parts of our expression if it
 is more complex than a simple value. In our case it's more easy, as we just want
 to add a new operator `is`, which can be represented as a binary operation, and
-the holder is already present in the `DatexExpression` enum as
-`BinaryOperation(BinaryOperator, Box<DatexExpression>, Box<DatexExpression>)`.
+the holder is already present in the `NormalExpression` enum as
+`BinaryOperation(BinaryOperator, Box<NormalExpression>, Box<NormalExpression>)`.
 So here we extend the `BinaryOperator` enum to include our new operator:
 
 ```rust
@@ -196,7 +196,7 @@ When you introduce a new operator:
 | **Object**                             | `{key: value, …}`                                              | `key` + value parser                                                  | Keys may be strings, numbers, identifiers or arbitrary expressions `(expr)`.                                                                                               |
 | **Tuple**                              | `(a, b)`, `(key: v, …)`                                        | `tuple_entry`                                                         | Three variants ensure **(i)** at least two items, **(ii)** single value plus comma, **(iii)** single `key: value`.                                                         |
 | **Key** (for objects/tuples)           | Text, numeric, identifier, or expression                       | `key` selector                                                        | Supports dynamic keys via `(expr)`.                                                                                                                                        |
-| **Integer / Decimal / Text / Literal** | Primitive constants                                            | token selectors                                                       | Each maps the raw token into the corresponding `DatexExpression` variant.                                                                                                  |
+| **Integer / Decimal / Text / Literal** | Primitive constants                                            | token selectors                                                       | Each maps the raw token into the corresponding `NormalExpression` variant.                                                                                                  |
 
 The pipeline top-down looks something like this:
 
@@ -234,13 +234,13 @@ let equality = sum.clone().foldl(
 );
 ```
 
-If you've introduced a new `DatexExpression` and not a simple operator, you need
+If you've introduced a new `NormalExpression` and not a simple operator, you need
 to extend the parser logic to account for it and map it to the corresponding
-`DatexExpression` variant and add the token branch handler to the correct level.
+`NormalExpression` variant and add the token branch handler to the correct level.
 
 ```rust
 let custom_expression = select! {
-    Token::Whatever(s) => DatexExpression::YourExpression(&s)
+    Token::Whatever(s) => NormalExpression::YourExpression(&s)
 };
 
 // E.g. if Token::Whatever is an atom, then it must be added to this level:
@@ -265,7 +265,7 @@ mod tests {
     #[test]
     fn custom_expression() {
         let input = "whatever";
-        let expected = DatexExpression::YourExpression("whatever");
+        let expected = NormalExpression::YourExpression("whatever");
         let result = parse(input);
         assert_eq!(result, expected);
     }
@@ -281,13 +281,13 @@ fn equal_operators() {
     let val = parse_unwrap(src);
     assert_eq!(
         val,
-        DatexExpression::BinaryOperation(
+        NormalExpression::BinaryOperation(
             BinaryOperator::Is,
-            Box::new(DatexExpression::Integer(Integer::from(5))),
-            Box::new(DatexExpression::BinaryOperation(
+            Box::new(NormalExpression::Integer(Integer::from(5))),
+            Box::new(NormalExpression::BinaryOperation(
                 BinaryOperator::Add,
-                Box::new(DatexExpression::Integer(Integer::from(1))),
-                Box::new(DatexExpression::Integer(Integer::from(2)))
+                Box::new(NormalExpression::Integer(Integer::from(1))),
+                Box::new(NormalExpression::Integer(Integer::from(2)))
             ))
         )
     );
@@ -374,7 +374,7 @@ add a new match arm for the `BinaryOperation` variant in the
 ```rust
 match ast {
     // existing match arms...
-    DatexExpression::Whatever(..whatever) => {
+    NormalExpression::Whatever(..whatever) => {
         // Implement serialization logic for your new expression here
         // and add to the compilation_scope buffer
     }
@@ -394,7 +394,7 @@ compilation_scope.insert_decimal(...);
 ```
 
 Since the `is` operator is a binary operation, we don't have to do any
-modification since the `DatexExpression::BinaryOperation` is already handled in
+modification since the `NormalExpression::BinaryOperation` is already handled in
 the `compile_expression` method and we've already added the `BinaryOperator::Is`
 to the `BinaryOperator` enum.
 

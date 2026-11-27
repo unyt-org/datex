@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            CallableDeclaration, CallableSignature, DatexExpressionData,
+            CallableDeclaration, CallableSignature, NormalExpressionData,
         },
         spanned::Spanned,
     },
@@ -16,8 +16,8 @@ use crate::{
 };
 
 impl ToDatexExpressionData for Callable {
-    fn to_datex_expression_data(&self) -> DatexExpressionData {
-        DatexExpressionData::callable_declaration(CallableDeclaration {
+    fn to_datex_expression_data(&self) -> NormalExpressionData {
+        NormalExpressionData::callable_declaration(CallableDeclaration {
             signature: CallableSignature {
                 name: self.name.clone(),
                 kind: self.signature.kind,
@@ -54,15 +54,15 @@ impl ToDatexExpressionData for Callable {
             },
             body: match &self.body {
                 CallableBody::CoreStub(_) => {
-                    DatexExpressionData::NativeImplementationIndicator
+                    NormalExpressionData::NativeImplementationIndicator
                         .with_default_span()
                 }
                 CallableBody::Native(_) => {
-                    DatexExpressionData::NativeImplementationIndicator
+                    NormalExpressionData::NativeImplementationIndicator
                         .with_default_span()
                 }
                 CallableBody::Hidden => {
-                    DatexExpressionData::NativeImplementationIndicator
+                    NormalExpressionData::NativeImplementationIndicator
                         .with_default_span()
                 }
                 #[cfg(feature = "decompiler")]
@@ -73,12 +73,12 @@ impl ToDatexExpressionData for Callable {
                     use crate::decompiler::dxb_to_source_code::ast_from_bytecode::ast_from_bytecode;
 
                     ast_from_bytecode(body).unwrap_or_else(|_| {
-                        DatexExpressionData::Noop.with_default_span()
+                        NormalExpressionData::Noop.with_default_span()
                     })
                 }
                 #[cfg(not(feature = "decompiler"))]
                 CallableBody::DatexBytecode(_) => {
-                    DatexExpressionData::NativeImplementationIndicator
+                    NormalExpressionData::NativeImplementationIndicator
                         .with_default_span()
                 }
             },

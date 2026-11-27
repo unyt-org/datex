@@ -1,10 +1,10 @@
 use crate::{
     ast::{
         expressions::{
-            CallableDeclaration, DatexExpression, DatexExpressionData,
+            CallableDeclaration, NormalExpression, NormalExpressionData,
+            TypeExpression,
         },
         spanned::Spanned,
-        type_expressions::TypeExpression,
     },
     parser::{Parser, SpannedParserError, lexer::Token},
 };
@@ -17,7 +17,7 @@ use crate::{
 impl Parser {
     pub(crate) fn parse_callable_definition(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         let start_pos = self.get_current_source_position();
 
         // first token must be Function or Procedure
@@ -55,7 +55,7 @@ impl Parser {
         // parse function body
         let body = self.parse_parenthesized_statements()?;
         Ok(
-            DatexExpressionData::callable_declaration(CallableDeclaration {
+            NormalExpressionData::callable_declaration(CallableDeclaration {
                 signature: CallableSignature {
                     name,
                     kind,
@@ -107,10 +107,10 @@ mod tests {
         ast::{
             expressions::{
                 BinaryOperation, CallableDeclaration, CallableSignature,
-                DatexExpressionData, Statements,
+                NormalExpressionData, Statements, TypeExpressionData,
+                expression::Expression,
             },
             spanned::Spanned,
-            type_expressions::TypeExpressionData,
         },
         global::operators::{BinaryOperator, binary::ArithmeticOperator},
         parser::tests::parse,
@@ -123,7 +123,7 @@ mod tests {
         let expr = parse("function test() ()");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::callable_declaration(CallableDeclaration {
+            &NormalExpressionData::callable_declaration(CallableDeclaration {
                 signature: CallableSignature {
                     name: Some(String::from("test")),
                     kind: CallableKind::Function,
@@ -133,7 +133,7 @@ mod tests {
                     return_type: None,
                     yeet_type: None,
                 },
-                body: (DatexExpressionData::Statements(Statements {
+                body: (NormalExpressionData::Statements(Statements {
                     statements: vec![],
                     is_terminated: false,
                     unbounded: None,
@@ -149,7 +149,7 @@ mod tests {
         let expr = parse("function () ()");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::callable_declaration(CallableDeclaration {
+            &NormalExpressionData::callable_declaration(CallableDeclaration {
                 signature: CallableSignature {
                     name: None,
                     kind: CallableKind::Function,
@@ -159,7 +159,7 @@ mod tests {
                     return_type: None,
                     yeet_type: None,
                 },
-                body: (DatexExpressionData::Statements(Statements {
+                body: (NormalExpressionData::Statements(Statements {
                     statements: vec![],
                     is_terminated: false,
                     unbounded: None,
@@ -175,7 +175,7 @@ mod tests {
         let expr = parse("procedure doSomething() ()");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::callable_declaration(CallableDeclaration {
+            &NormalExpressionData::callable_declaration(CallableDeclaration {
                 signature: CallableSignature {
                     name: Some(String::from("doSomething")),
                     kind: CallableKind::Procedure,
@@ -185,7 +185,7 @@ mod tests {
                     return_type: None,
                     yeet_type: None,
                 },
-                body: (DatexExpressionData::Statements(Statements {
+                body: (NormalExpressionData::Statements(Statements {
                     statements: vec![],
                     is_terminated: false,
                     unbounded: None,
@@ -201,7 +201,7 @@ mod tests {
         let expr = parse("function add(a: integer, b: integer) -> integer ( )");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::callable_declaration(CallableDeclaration {
+            &NormalExpressionData::callable_declaration(CallableDeclaration {
                 signature: CallableSignature {
                     name: Some("add".to_string()),
                     kind: CallableKind::Function,
@@ -229,7 +229,7 @@ mod tests {
                     ),
                     yeet_type: None,
                 },
-                body: (DatexExpressionData::Statements(Statements {
+                body: (NormalExpressionData::Statements(Statements {
                     statements: vec![],
                     is_terminated: false,
                     unbounded: None,
@@ -246,7 +246,7 @@ mod tests {
             parse("function greet(name: text) -> text ( \"Hello, \" + name )");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::callable_declaration(CallableDeclaration {
+            &NormalExpressionData::callable_declaration(CallableDeclaration {
                 signature: CallableSignature {
                     name: Some("greet".to_string()),
                     kind: CallableKind::Function,
@@ -263,16 +263,14 @@ mod tests {
                     ),
                     yeet_type: None,
                 },
-                body: (DatexExpressionData::BinaryOperation(BinaryOperation {
-                    left: (DatexExpressionData::Text("Hello, ".into())
+                body: (NormalExpressionData::BinaryOperation(BinaryOperation {
+                    left: (NormalExpressionData::Text("Hello, ".into())
                         .with_default_span()),
                     operator: BinaryOperator::Arithmetic(
                         ArithmeticOperator::Add
                     ),
-                    right: (DatexExpressionData::Identifier(
-                        "name".to_string()
-                    )
-                    .with_default_span()),
+                    right: (NormalExpressionData::Identifier("name".to_string())
+                        .with_default_span()),
                     ty: None,
                 })
                 .with_default_span()),

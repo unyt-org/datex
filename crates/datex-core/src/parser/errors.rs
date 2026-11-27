@@ -1,5 +1,5 @@
 use crate::{
-    ast::expressions::DatexExpression,
+    ast::expressions::NormalExpression,
     global::operators::UnaryOperator,
     parser::lexer::Token,
     values::core_values::{
@@ -38,7 +38,7 @@ pub enum ParserError {
 
 #[derive(Debug)]
 pub struct DetailedParserErrorsWithAst {
-    pub ast: DatexExpression, // TODO #657: rename to DatexAstNode
+    pub ast: NormalExpression, // TODO #657: rename to DatexAstNode
     pub errors: Vec<SpannedParserError>,
 }
 

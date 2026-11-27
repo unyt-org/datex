@@ -1,0 +1,29 @@
+[package]
+name = "datex-impls-native"
+version = "0.0.1"
+description = "Native implementation of the DATEX facades"
+authors = [
+    "Benedikt Strehle <benedikt@unyt.org>",
+    "Jonas Strehle <jonas@unyt.org>",
+    "Norbert Brzezinski <norbert@unyt.org>",
+]
+edition = "2024"
+license-file = "../../LICENSE"
+
+[lib]
+crate-type = ["lib"]
+
+[dependencies]
+rand = { version = "0.10.2" }
+datex-facades = { path = "../datex-facades", version = "0.0.1" }
+uuid = { version = "1.15.1", features = ["v4"] }
+openssl = { version = "0.10.73" }
+
+[dev-dependencies]
+tokio = { version = "1.43.0", features = [
+    "sync",
+    "macros",
+    "io-util",
+    "rt",
+    "time",
+], default-features = false }

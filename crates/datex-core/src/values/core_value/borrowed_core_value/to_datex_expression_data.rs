@@ -1,5 +1,5 @@
 use crate::{
-    ast::expressions::DatexExpressionData,
+    ast::expressions::NormalExpressionData,
     traits::to_datex_expression_data::ToDatexExpressionData,
     values::core_value::borrowed_core_value::{
         BorrowedCoreValue, BorrowedCoreValueMut,
@@ -7,7 +7,7 @@ use crate::{
 };
 
 impl<'a> ToDatexExpressionData for BorrowedCoreValue<'a> {
-    fn to_datex_expression_data(&self) -> DatexExpressionData {
+    fn to_datex_expression_data(&self) -> NormalExpressionData {
         match &self {
             BorrowedCoreValue::Integer(integer) => {
                 integer.to_datex_expression_data()
@@ -31,7 +31,7 @@ impl<'a> ToDatexExpressionData for BorrowedCoreValue<'a> {
             BorrowedCoreValue::Endpoint(endpoint) => {
                 endpoint.to_datex_expression_data()
             }
-            BorrowedCoreValue::Null => DatexExpressionData::Null,
+            BorrowedCoreValue::Null => NormalExpressionData::Null,
             BorrowedCoreValue::List(list) => list.to_datex_expression_data(),
             BorrowedCoreValue::Map(map) => map.to_datex_expression_data(),
             BorrowedCoreValue::Type(type_value) => {
@@ -59,7 +59,7 @@ impl<'a> ToDatexExpressionData for BorrowedCoreValue<'a> {
 }
 
 impl<'a> ToDatexExpressionData for BorrowedCoreValueMut<'a> {
-    fn to_datex_expression_data(&self) -> DatexExpressionData {
+    fn to_datex_expression_data(&self) -> NormalExpressionData {
         match &self {
             BorrowedCoreValueMut::Integer(integer) => {
                 integer.to_datex_expression_data()
@@ -85,7 +85,7 @@ impl<'a> ToDatexExpressionData for BorrowedCoreValueMut<'a> {
             BorrowedCoreValueMut::Endpoint(endpoint) => {
                 endpoint.to_datex_expression_data()
             }
-            BorrowedCoreValueMut::Null => DatexExpressionData::Null,
+            BorrowedCoreValueMut::Null => NormalExpressionData::Null,
             BorrowedCoreValueMut::List(list) => list.to_datex_expression_data(),
             BorrowedCoreValueMut::Map(map) => map.to_datex_expression_data(),
             BorrowedCoreValueMut::Type(type_value) => {

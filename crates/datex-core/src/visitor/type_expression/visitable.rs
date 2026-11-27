@@ -1,8 +1,8 @@
 use crate::{
-    ast::type_expressions::{
+    ast::expressions::{
         CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
-        RangeTypeExpr, SliceList, StructuralList, StructuralMap,
-        TypeExpression, TypeExpressionData, Union,
+        RangeTypeExpression, SliceList, StructuralList, StructuralMap,
+        TypeExpression, TypeExpressionData, Union, expression::Expression,
     },
     visitor::{VisitAction, type_expression::TypeExpressionVisitor},
 };
@@ -16,7 +16,7 @@ pub trait VisitableTypeExpression<E> {
     ) -> Result<(), E>;
 }
 
-impl<E> VisitableTypeExpression<E> for RangeTypeExpr {
+impl<E> VisitableTypeExpression<E> for RangeTypeExpression {
     fn walk_children(
         &mut self,
         visitor: &mut impl TypeExpressionVisitor<E>,

@@ -4,8 +4,7 @@
     "rust-analyzer.cargo.features": [
         "decompiler",
         "std",
-        "compiler",
-        "crypto_enabled"
+        "compiler"
     ],
     "rust-analyzer.imports.preferPrelude": false,
     "rust-analyzer.imports.preferNoStd": true,
@@ -21,6 +20,6 @@
         "crates/datex-macro-utils/Cargo.toml",
         "crates/datex-macros/Cargo.toml",
         "crates/datex-macros-internal/Cargo.toml",
-        "crates/datex-crypto-esp32/Cargo.toml"
+        "crates/datex-impls-esp32/Cargo.toml"
     ]
 }

@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            DatexExpressionData, EntityValueExpression, TagExpression,
+            NormalExpressionData, EntityValueExpression, Tagged,
         },
         spanned::Spanned,
     },
@@ -13,23 +13,23 @@ use crate::{
 use crate::values::core_value_with_classification::borrowed_core_value_with_classification::{BorrowedCoreValueWithClassification, BorrowedCoreValueWithClassificationMut};
 
 impl<'a> ToDatexExpressionData for BorrowedCoreValueWithClassification<'a> {
-    fn to_datex_expression_data(&self) -> DatexExpressionData {
+    fn to_datex_expression_data(&self) -> NormalExpressionData {
         let core_value_expression = self.inner.to_datex_expression_data();
         classification_expression(core_value_expression, &self.classification)
     }
 }
 
 impl<'a> ToDatexExpressionData for BorrowedCoreValueWithClassificationMut<'a> {
-    fn to_datex_expression_data(&self) -> DatexExpressionData {
+    fn to_datex_expression_data(&self) -> NormalExpressionData {
         let core_value_expression = self.inner.to_datex_expression_data();
         classification_expression(core_value_expression, &self.classification)
     }
 }
 
 fn classification_expression(
-    mut expression: DatexExpressionData,
+    mut expression: NormalExpressionData,
     classification: &ValueClassification,
-) -> DatexExpressionData {
+) -> NormalExpressionData {
     if classification.is_unclassified() {
         return expression;
     }
@@ -43,7 +43,7 @@ fn classification_expression(
         is_empty,
     }) = &classification.tag
     {
-        expression = DatexExpressionData::Tag(TagExpression {
+        expression = NormalExpressionData::Tag(Tagged {
             tag: tag.clone(),
             expression: if !is_empty {
                 Some(expression.with_default_span())
@@ -55,7 +55,7 @@ fn classification_expression(
 
     if let Some(entity_type) = &classification.entity_type {
         let name = entity_type.entity_definition().name.clone();
-        expression = DatexExpressionData::EntityValue(EntityValueExpression {
+        expression = NormalExpressionData::EntityValue(EntityValueExpression {
             entity_name: name,
             entity_address: Some(entity_type.pointer_address()),
             value: expression.with_default_span(),

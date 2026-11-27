@@ -27,6 +27,7 @@ use alloc::{rc::Rc, sync::Arc};
 use core::{pin::Pin, str::FromStr};
 use futures_util::future::join;
 use tokio::task::{LocalSet, spawn_local, yield_now};
+use crate::network::com_hub::key_manager::own_endpoint_keys::OwnEndpointKeys;
 
 lazy_static::lazy_static! {
     pub static ref TEST_ENDPOINT_A: Endpoint = Endpoint::from_str("@test-a").unwrap();
@@ -84,6 +85,7 @@ pub async fn get_coupled_com_hubs() -> (
     ) = create_unbounded_channel::<ComInterfaceReconnectRequest>();
     let (com_hub_a, task_future_a) = ComHub::create(
         TEST_ENDPOINT_A.clone(),
+        OwnEndpointKeys::new().await,
         incoming_sections_sender_a,
         com_interface_reconnect_request_sender_a,
         BlockHandler::DEFAULT_HISTORY_CAPACITY,
@@ -97,6 +99,7 @@ pub async fn get_coupled_com_hubs() -> (
     ) = create_unbounded_channel::<ComInterfaceReconnectRequest>();
     let (com_hub_b, task_future_b) = ComHub::create(
         TEST_ENDPOINT_B.clone(),
+        OwnEndpointKeys::new().await,
         incoming_sections_sender_b,
         com_interface_reconnect_request_sender_b,
         BlockHandler::DEFAULT_HISTORY_CAPACITY,

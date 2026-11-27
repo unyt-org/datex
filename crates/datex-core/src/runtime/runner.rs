@@ -22,6 +22,8 @@ use futures_util::{
     join,
 };
 use log::info;
+use crate::network::com_hub::key_manager::own_endpoint_keys::OwnEndpointKeys;
+use crate::values::core_values::endpoint::Endpoint;
 
 pub struct RuntimeRunner {
     pub runtime: Runtime,
@@ -31,12 +33,32 @@ pub struct RuntimeRunner {
 impl RuntimeRunner {
     /// Creates a new runtime instance with the given configuration and global context.
     /// Note: If the endpoint is not specified in the config, a random endpoint will be generated.
-    pub fn new(
+    pub async fn new(
+        mut config: RuntimeConfig,
+        info: CustomRuntimeInfo,
+    ) -> RuntimeRunner {
+        let (endpoint, keys) = config.get_or_create_endpoint_and_keys().await;
+
+        Self::new_inner(endpoint, keys, config, info)
+    }
+
+    /// Creates a new runtime instance with the given configuration and global context, without specifying an endpoint.
+    /// The config can later be set with [`RuntimeInternal::set_config`].
+    pub fn new_uninitialized(info: CustomRuntimeInfo) -> RuntimeRunner {
+        Self::new_inner(
+            Endpoint::default(),
+            OwnEndpointKeys::stub(),
+            RuntimeConfig::default(),
+            info,
+        )
+    }
+
+    fn new_inner(
+        endpoint: Endpoint,
+        keys: OwnEndpointKeys,
         config: RuntimeConfig,
         info: CustomRuntimeInfo,
     ) -> RuntimeRunner {
-        let endpoint = config.endpoint.clone();
-
         let (task_manager, runtime_task_future) = TaskManager::create();
 
         let (incoming_sections_sender, incoming_sections_receiver) =
@@ -49,10 +71,12 @@ impl RuntimeRunner {
 
         let (com_hub, com_hub_task_future) = ComHub::create(
             endpoint.clone(),
+            keys,
             incoming_sections_sender,
             com_interface_reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
         );
+
         let memory = RefCell::new(SharedReferencesCache::default());
         let pointer_address_provider = Rc::new(RefCell::new(
             SelfOwnedPointerAddressProvider::new(endpoint.clone()),
@@ -94,6 +118,7 @@ impl RuntimeRunner {
             task_future: Box::pin(task_future),
         }
     }
+
 
     // Starts the runtime, runs the provided app logic, and returns its result.
     // The runtime will exit when the app logic completes.
@@ -181,7 +206,7 @@ mod tests {
         let runner = RuntimeRunner::new(
             RuntimeConfig::default(),
             CustomRuntimeInfo::default(),
-        );
+        ).await;
         let mut runtime = None;
         runner
             .run(async |runtime_inner| {

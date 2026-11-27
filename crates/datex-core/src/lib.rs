@@ -19,6 +19,7 @@
 #![allow(incomplete_features)]
 #![allow(static_mut_refs)]
 #![allow(async_fn_in_trait)]
+#![feature(vec_try_remove)] // TODO: remove this when the feature is stabilized for esp toolchain
 
 extern crate alloc;
 extern crate num_integer;
@@ -126,13 +127,28 @@ pub mod std_sync {
 pub mod crypto {
     cfg_if::cfg_if! {
         if #[cfg(any(feature = "target_native", test))] {
-            pub use datex_crypto_native::CryptoNative as CryptoImpl;
+            pub use datex_impls_native::crypto::CryptoNative as CryptoImpl;
         } else if #[cfg(feature = "target_esp_shared")] {
-            pub use datex_crypto_esp32::CryptoEsp32 as CryptoImpl;
+            pub use datex_impls_esp32::crypto::CryptoEsp32 as CryptoImpl;
         } else if #[cfg(feature = "target_wasm")] {
-            pub use datex_crypto_web::CryptoWeb as CryptoImpl;
+            pub use datex_impls_web::crypto::CryptoWeb as CryptoImpl;
         } else {
             pub use crate::stub::crypto::CryptoStub as CryptoImpl;
+        }
+    }
+}
+
+/// Vault implementations selection based on target architecture and features.
+pub mod vault {
+    cfg_if::cfg_if! {
+        if #[cfg(any(feature = "target_native", test))] {
+            pub use datex_impls_native::vault::VaultNative as VaultImpl;
+        } else if #[cfg(feature = "target_esp_shared")] {
+            pub use datex_impls_esp32::vault::VaultEsp32 as VaultImpl;
+        } else if #[cfg(feature = "target_wasm")] {
+            pub use datex_impls_web::vault::VaultWeb as VaultImpl;
+        } else {
+            pub use crate::stub::vault::VaultStub as VaultImpl;
         }
     }
 }
@@ -170,7 +186,7 @@ pub mod time {
                     .expect("System time is before UNIX_EPOCH")
                     .as_millis() as u64
             } else if #[cfg(feature = "target_esp_shared")] {
-                datex_crypto_esp32::now_ms()
+                datex_impls_esp32::crypto::now_ms()
             } else {
                 Instant::now().elapsed().as_millis() as u64
             }

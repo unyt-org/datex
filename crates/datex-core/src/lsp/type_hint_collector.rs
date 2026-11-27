@@ -1,8 +1,5 @@
 use crate::{
-    ast::{
-        expressions::{DatexExpression, VariableDeclaration},
-        resolved_variable::VariableId,
-    },
+    ast::expressions::{NormalExpression, VariableDeclaration, VariableId},
     visitor::{
         VisitAction, expression::ExpressionVisitor,
         type_expression::TypeExpressionVisitor,
@@ -22,7 +19,7 @@ impl ExpressionVisitor<()> for TypeHintCollector {
         &mut self,
         var_decl: &mut VariableDeclaration,
         _span: &Range<usize>,
-    ) -> Result<VisitAction<DatexExpression>, ()> {
+    ) -> Result<VisitAction<NormalExpression>, ()> {
         if var_decl.type_annotation.is_none() {
             let expr_start = var_decl.init_expression.span.start;
             // TODO #677: improve

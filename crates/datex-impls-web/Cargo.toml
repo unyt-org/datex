@@ -1,0 +1,30 @@
+[package]
+name = "datex-impls-web"
+version = "0.0.1"
+description = "Web implementation of the DATEX facades for WASM targets"
+authors = [
+    "Benedikt Strehle <benedikt@unyt.org>",
+    "Jonas Strehle <jonas@unyt.org>",
+    "Norbert Brzezinski <norbert@unyt.org>",
+]
+edition = "2024"
+license-file = "../../LICENSE"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+datex-facades = { path = "../datex-facades", version = "0.0.1" }
+wasm-bindgen = { version = "=0.2.123", features = [] }
+wasm-bindgen-futures = "0.4.61"
+pkcs8 = { version = "0.10", features = ["alloc", "pem"], default-features = false }
+ed25519-dalek = {version = "2.2", default-features = false }
+x25519-dalek = { version = "2.0", features = ["static_secrets"], default-features = false }
+spki = { version = "0.7", default-features = false }
+der = { version = "0.7", default-features = false }
+strum = { version = "0.27.1", features = ["derive"] }
+strum_macros = { version = "0.27.1" }
+
+[dependencies.web-sys]
+version = "0.3.100"
+features = ["Window", "AesCtrParams", "BinaryType", "Blob", "ErrorEvent", "FileReader", "MessageEvent", "ProgressEvent", "WebSocket", "Crypto", "SubtleCrypto", "CryptoKey", "CryptoKeyPair", "Serial", "SerialPort", "Navigator", "ReadableStream", "WritableStream", "SerialOptions", "ReadableStreamDefaultReader", "WritableStreamDefaultWriter", "EventTarget", "RtcPeerConnection", "RtcSignalingState", "RtcSdpType", "RtcIceCandidateInit", "RtcIceConnectionState", "RtcSessionDescriptionInit", "RtcPeerConnectionIceEvent", "RtcIceCandidate", "RtcDataChannel", "RtcDataChannelEvent", "RtcConfiguration", "RtcIceServer", "MediaStream", "Storage"]

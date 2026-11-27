@@ -1,29 +1,21 @@
 use crate::{
-    ast::{
-        expressions::{
-            Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-            Conditional, DatexExpression, DatexExpressionData, List, Map,
-            PropertyAccess, PropertyAssignment, RangeDeclaration,
-            RemoteExecution, StackAssignment, TypeDeclarationExpression,
-            UnboxAssignment, VariableAccess, VariableAssignment,
-            VariableDeclaration, VariantAccess,
-        },
-        type_expressions::{
-            CallableTypeExpression, TypeExpression, TypeExpressionData,
-            TypeVariantAccess,
-        },
+    ast::expressions::{
+        Apply, BinaryOperation, CallableDeclaration, CallableTypeExpression,
+        ComparisonOperation, Conditional, NormalExpression, NormalExpressionData,
+        List, Map, PropertyAccess, PropertyAssignment, RangeDeclaration,
+        RemoteExecution, StackAssignment, TypeDeclarationExpression,
+        TypeExpression, TypeExpressionData, TypeVariantAccess, UnboxAssignment,
+        VariableAccess, VariableAssignment, VariableDeclaration, VariantAccess,
+        expression::Expression,
     },
     values::core_values::text::Text,
 };
 
 use crate::{
-    ast::{
-        expressions::{
-            CallableSignature, EntityDeclarationExpression,
-            InterfaceMethodCall, RootPropertyAccess, StackListAssignment,
-            UnboxSlotAssignment, ValueAccessType,
-        },
-        type_expressions::IdentifierWithPointerAddress,
+    ast::expressions::{
+        CallableSignature, EntityDeclarationExpression,
+        IdentifierWithPointerAddress, InterfaceMethodCall, RootPropertyAccess,
+        StackListAssignment, UnboxSlotAssignment, ValueAccessType,
     },
     decompiler::{FormattingMode, FormattingOptions, IndentType},
     prelude::*,
@@ -175,12 +167,12 @@ impl AstToSourceCodeConverter {
         }
     }
 
-    /// Convert a key (DatexExpression) to source code, adding parentheses if necessary
-    fn key_expression_to_source_code(&self, key: &DatexExpression) -> String {
+    /// Convert a key (NormalExpression) to source code, adding parentheses if necessary
+    fn key_expression_to_source_code(&self, key: &NormalExpression) -> String {
         match key.data() {
-            DatexExpressionData::Text(t) => self.key_to_string(t),
-            DatexExpressionData::Integer(i) => i.to_string(),
-            DatexExpressionData::TypedInteger(ti) => {
+            NormalExpressionData::Text(t) => self.key_to_string(t),
+            NormalExpressionData::Integer(i) => i.to_string(),
+            NormalExpressionData::TypedInteger(ti) => {
                 if self.add_variant_suffix() {
                     ti.to_string_with_suffix_separated()
                 } else {
@@ -505,20 +497,20 @@ impl AstToSourceCodeConverter {
         self.wrap_list_elements(elements)
     }
 
-    /// Format a DatexExpression tree into source code
-    pub fn format(&self, ast: &DatexExpression) -> String {
+    /// Format a NormalExpression tree into source code
+    pub fn format(&self, ast: &NormalExpression) -> String {
         self.format_inner(ast, true)
     }
 
-    /// Format a DatexExpression tree into source code, treating it as a child node (not the root).
-    fn format_child(&self, ast: &DatexExpression) -> String {
+    /// Format a NormalExpression tree into source code, treating it as a child node (not the root).
+    fn format_child(&self, ast: &NormalExpression) -> String {
         self.format_inner(ast, false)
     }
 
-    /// Format a DatexExpression tree into source code, with an option to indicate if it's the root node.
-    fn format_inner(&self, ast: &DatexExpression, is_root: bool) -> String {
+    /// Format a NormalExpression tree into source code, with an option to indicate if it's the root node.
+    fn format_inner(&self, ast: &NormalExpression, is_root: bool) -> String {
         match ast.data() {
-            DatexExpressionData::PropertyAssignment(PropertyAssignment {
+            NormalExpressionData::PropertyAssignment(PropertyAssignment {
                 operator,
                 base,
                 assigned_expression,
@@ -537,47 +529,47 @@ impl AstToSourceCodeConverter {
                     self.format_child(assigned_expression)
                 )
             }
-            DatexExpressionData::VariantAccess(VariantAccess {
+            NormalExpressionData::VariantAccess(VariantAccess {
                 name,
                 variant,
                 ..
             }) => {
                 format!("{}/{}", name, variant)
             }
-            DatexExpressionData::Noop => "".to_string(),
-            DatexExpressionData::Integer(i) => i.to_string(),
-            DatexExpressionData::Instant(instant) => instant.to_iso_string(),
-            DatexExpressionData::Range(RangeDeclaration { start, end }) => {
+            NormalExpressionData::Noop => "".to_string(),
+            NormalExpressionData::Integer(i) => i.to_string(),
+            NormalExpressionData::Instant(instant) => instant.to_iso_string(),
+            NormalExpressionData::Range(RangeDeclaration { start, end }) => {
                 let left_code = self.format_child(start);
                 let right_code = self.format_child(end);
                 ast_fmt!(&self, "{}..{}", left_code, right_code)
             }
-            DatexExpressionData::TypedInteger(ti) => {
+            NormalExpressionData::TypedInteger(ti) => {
                 if self.add_variant_suffix() {
                     ti.to_string_with_suffix_separated()
                 } else {
                     ti.to_string()
                 }
             }
-            DatexExpressionData::Decimal(d) => d.to_string(),
-            DatexExpressionData::TypedDecimal(td) => {
+            NormalExpressionData::Decimal(d) => d.to_string(),
+            NormalExpressionData::TypedDecimal(td) => {
                 if self.add_variant_suffix() {
                     td.to_string_with_suffix_separated()
                 } else {
                     td.to_string()
                 }
             }
-            DatexExpressionData::Boolean(b) => b.to_string(),
-            DatexExpressionData::Text(t) => self.text_to_source_code(t),
-            DatexExpressionData::Endpoint(e) => e.to_string(),
-            DatexExpressionData::Null => "null".to_string(),
-            DatexExpressionData::Sender => "Sender()".to_string(),
-            DatexExpressionData::Receiver => "Receiver()".to_string(),
-            DatexExpressionData::Identifier(l) => l.to_string(),
-            DatexExpressionData::Map(map) => self.map_to_source_code(map),
-            DatexExpressionData::List(list) => self.list_to_source_code(list),
-            DatexExpressionData::OmitRecursive => "(...)".to_string(),
-            DatexExpressionData::DeriveRef(create_ref) => {
+            NormalExpressionData::Boolean(b) => b.to_string(),
+            NormalExpressionData::Text(t) => self.text_to_source_code(t),
+            NormalExpressionData::Endpoint(e) => e.to_string(),
+            NormalExpressionData::Null => "null".to_string(),
+            NormalExpressionData::Sender => "Sender()".to_string(),
+            NormalExpressionData::Receiver => "Receiver()".to_string(),
+            NormalExpressionData::Identifier(l) => l.to_string(),
+            NormalExpressionData::Map(map) => self.map_to_source_code(map),
+            NormalExpressionData::List(list) => self.list_to_source_code(list),
+            NormalExpressionData::OmitRecursive => "(...)".to_string(),
+            NormalExpressionData::DeriveRef(create_ref) => {
                 match &create_ref.mutability {
                     LocalReferenceMutability::Mutable => {
                         format!(
@@ -593,14 +585,14 @@ impl AstToSourceCodeConverter {
                     }
                 }
             }
-            DatexExpressionData::EntityValue(entity_value) => {
+            NormalExpressionData::EntityValue(entity_value) => {
                 format!(
                     "{} {}",
                     entity_value.entity_name,
                     self.format_child(&entity_value.value)
                 )
             }
-            DatexExpressionData::DeriveSharedRef(create_shared_ref) => {
+            NormalExpressionData::DeriveSharedRef(create_shared_ref) => {
                 match &create_shared_ref.mutability {
                     ReferenceMutability::Mutable => {
                         format!(
@@ -616,7 +608,7 @@ impl AstToSourceCodeConverter {
                     }
                 }
             }
-            DatexExpressionData::CreateShared(create_shared) => {
+            NormalExpressionData::CreateShared(create_shared) => {
                 let mut mut_string = create_shared.mutability.to_string();
                 if !mut_string.is_empty() {
                     mut_string.push(' ');
@@ -627,13 +619,13 @@ impl AstToSourceCodeConverter {
                     self.format_child(&create_shared.expression)
                 )
             }
-            DatexExpressionData::CreateMut(create_shared) => {
+            NormalExpressionData::CreateMut(create_shared) => {
                 format!("mut {}", self.format_child(&create_shared.expression))
             }
-            DatexExpressionData::MoveSharedValue(move_shared_value) => {
+            NormalExpressionData::MoveSharedValue(move_shared_value) => {
                 format!("{}", move_shared_value)
             }
-            DatexExpressionData::BinaryOperation(BinaryOperation {
+            NormalExpressionData::BinaryOperation(BinaryOperation {
                 operator,
                 left,
                 right,
@@ -643,7 +635,7 @@ impl AstToSourceCodeConverter {
                 let right_code = self.key_expression_to_source_code(right);
                 ast_fmt!(&self, "{}%s{}%s{}", left_code, operator, right_code)
             }
-            DatexExpressionData::Apply(Apply { base, arguments }) => {
+            NormalExpressionData::Apply(Apply { base, arguments }) => {
                 let mut args_source = vec![];
 
                 for arg in arguments {
@@ -656,7 +648,7 @@ impl AstToSourceCodeConverter {
                     args_source.join(",")
                 )
             }
-            DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
+            NormalExpressionData::InterfaceMethodCall(InterfaceMethodCall {
                 target: base,
                 method_name,
                 arguments,
@@ -674,23 +666,23 @@ impl AstToSourceCodeConverter {
                     args_source.join(",")
                 )
             }
-            DatexExpressionData::TypeExpression(type_expr) => {
+            NormalExpressionData::TypeExpression(type_expr) => {
                 format!(
                     "type<{}>",
                     self.type_expression_to_source_code(type_expr)
                 )
             }
-            DatexExpressionData::Compile(compile_expr) => {
+            NormalExpressionData::Compile(compile_expr) => {
                 ast_fmt!(
                     &self,
                     "compile (%n{}%n)",
                     self.format_child(&compile_expr.expression)
                 )
             }
-            DatexExpressionData::Recover => unreachable!(
-                "DatexExpressionData::Recover should not appear in a valid AST"
+            NormalExpressionData::Recover => unreachable!(
+                "NormalExpressionData::Recover should not appear in a valid AST"
             ),
-            DatexExpressionData::Statements(statements) => {
+            NormalExpressionData::Statements(statements) => {
                 let terminated = statements.is_terminated;
                 let statements_code: Vec<String> = statements
                     .statements
@@ -715,7 +707,7 @@ impl AstToSourceCodeConverter {
                     self.wrap_statement_elements(statements_code)
                 }
             }
-            DatexExpressionData::RequestSharedRef(get_shared_ref) => {
+            NormalExpressionData::RequestSharedRef(get_shared_ref) => {
                 format!(
                     "{}{}",
                     match get_shared_ref.mutability {
@@ -725,7 +717,7 @@ impl AstToSourceCodeConverter {
                     get_shared_ref.address,
                 )
             }
-            DatexExpressionData::Conditional(Conditional {
+            NormalExpressionData::Conditional(Conditional {
                 condition,
                 then_branch,
                 else_branch,
@@ -742,7 +734,7 @@ impl AstToSourceCodeConverter {
                 }
                 code
             }
-            DatexExpressionData::VariableDeclaration(VariableDeclaration {
+            NormalExpressionData::VariableDeclaration(VariableDeclaration {
                 id: _,
                 kind,
                 name,
@@ -763,7 +755,7 @@ impl AstToSourceCodeConverter {
                 code.push_str(&self.format_child(init_expression));
                 code
             }
-            DatexExpressionData::VariableAssignment(VariableAssignment {
+            NormalExpressionData::VariableAssignment(VariableAssignment {
                 id: _,
                 expression,
                 name,
@@ -777,11 +769,10 @@ impl AstToSourceCodeConverter {
                 code.push_str(&self.format_child(expression));
                 code
             }
-            DatexExpressionData::VariableAccess(VariableAccess {
-                name,
-                ..
+            NormalExpressionData::VariableAccess(VariableAccess {
+                name, ..
             }) => name.to_string(),
-            DatexExpressionData::TypeDeclaration(
+            NormalExpressionData::TypeDeclaration(
                 TypeDeclarationExpression {
                     name,
                     definition: value,
@@ -795,7 +786,7 @@ impl AstToSourceCodeConverter {
                     self.type_expression_to_source_code(value)
                 )
             }
-            DatexExpressionData::EntityDeclaration(
+            NormalExpressionData::EntityDeclaration(
                 EntityDeclarationExpression {
                     name,
                     definition: value,
@@ -809,7 +800,7 @@ impl AstToSourceCodeConverter {
                     self.type_expression_to_source_code(value)
                 )
             }
-            DatexExpressionData::CallableDeclaration(callable) => {
+            NormalExpressionData::CallableDeclaration(callable) => {
                 let CallableDeclaration {
                     signature:
                         CallableSignature {
@@ -864,7 +855,7 @@ impl AstToSourceCodeConverter {
 
                 // indented function body
                 let body_code = match body.data.deref() {
-                    DatexExpressionData::NativeImplementationIndicator => {
+                    NormalExpressionData::NativeImplementationIndicator => {
                         "".to_string()
                     }
                     _ => {
@@ -886,14 +877,14 @@ impl AstToSourceCodeConverter {
                     body_code
                 )
             }
-            DatexExpressionData::Unbox(unbox) => {
+            NormalExpressionData::Unbox(unbox) => {
                 format!("*{}", self.format_child(&unbox.expression))
             }
-            DatexExpressionData::Clone(clone) => {
+            NormalExpressionData::Clone(clone) => {
                 format!("clone {}", self.format_child(&clone.expression))
             }
-            DatexExpressionData::StackIndex(slot) => slot.to_string(),
-            DatexExpressionData::StackAssignment(StackAssignment {
+            NormalExpressionData::StackIndex(slot) => slot.to_string(),
+            NormalExpressionData::StackAssignment(StackAssignment {
                 index: slot,
                 expression,
             }) => {
@@ -904,12 +895,12 @@ impl AstToSourceCodeConverter {
                     self.format_child(expression)
                 )
             }
-            DatexExpressionData::StackListAssignment(StackListAssignment {
+            NormalExpressionData::StackListAssignment(StackListAssignment {
                 expression,
             }) => {
                 ast_fmt!(&self, "{{...}}%s=%s{}", self.format_child(expression))
             }
-            DatexExpressionData::ComparisonOperation(ComparisonOperation {
+            NormalExpressionData::ComparisonOperation(ComparisonOperation {
                 operator,
                 left,
                 right,
@@ -921,7 +912,7 @@ impl AstToSourceCodeConverter {
                     self.format_child(right)
                 )
             }
-            DatexExpressionData::UnboxAssignment(UnboxAssignment {
+            NormalExpressionData::UnboxAssignment(UnboxAssignment {
                 operator,
                 unbox_expression,
                 assigned_expression,
@@ -937,7 +928,7 @@ impl AstToSourceCodeConverter {
                     self.format_child(assigned_expression)
                 )
             }
-            DatexExpressionData::UnboxSlotAssignment(UnboxSlotAssignment {
+            NormalExpressionData::UnboxSlotAssignment(UnboxSlotAssignment {
                 operator,
                 stack_index: slot,
                 assigned_expression,
@@ -955,14 +946,14 @@ impl AstToSourceCodeConverter {
                     self.format_child(assigned_expression)
                 )
             }
-            DatexExpressionData::UnaryOperation(unary_operation) => {
+            NormalExpressionData::UnaryOperation(unary_operation) => {
                 format!(
                     "{}{}",
                     unary_operation.operator,
                     self.format_child(&unary_operation.expression)
                 )
             }
-            DatexExpressionData::Placeholder(placeholder_type) => {
+            NormalExpressionData::Placeholder(placeholder_type) => {
                 match placeholder_type {
                     ValueAccessType::SharedRef => "'?".to_string(),
                     ValueAccessType::SharedRefMut => "'mut ?".to_string(),
@@ -971,7 +962,7 @@ impl AstToSourceCodeConverter {
                     ValueAccessType::Borrow => "?".to_string(),
                 }
             }
-            DatexExpressionData::RemoteExecution(RemoteExecution {
+            NormalExpressionData::RemoteExecution(RemoteExecution {
                 left,
                 right,
                 ..
@@ -983,7 +974,7 @@ impl AstToSourceCodeConverter {
                     self.format_child(right)
                 )
             }
-            DatexExpressionData::PropertyAccess(PropertyAccess {
+            NormalExpressionData::PropertyAccess(PropertyAccess {
                 base,
                 property,
             }) => {
@@ -993,17 +984,17 @@ impl AstToSourceCodeConverter {
                     self.key_expression_to_source_code(property)
                 )
             }
-            DatexExpressionData::NativeImplementationIndicator => {
+            NormalExpressionData::NativeImplementationIndicator => {
                 "[[ native code ]]".to_string()
             }
-            DatexExpressionData::GenericInstantiation(_) => {
+            NormalExpressionData::GenericInstantiation(_) => {
                 todo!("#654 Undescribed by author.")
             }
-            DatexExpressionData::Tag(tag) => match &tag.expression {
+            NormalExpressionData::Tag(tag) => match &tag.expression {
                 Some(tag_expression) => match tag_expression.data() {
-                    DatexExpressionData::Map(_)
-                    | DatexExpressionData::List(_)
-                    | DatexExpressionData::Statements(_) => {
+                    NormalExpressionData::Map(_)
+                    | NormalExpressionData::List(_)
+                    | NormalExpressionData::Statements(_) => {
                         ast_fmt!(
                             &self,
                             "#{}%s{}",
@@ -1022,12 +1013,12 @@ impl AstToSourceCodeConverter {
                 },
                 None => format!("#{}", tag.tag),
             },
-            DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
+            NormalExpressionData::RootPropertyAccess(RootPropertyAccess {
                 property_name,
             }) => {
                 format!("$.{}", property_name)
             }
-            DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
+            NormalExpressionData::ResolveCoreLibId(core_lib_id) => {
                 format!("{}", core_lib_id)
             }
         }
@@ -1044,13 +1035,12 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                Apply, DatexExpression, DatexExpressionData, List, Map,
-                PropertyAccess, RangeDeclaration, Unbox, UnboxAssignment,
-                ValueAccessType, VariableAccess, VariableDeclaration,
-                VariableKind,
+                Apply, NormalExpression, NormalExpressionData, List, Map,
+                PropertyAccess, RangeDeclaration, TypeExpressionData, Unbox,
+                UnboxAssignment, ValueAccessType, VariableAccess,
+                VariableDeclaration, VariableKind,
             },
             spanned::Spanned,
-            type_expressions::TypeExpressionData,
         },
         decompiler::options::FormattingOptions,
         global::operators::ModificationOperator,
@@ -1070,7 +1060,7 @@ mod tests {
         AstToSourceCodeConverter::new(FormattingOptions::json_compat())
     }
 
-    fn to_expression(s: &str) -> DatexExpression {
+    fn to_expression(s: &str) -> NormalExpression {
         Parser::parse_with_default_options(s).unwrap()
     }
 
@@ -1133,58 +1123,57 @@ mod tests {
 
     #[test]
     fn primitives() {
-        let int_ast = DatexExpressionData::Integer(42.into());
+        let int_ast = NormalExpressionData::Integer(42.into());
         assert_eq!(compact().format(&int_ast.with_default_span()), "42");
 
-        let typed_int_ast = DatexExpressionData::TypedInteger(42i8.into());
+        let typed_int_ast = NormalExpressionData::TypedInteger(42i8.into());
         assert_eq!(
             compact().format(&typed_int_ast.with_default_span()),
             "42_i8"
         );
 
-        let decimal_ast = DatexExpressionData::Decimal(
+        let decimal_ast = NormalExpressionData::Decimal(
             Decimal::try_from_string("1.23").unwrap(),
         );
         assert_eq!(compact().format(&decimal_ast.with_default_span()), "1.23");
 
-        let decimal_ast = DatexExpressionData::Decimal(Decimal::Infinity);
+        let decimal_ast = NormalExpressionData::Decimal(Decimal::Infinity);
         assert_eq!(
             compact().format(&decimal_ast.with_default_span()),
             "infinity"
         );
 
-        let decimal_ast = DatexExpressionData::Decimal(Decimal::NegInfinity);
+        let decimal_ast = NormalExpressionData::Decimal(Decimal::NegInfinity);
         assert_eq!(
             compact().format(&decimal_ast.with_default_span()),
             "-infinity"
         );
 
-        let decimal_ast = DatexExpressionData::Decimal(Decimal::Nan);
+        let decimal_ast = NormalExpressionData::Decimal(Decimal::Nan);
         assert_eq!(compact().format(&decimal_ast.with_default_span()), "nan");
 
         let typed_decimal_ast =
-            DatexExpressionData::TypedDecimal(2.71f32.into());
+            NormalExpressionData::TypedDecimal(2.71f32.into());
         assert_eq!(
             pretty().format(&typed_decimal_ast.with_default_span()),
             "2.71_f32"
         );
 
-        let bool_ast = DatexExpressionData::Boolean(true.into());
+        let bool_ast = NormalExpressionData::Boolean(true.into());
         assert_eq!(compact().format(&bool_ast.with_default_span()), "true");
 
-        let text_ast = DatexExpressionData::Text("Hello".into());
+        let text_ast = NormalExpressionData::Text("Hello".into());
         assert_eq!(
             compact().format(&text_ast.with_default_span()),
             "\"Hello\""
         );
 
-        let null_ast = DatexExpressionData::Null;
+        let null_ast = NormalExpressionData::Null;
         assert_eq!(compact().format(&null_ast.with_default_span()), "null");
 
-        let range_ast = DatexExpressionData::Range(RangeDeclaration {
-            start: (DatexExpressionData::Integer(11.into())
-                .with_default_span()),
-            end: (DatexExpressionData::Integer(13.into()).with_default_span()),
+        let range_ast = NormalExpressionData::Range(RangeDeclaration {
+            start: (NormalExpressionData::Integer(11.into()).with_default_span()),
+            end: (NormalExpressionData::Integer(13.into()).with_default_span()),
         });
 
         assert_eq!(compact().format(&range_ast.with_default_span()), "11..13");
@@ -1192,26 +1181,26 @@ mod tests {
 
     #[test]
     fn list() {
-        let list_ast = DatexExpressionData::List(List::new(vec![
-            DatexExpressionData::Integer(1.into()).with_default_span(),
-            DatexExpressionData::Integer(2.into()).with_default_span(),
-            DatexExpressionData::Integer(3.into()).with_default_span(),
+        let list_ast = NormalExpressionData::List(List::new(vec![
+            NormalExpressionData::Integer(1.into()).with_default_span(),
+            NormalExpressionData::Integer(2.into()).with_default_span(),
+            NormalExpressionData::Integer(3.into()).with_default_span(),
         ]));
         assert_eq!(compact().format(&list_ast.with_default_span()), "[1,2,3]");
 
         // long list should be multi-line
-        let long_list_ast = DatexExpressionData::List(List::new(vec![
-            DatexExpressionData::Text("This is a long string".into())
+        let long_list_ast = NormalExpressionData::List(List::new(vec![
+            NormalExpressionData::Text("This is a long string".into())
                 .with_default_span(),
-            DatexExpressionData::Text("Another long string".into())
+            NormalExpressionData::Text("Another long string".into())
                 .with_default_span(),
-            DatexExpressionData::Text("Yet another long string".into())
+            NormalExpressionData::Text("Yet another long string".into())
                 .with_default_span(),
-            DatexExpressionData::Text(
+            NormalExpressionData::Text(
                 "More long strings to increase length".into(),
             )
             .with_default_span(),
-            DatexExpressionData::Text("Final long string in the list".into())
+            NormalExpressionData::Text("Final long string in the list".into())
                 .with_default_span(),
         ]));
 
@@ -1230,23 +1219,23 @@ mod tests {
 
     #[test]
     fn map() {
-        let map_ast = DatexExpressionData::Map(Map::new(vec![
+        let map_ast = NormalExpressionData::Map(Map::new(vec![
             (
-                DatexExpressionData::Text("key1".into()).with_default_span(),
-                DatexExpressionData::Integer(1.into()).with_default_span(),
+                NormalExpressionData::Text("key1".into()).with_default_span(),
+                NormalExpressionData::Integer(1.into()).with_default_span(),
             ),
             (
-                DatexExpressionData::Text("key2".into()).with_default_span(),
-                DatexExpressionData::Text("two".into()).with_default_span(),
+                NormalExpressionData::Text("key2".into()).with_default_span(),
+                NormalExpressionData::Text("two".into()).with_default_span(),
             ),
             (
-                DatexExpressionData::Integer(42.into()).with_default_span(),
-                DatexExpressionData::Boolean(true.into()).with_default_span(),
+                NormalExpressionData::Integer(42.into()).with_default_span(),
+                NormalExpressionData::Boolean(true.into()).with_default_span(),
             ),
             (
-                DatexExpressionData::Text("x".repeat(30).into())
+                NormalExpressionData::Text("x".repeat(30).into())
                     .with_default_span(),
-                DatexExpressionData::Integer(42.into()).with_default_span(),
+                NormalExpressionData::Integer(42.into()).with_default_span(),
             ),
         ]))
         .with_default_span();
@@ -1268,8 +1257,8 @@ mod tests {
 
     #[test]
     fn unbox() {
-        let unbox_ast = DatexExpressionData::Unbox(Unbox {
-            expression: (DatexExpressionData::VariableAccess(VariableAccess {
+        let unbox_ast = NormalExpressionData::Unbox(Unbox {
+            expression: (NormalExpressionData::VariableAccess(VariableAccess {
                 id: 0,
                 name: "ptr".to_string(),
                 access_type: ValueAccessType::MoveOrCopy,
@@ -1282,9 +1271,9 @@ mod tests {
     #[test]
     fn unbox_assignment() {
         let unbox_assign_ast =
-            DatexExpressionData::UnboxAssignment(UnboxAssignment {
+            NormalExpressionData::UnboxAssignment(UnboxAssignment {
                 operator: Some(ModificationOperator::AddAssign),
-                unbox_expression: (DatexExpressionData::VariableAccess(
+                unbox_expression: (NormalExpressionData::VariableAccess(
                     VariableAccess {
                         id: 0,
                         name: "ptr".to_string(),
@@ -1292,7 +1281,7 @@ mod tests {
                     },
                 )
                 .with_default_span()),
-                assigned_expression: (DatexExpressionData::Integer(42.into())
+                assigned_expression: (NormalExpressionData::Integer(42.into())
                     .with_default_span()),
             });
         assert_eq!(
@@ -1304,11 +1293,11 @@ mod tests {
     #[test]
     fn variable_declaration() {
         let var_decl_ast =
-            DatexExpressionData::VariableDeclaration(VariableDeclaration {
+            NormalExpressionData::VariableDeclaration(VariableDeclaration {
                 id: Some(0),
                 kind: VariableKind::Const,
                 name: "x".to_string(),
-                init_expression: (DatexExpressionData::TypedInteger(
+                init_expression: (NormalExpressionData::TypedInteger(
                     10u8.into(),
                 )
                 .with_default_span()),
@@ -1334,12 +1323,12 @@ mod tests {
     #[test]
     fn typed_variants() {
         let typed_int_ast =
-            DatexExpressionData::TypedInteger(42i8.into()).with_default_span();
+            NormalExpressionData::TypedInteger(42i8.into()).with_default_span();
         assert_eq!(pretty().format(&typed_int_ast), "42_i8");
         assert_eq!(json_compat().format(&typed_int_ast), "42");
 
         let typed_decimal_ast =
-            DatexExpressionData::TypedDecimal(2.71f32.into())
+            NormalExpressionData::TypedDecimal(2.71f32.into())
                 .with_default_span();
         assert_eq!(pretty().format(&typed_decimal_ast), "2.71_f32");
         assert_eq!(json_compat().format(&typed_decimal_ast), "2.71");
@@ -1348,14 +1337,14 @@ mod tests {
     #[test]
     fn property_access_text_key() {
         let prop_access_ast =
-            DatexExpressionData::PropertyAccess(PropertyAccess {
-                base: (DatexExpressionData::VariableAccess(VariableAccess {
+            NormalExpressionData::PropertyAccess(PropertyAccess {
+                base: (NormalExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "obj".to_string(),
                     access_type: ValueAccessType::MoveOrCopy,
                 })
                 .with_default_span()),
-                property: (DatexExpressionData::Text("myProp".into())
+                property: (NormalExpressionData::Text("myProp".into())
                     .with_default_span()),
             })
             .with_default_span();
@@ -1366,14 +1355,14 @@ mod tests {
     #[test]
     fn property_access_boolean_key() {
         let prop_access_ast =
-            DatexExpressionData::PropertyAccess(PropertyAccess {
-                base: (DatexExpressionData::VariableAccess(VariableAccess {
+            NormalExpressionData::PropertyAccess(PropertyAccess {
+                base: (NormalExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "obj".to_string(),
                     access_type: ValueAccessType::MoveOrCopy,
                 })
                 .with_default_span()),
-                property: (DatexExpressionData::Boolean(true.into())
+                property: (NormalExpressionData::Boolean(true.into())
                     .with_default_span()),
             })
             .with_default_span();
@@ -1384,14 +1373,14 @@ mod tests {
     #[test]
     fn property_access_integer_key() {
         let prop_access_ast =
-            DatexExpressionData::PropertyAccess(PropertyAccess {
-                base: (DatexExpressionData::VariableAccess(VariableAccess {
+            NormalExpressionData::PropertyAccess(PropertyAccess {
+                base: (NormalExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "obj".to_string(),
                     access_type: ValueAccessType::MoveOrCopy,
                 })
                 .with_default_span()),
-                property: (DatexExpressionData::Integer(42.into())
+                property: (NormalExpressionData::Integer(42.into())
                     .with_default_span()),
             })
             .with_default_span();
@@ -1401,15 +1390,15 @@ mod tests {
 
     #[test]
     fn apply_single_argument() {
-        let apply_ast = DatexExpressionData::Apply(Apply {
-            base: (DatexExpressionData::VariableAccess(VariableAccess {
+        let apply_ast = NormalExpressionData::Apply(Apply {
+            base: (NormalExpressionData::VariableAccess(VariableAccess {
                 id: 0,
                 name: "func".to_string(),
                 access_type: ValueAccessType::MoveOrCopy,
             })
             .with_default_span()),
             arguments: vec![
-                DatexExpressionData::Integer(10.into()).with_default_span(),
+                NormalExpressionData::Integer(10.into()).with_default_span(),
             ],
         })
         .with_default_span();
@@ -1419,16 +1408,16 @@ mod tests {
 
     #[test]
     fn apply_multiple_arguments() {
-        let apply_ast = DatexExpressionData::Apply(Apply {
-            base: (DatexExpressionData::VariableAccess(VariableAccess {
+        let apply_ast = NormalExpressionData::Apply(Apply {
+            base: (NormalExpressionData::VariableAccess(VariableAccess {
                 id: 0,
                 name: "func".to_string(),
                 access_type: ValueAccessType::MoveOrCopy,
             })
             .with_default_span()),
             arguments: vec![
-                DatexExpressionData::Integer(10.into()).with_default_span(),
-                DatexExpressionData::Text("arg".into()).with_default_span(),
+                NormalExpressionData::Integer(10.into()).with_default_span(),
+                NormalExpressionData::Text("arg".into()).with_default_span(),
             ],
         })
         .with_default_span();

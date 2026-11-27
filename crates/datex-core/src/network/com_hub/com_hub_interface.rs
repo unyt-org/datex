@@ -181,15 +181,9 @@ impl ComHub {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "std")]
-    use crate::global::{
-        dxb_block::{DXBBlock, IncomingSection},
-        protocol_structures::routing_header::SignatureType,
-    };
-    #[cfg(feature = "std")]
-    use crate::network::com_hub::test_utils::{
-        TEST_ENDPOINT_A, TEST_ENDPOINT_B, get_coupled_com_hubs,
-        run_with_coupled_com_hubs,
+    use crate::{
+        global::dxb_block::{DXBBlock, IncomingSection},
+        network::com_hub::test_utils::run_with_coupled_com_hubs,
     };
 
     use crate::{
@@ -215,6 +209,7 @@ mod tests {
 
     use core::time::Duration;
     use futures_util::future::select;
+    use crate::network::com_hub::key_manager::own_endpoint_keys::OwnEndpointKeys;
 
     #[cfg(feature = "std")]
     fn get_metadata_sockets(
@@ -231,7 +226,7 @@ mod tests {
             .collect::<Vec<_>>()
     }
 
-    fn generate_test_com_hub_configuration()
+    async fn generate_test_com_hub_configuration()
     -> (Rc<ComHub>, impl Future<Output = ()>, ComInterfaceUUID) {
         let configuration = ComInterfaceConfiguration::new_single_socket(
             ComInterfaceProperties::default(),
@@ -256,6 +251,7 @@ mod tests {
             create_unbounded_channel::<ComInterfaceReconnectRequest>();
         let (com_hub, task_future) = ComHub::create(
             Endpoint::default(),
+            OwnEndpointKeys::new().await,
             incoming_sections_sender,
             reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
@@ -284,15 +280,15 @@ mod tests {
         (com_hub, task_future, interface_uuid)
     }
 
-    #[test]
-    fn add_interface_from_configuration() {
-        let _ = generate_test_com_hub_configuration();
+    #[tokio::test]
+    async fn add_interface_from_configuration() {
+        let _ = generate_test_com_hub_configuration().await;
     }
 
     #[tokio::test]
     async fn remove_interface_from_configuration_before_init() {
         let (com_hub, task_future, interface_uuid) =
-            generate_test_com_hub_configuration();
+            generate_test_com_hub_configuration().await;
 
         // remove interface before the com interface is fully initialized
         select(
@@ -314,7 +310,7 @@ mod tests {
     #[tokio::test]
     async fn remove_interface_from_configuration_after_init() {
         let (com_hub, task_future, interface_uuid) =
-            generate_test_com_hub_configuration();
+            generate_test_com_hub_configuration().await;
 
         // remove interface after the com interface is fully initialized
         select(
@@ -348,6 +344,7 @@ mod tests {
             create_unbounded_channel::<ComInterfaceReconnectRequest>();
         let (com_hub, _task_future) = ComHub::create(
             Endpoint::default(),
+            OwnEndpointKeys::new().await,
             incoming_sections_sender,
             reconnect_request_sender,
             BlockHandler::DEFAULT_HISTORY_CAPACITY,
@@ -360,6 +357,9 @@ mod tests {
     #[tokio::test]
     #[cfg(feature = "std")]
     async fn connected_interfaces() {
+        use crate::network::com_hub::test_utils::{
+            TEST_ENDPOINT_A, TEST_ENDPOINT_B, get_coupled_com_hubs,
+        };
         let (peer_a, peer_b, init_future) = get_coupled_com_hubs().await;
 
         // run task futures for 10ms to allow sockets to connect
@@ -380,17 +380,13 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg(feature = "std")]
     async fn interfaces_send_block() {
+        flexi_logger::init();
         run_with_coupled_com_hubs(|peer_a, mut peer_b| async move {
             // create block to send from A to B
             let block_a_to_b_body = [1, 2, 3];
             let mut block_a_to_b = DXBBlock::new_with_body(&block_a_to_b_body);
             block_a_to_b.set_receivers(vec![peer_b.com_hub.endpoint().clone()]);
-            block_a_to_b
-                .routing_header
-                .flags
-                .set_signature_type(SignatureType::Unencrypted);
 
             // send block from A to B
             peer_a

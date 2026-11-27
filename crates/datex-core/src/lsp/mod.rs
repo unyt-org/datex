@@ -9,7 +9,7 @@ pub mod io;
 
 use crate::{
     ast::expressions::{
-        DatexExpressionData, ValueAccessType, VariableAccess,
+        NormalExpressionData, ValueAccessType, VariableAccess,
         VariableAssignment, VariableDeclaration,
     },
     collections::HashMap,
@@ -184,12 +184,12 @@ impl LanguageServer for LanguageServerBackend {
         if let Some(expression) = expression {
             Ok(match *expression.data {
                 // show variable type info on hover
-                DatexExpressionData::VariableDeclaration(
+                NormalExpressionData::VariableDeclaration(
                     VariableDeclaration {
                         name, id: Some(id), ..
                     },
                 )
-                | DatexExpressionData::VariableAssignment(
+                | NormalExpressionData::VariableAssignment(
                     VariableAssignment {
                         name, id: Some(id), ..
                     },
@@ -206,7 +206,7 @@ impl LanguageServer for LanguageServerBackend {
                     )))
                 }
 
-                DatexExpressionData::VariableAccess(VariableAccess {
+                NormalExpressionData::VariableAccess(VariableAccess {
                     id,
                     name,
                     access_type,
@@ -229,34 +229,34 @@ impl LanguageServer for LanguageServerBackend {
                 }
 
                 // show value info on hover for literals
-                DatexExpressionData::Integer(integer) => Some(
+                NormalExpressionData::Integer(integer) => Some(
                     self.get_language_string_hover(&format!("{}", integer)),
                 ),
-                DatexExpressionData::TypedInteger(typed_integer) => {
+                NormalExpressionData::TypedInteger(typed_integer) => {
                     Some(self.get_language_string_hover(&format!(
                         "{}",
                         typed_integer
                     )))
                 }
-                DatexExpressionData::Decimal(decimal) => Some(
+                NormalExpressionData::Decimal(decimal) => Some(
                     self.get_language_string_hover(&format!("{}", decimal)),
                 ),
-                DatexExpressionData::TypedDecimal(typed_decimal) => {
+                NormalExpressionData::TypedDecimal(typed_decimal) => {
                     Some(self.get_language_string_hover(&format!(
                         "{}",
                         typed_decimal
                     )))
                 }
-                DatexExpressionData::Boolean(boolean) => Some(
+                NormalExpressionData::Boolean(boolean) => Some(
                     self.get_language_string_hover(&format!("{}", boolean)),
                 ),
-                DatexExpressionData::Text(text) => Some(
+                NormalExpressionData::Text(text) => Some(
                     self.get_language_string_hover(&format!("\"{}\"", text)),
                 ),
-                DatexExpressionData::Endpoint(endpoint) => Some(
+                NormalExpressionData::Endpoint(endpoint) => Some(
                     self.get_language_string_hover(&format!("{}", endpoint)),
                 ),
-                DatexExpressionData::Null => {
+                NormalExpressionData::Null => {
                     Some(self.get_language_string_hover("null"))
                 }
 
@@ -303,7 +303,7 @@ impl LanguageServer for LanguageServerBackend {
             .get_expression_at_position(&params.text_document_position_params);
         if let Some(expression) = expression {
             match *expression.data {
-                DatexExpressionData::VariableAccess(VariableAccess {
+                NormalExpressionData::VariableAccess(VariableAccess {
                     id,
                     name: _,
                     ..
@@ -456,6 +456,7 @@ mod tests {
                     ),
                     CustomRuntimeInfo::default(),
                 )
+                .await
                 .run(async |runtime| {
                     let (tx_to_lsp, rx_from_client) =
                         mpsc::unbounded::<Vec<u8>>();

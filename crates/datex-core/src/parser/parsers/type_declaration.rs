@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            DatexExpression, DatexExpressionData, EntityDeclarationExpression,
+            NormalExpression, NormalExpressionData, EntityDeclarationExpression,
             TypeDeclarationExpression,
         },
         spanned::Spanned,
@@ -12,7 +12,7 @@ use crate::{
 impl Parser {
     pub(crate) fn parse_entity_declaration(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         Ok(match self.advance()?.token {
             // handle var and const declarations
             Token::EntityTypeDeclaration => {
@@ -33,7 +33,7 @@ impl Parser {
                 // initializer expression
                 let definition = self.parse_type_expression(0)?;
 
-                DatexExpressionData::EntityDeclaration(
+                NormalExpressionData::EntityDeclaration(
                     EntityDeclarationExpression {
                         id: None,
                         name,
@@ -58,7 +58,7 @@ impl Parser {
 
     pub(crate) fn parse_type_declaration(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         Ok(match self.advance()?.token {
             // handle var and const declarations
             Token::TypeAlias => {
@@ -79,14 +79,12 @@ impl Parser {
                 // initializer expression
                 let definition = self.parse_type_expression(0)?;
 
-                DatexExpressionData::TypeDeclaration(
-                    TypeDeclarationExpression {
-                        id: None,
-                        name,
-                        definition,
-                        hoisted: false,
-                    },
-                )
+                NormalExpressionData::TypeDeclaration(TypeDeclarationExpression {
+                    id: None,
+                    name,
+                    definition,
+                    hoisted: false,
+                })
                 .with_default_span()
             }
 
@@ -108,11 +106,11 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                DatexExpressionData, EntityDeclarationExpression,
-                TypeDeclarationExpression,
+                NormalExpressionData, EntityDeclarationExpression,
+                TypeDeclarationExpression, TypeExpressionData,
+                expression::Expression,
             },
             spanned::Spanned,
-            type_expressions::TypeExpressionData,
         },
         parser::tests::parse,
         prelude::*,
@@ -123,7 +121,7 @@ mod tests {
         let expr = parse("entity myType = true");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::EntityDeclaration(
+            &NormalExpressionData::EntityDeclaration(
                 EntityDeclarationExpression {
                     id: None,
                     name: "myType".to_string(),
@@ -140,7 +138,7 @@ mod tests {
         let expr = parse("type myAlias = false");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::TypeDeclaration(TypeDeclarationExpression {
+            &NormalExpressionData::TypeDeclaration(TypeDeclarationExpression {
                 id: None,
                 name: "myAlias".to_string(),
                 definition: TypeExpressionData::Boolean(false.into())
@@ -156,7 +154,7 @@ mod tests {
         let expr = parse("entity myType<T, U> = true");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::EntityDeclaration(
+            &NormalExpressionData::EntityDeclaration(
                 EntityDeclarationExpression {
                     id: None,
                     name: "myType".to_string(),

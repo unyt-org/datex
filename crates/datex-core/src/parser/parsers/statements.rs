@@ -1,6 +1,9 @@
 use crate::{
     ast::{
-        expressions::{DatexExpression, DatexExpressionData, Statements},
+        expressions::{
+            NormalExpression, NormalExpressionData, Statements,
+            expression::Expression,
+        },
         spanned::Spanned,
     },
     parser::{
@@ -14,7 +17,7 @@ use crate::prelude::*;
 impl Parser {
     pub(crate) fn parse_parenthesized_statements(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         let start = self.expect(Token::LeftParen)?.span.start;
         let statements_data = self.parse_statements()?;
 
@@ -24,7 +27,7 @@ impl Parser {
 
     pub(crate) fn parse_statements(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         let mut statements = Vec::new();
         let mut is_terminated = false;
 
@@ -61,7 +64,7 @@ impl Parser {
         }
         // otherwise, return as statements
         else {
-            Ok(DatexExpressionData::Statements(Statements {
+            Ok(NormalExpressionData::Statements(Statements {
                 statements,
                 is_terminated,
                 unbounded: None,
@@ -72,7 +75,7 @@ impl Parser {
 
     pub(crate) fn parse_top_level_statements(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         // skip optional shebang line at the start
         if let Ok(SpannedToken {
             token: Token::Shebang(_),
@@ -86,7 +89,7 @@ impl Parser {
 
         Ok(match statements_data.data() {
             // if statements expression, set span correctly
-            DatexExpressionData::Statements(_) => {
+            NormalExpressionData::Statements(_) => {
                 let full_token_span =
                     0..self.tokens.last().map(|i| i.span.end).unwrap_or(0);
                 statements_data.data.with_span(full_token_span)
@@ -98,7 +101,7 @@ impl Parser {
 
     fn parse_statement(
         &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    ) -> Result<NormalExpression, SpannedParserError> {
         match self.peek()?.token {
             Token::Variable | Token::Const => self.parse_variable_declaration(),
             Token::TypeAlias => self.parse_type_declaration(),
@@ -113,7 +116,9 @@ mod tests {
 
     use crate::{
         ast::{
-            expressions::{DatexExpressionData, Statements},
+            expressions::{
+                NormalExpressionData, Statements, expression::Expression,
+            },
             spanned::Spanned,
         },
         parser::tests::parse,
@@ -125,7 +130,7 @@ mod tests {
         let expr = parse("()");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &NormalExpressionData::Statements(Statements {
                 statements: vec![],
                 is_terminated: false,
                 unbounded: None
@@ -138,13 +143,13 @@ mod tests {
         let expr = parse("(true; false; null;)");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &NormalExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true.into())
+                    NormalExpressionData::Boolean(true.into())
                         .with_default_span(),
-                    DatexExpressionData::Boolean(false.into())
+                    NormalExpressionData::Boolean(false.into())
                         .with_default_span(),
-                    DatexExpressionData::Null.with_default_span(),
+                    NormalExpressionData::Null.with_default_span(),
                 ],
                 is_terminated: true,
                 unbounded: None,
@@ -157,13 +162,13 @@ mod tests {
         let expr = parse("(true; false; null)");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &NormalExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true.into())
+                    NormalExpressionData::Boolean(true.into())
                         .with_default_span(),
-                    DatexExpressionData::Boolean(false.into())
+                    NormalExpressionData::Boolean(false.into())
                         .with_default_span(),
-                    DatexExpressionData::Null.with_default_span(),
+                    NormalExpressionData::Null.with_default_span(),
                 ],
                 is_terminated: false,
                 unbounded: None,
@@ -176,7 +181,7 @@ mod tests {
         let expr = parse("(;)");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &NormalExpressionData::Statements(Statements {
                 statements: vec![],
                 is_terminated: true,
                 unbounded: None,
@@ -189,13 +194,13 @@ mod tests {
         let expr = parse("(;;true;;; false;; ; null;)");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &NormalExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true.into())
+                    NormalExpressionData::Boolean(true.into())
                         .with_default_span(),
-                    DatexExpressionData::Boolean(false.into())
+                    NormalExpressionData::Boolean(false.into())
                         .with_default_span(),
-                    DatexExpressionData::Null.with_default_span(),
+                    NormalExpressionData::Null.with_default_span(),
                 ],
                 is_terminated: true,
                 unbounded: None,
@@ -217,13 +222,13 @@ mod tests {
         let expr = parse("true; false; null;");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &NormalExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true.into())
+                    NormalExpressionData::Boolean(true.into())
                         .with_default_span(),
-                    DatexExpressionData::Boolean(false.into())
+                    NormalExpressionData::Boolean(false.into())
                         .with_default_span(),
-                    DatexExpressionData::Null.with_default_span(),
+                    NormalExpressionData::Null.with_default_span(),
                 ],
                 is_terminated: true,
                 unbounded: None,
@@ -234,7 +239,7 @@ mod tests {
     #[test]
     fn top_level_single_statement_unterminated() {
         let expr = parse("true");
-        assert_eq!(expr.data(), &DatexExpressionData::Boolean(true.into()));
+        assert_eq!(expr.data(), &NormalExpressionData::Boolean(true.into()));
     }
 
     #[test]
@@ -242,9 +247,9 @@ mod tests {
         let expr = parse("true;");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &NormalExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true.into())
+                    NormalExpressionData::Boolean(true.into())
                         .with_default_span(),
                 ],
                 is_terminated: true,
@@ -258,11 +263,11 @@ mod tests {
         let expr = parse("#!/usr/bin/env datex\ntrue; false;");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            &NormalExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true.into())
+                    NormalExpressionData::Boolean(true.into())
                         .with_default_span(),
-                    DatexExpressionData::Boolean(false.into())
+                    NormalExpressionData::Boolean(false.into())
                         .with_default_span(),
                 ],
                 is_terminated: true,

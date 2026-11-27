@@ -1,16 +1,16 @@
 use crate::{
-    ast::expressions::DatexExpression, parser::errors::SpannedParserError,
+    ast::expressions::NormalExpression, parser::errors::SpannedParserError,
 };
 
 use crate::prelude::*;
 #[derive(Debug, Clone)]
 pub struct ValidDatexParseResult {
-    pub ast: DatexExpression,
+    pub ast: NormalExpression,
 }
 
 #[derive(Debug, Clone)]
 pub struct InvalidDatexParseResult {
-    pub ast: DatexExpression,
+    pub ast: NormalExpression,
     pub errors: Vec<SpannedParserError>,
 }
 
@@ -43,7 +43,7 @@ impl ParserResult {
         }
     }
 
-    pub fn ast(&self) -> &DatexExpression {
+    pub fn ast(&self) -> &NormalExpression {
         match self {
             ParserResult::Valid(result) => &result.ast,
             ParserResult::Invalid(InvalidDatexParseResult { ast, .. }) => ast,
@@ -52,7 +52,7 @@ impl ParserResult {
 
     pub fn into_ast_and_errors(
         self,
-    ) -> (DatexExpression, Vec<SpannedParserError>) {
+    ) -> (NormalExpression, Vec<SpannedParserError>) {
         match self {
             ParserResult::Valid(result) => (result.ast, vec![]),
             ParserResult::Invalid(InvalidDatexParseResult { ast, errors }) => {
@@ -61,7 +61,7 @@ impl ParserResult {
         }
     }
 
-    pub fn to_result(self) -> Result<DatexExpression, Vec<SpannedParserError>> {
+    pub fn to_result(self) -> Result<NormalExpression, Vec<SpannedParserError>> {
         match self {
             ParserResult::Valid(result) => Ok(result.ast),
             ParserResult::Invalid(InvalidDatexParseResult {

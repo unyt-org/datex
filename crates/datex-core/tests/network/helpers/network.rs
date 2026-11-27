@@ -28,7 +28,9 @@ use std::{
     path::Path,
     sync::{Arc, Mutex},
 };
+use core::time::Duration;
 use tokio::task::{spawn_local, yield_now};
+use datex_core::task::sleep;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MockupInterfaceSetupData {
@@ -552,7 +554,7 @@ impl Network {
             let runtime_runner = RuntimeRunner::new(
                 RuntimeConfig::new_with_endpoint(node.endpoint.clone()),
                 CustomRuntimeInfo::default(),
-            );
+            ).await;
 
             let runtime = runtime_runner.runtime.clone();
             node.runtime = Some(runtime.clone());
@@ -580,6 +582,8 @@ impl Network {
                 }
             }
         }
+
+        sleep(Duration::from_millis(1000)).await;
 
         // iterate over all connection pairs and set up
         let mut iterator = channel_pairs.iter();

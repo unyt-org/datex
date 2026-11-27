@@ -586,6 +586,7 @@ mod tests {
         datex_script: &str,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeRunner::new(config, CustomRuntimeInfo::default())
+            .await
             .run(async |runtime| {
                 let (dxb, _) = compile_script(
                     datex_script,

@@ -9,23 +9,23 @@ mod try_clone;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data {
     use crate::{
-        ast::expressions::DatexExpressionData,
+        ast::expressions::NormalExpressionData,
         traits::to_datex_expression_data::ToDatexExpressionData,
         values::core_values::decimal::typed_decimal::TypedDecimal,
     };
     use ordered_float::OrderedFloat;
 
     impl ToDatexExpressionData for f32 {
-        fn to_datex_expression_data(&self) -> DatexExpressionData {
-            DatexExpressionData::TypedDecimal(TypedDecimal::F32(OrderedFloat(
+        fn to_datex_expression_data(&self) -> NormalExpressionData {
+            NormalExpressionData::TypedDecimal(TypedDecimal::F32(OrderedFloat(
                 *self,
             )))
         }
     }
 
     impl ToDatexExpressionData for f64 {
-        fn to_datex_expression_data(&self) -> DatexExpressionData {
-            DatexExpressionData::TypedDecimal(TypedDecimal::F64(OrderedFloat(
+        fn to_datex_expression_data(&self) -> NormalExpressionData {
+            NormalExpressionData::TypedDecimal(TypedDecimal::F64(OrderedFloat(
                 *self,
             )))
         }

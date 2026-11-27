@@ -2,7 +2,7 @@
 //! A [Type] can either be an alias to a [TypeDefinitionWithMetadata] or a nominal type represented by a [EntityType].
 
 #[cfg(feature = "compiler")]
-use crate::ast::expressions::DatexExpressionData;
+use crate::ast::expressions::NormalExpressionData;
 use crate::{
     libs::core::type_id::CoreLibTypeId,
     prelude::*,
@@ -444,24 +444,24 @@ impl Display for Type {
 // }
 
 #[cfg(feature = "compiler")]
-impl TryFrom<&DatexExpressionData> for LiteralTypeDefinition {
+impl TryFrom<&NormalExpressionData> for LiteralTypeDefinition {
     type Error = ();
 
-    fn try_from(expr: &DatexExpressionData) -> Result<Self, Self::Error> {
+    fn try_from(expr: &NormalExpressionData) -> Result<Self, Self::Error> {
         Ok(match expr {
-            DatexExpressionData::Boolean(b) => {
+            NormalExpressionData::Boolean(b) => {
                 LiteralTypeDefinition::Boolean(b.clone())
             }
-            DatexExpressionData::Text(s) => {
+            NormalExpressionData::Text(s) => {
                 LiteralTypeDefinition::Text(s.clone())
             }
-            DatexExpressionData::Decimal(d) => {
+            NormalExpressionData::Decimal(d) => {
                 LiteralTypeDefinition::Decimal(d.clone())
             }
-            DatexExpressionData::Integer(i) => {
+            NormalExpressionData::Integer(i) => {
                 LiteralTypeDefinition::Integer(i.clone())
             }
-            DatexExpressionData::Endpoint(e) => {
+            NormalExpressionData::Endpoint(e) => {
                 LiteralTypeDefinition::Endpoint(e.clone())
             }
             _ => return Err(()),
@@ -470,10 +470,10 @@ impl TryFrom<&DatexExpressionData> for LiteralTypeDefinition {
 }
 
 #[cfg(feature = "compiler")]
-impl TryFrom<&DatexExpressionData> for Type {
+impl TryFrom<&NormalExpressionData> for Type {
     type Error = ();
 
-    fn try_from(expr: &DatexExpressionData) -> Result<Self, Self::Error> {
+    fn try_from(expr: &NormalExpressionData) -> Result<Self, Self::Error> {
         Ok(Type::from(LiteralTypeDefinition::try_from(expr)?))
     }
 }

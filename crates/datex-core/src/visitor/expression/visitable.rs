@@ -2,13 +2,13 @@ use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, CallableSignature,
         CloneExpression, ComparisonOperation, Conditional, CreateMut,
-        CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
+        CreateShared, NormalExpression, NormalExpressionData, DeriveRef,
         DeriveSharedRef, EntityDeclarationExpression, EntityValueExpression,
         GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess,
         PropertyAssignment, RangeDeclaration, RemoteExecution, StackAssignment,
-        StackListAssignment, Statements, TagExpression,
-        TypeDeclarationExpression, UnaryOperation, Unbox, UnboxAssignment,
-        UnboxSlotAssignment, VariableAssignment, VariableDeclaration,
+        StackListAssignment, Statements, Tagged, TypeDeclarationExpression,
+        UnaryOperation, Unbox, UnboxAssignment, UnboxSlotAssignment,
+        VariableAssignment, VariableDeclaration, expression::Expression,
     },
     visitor::{
         VisitAction, expression::ExpressionVisitor,
@@ -16,7 +16,7 @@ use crate::{
     },
 };
 
-pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
+pub type ExpressionVisitResult<E> = Result<VisitAction<NormalExpression>, E>;
 
 pub trait VisitableExpression<E> {
     fn walk_children(
@@ -174,7 +174,7 @@ impl<E> VisitableExpression<E> for UnboxSlotAssignment {
     }
 }
 
-impl<E> VisitableExpression<E> for TagExpression {
+impl<E> VisitableExpression<E> for Tagged {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
@@ -380,129 +380,129 @@ impl<E> VisitableExpression<E> for PropertyAssignment {
     }
 }
 
-impl<E> VisitableExpression<E> for DatexExpression {
+impl<E> VisitableExpression<E> for NormalExpression {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
     ) -> Result<(), E> {
         match self.data_mut() {
-            DatexExpressionData::PropertyAssignment(property_assignment) => {
+            NormalExpressionData::PropertyAssignment(property_assignment) => {
                 property_assignment.walk_children(visitor)
             }
-            DatexExpressionData::BinaryOperation(op) => {
+            NormalExpressionData::BinaryOperation(op) => {
                 op.walk_children(visitor)
             }
-            DatexExpressionData::Statements(statements) => {
+            NormalExpressionData::Statements(statements) => {
                 statements.walk_children(visitor)
             }
-            DatexExpressionData::List(list) => list.walk_children(visitor),
-            DatexExpressionData::Map(map) => map.walk_children(visitor),
-            DatexExpressionData::Conditional(conditional) => {
+            NormalExpressionData::List(list) => list.walk_children(visitor),
+            NormalExpressionData::Map(map) => map.walk_children(visitor),
+            NormalExpressionData::Conditional(conditional) => {
                 conditional.walk_children(visitor)
             }
-            DatexExpressionData::VariableDeclaration(variable_declaration) => {
+            NormalExpressionData::VariableDeclaration(variable_declaration) => {
                 variable_declaration.walk_children(visitor)
             }
-            DatexExpressionData::VariableAssignment(variable_assignment) => {
+            NormalExpressionData::VariableAssignment(variable_assignment) => {
                 variable_assignment.walk_children(visitor)
             }
-            DatexExpressionData::TypeDeclaration(type_declaration) => {
+            NormalExpressionData::TypeDeclaration(type_declaration) => {
                 type_declaration.walk_children(visitor)
             }
-            DatexExpressionData::EntityDeclaration(entity_declaration) => {
+            NormalExpressionData::EntityDeclaration(entity_declaration) => {
                 entity_declaration.walk_children(visitor)
             }
-            DatexExpressionData::TypeExpression(type_expression) => {
+            NormalExpressionData::TypeExpression(type_expression) => {
                 type_expression.walk_children(visitor)
             }
-            DatexExpressionData::CallableDeclaration(function_declaration) => {
+            NormalExpressionData::CallableDeclaration(function_declaration) => {
                 function_declaration.walk_children(visitor)
             }
-            DatexExpressionData::DeriveRef(create_ref) => {
+            NormalExpressionData::DeriveRef(create_ref) => {
                 create_ref.walk_children(visitor)
             }
-            DatexExpressionData::DeriveSharedRef(create_shared_ref) => {
+            NormalExpressionData::DeriveSharedRef(create_shared_ref) => {
                 create_shared_ref.walk_children(visitor)
             }
-            DatexExpressionData::CreateShared(create_ref) => {
+            NormalExpressionData::CreateShared(create_ref) => {
                 create_ref.walk_children(visitor)
             }
-            DatexExpressionData::CreateMut(create_mut) => {
+            NormalExpressionData::CreateMut(create_mut) => {
                 create_mut.walk_children(visitor)
             }
-            DatexExpressionData::Unbox(datex_expression) => {
+            NormalExpressionData::Unbox(datex_expression) => {
                 datex_expression.walk_children(visitor)
             }
-            DatexExpressionData::Clone(datex_expression) => {
+            NormalExpressionData::Clone(datex_expression) => {
                 datex_expression.walk_children(visitor)
             }
-            DatexExpressionData::StackAssignment(stack_assignment) => {
+            NormalExpressionData::StackAssignment(stack_assignment) => {
                 stack_assignment.walk_children(visitor)
             }
-            DatexExpressionData::StackListAssignment(stack_list_assignment) => {
+            NormalExpressionData::StackListAssignment(stack_list_assignment) => {
                 stack_list_assignment.walk_children(visitor)
             }
-            DatexExpressionData::ComparisonOperation(comparison_operation) => {
+            NormalExpressionData::ComparisonOperation(comparison_operation) => {
                 comparison_operation.walk_children(visitor)
             }
-            DatexExpressionData::UnboxAssignment(unbox_assignment) => {
+            NormalExpressionData::UnboxAssignment(unbox_assignment) => {
                 unbox_assignment.walk_children(visitor)
             }
-            DatexExpressionData::UnboxSlotAssignment(unbox_slot_assignment) => {
+            NormalExpressionData::UnboxSlotAssignment(unbox_slot_assignment) => {
                 unbox_slot_assignment.walk_children(visitor)
             }
-            DatexExpressionData::UnaryOperation(unary_operation) => {
+            NormalExpressionData::UnaryOperation(unary_operation) => {
                 unary_operation.walk_children(visitor)
             }
-            DatexExpressionData::Apply(apply) => apply.walk_children(visitor),
-            DatexExpressionData::InterfaceMethodCall(call) => {
+            NormalExpressionData::Apply(apply) => apply.walk_children(visitor),
+            NormalExpressionData::InterfaceMethodCall(call) => {
                 call.walk_children(visitor)
             }
-            DatexExpressionData::PropertyAccess(property_access) => {
+            NormalExpressionData::PropertyAccess(property_access) => {
                 property_access.walk_children(visitor)
             }
-            DatexExpressionData::GenericInstantiation(
-                generic_instantiation,
-            ) => generic_instantiation.walk_children(visitor),
-            DatexExpressionData::RemoteExecution(remote_execution) => {
+            NormalExpressionData::GenericInstantiation(generic_instantiation) => {
+                generic_instantiation.walk_children(visitor)
+            }
+            NormalExpressionData::RemoteExecution(remote_execution) => {
                 remote_execution.walk_children(visitor)
             }
-            DatexExpressionData::Compile(compile_expression) => {
+            NormalExpressionData::Compile(compile_expression) => {
                 compile_expression.expression.walk_children(visitor)
             }
 
-            DatexExpressionData::Range(range) => range.walk_children(visitor),
+            NormalExpressionData::Range(range) => range.walk_children(visitor),
 
-            DatexExpressionData::Tag(tag) => tag.walk_children(visitor),
+            NormalExpressionData::Tag(tag) => tag.walk_children(visitor),
 
-            DatexExpressionData::EntityValue(entity_value) => {
+            NormalExpressionData::EntityValue(entity_value) => {
                 entity_value.walk_children(visitor)
             }
 
-            DatexExpressionData::Noop
-            | DatexExpressionData::OmitRecursive
-            | DatexExpressionData::NativeImplementationIndicator
-            | DatexExpressionData::VariantAccess(_)
-            | DatexExpressionData::VariableAccess(_)
-            | DatexExpressionData::RequestSharedRef(_)
-            | DatexExpressionData::StackIndex(_)
-            | DatexExpressionData::Placeholder(_)
-            | DatexExpressionData::Recover
-            | DatexExpressionData::Null
-            | DatexExpressionData::Boolean(_)
-            | DatexExpressionData::Text(_)
-            | DatexExpressionData::Decimal(_)
-            | DatexExpressionData::TypedDecimal(_)
-            | DatexExpressionData::Integer(_)
-            | DatexExpressionData::TypedInteger(_)
-            | DatexExpressionData::Identifier(_)
-            | DatexExpressionData::RootPropertyAccess(_)
-            | DatexExpressionData::ResolveCoreLibId(_)
-            | DatexExpressionData::Endpoint(_)
-            | DatexExpressionData::MoveSharedValue(_)
-            | DatexExpressionData::Sender
-            | DatexExpressionData::Receiver
-            | DatexExpressionData::Instant(_) => Ok(()),
+            NormalExpressionData::Noop
+            | NormalExpressionData::OmitRecursive
+            | NormalExpressionData::NativeImplementationIndicator
+            | NormalExpressionData::VariantAccess(_)
+            | NormalExpressionData::VariableAccess(_)
+            | NormalExpressionData::RequestSharedRef(_)
+            | NormalExpressionData::StackIndex(_)
+            | NormalExpressionData::Placeholder(_)
+            | NormalExpressionData::Recover
+            | NormalExpressionData::Null
+            | NormalExpressionData::Boolean(_)
+            | NormalExpressionData::Text(_)
+            | NormalExpressionData::Decimal(_)
+            | NormalExpressionData::TypedDecimal(_)
+            | NormalExpressionData::Integer(_)
+            | NormalExpressionData::TypedInteger(_)
+            | NormalExpressionData::Identifier(_)
+            | NormalExpressionData::RootPropertyAccess(_)
+            | NormalExpressionData::ResolveCoreLibId(_)
+            | NormalExpressionData::Endpoint(_)
+            | NormalExpressionData::MoveSharedValue(_)
+            | NormalExpressionData::Sender
+            | NormalExpressionData::Receiver
+            | NormalExpressionData::Instant(_) => Ok(()),
         }
     }
 }

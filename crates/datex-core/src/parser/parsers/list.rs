@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        expressions::{DatexExpression, DatexExpressionData, List},
+        expressions::{NormalExpression, NormalExpressionData, List},
         spanned::Spanned,
     },
     parser::{Parser, SpannedParserError, lexer::Token},
@@ -8,9 +8,7 @@ use crate::{
 
 use crate::prelude::*;
 impl Parser {
-    pub fn parse_list(
-        &mut self,
-    ) -> Result<DatexExpression, SpannedParserError> {
+    pub fn parse_list(&mut self) -> Result<NormalExpression, SpannedParserError> {
         let start = self.expect(Token::LeftBracket)?.span.start;
         let mut items = Vec::new();
 
@@ -28,7 +26,7 @@ impl Parser {
         }
 
         let end = self.expect(Token::RightBracket)?.span.end;
-        Ok(DatexExpressionData::List(List { items }).with_span(start..end))
+        Ok(NormalExpressionData::List(List { items }).with_span(start..end))
     }
 }
 
@@ -37,7 +35,7 @@ mod tests {
 
     use crate::{
         ast::{
-            expressions::{DatexExpressionData, List},
+            expressions::{NormalExpressionData, List, expression::Expression},
             spanned::Spanned,
         },
         parser::{
@@ -58,7 +56,7 @@ mod tests {
         let expr = parse("[]");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::List(List { items: vec![] })
+            &NormalExpressionData::List(List { items: vec![] })
         );
     }
 
@@ -67,13 +65,13 @@ mod tests {
         let expr = parse("[true, false, null]");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::List(List {
+            &NormalExpressionData::List(List {
                 items: vec![
-                    DatexExpressionData::Boolean(true.into())
+                    NormalExpressionData::Boolean(true.into())
                         .with_default_span(),
-                    DatexExpressionData::Boolean(false.into())
+                    NormalExpressionData::Boolean(false.into())
                         .with_default_span(),
-                    DatexExpressionData::Null.with_default_span(),
+                    NormalExpressionData::Null.with_default_span(),
                 ]
             })
         );
@@ -84,13 +82,13 @@ mod tests {
         let expr = parse("[true, false, null,]");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::List(List {
+            &NormalExpressionData::List(List {
                 items: vec![
-                    DatexExpressionData::Boolean(true.into())
+                    NormalExpressionData::Boolean(true.into())
                         .with_default_span(),
-                    DatexExpressionData::Boolean(false.into())
+                    NormalExpressionData::Boolean(false.into())
                         .with_default_span(),
-                    DatexExpressionData::Null.with_default_span(),
+                    NormalExpressionData::Null.with_default_span(),
                 ]
             })
         );
@@ -134,12 +132,12 @@ mod tests {
             );
             assert_eq!(
                 res.ast.data(),
-                &DatexExpressionData::List(List {
+                &NormalExpressionData::List(List {
                     items: vec![
-                        DatexExpressionData::Boolean(true.into())
+                        NormalExpressionData::Boolean(true.into())
                             .with_default_span(),
-                        DatexExpressionData::Recover.with_default_span(),
-                        DatexExpressionData::Boolean(false.into())
+                        NormalExpressionData::Recover.with_default_span(),
+                        NormalExpressionData::Boolean(false.into())
                             .with_default_span(),
                     ]
                 })
@@ -162,11 +160,11 @@ mod tests {
             );
             assert_eq!(
                 res.ast.data(),
-                &DatexExpressionData::List(List {
+                &NormalExpressionData::List(List {
                     items: vec![
-                        DatexExpressionData::Boolean(true.into())
+                        NormalExpressionData::Boolean(true.into())
                             .with_default_span(),
-                        DatexExpressionData::Recover.with_default_span(),
+                        NormalExpressionData::Recover.with_default_span(),
                     ]
                 })
             );

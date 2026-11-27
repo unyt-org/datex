@@ -1,6 +1,6 @@
 //! This module contains the implementation of the type inference system based on a [RichAst].
 use crate::{
-    ast::resolved_variable::ResolvedVariable,
+    ast::expressions::{ResolvedVariable, expression::Expression},
     global::operators::{BinaryOperator, LogicalUnaryOperator, UnaryOperator},
     type_inference::options::ErrorHandling,
     types::{
@@ -14,23 +14,18 @@ use crate::{
 };
 
 use crate::{
-    ast::{
-        expressions::{
-            Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-            Conditional, CreateShared, DatexExpression, DatexExpressionData,
-            DeriveRef, DeriveSharedRef, EntityDeclarationExpression,
-            GenericInstantiation, List, Map, PropertyAccess,
-            PropertyAssignment, RangeDeclaration, RemoteExecution,
-            RequestSharedRef, StackAssignment, Statements,
-            TypeDeclarationExpression, UnaryOperation, Unbox, UnboxAssignment,
-            ValueAccessType, VariableAccess, VariableAssignment,
-            VariableDeclaration, VariantAccess,
-        },
-        type_expressions::{
-            CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
-            SliceList, StructuralList, StructuralMap, TypeExpression,
-            TypeVariantAccess, Union,
-        },
+    ast::expressions::{
+        Apply, BinaryOperation, CallableDeclaration, CallableTypeExpression,
+        ComparisonOperation, Conditional, CreateShared, NormalExpression,
+        NormalExpressionData, DeriveRef, DeriveSharedRef,
+        EntityDeclarationExpression, FixedSizeList, GenericAccess,
+        GenericInstantiation, Intersection, List, Map, PropertyAccess,
+        PropertyAssignment, RangeDeclaration, RemoteExecution,
+        RequestSharedRef, SliceList, StackAssignment, Statements,
+        StructuralList, StructuralMap, TypeDeclarationExpression,
+        TypeExpression, TypeVariantAccess, UnaryOperation, Unbox,
+        UnboxAssignment, Union, ValueAccessType, VariableAccess,
+        VariableAssignment, VariableDeclaration, VariantAccess,
     },
     compiler::precompiler::precompiled_ast::{AstMetadata, RichAst},
     global::stack_index::StackIndex,
@@ -201,7 +196,7 @@ impl<'a> TypeInference<'a> {
 
     pub fn infer(
         &mut self,
-        ast: &mut DatexExpression,
+        ast: &mut NormalExpression,
         options: InferExpressionTypeOptions,
     ) -> Result<InferOutcome, SimpleOrDetailedTypeError> {
         // Enable error collection if needed
@@ -252,7 +247,7 @@ impl<'a> TypeInference<'a> {
 
     fn infer_expression(
         &mut self,
-        expr: &mut DatexExpression,
+        expr: &mut NormalExpression,
     ) -> Result<Type, SpannedTypeError> {
         self.visit_datex_expression(expr)?;
         Ok(expr
@@ -290,7 +285,7 @@ impl<'a> TypeInference<'a> {
     fn record_error(
         &mut self,
         error: SpannedTypeError,
-    ) -> Result<VisitAction<DatexExpression>, SpannedTypeError> {
+    ) -> Result<VisitAction<NormalExpression>, SpannedTypeError> {
         if let Some(collected_errors) = &mut self.errors {
             let action = match *error.error {
                 TypeError::Unimplemented(_) => {
@@ -678,8 +673,8 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     fn handle_expression_error(
         &mut self,
         error: SpannedTypeError,
-        _: &DatexExpression,
-    ) -> Result<VisitAction<DatexExpression>, SpannedTypeError> {
+        _: &NormalExpression,
+    ) -> Result<VisitAction<NormalExpression>, SpannedTypeError> {
         self.record_error(error)
     }
 
@@ -1304,8 +1299,8 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             span: &Range<usize>,
         ) -> ExpressionVisitResult<SpannedTypeError> {
             // TODO implement variant access
-            // Ok(VisitAction::ReplaceRecurse(DatexExpression::new(
-            //         DatexExpressionData::RequestSharedRef(RequestSharedRef {
+            // Ok(VisitAction::ReplaceRecurse(NormalExpression::new(
+            //         NormalExpressionData::RequestSharedRef(RequestSharedRef {
             //             address,
             //             mutability: ReferenceMutability::Immutable,
             //         }),
@@ -1348,8 +1343,8 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 )
             })?;
 
-            Ok(VisitAction::ReplaceRecurse(DatexExpression::new(
-                DatexExpressionData::ResolveCoreLibId(CoreLibId::Type(
+            Ok(VisitAction::ReplaceRecurse(NormalExpression::new(
+                NormalExpressionData::ResolveCoreLibId(CoreLibId::Type(
                     variant_id.into(),
                 )),
                 span.clone(),
@@ -1545,8 +1540,8 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, DatexExpression, DatexExpressionData, List,
-                Map, VariableDeclaration, VariableKind,
+                BinaryOperation, NormalExpression, NormalExpressionData, List, Map,
+                VariableDeclaration, VariableKind,
             },
             spanned::Spanned,
         },
@@ -1623,7 +1618,7 @@ mod tests {
     /// Infers type errors for the given expression.
     /// Panics if precompilation succeeds.
     fn errors_for_expression(
-        expr: &mut DatexExpression,
+        expr: &mut NormalExpression,
     ) -> Vec<SpannedTypeError> {
         let runtime = Runtime::stub();
         let mut scope_stack = PrecompilerScopeStack::default();
@@ -1671,7 +1666,7 @@ mod tests {
 
     /// Infers the AST of the given expression.
     /// Panics if type inference fails.
-    fn ast_for_expression(expr: &mut DatexExpression) -> RichAst {
+    fn ast_for_expression(expr: &mut NormalExpression) -> RichAst {
         let runtime = Runtime::stub();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
@@ -1720,7 +1715,7 @@ mod tests {
 
     /// Infers the type of the given expression.
     /// Panics if type inference fails.
-    fn infer_from_expression(expr: &mut DatexExpression) -> Type {
+    fn infer_from_expression(expr: &mut NormalExpression) -> Type {
         let runtime = Runtime::stub();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
@@ -1860,7 +1855,7 @@ mod tests {
     fn infer_literal_types() {
         assert_eq!(
             infer_from_expression(
-                &mut DatexExpressionData::Boolean(true.into())
+                &mut NormalExpressionData::Boolean(true.into())
                     .with_default_span()
             ),
             Type::from(LiteralTypeDefinition::Boolean(true.into()),)
@@ -1868,7 +1863,7 @@ mod tests {
 
         assert_eq!(
             infer_from_expression(
-                &mut DatexExpressionData::Boolean(false.into())
+                &mut NormalExpressionData::Boolean(false.into())
                     .with_default_span()
             ),
             Type::from(LiteralTypeDefinition::Boolean(false.into()),)
@@ -1876,7 +1871,7 @@ mod tests {
 
         assert_eq!(
             infer_from_expression(
-                &mut DatexExpressionData::Decimal(Decimal::from(1.23))
+                &mut NormalExpressionData::Decimal(Decimal::from(1.23))
                     .with_default_span()
             ),
             Type::from(LiteralTypeDefinition::Decimal(Decimal::from(1.23)),)
@@ -1884,19 +1879,19 @@ mod tests {
 
         assert_eq!(
             infer_from_expression(
-                &mut DatexExpressionData::Integer(Integer::from(42))
+                &mut NormalExpressionData::Integer(Integer::from(42))
                     .with_default_span()
             ),
             Type::from(LiteralTypeDefinition::Integer(Integer::from(42)),)
         );
         assert_eq!(
             infer_from_expression(
-                &mut DatexExpressionData::List(List::new(vec![
-                    DatexExpressionData::Integer(Integer::from(1))
+                &mut NormalExpressionData::List(List::new(vec![
+                    NormalExpressionData::Integer(Integer::from(1))
                         .with_default_span(),
-                    DatexExpressionData::Integer(Integer::from(2))
+                    NormalExpressionData::Integer(Integer::from(2))
                         .with_default_span(),
-                    DatexExpressionData::Integer(Integer::from(3))
+                    NormalExpressionData::Integer(Integer::from(3))
                         .with_default_span()
                 ]))
                 .with_default_span()
@@ -1923,9 +1918,9 @@ mod tests {
 
         assert_eq!(
             infer_from_expression(
-                &mut DatexExpressionData::Map(Map::new(vec![(
-                    DatexExpressionData::Text("a".into()).with_default_span(),
-                    DatexExpressionData::Integer(Integer::from(1))
+                &mut NormalExpressionData::Map(Map::new(vec![(
+                    NormalExpressionData::Text("a".into()).with_default_span(),
+                    NormalExpressionData::Integer(Integer::from(1))
                         .with_default_span()
                 )]))
                 .with_default_span()
@@ -2571,12 +2566,12 @@ mod tests {
         const x = 10
         */
         let mut expr =
-            DatexExpressionData::VariableDeclaration(VariableDeclaration {
+            NormalExpressionData::VariableDeclaration(VariableDeclaration {
                 id: None,
                 kind: VariableKind::Const,
                 name: "x".to_string(),
                 type_annotation: None,
-                init_expression: (DatexExpressionData::Integer(Integer::from(
+                init_expression: (NormalExpressionData::Integer(Integer::from(
                     10,
                 ))
                 .with_default_span()),
@@ -2602,11 +2597,11 @@ mod tests {
         let decimal = Type::core(CoreLibBaseTypeId::Decimal);
 
         // integer - integer = integer
-        let mut expr = DatexExpressionData::BinaryOperation(BinaryOperation {
+        let mut expr = NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Subtract),
-            left: (DatexExpressionData::Integer(Integer::from(1))
+            left: (NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span()),
-            right: (DatexExpressionData::Integer(Integer::from(2))
+            right: (NormalExpressionData::Integer(Integer::from(2))
                 .with_default_span()),
             ty: None,
         })
@@ -2615,11 +2610,11 @@ mod tests {
         assert_eq!(infer_from_expression(&mut expr), integer);
 
         // decimal + decimal = decimal
-        let mut expr = DatexExpressionData::BinaryOperation(BinaryOperation {
+        let mut expr = NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::Decimal(Decimal::from(1.0))
+            left: (NormalExpressionData::Decimal(Decimal::from(1.0))
                 .with_default_span()),
-            right: (DatexExpressionData::Decimal(Decimal::from(2.0))
+            right: (NormalExpressionData::Decimal(Decimal::from(2.0))
                 .with_default_span()),
             ty: None,
         })
@@ -2627,11 +2622,11 @@ mod tests {
         assert_eq!(infer_from_expression(&mut expr), decimal);
 
         // integer + decimal = type error
-        let mut expr = DatexExpressionData::BinaryOperation(BinaryOperation {
+        let mut expr = NormalExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: (DatexExpressionData::Integer(Integer::from(1))
+            left: (NormalExpressionData::Integer(Integer::from(1))
                 .with_default_span()),
-            right: (DatexExpressionData::Decimal(Decimal::from(2.0))
+            right: (NormalExpressionData::Decimal(Decimal::from(2.0))
                 .with_default_span()),
             ty: None,
         })

@@ -20,16 +20,35 @@ use strum_macros::Display;
 #[bits = 4]
 pub enum BlockType {
     #[default]
+    /// A normal request block that might have side effects and might contain executable instructions.
+    /// Normally expects a response block in return.
     Request = 0,
+    /// A response block that is sent in response to a request block, containing the result of the request execution, if any.
     Response = 1,
-    Hello = 2,
-    Trace = 3,
-    TraceBack = 4,
+    /// A block that is sent to an endpoint whose public keys are not known. Contains the senders own public keys in the body.
+    WhoAreYou = 2,
+    /// A block that is sent as a response to a WhoAreYou block, containing the senders public keys in the body.
+    ItsAMe = 3,
+    /// A block that is sent to an endpoint announcing the senders public keys.
+    Hello = 4,
+    /// A block used to trace network routing, sent from the endpoint that wants to record a trace.
+    Trace = 5,
+    /// A block used to trace network routing, sent back from a traced endpoint.
+    TraceBack = 6,
 }
 
 impl BlockType {
     pub fn is_response(&self) -> bool {
-        core::matches!(self, BlockType::Response | BlockType::TraceBack)
+        matches!(self, BlockType::Response | BlockType::TraceBack | BlockType::ItsAMe)
+    }
+
+    pub fn is_tracing_block(&self) -> bool {
+        matches!(self, BlockType::Trace | BlockType::TraceBack)
+    }
+
+    /// Whether the block type is a block that contains endpoint keys in the body (WhoAreYou or Hello)
+    pub fn is_block_with_endpoint_keys(&self) -> bool {
+        matches!(self, BlockType::WhoAreYou | BlockType::Hello | BlockType::ItsAMe)
     }
 }
 

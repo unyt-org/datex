@@ -6,11 +6,11 @@ mod map;
 
 use crate::{
     ast::{
-        spanned::Spanned,
-        type_expressions::{
-            Intersection, RangeTypeExpr, TypeExpression, TypeExpressionData,
+        expressions::{
+            Intersection, RangeTypeExpression, TypeExpression, TypeExpressionData,
             TypeVariantAccess, Union,
         },
+        spanned::Spanned,
     },
     global::operators::{ArithmeticUnaryOperator, UnaryOperator},
     parser::{
@@ -64,7 +64,7 @@ impl Parser {
                 self.advance()?; // consume operator
                 let rhs = self.parse_type_expression(r_bp)?;
                 let span = lhs.span.start..rhs.span.end;
-                TypeExpressionData::Range(RangeTypeExpr {
+                TypeExpressionData::Range(RangeTypeExpression {
                     start: Box::new(lhs),
                     end: Box::new(rhs),
                 })
@@ -229,11 +229,12 @@ mod tests {
 
     use crate::{
         ast::{
-            spanned::Spanned,
-            type_expressions::{
-                Intersection, RangeTypeExpr, TypeExpression,
-                TypeExpressionData, Union,
+            expressions::{
+                Intersection, RangeTypeExpression, TypeExpression,
+                TypeExpressionData, TypeVariantAccess, Union,
+                expression::Expression,
             },
+            spanned::Spanned,
         },
         parser::{
             Parser, ParserOptions, lexer::get_spanned_tokens_from_source,
@@ -270,7 +271,7 @@ mod tests {
         let expr = parse_type_expression("a .. b");
         assert_eq!(
             expr.data(),
-            &TypeExpressionData::Range(RangeTypeExpr {
+            &TypeExpressionData::Range(RangeTypeExpression {
                 start: Box::new(
                     TypeExpressionData::Identifier("a".to_string())
                         .with_default_span()
@@ -302,13 +303,11 @@ mod tests {
         let expr = parse_type_expression("MyType/variant");
         assert_eq!(
             expr.data(),
-            &TypeExpressionData::VariantAccess(
-                crate::ast::type_expressions::TypeVariantAccess {
-                    name: "MyType".to_string(),
-                    variant: "variant".to_string(),
-                    base: None,
-                }
-            )
+            &TypeExpressionData::VariantAccess(TypeVariantAccess {
+                name: "MyType".to_string(),
+                variant: "variant".to_string(),
+                base: None,
+            })
         );
     }
 
@@ -357,13 +356,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &TypeExpressionData::RefMut(Box::new(
-                TypeExpressionData::VariantAccess(
-                    crate::ast::type_expressions::TypeVariantAccess {
-                        name: "integer".to_string(),
-                        variant: "u8".to_string(),
-                        base: None,
-                    }
-                )
+                TypeExpressionData::VariantAccess(TypeVariantAccess {
+                    name: "integer".to_string(),
+                    variant: "u8".to_string(),
+                    base: None,
+                })
                 .with_default_span()
             ))
         );

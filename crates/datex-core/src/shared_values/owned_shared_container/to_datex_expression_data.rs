@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        expressions::{CreateShared, DatexExpressionData},
+        expressions::{CreateShared, NormalExpressionData},
         spanned::Spanned,
     },
     shared_values::{OwnedSharedContainer, traits::SharedContainerCommon},
@@ -8,11 +8,11 @@ use crate::{
 };
 
 impl ToDatexExpressionData for OwnedSharedContainer {
-    fn to_datex_expression_data(&self) -> DatexExpressionData {
+    fn to_datex_expression_data(&self) -> NormalExpressionData {
         if self.is_borrowed() {
-            DatexExpressionData::OmitRecursive
+            NormalExpressionData::OmitRecursive
         } else {
-            DatexExpressionData::CreateShared(CreateShared {
+            NormalExpressionData::CreateShared(CreateShared {
                 mutability: self.container_mutability(),
                 expression: (*self.value_container())
                     .to_datex_expression_data()

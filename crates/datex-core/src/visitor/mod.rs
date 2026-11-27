@@ -29,12 +29,10 @@ pub enum VisitAction<T: Sized> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{
-            expressions::{
-                BinaryOperation, DatexExpression, DatexExpressionData,
-                DeriveRef, Statements, ValueAccessType, VariableAccess,
-            },
-            type_expressions::{TypeExpression, TypeExpressionData},
+        ast::expressions::{
+            BinaryOperation, NormalExpression, NormalExpressionData, DeriveRef,
+            Statements, TypeExpression, TypeExpressionData, ValueAccessType,
+            VariableAccess, expression::Expression,
         },
         global::operators::{BinaryOperator, binary::ArithmeticOperator},
         parser::Parser,
@@ -84,9 +82,8 @@ mod tests {
         fn handle_expression_error(
             &mut self,
             error: MyAstExpressionError,
-            expression: &DatexExpression,
-        ) -> Result<VisitAction<DatexExpression>, MyAstExpressionError>
-        {
+            expression: &NormalExpression,
+        ) -> Result<VisitAction<NormalExpression>, MyAstExpressionError> {
             log::error!(
                 "Expression error: {:?} at {:?}. Aborting...",
                 error,
@@ -107,8 +104,8 @@ mod tests {
             identifier: &mut String,
             span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
-            Ok(VisitAction::Replace(DatexExpression {
-                data: Box::new(DatexExpressionData::VariableAccess(
+            Ok(VisitAction::Replace(NormalExpression {
+                data: Box::new(NormalExpressionData::VariableAccess(
                     VariableAccess {
                         id: 0,
                         name: identifier.clone(),
@@ -149,29 +146,25 @@ mod tests {
 
     #[test]
     fn test() {
-        let mut ast = DatexExpression {
-            data: Box::new(DatexExpressionData::Statements(Statements {
-                statements: vec![DatexExpression {
-                    data: Box::new(DatexExpressionData::BinaryOperation(
+        let mut ast = NormalExpression {
+            data: Box::new(NormalExpressionData::Statements(Statements {
+                statements: vec![NormalExpression {
+                    data: Box::new(NormalExpressionData::BinaryOperation(
                         BinaryOperation {
                             operator: BinaryOperator::Arithmetic(
                                 ArithmeticOperator::Add,
                             ),
-                            left: (DatexExpression {
-                                data: Box::new(
-                                    DatexExpressionData::Identifier(
-                                        "x".to_string(),
-                                    ),
-                                ),
+                            left: (NormalExpression {
+                                data: Box::new(NormalExpressionData::Identifier(
+                                    "x".to_string(),
+                                )),
                                 span: 0..1,
                                 ty: None,
                             }),
-                            right: (DatexExpression {
-                                data: Box::new(
-                                    DatexExpressionData::Identifier(
-                                        "y".to_string(),
-                                    ),
-                                ),
+                            right: (NormalExpression {
+                                data: Box::new(NormalExpressionData::Identifier(
+                                    "y".to_string(),
+                                )),
                                 span: 2..3,
                                 ty: None,
                             }),

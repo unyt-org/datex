@@ -73,6 +73,7 @@ use datex_macros_internal::Datex;
 use futures_util::future::join_all;
 use indexmap::IndexMap;
 use log::{debug, error, info};
+use crate::network::com_hub::key_manager::own_endpoint_keys::OwnEndpointKeys;
 
 pub type RemoteExecutionResult = Result<Option<ValueContainer>, ExecutionError>;
 
@@ -245,15 +246,17 @@ impl RuntimeInternal {
     ///
     /// # Safety
     /// The caller should only call this on an uninitialized runtime.
-    pub unsafe fn set_config(&self, config: RuntimeConfig) {
+    pub async unsafe fn set_config(&self, mut config: RuntimeConfig) {
+        let (endpoint, keys) = config.get_or_create_endpoint_and_keys().await;
+
         unsafe {
             *self.config.get() = config;
         }
-        // also update endpoint
+        // also update endpoint and com hub keys
         unsafe {
-            let endpoint = self.config().endpoint.clone();
             *self.endpoint.get() = endpoint.clone();
             *self.com_hub.endpoint.get() = endpoint;
+            self.com_hub.key_manager.set_own_keys(keys);
         }
     }
 
@@ -386,6 +389,7 @@ impl RuntimeInternal {
             RuntimeConfig::default(),
             ComHub::create(
                 Endpoint::default(),
+                OwnEndpointKeys::stub(),
                 incoming_sections_sender,
                 reconnect_request_sender,
                 0,

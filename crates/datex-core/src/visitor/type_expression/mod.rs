@@ -1,20 +1,17 @@
 //! This module contains the implementation of the visitor pattern for traversing and transforming the AST of [TypeExpression]s.
 use crate::{
-    ast::type_expressions::RangeTypeExpr,
+    ast::expressions::{RangeTypeExpression, expression::Expression},
     prelude::*,
     values::core_values::{boolean::Boolean, text::Text},
 };
 use core::ops::Range;
 
 use crate::{
-    ast::{
-        expressions::VariableAccess,
-        type_expressions::{
-            CallableTypeExpression, FixedSizeList, GenericAccess,
-            IdentifierWithPointerAddress, Intersection, SliceList,
-            StructuralList, StructuralMap, TypeExpression, TypeExpressionData,
-            TypeVariantAccess, Union,
-        },
+    ast::expressions::{
+        CallableTypeExpression, FixedSizeList, GenericAccess,
+        IdentifierWithPointerAddress, Intersection, SliceList, StructuralList,
+        StructuralMap, TypeExpression, TypeExpressionData, TypeVariantAccess,
+        Union, VariableAccess,
     },
     libs::core::type_id::CoreLibTypeId,
     shared_values::PointerAddress,
@@ -452,7 +449,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
 
     fn visit_range_type(
         &mut self,
-        range: &mut RangeTypeExpr,
+        range: &mut RangeTypeExpression,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;

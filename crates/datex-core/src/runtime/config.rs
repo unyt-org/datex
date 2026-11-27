@@ -7,6 +7,9 @@ use crate::{
 };
 use datex_macros_internal::Datex;
 use indexmap::IndexMap;
+use datex_facades::vault::Vault;
+use crate::network::com_hub::key_manager::own_endpoint_keys::OwnEndpointKeys;
+use crate::vault::VaultImpl;
 
 pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
@@ -49,19 +52,33 @@ impl RuntimeConfigInterface {
 #[derive(Datex, Debug, Default, Clone, PartialEq, Eq)]
 #[datex(structural)]
 pub struct RuntimeConfig {
-    pub endpoint: Endpoint,
+    /// An optional endpoint identifier for the runtime.
+    /// When none is set, the endpoint is loaded from the vault if available, or a new anonymous endpoint identifier is generated.
+    pub endpoint: Option<Endpoint>,
+    /// An optional human-readable name for the endpoint which is publicly visible to other endpoints.
     pub name: Option<String>,
+    /// Optional public+private keys for the endpoint. If not provided, a new key pair will be generated or retrieved from the vault if available.
+    /// When these keys are set, they will always be used, even if a vault already contains keys for the endpoint. This allows for overriding the vault's keys.
+    #[datex(serde)]
+    pub keys: Option<OwnEndpointKeys>,
+    /// Optional list of interfaces to be created for the runtime.
     pub interfaces: Option<Vec<RuntimeConfigInterface>>,
+    /// Optional environment variables to be set for the runtime.
     pub env: Option<IndexMap<String, String, RandomState>>,
+    /// The location of the vault for storing keys and other sensitive data.
+    /// If not provided, the vault will not be used and keys will not be persisted.
+    pub vault_location: Option<String>,
 }
 
 impl RuntimeConfig {
     pub fn new_with_endpoint(endpoint: Endpoint) -> Self {
         RuntimeConfig {
-            endpoint,
+            endpoint: Some(endpoint),
             name: None,
+            keys: None,
             interfaces: None,
             env: None,
+            vault_location: None,
         }
     }
 
@@ -123,6 +140,81 @@ impl RuntimeConfig {
         }
         Ok(())
     }
+
+    /// Provides or creates the endpoint and own keys.
+    /// First checks if the endpoint and keys are provided in the config.
+    /// If not, it checks if the vault contains the endpoint and keys.
+    /// If not, it generates a new anonymous endpoint and keys, and stores them in the vault if available.
+    pub async fn get_or_create_endpoint_and_keys(
+        &mut self,
+    ) -> (Endpoint, OwnEndpointKeys) {
+        let vault = self.vault_location.as_ref().map(|vault_location| VaultImpl::new(vault_location));
+        
+        let endpoint = match &self.endpoint {
+            Some(endpoint) => endpoint.clone(),
+            None => {
+                // check if the vault contains the endpoint
+                let stored_endpoint = match &vault {
+                    Some(vault) => vault.get(&Endpoint::ANY.to_string(), "active_endpoint"),
+                    None => None,
+                };
+
+                match stored_endpoint {
+                    Some(stored_endpoint) => Endpoint::new(&stored_endpoint),
+                    None => {
+                        // generate a new anonymous endpoint
+                        let new_endpoint = Endpoint::random();
+                        // store the new endpoint in the vault if available
+                        if let Some(vault) = &vault {
+                            vault.store(&Endpoint::ANY.to_string(), "active_endpoint", &new_endpoint.to_string());
+                        }
+                        new_endpoint
+                    }
+                }
+            }
+        };
+
+        let keys = match &self.keys {
+            Some(keys) => {
+                // update the vault with the provided keys
+                if let Some(vault) = &vault {
+                    let serialized_keys = keys.serialize_to_base58().expect("Failed to serialize own keys");
+                    vault.store( & endpoint.to_string(), "own_keys", & serialized_keys);
+                }
+                keys.clone()
+            },
+            _ => {
+                let stored_keys = match &vault {
+                    Some(vault) => vault.get(&endpoint.to_string(), "own_keys"),
+                    None => None,
+                };
+
+                // If keys are stored in the vault, use them. Otherwise, generate new keys and store them in the vault.
+                match stored_keys {
+                    Some(stored_keys) => {
+                        let keys: OwnEndpointKeys = OwnEndpointKeys::deserialize_from_base58(&stored_keys).expect("Failed to deserialize own keys");
+                        keys
+                    }
+                    None => {
+                        let keys = OwnEndpointKeys::new().await;
+                        let serialized_keys = keys
+                            .serialize_to_base58()
+                            .expect("Failed to serialize own keys");
+                        if let Some(vault) = &vault {
+                            vault.store(&endpoint.to_string(), "own_keys", &serialized_keys);
+                        }
+                        keys
+                    }
+                }
+            }
+        };
+        
+        // also store the endpoint and keys in the config for future use
+        self.endpoint = Some(endpoint.clone());
+        self.keys = Some(keys.clone());
+
+        (endpoint, keys)
+    }
 }
 
 #[cfg(test)]
@@ -141,6 +233,7 @@ pub mod tests {
         },
     };
     use datex_macros_internal::Datex;
+    use crate::network::com_hub::key_manager::own_endpoint_keys::OwnEndpointKeys;
 
     #[derive(Datex, Clone)]
     #[datex(structural)]
@@ -200,7 +293,7 @@ pub mod tests {
         let value_container = Value::native(config);
         let parsed_config: RuntimeConfig =
             value_container.try_into_value().unwrap();
-        assert_eq!(parsed_config.endpoint, Endpoint::new("@test"));
+        assert_eq!(parsed_config.endpoint, Some(Endpoint::new("@test")));
     }
 
     #[test]
@@ -248,27 +341,35 @@ pub mod tests {
     #[test]
     #[cfg(feature = "compiler")]
     fn read_runtime_config_from_datex_source() {
-        let config_source = r#"{
+        let keys = OwnEndpointKeys {
+            pub_key: [1u8; 32],
+            pri_key: [2u8; 32],
+        };
+
+        let config_source = format!(r#"{{
             endpoint: @test,
             name: "Example",
+            keys: {},
             interfaces: [
-                {
+                {{
                     type: "websocket-client",
-                    config: {url:"wss://example.unyt.land"},
+                    config: {{url:"wss://example.unyt.land"}},
                     priority: #Priority(0u16)
-                }
+                }}
             ],
-            env: null
-        }"#;
+            env: null,
+            vault_location: "./vault"
+        }}"#, serde_json::to_string(&keys).unwrap());
 
         let config =
-            RuntimeConfig::try_from_script(config_source, &Runtime::stub());
+            RuntimeConfig::try_from_script(&config_source, &Runtime::stub());
 
         assert_eq!(
             config,
             Ok(RuntimeConfig {
-                endpoint: Endpoint::new("@test"),
+                endpoint: Some(Endpoint::new("@test")),
                 name: Some("Example".to_string()),
+                keys: Some(keys),
                 interfaces: Some(vec![RuntimeConfigInterface {
                     interface_type: "websocket-client".to_string(),
                     config: Map::from(vec![(
@@ -279,6 +380,7 @@ pub mod tests {
                     priority: InterfacePriority::Priority(0),
                 }]),
                 env: None,
+                vault_location: Some("./vault".to_string()),
             })
         );
     }

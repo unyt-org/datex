@@ -120,3 +120,9 @@ pub fn datex(args: TokenStream, input: TokenStream) -> TokenStream {
 
     generate_item_glue_code(Some(args.into()), input.into(), item).into()
 }
+
+
+#[proc_macro]
+pub fn use_remote(_args: TokenStream) -> TokenStream {
+    todo!()
+}

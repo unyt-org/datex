@@ -1,5 +1,5 @@
 use crate::{
-    ast::type_expressions::TypeExpressionData,
+    ast::expressions::TypeExpressionData,
     traits::to_type_expression_data::ToTypeExpressionData, types::r#type::Type,
 };
 

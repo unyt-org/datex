@@ -1,11 +1,8 @@
 //! This module contains the main compiler logic for DATEX, precompilation, and compilation to DXB bytecode.
 use crate::{
-    ast::{
-        expressions::{
-            DatexExpression, DatexExpressionData, Statements,
-            UnboundedStatement, VariableKind,
-        },
-        resolved_variable::VariableId,
+    ast::expressions::{
+        NormalExpression, NormalExpressionData, Statements, UnboundedStatement,
+        VariableId, VariableKind, expression::Expression,
     },
     compiler::{
         compilation_result::CompilationResult,
@@ -264,10 +261,10 @@ pub fn compile_script_or_return_static_value(
 /// Ensure that the root ast node is a statements node
 /// Returns if the initial ast was terminated
 fn ensure_statements(
-    ast: &mut DatexExpression,
+    ast: &mut NormalExpression,
     unbounded_section: Option<UnboundedStatement>,
 ) -> bool {
-    if let DatexExpressionData::Statements(Statements {
+    if let NormalExpressionData::Statements(Statements {
         is_terminated,
         unbounded,
         ..
@@ -278,7 +275,7 @@ fn ensure_statements(
     } else {
         // wrap in statements
         let original_ast = ast.clone();
-        *ast.data_mut() = DatexExpressionData::Statements(Statements {
+        *ast.data_mut() = NormalExpressionData::Statements(Statements {
             statements: vec![original_ast],
             is_terminated: false,
             unbounded: unbounded_section,
@@ -322,7 +319,7 @@ pub fn parse_datex_script_to_rich_ast_simple_error(
     } else {
         matches!(
             valid_parse_result.data(),
-            &DatexExpressionData::Statements(Statements {
+            &NormalExpressionData::Statements(Statements {
                 is_terminated: true,
                 ..
             })
@@ -449,7 +446,7 @@ macro_rules! compile {
 
 /// Precompiles a DATEX expression AST into an AST with metadata.
 fn precompile_to_rich_ast(
-    valid_parse_result: DatexExpression,
+    valid_parse_result: NormalExpression,
     scope: &mut CompilationScope,
     precompiler_options: PrecompilerOptions,
     runtime: Runtime,
@@ -488,7 +485,7 @@ fn precompile_to_rich_ast(
 pub fn compile_child_realm_instructions(
     compilation_context: &mut CompilationContext,
     cache: &mut SharedReferencesCache,
-    ast: &DatexExpression,
+    ast: &NormalExpression,
     injected_variable_count: u32,
     metadata: &mut AstMetadata,
     existing_variables: Vec<Variable>,

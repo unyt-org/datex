@@ -1,11 +1,11 @@
 use crate::{
-    ast::expressions::DatexExpressionData,
+    ast::expressions::NormalExpressionData,
     traits::to_datex_expression_data::ToDatexExpressionData,
     values::value::borrowed_value::{BorrowedValue, BorrowedValueMut},
 };
 
 impl ToDatexExpressionData for BorrowedValue<'_> {
-    fn to_datex_expression_data(&self) -> DatexExpressionData {
+    fn to_datex_expression_data(&self) -> NormalExpressionData {
         match self {
             BorrowedValue::Core(core_value) => {
                 core_value.to_datex_expression_data()
@@ -18,7 +18,7 @@ impl ToDatexExpressionData for BorrowedValue<'_> {
 }
 
 impl ToDatexExpressionData for BorrowedValueMut<'_> {
-    fn to_datex_expression_data(&self) -> DatexExpressionData {
+    fn to_datex_expression_data(&self) -> NormalExpressionData {
         match self {
             BorrowedValueMut::Core(core_value) => {
                 core_value.to_datex_expression_data()
