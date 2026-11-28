@@ -1,30 +1,59 @@
+pub mod dxb_builder;
+pub mod dxb_id;
+pub mod dxb_parsed;
+pub mod dxb_raw;
+pub mod dxb_trait;
+pub mod error;
+pub mod incoming_section;
+
+use dxb_id::BlockId;
+use dxb_parsed::ParsedDXBBlock;
+use dxb_raw::RawDXBBlock;
+use dxb_trait::DxB;
+
+use error::{DXBBlockParseError, DxbHeaderParsingError};
+use incoming_section::IncomingEndpointContextId;
+
 use super::protocol_structures::{
-    block_header::BlockHeader,
+    block_header::{BlockHeader, BlockType},
     encrypted_header::EncryptedHeader,
-    routing_header::{EncryptionType, RoutingHeader, SignatureType},
+    routing_header::{EncryptionType, Receivers, RoutingHeader, SignatureType},
 };
+
 use crate::{
-    channel::mpsc::UnboundedReceiver,
-    global::protocol_structures::{
-        block_header::BlockType, routing_header::Receivers,
-    },
-    utils::buffers::write_u16,
-    values::core_values::endpoint::Endpoint,
+    utils::buffers::write_u16, values::core_values::endpoint::Endpoint,
 };
+use core::{fmt::Display, result::Result, unimplemented};
+
 use binrw::{
     BinRead, BinWrite,
     io::{Cursor, Read},
 };
-use core::{fmt::Display, result::Result, unimplemented};
-use strum::Display;
-use thiserror::Error;
 
 use crate::prelude::*;
 
-#[derive(Debug, Display, Error)]
-pub enum HeaderParsingError {
-    InsufficientLength,
-    InvalidMagicNumber,
+const SIZE_BYTE_POSITION: usize = 3; // magic number (2 bytes) + version (1 byte)
+const SIZE_BYTES: usize = 2;
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub enum DXB {
+    RawDXB(RawDXBBlock),
+    ParsedDXB(ParsedDXBBlock),
+}
+
+impl DXB {
+    fn to_bytes(self) -> Vec<u8> {
+        match self {
+            DXB::RawDXB(block) => block.to_bytes(),
+            DXB::ParsedDXB(block) => block.to_bytes(),
+        }
+    }
+}
+
+impl Default for DXB {
+    fn default() -> Self {
+        DXB::RawDXB(RawDXBBlock::default())
+    }
 }
 
 // TODO #110: RawDXBBlock that is received in com_hub, only containing RoutingHeader, BlockHeader and raw bytes
@@ -46,128 +75,6 @@ impl PartialEq for DXBBlock {
             && self.block_header == other.block_header
             && self.encrypted_header == other.encrypted_header
             && self.body == other.body
-    }
-}
-
-const SIZE_BYTE_POSITION: usize = 3; // magic number (2 bytes) + version (1 byte)
-const SIZE_BYTES: usize = 2;
-
-pub type IncomingContextId = u32;
-pub type IncomingSectionIndex = u16;
-pub type IncomingBlockNumber = u16;
-pub type OutgoingContextId = u32;
-pub type OutgoingSectionIndex = u16;
-pub type OutgoingBlockNumber = u16;
-
-#[allow(clippy::large_enum_variant)]
-#[derive(Debug)]
-pub enum IncomingSection {
-    /// a single block
-    SingleBlock((Option<DXBBlock>, IncomingEndpointContextSectionId)),
-    /// a stream of blocks
-    /// the stream is finished when a block has the end_of_section flag set
-    BlockStream(
-        (
-            Option<UnboundedReceiver<DXBBlock>>,
-            IncomingEndpointContextSectionId,
-        ),
-    ),
-}
-
-impl IncomingSection {
-    pub async fn next(&mut self) -> Option<DXBBlock> {
-        match self {
-            IncomingSection::SingleBlock((block, _)) => block.take(),
-            IncomingSection::BlockStream((blocks, _)) => {
-                if let Some(receiver) = blocks {
-                    receiver.next().await
-                } else {
-                    None // No blocks to receive
-                }
-            }
-        }
-    }
-
-    pub async fn drain(&mut self) -> Vec<DXBBlock> {
-        let mut blocks = Vec::new();
-        while let Some(block) = self.next().await {
-            blocks.push(block);
-        }
-        blocks
-    }
-}
-
-impl IncomingSection {
-    pub fn get_section_index(&self) -> IncomingSectionIndex {
-        self.get_section_context_id().section_index
-    }
-
-    pub fn get_sender(&self) -> Endpoint {
-        self.get_section_context_id()
-            .endpoint_context_id
-            .sender
-            .clone()
-    }
-
-    pub fn get_section_context_id(&self) -> &IncomingEndpointContextSectionId {
-        match self {
-            IncomingSection::SingleBlock((_, section_context_id))
-            | IncomingSection::BlockStream((_, section_context_id)) => {
-                section_context_id
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct IncomingEndpointContextId {
-    pub sender: Endpoint,
-    pub context_id: IncomingContextId,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct IncomingEndpointContextSectionId {
-    pub endpoint_context_id: IncomingEndpointContextId,
-    pub section_index: IncomingSectionIndex,
-}
-
-impl IncomingEndpointContextSectionId {
-    pub fn new(
-        endpoint_context_id: IncomingEndpointContextId,
-        section_index: IncomingSectionIndex,
-    ) -> Self {
-        IncomingEndpointContextSectionId {
-            endpoint_context_id,
-            section_index,
-        }
-    }
-}
-
-/// An identifier that defines a globally unique block
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BlockId {
-    pub endpoint_context_id: IncomingEndpointContextId,
-    pub timestamp: u64,
-    pub current_section_index: IncomingSectionIndex,
-    pub current_block_number: IncomingBlockNumber,
-}
-
-#[derive(Debug)]
-pub enum DXBBlockParseError {
-    IOError(String),
-    ParseError(binrw::Error),
-    IllegalState,
-}
-
-impl From<binrw::Error> for DXBBlockParseError {
-    fn from(err: binrw::Error) -> Self {
-        DXBBlockParseError::ParseError(err)
-    }
-}
-
-impl From<String> for DXBBlockParseError {
-    fn from(err: String) -> Self {
-        DXBBlockParseError::IOError(err)
     }
 }
 
@@ -228,14 +135,14 @@ impl DXBBlock {
 
     pub fn extract_dxb_block_length(
         dxb: &[u8],
-    ) -> Result<u16, HeaderParsingError> {
+    ) -> Result<u16, DxbHeaderParsingError> {
         if dxb.len() < SIZE_BYTE_POSITION + SIZE_BYTES {
-            return Err(HeaderParsingError::InsufficientLength);
+            return Err(DxbHeaderParsingError::InsufficientLength);
         }
 
         // make sure magic number is correct
         if !DXBBlock::has_dxb_magic_number(dxb) {
-            return Err(HeaderParsingError::InvalidMagicNumber);
+            return Err(DxbHeaderParsingError::InvalidMagicNumber);
         }
 
         // block size is u16 at SIZE_BYTE_POSITION
@@ -249,7 +156,7 @@ impl DXBBlock {
         let routing_header = RoutingHeader::read(&mut reader)?;
 
         let signature = match routing_header.flags.signature_type() {
-            SignatureType::Encrypted => {
+            SignatureType::CryptedSigned => {
                 let mut signature = Vec::from([0u8; 64]);
                 reader.read_exact(&mut signature).map_err(|e| {
                     DXBBlockParseError::IOError(format!(
@@ -260,7 +167,7 @@ impl DXBBlock {
 
                 Some(signature)
             }
-            SignatureType::Unencrypted => {
+            SignatureType::Signed => {
                 let mut signature = Vec::from([0u8; 64]);
                 reader.read_exact(&mut signature).map_err(|e| {
                     DXBBlockParseError::IOError(format!(
@@ -415,7 +322,7 @@ mod tests {
 
     use crate::{
         global::{
-            dxb_block::{DXBBlock, DXBBlockParseError},
+            dxb_block::{DXBBlock, error::DXBBlockParseError},
             protocol_structures::{
                 block_header::BlockType,
                 encrypted_header::{self, EncryptedHeader},
@@ -473,7 +380,7 @@ mod tests {
         block
             .routing_header
             .flags
-            .set_signature_type(SignatureType::Unencrypted);
+            .set_signature_type(SignatureType::Signed);
         block.signature = Some(vec![0u8; 64]);
 
         let block_bytes = block.to_bytes();

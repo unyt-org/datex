@@ -68,7 +68,7 @@ use strum_macros::Display;
 use crate::{
     collections::HashSet,
     crypto::CryptoImpl,
-    global::dxb_block::{BlockId, IncomingSection},
+    global::dxb_block::{dxb_id::BlockId, incoming_section::IncomingSection},
     network::{
         block_handler::IncomingSectionSender,
         com_hub::managers::com_interface_manager::{
@@ -728,29 +728,25 @@ impl ComHub {
                     // TODO #180: verify signature and abort if invalid
                     // Check if signature is following in some later block and add them to
                     // a pool of incoming blocks awaiting some signature
-                    signature_type @ (SignatureType::Encrypted
-                    | SignatureType::Unencrypted) => {
-                        MaybeAsync::Async(async move {
-                            let is_valid = match signature_type {
-                                SignatureType::Encrypted => {
-                                    unimplemented!(
-                                        "Encrypted signatures not yet implemented"
-                                    );
-                                }
+                    signature_type @ (SignatureType::CryptedSigned
+                    | SignatureType::Signed) => MaybeAsync::Async(async move {
+                        let is_valid = match signature_type {
+                            SignatureType::CryptedSigned => {
+                                unimplemented!(
+                                    "Encrypted signatures not yet implemented"
+                                );
+                            }
 
-                                SignatureType::Unencrypted => {
-                                    info!(
-                                        "val unencrypted against: {:?}",
-                                        pub_key
-                                    );
-                                    let signature = dxb.signature.as_ref().ok_or(
-                                        SignatureValidationError::MissingSignature,
-                                    )?;
+                            SignatureType::Signed => {
+                                info!("val unencrypted against: {:?}", pub_key);
+                                let signature = dxb.signature.as_ref().ok_or(
+                                    SignatureValidationError::MissingSignature,
+                                )?;
 
-                                    let raw_signed =
-                                        [pub_key.to_vec(), dxb.body.clone()]
-                                            .concat();
-                                    let hashed_signed = CryptoImpl::hash_sha256(
+                                let raw_signed =
+                                    [pub_key.to_vec(), dxb.body.clone()]
+                                        .concat();
+                                let hashed_signed = CryptoImpl::hash_sha256(
                                         &raw_signed,
                                     )
                                     .await
@@ -758,7 +754,7 @@ impl ComHub {
                                         SignatureValidationError::SignatureParseError
                                     })?;
 
-                                    CryptoImpl::ver_ed25519(
+                                CryptoImpl::ver_ed25519(
                                         &pub_key,
                                         signature,
                                         &hashed_signed,
@@ -767,19 +763,18 @@ impl ComHub {
                                     .map_err(|_| {
                                         SignatureValidationError::InvalidSignature
                                     })?
-                                }
-
-                                _ => unreachable!(),
-                            };
-
-                            match is_valid {
-                                true => Ok(dxb),
-                                false => Err(
-                                    SignatureValidationError::InvalidSignature,
-                                ),
                             }
-                        })
-                    }
+
+                            _ => unreachable!(),
+                        };
+
+                        match is_valid {
+                            true => Ok(dxb),
+                            false => {
+                                Err(SignatureValidationError::InvalidSignature)
+                            }
+                        }
+                    }),
 
                     SignatureType::Unsigned => {
                         let is_valid = {
@@ -1433,9 +1428,9 @@ impl ComHub {
                             .map_err(|_| ComHubError::SignatureCreationError)?;
 
                     let sig_bytes: Vec<u8> = match sig_ty {
-                        SignatureType::Unencrypted => signature.to_vec(),
+                        SignatureType::Signed => signature.to_vec(),
 
-                        SignatureType::Encrypted => {
+                        SignatureType::CryptedSigned => {
                             unimplemented!("Not yet implemented");
                         }
 
@@ -2224,7 +2219,7 @@ pub mod tests {
             UnboundedReceiver, UnboundedSender, create_unbounded_channel,
         },
         global::{
-            dxb_block::{DXBBlock, IncomingSection},
+            dxb_block::{DXBBlock, incoming_section::IncomingSection},
             protocol_structures::{
                 block_header::{BlockHeader, FlagsAndTimestamp},
                 routing_header::RoutingHeader,

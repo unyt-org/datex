@@ -26,35 +26,29 @@ impl Crypto for CryptoStub {
     // Stub implementation of SHA256 hashing always returns a fixed hash of zeros.
     fn hash_sha256<'a>(
         _to_digest: &'a [u8],
-    ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError> {
-        Box::pin(async {
-            Ok([0u8; 32])
-        })
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::Sha256Error> {
+        Box::pin(async { Ok([0u8; 32]) })
     }
 
     fn hkdf_sha256<'a>(
         _ikm: &'a [u8],
         _salt: &'a [u8],
-    ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError> {
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::HkdfError> {
         unimplemented!()
     }
 
     /// Stub implementation of Ed25519 key generation always generates a fixed key pair of zeros.
     fn gen_ed25519<'a>()
-    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::CryptoError> {
-        Box::pin(async {
-            Ok(([0u8; 32], [0u8; 32]))
-        })
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::Ed25519GenError> {
+        Box::pin(async { Ok(([0u8; 32], [0u8; 32])) })
     }
 
     /// Stub implementation of Ed25519 signing always returns a fixed signature of zeros.
     fn sig_ed25519<'a>(
         _pri_key: &'a [u8],
         _data: &'a [u8],
-    ) -> AsyncCryptoResult<'a, [u8; 64], Self::CryptoError> {
-        Box::pin(async {
-            Ok([0u8; 64])
-        })
+    ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
+        Box::pin(async { Ok([0u8; 64]) })
     }
 
     /// Stub implementation of Ed25519 signature verification always returns true.
@@ -62,17 +56,15 @@ impl Crypto for CryptoStub {
         _pub_key: &'a [u8],
         _sig: &'a [u8],
         _data: &'a [u8],
-    ) -> AsyncCryptoResult<'a, bool, Self::CryptoError> {
-        Box::pin(async {
-            Ok(true)
-        })
+    ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError> {
+        Box::pin(async { Ok(true) })
     }
 
     fn aes_ctr_encrypt<'a>(
         _key: &'a [u8; 32],
         _iv: &'a [u8; 16],
         _plaintext: &'a [u8],
-    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::CryptoError> {
+    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
         unimplemented!()
     }
 
@@ -80,33 +72,33 @@ impl Crypto for CryptoStub {
         _key: &'a [u8; 32],
         _iv: &'a [u8; 16],
         _cipher: &'a [u8],
-    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::CryptoError> {
+    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
         unimplemented!()
     }
 
     fn key_wrap_rfc3394<'a>(
         _kek: &'a [u8; 32],
         _key_to_wrap: &'a [u8; 32],
-    ) -> AsyncCryptoResult<'a, [u8; 40], Self::CryptoError> {
+    ) -> AsyncCryptoResult<'a, [u8; 40], Self::KeyWrapError> {
         unimplemented!()
     }
 
     fn key_unwrap_rfc3394<'a>(
         _kek: &'a [u8; 32],
         _wrapped: &'a [u8; 40],
-    ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError> {
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::KeyUnwrapError> {
         unimplemented!()
     }
 
     fn gen_x25519<'a>()
-    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::CryptoError> {
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::X25519GenError> {
         unimplemented!()
     }
 
     fn derive_x25519<'a>(
         _pri_key: &'a [u8; 32],
         _peer_pub: &'a [u8; 32],
-    ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError> {
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
         unimplemented!()
     }
 }

@@ -12,8 +12,11 @@ use crate::{
     },
     global::{
         dxb_block::{
-            DXBBlock, IncomingEndpointContextSectionId, IncomingSection,
-            OutgoingContextId,
+            DXBBlock,
+            incoming_section::{
+                IncomingEndpointContextSectionId, IncomingSection,
+                OutgoingContextId,
+            },
         },
         protocol_structures::{
             block_header::{BlockHeader, FlagsAndTimestamp},

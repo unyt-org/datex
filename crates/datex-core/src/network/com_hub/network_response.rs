@@ -1,5 +1,6 @@
 use crate::{
-    global::dxb_block::IncomingSection, values::core_values::endpoint::Endpoint,
+    global::dxb_block::incoming_section::IncomingSection,
+    values::core_values::endpoint::Endpoint,
 };
 use core::{
     fmt::{Display, Formatter},

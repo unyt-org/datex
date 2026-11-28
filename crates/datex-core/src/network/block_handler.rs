@@ -4,10 +4,13 @@ use crate::{
     },
     collections::HashMap,
     global::dxb_block::{
-        BlockId, DXBBlock, IncomingBlockNumber, IncomingContextId,
-        IncomingEndpointContextId, IncomingEndpointContextSectionId,
-        IncomingSection, IncomingSectionIndex, OutgoingContextId,
-        OutgoingSectionIndex,
+        DXBBlock,
+        dxb_id::BlockId,
+        incoming_section::{
+            IncomingBlockNumber, IncomingContextId, IncomingEndpointContextId,
+            IncomingEndpointContextSectionId, IncomingSection,
+            IncomingSectionIndex, OutgoingContextId, OutgoingSectionIndex,
+        },
     },
     network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID,
     random::RandomState,
@@ -505,7 +508,7 @@ mod tests {
     use super::*;
     use crate::{
         global::{
-            dxb_block::{DXBBlock, IncomingSection},
+            dxb_block::{DXBBlock, incoming_section::IncomingSection},
             protocol_structures::{
                 block_header::{BlockHeader, FlagsAndTimestamp},
                 routing_header::{Receivers, RoutingHeader},

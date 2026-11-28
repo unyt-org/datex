@@ -1,3 +1,4 @@
+use crate::utils::{TryAsByteSlice, js_array, js_object};
 use datex_facades::crypto::{AsyncCryptoResult, Crypto};
 use wasm_bindgen::{JsCast, JsError, JsValue};
 use wasm_bindgen_futures::JsFuture;
@@ -5,7 +6,6 @@ use web_sys::{
     AesCtrParams, CryptoKey, CryptoKeyPair, js_sys,
     js_sys::{Array, ArrayBuffer, Object, Reflect, Uint8Array},
 };
-use crate::utils::{TryAsByteSlice, js_array, js_object};
 
 use der::{Encode, asn1::BitStringRef};
 use pkcs8::{AlgorithmIdentifierRef, ObjectIdentifier, PrivateKeyInfo};
@@ -108,7 +108,16 @@ impl CryptoWeb {
 }
 
 impl Crypto for CryptoWeb {
-    type CryptoError = JsError;
+    type Sha256Error = JsError;
+    type HkdfError = JsError;
+    type Ed25519GenError = JsError;
+    type Ed25519SignError = JsError;
+    type Ed25519VerifyError = JsError;
+    type AesCtrError = JsError;
+    type KeyWrapError = JsError;
+    type KeyUnwrapError = JsError;
+    type X25519GenError = JsError;
+    type X25519DeriveError = JsError;
 
     fn create_uuid() -> String {
         Self::crypto().random_uuid()
@@ -123,7 +132,7 @@ impl Crypto for CryptoWeb {
 
     fn hash_sha256<'a>(
         to_digest: &'a [u8],
-    ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError> {
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::Sha256Error> {
         Box::pin(async move {
             let subtle = CryptoWeb::crypto_subtle();
 
@@ -149,7 +158,7 @@ impl Crypto for CryptoWeb {
     fn hkdf_sha256<'a>(
         ikm: &'a [u8],
         salt: &'a [u8],
-    ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError> {
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::HkdfError> {
         Box::pin(async move {
             let subtle = CryptoWeb::crypto_subtle();
 
@@ -167,8 +176,8 @@ impl Crypto for CryptoWeb {
                     )
                     .map_err(jsvalue_to_jserror)?,
             )
-                .await
-                .map_err(jsvalue_to_jserror)?;
+            .await
+            .map_err(jsvalue_to_jserror)?;
 
             let base_key: CryptoKey =
                 key_js.dyn_into().map_err(jsvalue_to_jserror)?;
@@ -188,8 +197,8 @@ impl Crypto for CryptoWeb {
                     .derive_bits_with_object(&params, &base_key, 256u32)
                     .map_err(jsvalue_to_jserror)?,
             )
-                .await
-                .map_err(jsvalue_to_jserror)?;
+            .await
+            .map_err(jsvalue_to_jserror)?;
 
             let v = Uint8Array::new(&bits).to_vec();
             let out: [u8; 32] = v
@@ -201,7 +210,7 @@ impl Crypto for CryptoWeb {
 
     // Signature and Verification
     fn gen_ed25519<'a>()
-        -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::CryptoError> {
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::Ed25519GenError> {
         Box::pin(async move {
             let algorithm =
                 js_object(vec![("name", JsValue::from_str("Ed25519"))]);
@@ -211,7 +220,7 @@ impl Crypto for CryptoWeb {
                 true,
                 &["sign", "verify"],
             )
-                .await?;
+            .await?;
 
             let pub_key =
                 Self::export_crypto_key(&key_pair.get_public_key(), "spki")
@@ -234,7 +243,7 @@ impl Crypto for CryptoWeb {
     fn sig_ed25519<'a>(
         pri_key: &'a [u8],
         data: &'a [u8],
-    ) -> AsyncCryptoResult<'a, [u8; 64], Self::CryptoError> {
+    ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
         Box::pin(async move {
             // prep key for formatting
             let pri_sig_key = ed25519_dalek::SigningKey::from_bytes(
@@ -258,8 +267,8 @@ impl Crypto for CryptoWeb {
                 private_key: &prepped_key,
                 public_key: None,
             }
-                .to_der()
-                .map_err(|_| JsError::new("Ed25519 format private key (sign)"))?;
+            .to_der()
+            .map_err(|_| JsError::new("Ed25519 format private key (sign)"))?;
 
             let key = Self::import_crypto_key(
                 &pri_sig_key_with_metadata,
@@ -267,8 +276,8 @@ impl Crypto for CryptoWeb {
                 &js_object(vec![("name", JsValue::from_str("Ed25519"))]),
                 &["sign"],
             )
-                .await
-                .map_err(|_| JsError::new("Ed25519 format private key (sign)"))?;
+            .await
+            .map_err(|_| JsError::new("Ed25519 format private key (sign)"))?;
 
             let prom = Self::crypto_subtle()
                 .sign_with_object_and_u8_array(
@@ -296,7 +305,7 @@ impl Crypto for CryptoWeb {
         pub_key: &'a [u8],
         sig: &'a [u8],
         data: &'a [u8],
-    ) -> AsyncCryptoResult<'a, bool, Self::CryptoError> {
+    ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError> {
         Box::pin(async move {
             if sig.len() != 64 {
                 return Err(JsError::new(
@@ -310,7 +319,7 @@ impl Crypto for CryptoWeb {
                 &js_object(vec![("name", JsValue::from_str("Ed25519"))]),
                 &["verify"],
             )
-                .await?;
+            .await?;
 
             let prom = Self::crypto_subtle()
                 .verify_with_object_and_u8_array_and_u8_array(
@@ -332,7 +341,7 @@ impl Crypto for CryptoWeb {
         key: &'a [u8; 32],
         iv: &'a [u8; 16],
         plaintext: &'a [u8],
-    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::CryptoError> {
+    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
         Box::pin(async move {
             let subtle = Self::crypto_subtle();
 
@@ -350,8 +359,8 @@ impl Crypto for CryptoWeb {
                     )
                     .map_err(jsvalue_to_jserror)?,
             )
-                .await
-                .map_err(jsvalue_to_jserror)?;
+            .await
+            .map_err(jsvalue_to_jserror)?;
 
             let base_key: CryptoKey =
                 key_js.dyn_into().map_err(jsvalue_to_jserror)?;
@@ -384,7 +393,7 @@ impl Crypto for CryptoWeb {
         key: &'a [u8; 32],
         iv: &'a [u8; 16],
         ciphertext: &'a [u8],
-    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::CryptoError> {
+    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
         Box::pin(async move {
             let subtle = Self::crypto_subtle();
 
@@ -402,8 +411,8 @@ impl Crypto for CryptoWeb {
                     )
                     .map_err(jsvalue_to_jserror)?,
             )
-                .await
-                .map_err(jsvalue_to_jserror)?;
+            .await
+            .map_err(jsvalue_to_jserror)?;
 
             let base_key: CryptoKey =
                 key_js.dyn_into().map_err(jsvalue_to_jserror)?;
@@ -435,7 +444,7 @@ impl Crypto for CryptoWeb {
     fn key_wrap_rfc3394<'a>(
         kek_bytes: &'a [u8; 32],
         key_to_wrap_bytes: &'a [u8; 32],
-    ) -> AsyncCryptoResult<'a, [u8; 40], Self::CryptoError> {
+    ) -> AsyncCryptoResult<'a, [u8; 40], Self::KeyWrapError> {
         Box::pin(async move {
             let subtle = Self::crypto_subtle();
 
@@ -494,7 +503,7 @@ impl Crypto for CryptoWeb {
     fn key_unwrap_rfc3394<'a>(
         kek_bytes: &'a [u8; 32],
         wrapped_key: &'a [u8; 40],
-    ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError> {
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::KeyUnwrapError> {
         Box::pin(async move {
             let subtle = Self::crypto_subtle();
 
@@ -557,7 +566,7 @@ impl Crypto for CryptoWeb {
 
     // x25519 key gen
     fn gen_x25519<'a>()
-        -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::CryptoError> {
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::X25519GenError> {
         Box::pin(async move {
             let algorithm =
                 js_object(vec![("name", JsValue::from_str("X25519"))]);
@@ -567,8 +576,8 @@ impl Crypto for CryptoWeb {
                 true,
                 &["deriveKey", "deriveBits"],
             )
-                .await
-                .map_err(|_| JsError::new("X25519 generateKey"))?;
+            .await
+            .map_err(|_| JsError::new("X25519 generateKey"))?;
 
             let pub_vec =
                 Self::export_crypto_key(&key_pair.get_public_key(), "spki")
@@ -594,7 +603,7 @@ impl Crypto for CryptoWeb {
     fn derive_x25519<'a>(
         my_raw: &'a [u8; 32],
         peer_pub: &'a [u8; 32],
-    ) -> AsyncCryptoResult<'a, [u8; 32], Self::CryptoError> {
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
         Box::pin(async move {
             // Format private key
             let pri_key = StaticSecret::from(*my_raw);
@@ -615,12 +624,12 @@ impl Crypto for CryptoWeb {
                 private_key: &prepped_pri_key,
                 public_key: None,
             }
-                .to_der()
-                .map_err(|_| {
-                    JsError::new(
-                        "X25519 format private key (shared secret derivation)",
-                    )
-                })?;
+            .to_der()
+            .map_err(|_| {
+                JsError::new(
+                    "X25519 format private key (shared secret derivation)",
+                )
+            })?;
 
             let pub_spki = SubjectPublicKeyInfoRef {
                 algorithm: AlgorithmIdentifierRef {

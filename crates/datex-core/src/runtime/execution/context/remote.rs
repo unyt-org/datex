@@ -1,7 +1,7 @@
 #[cfg(feature = "compiler")]
 use crate::compiler::scope::CompilationScope;
 use crate::{
-    global::dxb_block::OutgoingContextId,
+    global::dxb_block::incoming_section::OutgoingContextId,
     prelude::*,
     runtime::{
         Runtime,
