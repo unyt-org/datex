@@ -1,3 +1,4 @@
+pub mod dxb_builder;
 pub mod dxb_id;
 pub mod dxb_parsed;
 pub mod dxb_raw;
@@ -6,30 +7,28 @@ pub mod error;
 pub mod incoming_section;
 
 use dxb_id::BlockId;
-use dxb_parsed::ParsedDXB;
-use dxb_raw::RawDXB;
+use dxb_parsed::ParsedDXBBlock;
+use dxb_raw::RawDXBBlock;
 use dxb_trait::DxB;
 
 use error::{DXBBlockParseError, DxbHeaderParsingError};
 use incoming_section::IncomingEndpointContextId;
 
 use super::protocol_structures::{
-    block_header::BlockHeader,
+    block_header::{BlockHeader, BlockType},
     encrypted_header::EncryptedHeader,
-    routing_header::{EncryptionType, RoutingHeader, SignatureType},
+    routing_header::{EncryptionType, Receivers, RoutingHeader, SignatureType},
 };
+
 use crate::{
-    global::protocol_structures::{
-        block_header::BlockType, routing_header::Receivers,
-    },
-    utils::buffers::write_u16,
-    values::core_values::endpoint::Endpoint,
+    utils::buffers::write_u16, values::core_values::endpoint::Endpoint,
 };
+use core::{fmt::Display, result::Result, unimplemented};
+
 use binrw::{
     BinRead, BinWrite,
     io::{Cursor, Read},
 };
-use core::{fmt::Display, result::Result, unimplemented};
 
 use crate::prelude::*;
 
@@ -38,8 +37,8 @@ const SIZE_BYTES: usize = 2;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub enum DXB {
-    RawDXB(RawDXB),
-    ParsedDXB(ParsedDXB),
+    RawDXB(RawDXBBlock),
+    ParsedDXB(ParsedDXBBlock),
 }
 
 impl DXB {
@@ -53,7 +52,7 @@ impl DXB {
 
 impl Default for DXB {
     fn default() -> Self {
-        DXB::RawDXB(RawDXB::default())
+        DXB::RawDXB(RawDXBBlock::default())
     }
 }
 

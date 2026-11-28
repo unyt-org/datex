@@ -1,8 +1,9 @@
 use crate::{
     global::{
         dxb_block::{
-            BlockId, DXB, DXBBlockParseError, DxbHeaderParsingError,
-            IncomingEndpointContextId,
+            BlockId, DXB,
+            error::{DXBBlockParseError, DxbHeaderParsingError},
+            incoming_section::IncomingEndpointContextId,
         },
         protocol_structures::{
             block_header::BlockType, routing_header::Receivers,

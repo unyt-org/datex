@@ -24,7 +24,7 @@ use binrw::{
 use core::fmt::Display;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
-pub struct ParsedDXB {
+pub struct ParsedDXBBlock {
     pub routing_header: RoutingHeader,
     pub block_header: BlockHeader,
     pub encrypted_header: EncryptedHeader,
@@ -32,7 +32,7 @@ pub struct ParsedDXB {
     pub body: Vec<u8>,
 }
 
-impl PartialEq for ParsedDXB {
+impl PartialEq for ParsedDXBBlock {
     fn eq(&self, other: &Self) -> bool {
         self.routing_header == other.routing_header
             && self.block_header == other.block_header
@@ -41,7 +41,7 @@ impl PartialEq for ParsedDXB {
     }
 }
 
-impl Display for ParsedDXB {
+impl Display for ParsedDXBBlock {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         let block_type = self.block_header.flags_and_timestamp.block_type();
         let sender = &self.routing_header.sender;
@@ -52,7 +52,7 @@ impl Display for ParsedDXB {
     }
 }
 
-impl DxB for ParsedDXB {
+impl DxB for ParsedDXBBlock {
     fn adjust_block_length(mut bytes: Vec<u8>) -> Vec<u8> {
         let size = bytes.len() as u32;
         write_u16(&mut bytes, &mut SIZE_BYTE_POSITION.clone(), size as u16);
@@ -68,7 +68,7 @@ impl DxB for ParsedDXB {
         let mut bytes = writer.into_inner();
 
         bytes.extend_from_slice(&self.body);
-        ParsedDXB::adjust_block_length(bytes)
+        ParsedDXBBlock::adjust_block_length(bytes)
     }
 
     fn from_bytes(bytes: &[u8]) -> Result<DXB, DXBBlockParseError> {
@@ -94,7 +94,7 @@ impl DxB for ParsedDXB {
         let mut body = Vec::new();
         reader.read_to_end(&mut body).map_err(|e| e.to_string())?;
 
-        let block = ParsedDXB {
+        let block = ParsedDXBBlock {
             routing_header,
             block_header,
             signature,
@@ -120,7 +120,7 @@ impl DxB for ParsedDXB {
         }
 
         // make sure magic number is correct
-        if !ParsedDXB::has_dxb_magic_number(dxb) {
+        if !ParsedDXBBlock::has_dxb_magic_number(dxb) {
             return Err(DxbHeaderParsingError::InvalidMagicNumber);
         }
 
@@ -214,7 +214,7 @@ mod tests {
 
     use crate::{
         global::{
-            dxb_block::ParsedDXB,
+            dxb_block::ParsedDXBBlock,
             protocol_structures::{
                 encrypted_header::{self, EncryptedHeader},
                 routing_header::{RoutingHeader, SignatureType},
@@ -226,10 +226,10 @@ mod tests {
 
     #[test]
     pub fn parsed_dxb_from_to_bytes_roundtrip() {
-        let mut original_dxb = ParsedDXB::default();
+        let mut original_dxb = ParsedDXBBlock::default();
         original_dxb.signature = Some(Vec::from([0u8; 64]));
         let bytes = original_dxb.to_bytes();
-        let bytes_copy = ParsedDXB::from_bytes(&bytes).unwrap().to_bytes();
+        let bytes_copy = ParsedDXBBlock::from_bytes(&bytes).unwrap().to_bytes();
 
         assert_eq!(bytes, bytes_copy)
     }
@@ -243,7 +243,7 @@ mod tests {
             .flags
             .set_signature_type(SignatureType::Unsigned);
         routing_header.set_size(420);
-        let mut block = ParsedDXB {
+        let mut block = ParsedDXBBlock {
             body: vec![0x01, 0x02, 0x03],
             encrypted_header: EncryptedHeader {
                 flags: encrypted_header::Flags::default()
@@ -251,13 +251,14 @@ mod tests {
                 ..Default::default()
             },
             routing_header,
-            ..ParsedDXB::default()
+            ..ParsedDXBBlock::default()
         };
 
         {
             // invalid block size
             let block_bytes = block.to_bytes();
-            let block2 = match ParsedDXB::from_bytes(&block_bytes).unwrap() {
+            let block2 = match ParsedDXBBlock::from_bytes(&block_bytes).unwrap()
+            {
                 DXB::ParsedDXB(block) => block,
                 DXB::RawDXB(_) => unreachable!("This shouldn't happen."),
             };
@@ -269,7 +270,8 @@ mod tests {
             // valid block size
             block.recalculate_struct();
             let block_bytes = block.to_bytes();
-            let block3 = match ParsedDXB::from_bytes(&block_bytes).unwrap() {
+            let block3 = match ParsedDXBBlock::from_bytes(&block_bytes).unwrap()
+            {
                 DXB::ParsedDXB(block) => block,
                 DXB::RawDXB(_) => unreachable!("This shouldn't happen."),
             };

@@ -1,10 +1,11 @@
 use crate::{
     global::{
         dxb_block::{
-            BlockId, DXB, IncomingEndpointContextId, SIZE_BYTE_POSITION,
-            SIZE_BYTES,
+            DXB, SIZE_BYTE_POSITION, SIZE_BYTES,
+            dxb_id::BlockId,
             dxb_trait::DxB,
             error::{DXBBlockParseError, DxbHeaderParsingError},
+            incoming_section::IncomingEndpointContextId,
         },
         protocol_structures::{
             block_header::{BlockHeader, BlockType},
@@ -23,7 +24,7 @@ use binrw::{
 use core::fmt::Display;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
-pub struct RawDXB {
+pub struct RawDXBBlock {
     pub routing_header: RoutingHeader,
     pub block_header: BlockHeader,
 
@@ -31,7 +32,7 @@ pub struct RawDXB {
     pub body: Vec<u8>,
 }
 
-impl DxB for RawDXB {
+impl DxB for RawDXBBlock {
     fn adjust_block_length(mut bytes: Vec<u8>) -> Vec<u8> {
         let size = bytes.len() as u32;
         write_u16(&mut bytes, &mut SIZE_BYTE_POSITION.clone(), size as u16);
@@ -45,7 +46,7 @@ impl DxB for RawDXB {
         let mut bytes = writer.into_inner();
 
         bytes.extend_from_slice(&self.body);
-        RawDXB::adjust_block_length(bytes)
+        RawDXBBlock::adjust_block_length(bytes)
     }
 
     fn from_bytes(bytes: &[u8]) -> Result<DXB, DXBBlockParseError> {
@@ -56,7 +57,7 @@ impl DxB for RawDXB {
         let mut body = Vec::new();
         reader.read_to_end(&mut body).map_err(|e| e.to_string())?;
 
-        let block = RawDXB {
+        let block = RawDXBBlock {
             routing_header,
             block_header,
             body: body.to_vec(),
@@ -80,7 +81,7 @@ impl DxB for RawDXB {
         }
 
         // make sure magic number is correct
-        if !RawDXB::has_dxb_magic_number(dxb) {
+        if !RawDXBBlock::has_dxb_magic_number(dxb) {
             return Err(DxbHeaderParsingError::InvalidMagicNumber);
         }
 
@@ -165,7 +166,7 @@ impl DxB for RawDXB {
     }
 }
 
-impl Display for RawDXB {
+impl Display for RawDXBBlock {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         let block_type = self.block_header.flags_and_timestamp.block_type();
         let sender = &self.routing_header.sender;
@@ -182,9 +183,9 @@ mod tests {
 
     #[test]
     pub fn raw_dxb_from_to_bytes_roundtrip() {
-        let original_dxb = RawDXB::default();
+        let original_dxb = RawDXBBlock::default();
         let bytes = original_dxb.to_bytes();
-        let bytes_copy = RawDXB::from_bytes(&bytes).unwrap().to_bytes();
+        let bytes_copy = RawDXBBlock::from_bytes(&bytes).unwrap().to_bytes();
 
         assert_eq!(bytes, bytes_copy)
     }
